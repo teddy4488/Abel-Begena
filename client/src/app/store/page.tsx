@@ -1,18 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { useAddToCartMutation, useGetProductsQuery } from "@/store/api/storeApi";
+import { motion, useScroll, useTransform } from "framer-motion";
+import {
+  useAddToCartMutation,
+  useGetProductsQuery,
+} from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useToast } from "@/components/providers/ToastProvider";
+
+const instrumentFilters = [
+  "All",
+  "Begena",
+  "Kirar",
+  "Masinko",
+  "Washint",
+  "Kebero",
+  "Other",
+];
 
 export default function StorePage() {
   const router = useRouter();
   const { data, isLoading, error } = useGetProductsQuery();
   const { isLoggedIn } = useAppSelector((state) => state.auth);
-  const [addToCart, { isLoading: isAdding }] = useAddToCartMutation();
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [addToCart] = useAddToCartMutation();
+  const { pushToast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [category, setCategory] = useState<string>("All");
+  const [sortOrder, setSortOrder] = useState<"newest" | "priceAsc" | "priceDesc">(
+    "newest",
+  );
+  const [pendingProductId, setPendingProductId] = useState<string | null>(null);
+  const { scrollYProgress } = useScroll();
+  const heroTranslate = useTransform(scrollYProgress, [0, 0.2], [0, -60]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0.4]);
+
+  const filteredProducts = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+    return data
+      .filter((product) => {
+        const matchesSearch =
+          !searchTerm ||
+          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.instrumentType
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase());
+        const matchesCategory =
+          category === "All" || product.instrumentType === category;
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        if (sortOrder === "priceAsc") {
+          return a.price - b.price;
+        }
+        if (sortOrder === "priceDesc") {
+          return b.price - a.price;
+        }
+        return (
+          new Date(b.createdAt ?? "").getTime() -
+          new Date(a.createdAt ?? "").getTime()
+        );
+      });
+  }, [category, data, searchTerm, sortOrder]);
 
   const handleAddToCart = async (productId: string) => {
     if (!isLoggedIn) {
@@ -21,55 +74,117 @@ export default function StorePage() {
     }
 
     try {
+      setPendingProductId(productId);
       await addToCart({ productId, quantity: 1 }).unwrap();
-      setFeedback("Added to cart");
-      setTimeout(() => setFeedback(null), 2000);
+      pushToast({
+        title: "Added to cart",
+        description: "Continue browsing or proceed to checkout.",
+        variant: "success",
+      });
     } catch {
-      setFeedback("Unable to add item. Please try again.");
-      setTimeout(() => setFeedback(null), 3000);
+      pushToast({
+        title: "Unable to add item",
+        description: "Please try again or refresh.",
+        variant: "error",
+      });
+    } finally {
+      setPendingProductId(null);
     }
   };
 
   return (
     <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <header className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.3em] text-secondary">Instrument Boutique</p>
-          <h1 className="text-3xl font-serif text-primary md:text-4xl">Curated Liturgical Instruments</h1>
-          <p className="text-sm text-foreground/70">
-            Explore handcrafted Begena, Kirar, Masinko, Washint, and Kebero collections prepared for the EOTC tradition.
+      <div className="mx-auto max-w-6xl space-y-10">
+        <motion.header
+          style={{ y: heroTranslate, opacity: heroOpacity }}
+          className="space-y-4 rounded-[32px] border border-border bg-gradient-to-br from-surface via-background to-[color:var(--color-secondary-soft)] p-8 shadow-[0_40px_100px_rgba(34,6,9,0.25)]"
+        >
+          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+            Instrument Boutique
           </p>
-          {feedback && (
-            <div className="rounded-2xl border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-secondary">
-              {feedback}
-            </div>
-          )}
-        </header>
+          <h1 className="text-3xl font-serif text-primary md:text-4xl">
+            Curated Liturgical Instruments
+          </h1>
+          <p className="text-sm text-foreground/80">
+            Explore handcrafted Begena, Kirar, Masinko, Washint, and Kebero
+            collections sourced from our sacred atelier.
+          </p>
+          <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-secondary/70">
+            <span>Cloud-archived builds</span>
+            <span>Worldwide delivery</span>
+            <span>Blessed before shipment</span>
+          </div>
+        </motion.header>
+
+        <div className="sticky top-24 z-30 rounded-3xl border border-border bg-background/80 p-5 shadow-lg backdrop-blur">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search instruments or materials..."
+              className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            />
+            <select
+              value={sortOrder}
+              onChange={(e) =>
+                setSortOrder(e.target.value as "newest" | "priceAsc" | "priceDesc")
+              }
+              className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            >
+              <option value="newest">Newest arrivals</option>
+              <option value="priceAsc">Price: Low to High</option>
+              <option value="priceDesc">Price: High to Low</option>
+            </select>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {instrumentFilters.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setCategory(filter)}
+                className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  category === filter
+                    ? "border-secondary bg-secondary/20 text-secondary"
+                    : "border-border text-foreground/70 hover:border-secondary/60"
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {isLoading && (
-          <p className="text-sm text-foreground/70">Loading sacred instruments...</p>
+          <p className="text-sm text-foreground/70">Loading sacred catalog...</p>
         )}
 
         {error && (
-          <p className="text-sm text-red-500">Unable to load catalog. Please refresh.</p>
+          <p className="text-sm text-red-500">
+            Unable to load catalog. Please refresh.
+          </p>
         )}
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {data?.map((product) => (
+          {filteredProducts.map((product) => (
             <motion.div
               key={product._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col rounded-3xl border border-border bg-surface p-5 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="group flex flex-col rounded-3xl border border-border bg-surface p-5 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
             >
               <Link
                 href={`/store/${product._id}`}
-                className="relative block aspect-square overflow-hidden rounded-2xl bg-background/80"
+                className="relative block aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-background/80"
               >
                 {product.images?.length ? (
-                  <div
-                    className="h-full w-full scale-100 bg-cover bg-center transition duration-300 hover:scale-105"
+                  <motion.div
+                    className="h-full w-full bg-cover bg-center"
                     style={{ backgroundImage: `url(${product.images[0]})` }}
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.6 }}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-foreground/50">
@@ -79,30 +194,41 @@ export default function StorePage() {
               </Link>
               <div className="mt-4 space-y-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">{product.instrumentType}</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                    {product.instrumentType}
+                  </p>
                   <Link href={`/store/${product._id}`}>
-                    <h2 className="text-xl font-serif text-primary">{product.name}</h2>
+                    <h2 className="text-xl font-serif text-primary">
+                      {product.name}
+                    </h2>
                   </Link>
-                  <p className="text-sm text-foreground/70">{product.shortDescription}</p>
+                  <p className="text-sm text-foreground/70">
+                    {product.shortDescription || "Awaiting description."}
+                  </p>
                 </div>
                 <p className="text-lg font-semibold text-foreground">
-                  {product.price.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  {product.price.toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
                 </p>
-                <button
+                <motion.button
                   onClick={() => handleAddToCart(product._id)}
-                  disabled={isAdding}
+                  disabled={pendingProductId === product._id}
+                  whileTap={{ scale: 0.97 }}
                   className="w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isAdding ? "Adding..." : "Add to Cart"}
-                </button>
+                  {pendingProductId === product._id ? "Adding..." : "Add to Cart"}
+                </motion.button>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {!isLoading && !error && !data?.length && (
+        {!isLoading && !error && filteredProducts.length === 0 && (
           <p className="text-center text-sm text-foreground/70">
-            No instruments available yet. Please check back soon.
+            No instruments match your filters. Clear the filters or check back
+            soon.
           </p>
         )}
       </div>

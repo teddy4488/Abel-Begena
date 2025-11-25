@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import ThemeSwitcher from "@/components/layout/ThemeSwitcher";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logout } from "@/store/slices/authSlice";
+import { useAppSelector } from "@/store/hooks";
 import { useRouter } from "next/navigation";
+import { useLogoutMutation } from "@/store/api/authApi";
+import { useToast } from "@/components/providers/ToastProvider";
 
 type RoleKey = "guest" | "User" | "Teacher" | "Admin";
 type NavLink = { label: string; href: string };
@@ -28,6 +29,7 @@ const navConfig: Record<
   guest: {
     links: [
       { label: "Home", href: "/" },
+      { label: "Heritage", href: "/heritage" },
       { label: "About Us", href: "#about" },
       { label: "Contact Us", href: "#contact" },
     ],
@@ -37,6 +39,7 @@ const navConfig: Record<
     links: [
       { label: "Dashboard", href: "/dashboard" },
       { label: "My Classes", href: "/dashboard#classes" },
+      { label: "Heritage", href: "/heritage" },
       { label: "Store", href: "/store" },
       { label: "Orders", href: "/account/orders" },
       { label: "Support", href: "#contact" },
@@ -45,6 +48,7 @@ const navConfig: Record<
   Teacher: {
     links: [
       { label: "Teacher Studio", href: "/teacher" },
+      { label: "Heritage", href: "/heritage" },
       { label: "Upload Materials", href: "/teacher" },
       { label: "Live Classes", href: "/dashboard" },
       { label: "Store", href: "/store" },
@@ -53,6 +57,7 @@ const navConfig: Record<
   Admin: {
     links: [
       { label: "Admin Console", href: "/admin" },
+      { label: "Heritage", href: "/heritage" },
       { label: "Users", href: "/admin#users" },
       { label: "Classes", href: "/admin#classes" },
       { label: "Store", href: "/store" },
@@ -90,8 +95,9 @@ export default function Navbar() {
   const userMenuTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
-  const dispatch = useAppDispatch();
   const router = useRouter();
+  const { pushToast } = useToast();
+  const [requestLogout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
   const roleKey: RoleKey = isLoggedIn
     ? (user?.role as RoleKey) || "User"
@@ -100,10 +106,26 @@ export default function Navbar() {
   const navSettings = useMemo(() => navConfig[roleKey], [roleKey]);
   const servicesLinks = navSettings.services ?? [];
 
-  const handleLogout = () => {
-    dispatch(logout());
-    setUserMenuOpen(false);
-    router.push("/");
+  const handleLogout = async () => {
+    try {
+      await requestLogout().unwrap();
+      pushToast({
+        title: "Signed out",
+        description: "See you again soon.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error("Failed to logout", error);
+      pushToast({
+        title: "Unable to log out",
+        description: "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setUserMenuOpen(false);
+      setMobileOpen(false);
+      router.push("/");
+    }
   };
 
   const openServices = () => {
@@ -144,7 +166,7 @@ export default function Navbar() {
           <Link
             key={link.label}
             href={link.href}
-            className={`block px-5 py-3 text-base font-normal transition hover:bg-[color:var(--color-secondary-soft)] ${
+            className={`block px-5 py-3 text-base font-normal transition hover:bg-(--color-secondary-soft) ${
               isMobile ? "py-1 px-0" : ""
             }`}
             onClick={() => {
@@ -174,7 +196,7 @@ export default function Navbar() {
           <Link
             key={item.label}
             href={item.href}
-            className="block rounded-lg px-4 py-2 text-left text-foreground transition hover:bg-[color:var(--color-secondary-soft)]"
+            className="block rounded-lg px-4 py-2 text-left text-foreground transition hover:bg-(--color-secondary-soft)"
             onClick={() => setUserMenuOpen(false)}
           >
             {item.label}
@@ -182,17 +204,18 @@ export default function Navbar() {
         ))}
         <button
           type="button"
-          className="mt-1 w-full rounded-lg px-4 py-2 text-left text-red-600 transition hover:bg-red-50"
+          className="mt-1 w-full rounded-lg px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
           onClick={handleLogout}
+          disabled={isLoggingOut}
         >
-          Log out
+          {isLoggingOut ? "Logging out..." : "Log out"}
         </button>
       </div>
     );
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-[color:var(--color-background-soft)] text-foreground backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-border bg-(--color-background-soft) text-foreground backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
         <Link
           href="/"
@@ -246,7 +269,7 @@ export default function Navbar() {
             <>
               <Link
                 href="/login"
-                className="rounded-full border border-border px-5 py-2 text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+                className="rounded-full border border-border px-5 py-2 text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
               >
                 Sign In
               </Link>
@@ -265,7 +288,7 @@ export default function Navbar() {
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+                className="inline-flex items-center gap-2 rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
                 onClick={() => setUserMenuOpen((prev) => !prev)}
               >
                 {user?.firstName || user?.email || "My Account"}
@@ -338,7 +361,7 @@ export default function Navbar() {
                     <Link
                       key={item.label}
                       href={item.href}
-                      className="block rounded-lg px-3 py-2 text-foreground transition hover:bg-[color:var(--color-secondary-soft)]"
+                      className="block rounded-lg px-3 py-2 text-foreground transition hover:bg-(--color-secondary-soft)"
                       onClick={() => setMobileOpen(false)}
                     >
                       {item.label}
@@ -346,13 +369,11 @@ export default function Navbar() {
                   ))}
                   <button
                     type="button"
-                    className="w-full rounded-lg px-3 py-2 text-left text-red-600 transition hover:bg-red-50"
-                    onClick={() => {
-                      handleLogout();
-                      setMobileOpen(false);
-                    }}
+                      className="w-full rounded-lg px-3 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
                   >
-                    Log out
+                      {isLoggingOut ? "Logging out..." : "Log out"}
                   </button>
                 </div>
               </details>

@@ -1,0 +1,255 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  useCreatePostMutation,
+  useDeletePostMutation,
+  useGetManagePostsQuery,
+  useUpdatePostMutation,
+} from "@/store/api/blogApi";
+import { useToast } from "@/components/providers/ToastProvider";
+import { motion } from "framer-motion";
+
+type BlogStudioProps = {
+  filterByAuthorId?: string;
+  title?: string;
+};
+
+const emptyForm = {
+  title: "",
+  slug: "",
+  coverImage: "",
+  content: "",
+  isPublished: false,
+};
+
+export function BlogStudio({
+  filterByAuthorId,
+  title = "Heritage Editor",
+}: BlogStudioProps) {
+  const { data: posts = [] } = useGetManagePostsQuery();
+  const [createPost, { isLoading: isCreating }] = useCreatePostMutation();
+  const [updatePost, { isLoading: isUpdating }] = useUpdatePostMutation();
+  const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation();
+  const { pushToast } = useToast();
+  const [search, setSearch] = useState("");
+  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    ...emptyForm,
+  });
+
+  const filteredPosts = useMemo(() => {
+    const normalized = search.toLowerCase();
+    return posts.filter((post) => {
+      const matchesAuthor =
+        !filterByAuthorId || post.author?._id === filterByAuthorId;
+      const matchesSearch =
+        !normalized ||
+        post.title.toLowerCase().includes(normalized) ||
+        post.slug.toLowerCase().includes(normalized);
+      return matchesAuthor && matchesSearch;
+    });
+  }, [filterByAuthorId, posts, search]);
+
+  useEffect(() => {
+    if (!activePostId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setForm({ ...emptyForm });
+      return;
+    }
+    const post = posts.find((p) => p._id === activePostId);
+    if (post) {
+      setForm({
+        title: post.title,
+        slug: post.slug,
+        coverImage: post.coverImage,
+        content: post.content,
+        isPublished: post.isPublished,
+      });
+    }
+  }, [activePostId, posts]);
+
+  const handleSubmit = async () => {
+    try {
+      if (activePostId) {
+        await updatePost({ id: activePostId, data: form }).unwrap();
+        pushToast({ title: "Post updated", variant: "success" });
+      } else {
+        await createPost(form).unwrap();
+        pushToast({ title: "Post published", variant: "success" });
+      }
+      setForm({ ...emptyForm });
+      setActivePostId(null);
+    } catch (error) {
+      console.error(error);
+      pushToast({
+        title: "Editor error",
+        description: "Unable to save post.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!activePostId) return;
+    try {
+      await deletePost(activePostId).unwrap();
+      pushToast({ title: "Post deleted", variant: "success" });
+      setActivePostId(null);
+      setForm({ ...emptyForm });
+    } catch (error) {
+      console.error(error);
+      pushToast({
+        title: "Unable to delete",
+        variant: "error",
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+            {title}
+          </p>
+          <h3 className="text-2xl font-serif text-primary">Compose a story</h3>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <label className="flex items-center gap-2 font-semibold text-foreground/70">
+            <input
+              type="checkbox"
+              checked={form.isPublished}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  isPublished: e.target.checked,
+                }))
+              }
+            />
+            Publish immediately
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setActivePostId(null);
+              setForm({ ...emptyForm });
+            }}
+            className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-widest text-foreground/70"
+          >
+            New Post
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search drafts"
+            className="w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+          />
+          <div className="space-y-2">
+            {filteredPosts.map((post) => (
+              <button
+                key={post._id}
+                type="button"
+                onClick={() => setActivePostId(post._id)}
+                className={`w-full rounded-2xl border px-3 py-2 text-left text-sm transition ${
+                  post._id === activePostId
+                    ? "border-secondary bg-secondary/10 text-secondary"
+                    : "border-border text-foreground/70 hover:border-secondary/40"
+                }`}
+              >
+                {post.title}
+              </button>
+            ))}
+            {!filteredPosts.length && (
+              <p className="text-xs text-foreground/50">
+                No posts match your filters.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <input
+            type="text"
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+            className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              type="text"
+              placeholder="Slug (optional)"
+              value={form.slug}
+              onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
+              className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            />
+            <input
+              type="text"
+              placeholder="Cover image URL"
+              value={form.coverImage}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, coverImage: e.target.value }))
+              }
+              className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            />
+          </div>
+          <textarea
+            rows={8}
+            placeholder="Write in Markdown..."
+            value={form.content}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, content: e.target.value }))
+            }
+            className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              disabled={isCreating || isUpdating}
+              onClick={handleSubmit}
+              className="rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 disabled:opacity-60"
+            >
+              {activePostId ? "Update Post" : "Publish Entry"}
+            </motion.button>
+            {activePostId && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                disabled={isDeleting}
+                onClick={handleDelete}
+                className="rounded-full border border-border px-4 py-3 text-sm font-semibold text-red-500 disabled:opacity-60"
+              >
+                Delete Post
+              </motion.button>
+            )}
+          </div>
+
+          <div className="space-y-2 rounded-2xl border border-border bg-background/60 p-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+              Live preview
+            </p>
+            <div className="prose prose-sm max-w-none prose-headings:font-serif prose-headings:text-primary prose-p:text-foreground">
+              {form.content ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {form.content}
+                </ReactMarkdown>
+              ) : (
+                <p className="text-sm text-foreground/60">
+                  Start writing to see a preview.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

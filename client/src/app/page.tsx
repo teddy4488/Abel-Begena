@@ -51,6 +51,15 @@ export default function Home() {
     y.set(0);
   };
 
+  // Safe date formatter for classes
+  const formatClassDate = (createdAt: string | undefined) => {
+    if (!createdAt) return "Coming soon";
+    return new Date(createdAt).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   const serviceCards = [
     {
       id: "online-learning",
@@ -65,7 +74,7 @@ export default function Home() {
       id: "physical-learning",
       title: "Physical Conservatory",
       copy:
-        "Visit our studio for private tutelage, choir rehearsals, and heritage labs preserving Saint Yared’s repertoire.",
+        "Visit our studio for private tutelage, choir rehearsals, and heritage labs preserving Saint Yared's repertoire.",
       image: "/assets/abel2.jpg",
       ctaHref: "#contact",
       ctaLabel: "Book a Visit",
@@ -101,7 +110,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground transition-colors">
       <main className="mx-auto flex max-w-6xl flex-col gap-20 px-6 py-16 md:px-10 lg:px-16">
         <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface px-6 py-14 shadow-[0_60px_120px_var(--color-primary-glow)] transition-colors md:px-12 lg:px-16">
-          <div className="absolute inset-0 bg-gradient-to-tr from-background via-surface to-[color:var(--color-secondary-soft)] opacity-80" />
+          <div className="absolute inset-0 bg-linear-to-tr from-background via-surface to-(--color-secondary-soft) opacity-80" />
           <div className="relative grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">
               <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -123,7 +132,7 @@ export default function Home() {
                   className="text-lg text-foreground opacity-80"
                 >
                   Restoring the ancient sound of praise through immersive study,
-                  artisanship, and community worship rooted in Saint Yared’s
+                  artisanship, and community worship rooted in Saint Yared&apos;s
                   inheritance.
                 </motion.p>
               </div>
@@ -136,7 +145,7 @@ export default function Home() {
                 </Link>
                 <Link
                   href={secondaryCta.href}
-                  className="rounded-full border border-secondary px-8 py-3 text-center text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+                  className="rounded-full border border-secondary px-8 py-3 text-center text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
                 >
                   {secondaryCta.label}
                 </Link>
@@ -149,12 +158,12 @@ export default function Home() {
               onMouseLeave={resetTilt}
             >
               <motion.div
-                className="absolute inset-12 -z-10 rounded-[28px] bg-[color:var(--color-secondary-glow)] blur-3xl"
+                className="absolute inset-12 -z-10 rounded-[28px] bg-(--color-secondary-glow) blur-3xl"
                 animate={{ opacity: [0.4, 0.8, 0.4] }}
                 transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
               />
               <motion.div
-                className="relative overflow-hidden rounded-[28px] border border-border bg-[color:var(--color-background-soft)] p-4 shadow-[0_25px_60px_var(--color-primary-glow)] transition-colors dark:bg-surface"
+                className="relative overflow-hidden rounded-[28px] border border-border bg-(--color-background-soft) p-4 shadow-[0_25px_60px_var(--color-primary-glow)] transition-colors dark:bg-surface"
                 style={{ rotateX, rotateY, x: translateX, y: translateY }}
                 animate={{ y: ["-4%", "4%", "-4%"] }}
                 transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}
@@ -208,7 +217,7 @@ export default function Home() {
                   <p className="text-sm text-foreground/80">{card.copy}</p>
                   <Link
                     href={card.ctaHref}
-                    className="mt-auto inline-flex items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+                    className="mt-auto inline-flex items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
                   >
                     {card.ctaLabel}
                   </Link>
@@ -242,10 +251,7 @@ export default function Home() {
                   className="rounded-3xl border border-border bg-background/70 p-5"
                 >
                   <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
-                    {new Date(klass.createdAt ?? Date.now()).toLocaleDateString(
-                      undefined,
-                      { month: "short", day: "numeric" },
-                    )}
+                    {formatClassDate(klass.createdAt)}
                   </p>
                   <h3 className="mt-2 text-2xl font-serif text-primary">
                     {klass.title}
@@ -286,7 +292,7 @@ export default function Home() {
             </div>
             <Link
               href="/store"
-              className="rounded-full border border-secondary px-6 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+              className="rounded-full border border-secondary px-6 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
             >
               View full shop
             </Link>
@@ -359,7 +365,7 @@ export default function Home() {
             </h2>
             <p className="text-sm text-foreground/80">
               Work with our craftsmen to source sustainably harvested wood,
-              engrave Ge’ez prayers, and ship worldwide through ethical partners.
+              engrave Ge&apos;ez prayers, and ship worldwide through ethical partners.
             </p>
             <ul className="space-y-3 text-sm text-foreground/80">
               <li>• Custom Begena & Kirar sizing consultations</li>
@@ -375,7 +381,7 @@ export default function Home() {
               </Link>
               <Link
                 href="#contact"
-                className="rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+                className="rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
               >
                 Request a Quote
               </Link>
@@ -393,7 +399,7 @@ export default function Home() {
                   fill
                   className="object-cover"
                 />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-3 text-sm text-white">
+                <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-4 py-3 text-sm text-white">
                   {image.caption}
                 </div>
               </FadeIn>
@@ -475,7 +481,7 @@ export default function Home() {
               href="https://maps.app.goo.gl/"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+              className="inline-flex items-center justify-center rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
             >
               View Map
             </Link>

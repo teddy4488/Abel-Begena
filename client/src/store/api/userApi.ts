@@ -1,31 +1,23 @@
 "use client";
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "../store";
 import { AuthUser, setCredentials, updateProfile } from "../slices/authSlice";
 
 export const userApi = createApi({
   reducerPath: "userApi",
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
+    credentials: "include",
   }),
   endpoints: (builder) => ({
     getProfile: builder.query<AuthUser | null, void>({
       query: () => "/users/profile",
-      async onQueryStarted(_arg, { dispatch, getState, queryFulfilled }) {
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           if (data) {
             dispatch(updateProfile(data));
-            const token = (getState() as RootState).auth.token;
-            dispatch(setCredentials({ token, user: data }));
+            dispatch(setCredentials({ token: null, user: data }));
           }
         } catch (error) {
           console.error("Failed to load profile", error);
@@ -41,21 +33,27 @@ export const userApi = createApi({
         method: "PATCH",
         body,
       }),
-      async onQueryStarted(_arg, { dispatch, getState, queryFulfilled }) {
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           if (data) {
             dispatch(updateProfile(data));
-            const token = (getState() as RootState).auth.token;
-            dispatch(setCredentials({ token, user: data }));
+            dispatch(setCredentials({ token: null, user: data }));
           }
         } catch (error) {
           console.error("Failed to update profile", error);
         }
       },
     }),
+    getAllUsers: builder.query<AuthUser[], void>({
+      query: () => "/users",
+    }),
   }),
 });
 
-export const { useGetProfileQuery, useUpdateProfileMutation } = userApi;
+export const {
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+  useGetAllUsersQuery,
+} = userApi;
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { RootState } from "../store";
 
 type ClassAccess = {
   class: { _id: string; title: string };
@@ -15,23 +14,23 @@ export type ClassSummary = {
   title: string;
   isLive?: boolean;
   createdAt?: string;
+  instructorId?: string;
 };
 
 export const classApi = createApi({
   reducerPath: "classApi",
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
+    credentials: "include",
   }),
+  tagTypes: ["Classes"],
   endpoints: (builder) => ({
     getPublicClasses: builder.query<ClassSummary[], void>({
       query: () => "/classes/public",
+    }),
+    getClasses: builder.query<ClassSummary[], void>({
+      query: () => "/classes",
+      providesTags: ["Classes"],
     }),
     getClassAccess: builder.query<ClassAccess, string>({
       query: (id) => `/classes/${id}/access`,
@@ -50,13 +49,27 @@ export const classApi = createApi({
           body: formData,
         };
       },
+      invalidatesTags: ["Classes"],
+    }),
+    updateLiveState: builder.mutation<
+      ClassSummary,
+      { classId: string; isLive?: boolean; liveRoomCode?: string }
+    >({
+      query: ({ classId, ...body }) => ({
+        url: `/classes/${classId}/live`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Classes"],
     }),
   }),
 });
 
 export const {
   useGetPublicClassesQuery,
+  useGetClassesQuery,
   useGetClassAccessQuery,
   useUploadMaterialMutation,
+  useUpdateLiveStateMutation,
 } = classApi;
 

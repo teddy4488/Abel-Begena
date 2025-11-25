@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useLoginMutation } from "@/store/api/authApi";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [login, { isLoading }] = useLoginMutation();
+  const { pushToast } = useToast();
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -24,10 +26,20 @@ export default function LoginPage() {
     try {
       await login(form).unwrap();
       setErrorMessage(null);
+      pushToast({
+        title: "Welcome back",
+        description: "Redirecting you to your dashboard.",
+        variant: "success",
+      });
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : "Invalid credentials. Please try again.",
       );
+      pushToast({
+        title: "Login failed",
+        description: "Double-check your email and password.",
+        variant: "error",
+      });
     }
   };
 
@@ -80,13 +92,14 @@ export default function LoginPage() {
             />
           </div>
 
-          <button
+          <motion.button
             type="submit"
             disabled={isLoading}
+            whileTap={{ scale: 0.97 }}
             className="w-full rounded-2xl bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? "Signing In..." : "Login"}
-          </button>
+          </motion.button>
         </form>
 
         {errorMessage && (

@@ -6,6 +6,8 @@ import {
   useGetCartQuery,
 } from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
+import { motion } from "framer-motion";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export default function CartPage() {
   const router = useRouter();
@@ -14,6 +16,7 @@ export default function CartPage() {
     skip: !isLoggedIn,
   });
   const [addToCart, { isLoading: isUpdating }] = useAddToCartMutation();
+  const { pushToast } = useToast();
 
   if (!isLoggedIn) {
     router.replace("/login");
@@ -21,11 +24,31 @@ export default function CartPage() {
   }
 
   const handleQuantityChange = async (productId: string, delta: number) => {
-    await addToCart({ productId, quantity: delta }).unwrap();
+    try {
+      await addToCart({ productId, quantity: delta }).unwrap();
+    } catch {
+      pushToast({
+        title: "Unable to update cart",
+        description: "Please try again.",
+        variant: "error",
+      });
+    }
   };
 
   const handleRemove = async (productId: string) => {
-    await addToCart({ productId, quantity: 0 }).unwrap();
+    try {
+      await addToCart({ productId, quantity: 0 }).unwrap();
+      pushToast({
+        title: "Item removed",
+        variant: "success",
+      });
+    } catch {
+      pushToast({
+        title: "Unable to remove item",
+        description: "Please refresh and try again.",
+        variant: "error",
+      });
+    }
   };
 
   return (
@@ -98,33 +121,36 @@ export default function CartPage() {
                   </div>
                   <div className="flex flex-1 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-end">
                     <div className="flex items-center rounded-full border border-border">
-                      <button
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
                         onClick={() =>
                           handleQuantityChange(item.productId, -1)
                         }
                         disabled={isUpdating}
-                        className="px-4 py-2 text-lg"
+                        className="px-4 py-2 text-lg disabled:opacity-50"
                       >
                         -
-                      </button>
+                      </motion.button>
                       <span className="w-12 text-center text-lg font-semibold">
                         {item.quantity}
                       </span>
-                      <button
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => handleQuantityChange(item.productId, 1)}
                         disabled={isUpdating}
-                        className="px-4 py-2 text-lg"
+                        className="px-4 py-2 text-lg disabled:opacity-50"
                       >
                         +
-                      </button>
+                      </motion.button>
                     </div>
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
                       onClick={() => handleRemove(item.productId)}
                       disabled={isUpdating}
-                      className="rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary/10"
+                      className="rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary/10 disabled:opacity-60"
                     >
                       Remove
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               ))}
@@ -140,12 +166,13 @@ export default function CartPage() {
                   })}
                 </p>
               </div>
-              <button
+              <motion.button
                 onClick={() => router.push("/checkout")}
+                whileTap={{ scale: 0.97 }}
                 className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-95"
               >
                 Proceed to Checkout
-              </button>
+              </motion.button>
             </div>
           </div>
         )}

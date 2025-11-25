@@ -4,6 +4,8 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Providers } from "@/components/providers/StoreProvider";
+import { ToastProvider } from "@/components/providers/ToastProvider";
+import { AuthHydrator } from "@/components/providers/AuthHydrator";
 import "./globals.css";
 
 const inter = Inter({
@@ -35,11 +37,14 @@ export default function RootLayout({
       >
         <Providers>
           <ThemeProvider>
-            <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
-              <Navbar />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </div>
+            <ToastProvider>
+              <AuthHydrator />
+              <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
+                <Navbar />
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </div>
+            </ToastProvider>
           </ThemeProvider>
         </Providers>
       </body>

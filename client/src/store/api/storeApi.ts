@@ -1,7 +1,6 @@
 "use client";
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "../store";
 
 export type Product = {
   _id: string;
@@ -42,13 +41,6 @@ export const storeApi = createApi({
   reducerPath: "storeApi",
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
     credentials: "include",
   }),
   tagTypes: ["Products", "Cart", "Orders"],
@@ -99,6 +91,10 @@ export const storeApi = createApi({
       query: () => "/orders/my-orders",
       providesTags: ["Orders"],
     }),
+    getAllOrders: builder.query<Order[], void>({
+      query: () => "/orders",
+      providesTags: ["Orders"],
+    }),
   }),
 });
 
@@ -109,5 +105,6 @@ export const {
   useGetCartQuery,
   useCheckoutMutation,
   useGetMyOrdersQuery,
+  useGetAllOrdersQuery,
 } = storeApi;
 

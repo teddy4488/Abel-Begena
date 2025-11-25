@@ -3,19 +3,38 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useRegisterMutation } from "@/store/api/authApi";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { pushToast } = useToast();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
   });
-  const [register, { isLoading, isSuccess, isError }] = useRegisterMutation();
+  const [register, { isLoading }] = useRegisterMutation();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    await register(form);
+    try {
+      await register(form).unwrap();
+      pushToast({
+        title: "Registration complete",
+        description: "Sign in to access your dashboard.",
+        variant: "success",
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error(error);
+      pushToast({
+        title: "Registration failed",
+        description: "Please verify the form and try again.",
+        variant: "error",
+      });
+    }
   };
 
   return (
@@ -97,31 +116,18 @@ export default function RegisterPage() {
           </div>
 
           <div className="md:col-span-2">
-            <button
+            <motion.button
               type="submit"
               disabled={isLoading}
+              whileTap={{ scale: 0.97 }}
               className="w-full rounded-2xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? "Creating Account..." : "Create Account"}
-            </button>
+            </motion.button>
           </div>
         </form>
-
-        {isError && (
-          <p className="mt-4 text-center text-sm text-red-500">
-            Registration failed. Please try again.
-          </p>
-        )}
-
-        {isSuccess && (
-          <p className="mt-4 text-center text-sm text-secondary">
-            Registration successful! You may now log in.
-          </p>
-        )}
       </motion.div>
     </section>
   );
 }
-
-  
 

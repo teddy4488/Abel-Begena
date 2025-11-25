@@ -30,11 +30,11 @@ const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{ token: string | null; user: AuthUser | null }>,
+      action: PayloadAction<{ token?: string | null; user: AuthUser | null }>,
     ) => {
-      state.token = action.payload.token;
+      state.token = action.payload.token ?? null;
       state.user = action.payload.user;
-      state.isLoggedIn = Boolean(action.payload.token);
+      state.isLoggedIn = Boolean(action.payload.user);
     },
     updateProfile: (state, action: PayloadAction<Partial<AuthUser>>) => {
       if (!state.user) {

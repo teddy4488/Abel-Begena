@@ -7,6 +7,8 @@ import {
   useGetCartQuery,
 } from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
+import { motion } from "framer-motion";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -23,6 +25,7 @@ export default function CheckoutPage() {
     paymentMethod: "CashOnDelivery",
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   if (!isLoggedIn) {
     router.replace("/login");
@@ -46,11 +49,21 @@ export default function CheckoutPage() {
         },
         paymentMethod: form.paymentMethod,
       }).unwrap();
+      pushToast({
+        title: "Order placed",
+        description: "Check your order history for status updates.",
+        variant: "success",
+      });
       router.push("/account/orders");
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : "Checkout failed. Please try again.",
       );
+      pushToast({
+        title: "Checkout failed",
+        description: "Please verify the form and try again.",
+        variant: "error",
+      });
     }
   };
 
@@ -149,13 +162,14 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <button
+            <motion.button
               type="submit"
               disabled={isSubmitting || isLoading}
+              whileTap={{ scale: 0.97 }}
               className="w-full rounded-full bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Processing..." : "Place Order"}
-            </button>
+            </motion.button>
           </form>
         </div>
 

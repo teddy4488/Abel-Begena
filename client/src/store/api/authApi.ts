@@ -2,7 +2,7 @@
 
 // src/store/api/authApi.ts
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { AuthUser, setCredentials } from "../slices/authSlice";
+import { AuthUser, logout, setCredentials } from "../slices/authSlice";
 
 type RegisterBody = {
   email: string;
@@ -14,12 +14,6 @@ type RegisterBody = {
 type LoginBody = { email: string; password: string };
 
 type LoginResponse = {
-  access_token: string;
-  user: AuthUser;
-};
-
-type LoginTransformed = {
-  token: string;
   user: AuthUser | null;
 };
 
@@ -37,26 +31,62 @@ export const authApi = createApi({
         body,
       }),
     }),
-    login: builder.mutation<LoginTransformed, LoginBody>({
+    login: builder.mutation<AuthUser | null, LoginBody>({
       query: (body) => ({
         url: "/auth/login",
         method: "POST",
         body,
       }),
-      transformResponse: (response: LoginResponse) => ({
-        token: response.access_token,
-        user: response.user ?? null,
+      transformResponse: (response: LoginResponse) => response.user ?? null,
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            setCredentials({
+              token: null,
+              user: data,
+            }),
+          );
+        } catch (error) {
+          console.error("Login failed", error);
+        }
+      },
+    }),
+    logout: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: "/auth/logout",
+        method: "POST",
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+        } finally {
+          dispatch(logout());
+        }
+      },
+    }),
+    session: builder.query<AuthUser | null, void>({
+      query: () => ({
+        url: "/auth/session",
+        method: "GET",
       }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          dispatch(setCredentials(data));
+          if (data) {
+            dispatch(setCredentials({ token: null, user: data }));
+          }
         } catch (error) {
-          console.error("Login failed", error);
+          console.warn("Session lookup failed", error);
         }
       },
     }),
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation } = authApi;
+export const {
+  useLoginMutation,
+  useRegisterMutation,
+  useLogoutMutation,
+  useSessionQuery,
+} = authApi;
