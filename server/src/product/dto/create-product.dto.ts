@@ -1,0 +1,45 @@
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  Min,
+  IsObject,
+} from 'class-validator';
+import { InstrumentType } from '../schemas/product.schema';
+
+export class CreateProductDto {
+  @IsString()
+  name: string;
+
+  @IsEnum(InstrumentType)
+  instrumentType: InstrumentType;
+
+  @IsOptional()
+  @IsString()
+  shortDescription?: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @IsNumber()
+  @Min(0)
+  stock: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+

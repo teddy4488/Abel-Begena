@@ -1,29 +1,47 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fdfbf7;
-  --foreground: #1f1f1f;
-  --primary: #800020;
-  --secondary: #c5a059;
+  color-scheme: light;
+  --color-background: #fdfbf7;
+  --color-background-soft: rgba(253, 251, 247, 0.9);
+  --color-foreground: #2d0a12;
+  --color-primary: #d97706;
+  --color-primary-foreground: #fdfbf7;
+  --color-secondary: #c5a059;
+  --color-secondary-soft: rgba(197, 160, 89, 0.2);
+  --color-secondary-glow: rgba(197, 160, 89, 0.4);
+  --color-surface: rgba(255, 255, 255, 0.92);
+  --color-border: rgba(217, 119, 6, 0.18);
+  --color-primary-glow: rgba(217, 119, 6, 0.35);
+  --grain-color-1: rgba(217, 119, 6, 0.08);
+  --grain-color-2: rgba(197, 160, 89, 0.1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  color-scheme: dark;
+  --color-background: #1f2937;
+  --color-background-soft: rgba(31, 41, 55, 0.9);
+  --color-foreground: #f3f4f6;
+  --color-primary: #c5a059;
+  --color-primary-foreground: #1d0b11;
+  --color-secondary: #f7d9a1;
+  --color-secondary-soft: rgba(247, 217, 161, 0.25);
+  --color-secondary-glow: rgba(247, 217, 161, 0.45);
+  --color-surface: rgba(17, 24, 39, 0.92);
+  --color-border: rgba(247, 217, 161, 0.25);
+  --color-primary-glow: rgba(197, 160, 89, 0.45);
+  --grain-color-1: rgba(255, 255, 255, 0.04);
+  --grain-color-2: rgba(197, 160, 89, 0.05);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-background);
+  color: var(--color-foreground);
   font-family: var(--font-sans), "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
 }
 
 h1,
@@ -33,10 +51,23 @@ h4,
 h5,
 h6 {
   font-family: var(--font-serif), "Times New Roman", serif;
-  color: var(--primary);
+  color: var(--color-primary);
   letter-spacing: 0.02em;
 }
 
 a {
-  color: var(--secondary);
+  color: var(--color-secondary);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(var(--grain-color-1) 1px, transparent 1px),
+    radial-gradient(var(--grain-color-2) 1px, transparent 1px);
+  background-size: 120px 120px, 80px 80px;
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+  z-index: -1;
 }

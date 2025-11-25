@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Inter, Cormorant_Garamond } from "next/font/google";
+import { Inter, Merriweather } from "next/font/google";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { Providers } from "@/components/providers/StoreProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -7,9 +11,9 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
-const cormorant = Cormorant_Garamond({
+const merriweather = Merriweather({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
   variable: "--font-serif",
 });
 
@@ -25,9 +29,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${cormorant.variable} antialiased`}>
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${inter.variable} ${merriweather.variable} bg-background text-foreground antialiased`}
+      >
+        <Providers>
+          <ThemeProvider>
+            <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
+              <Navbar />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
