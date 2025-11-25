@@ -2,7 +2,7 @@
 
 // src/store/api/authApi.ts
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { setCredentials } from "../slices/authSlice";
+import { AuthUser, setCredentials } from "../slices/authSlice";
 
 type RegisterBody = {
   email: string;
@@ -15,11 +15,12 @@ type LoginBody = { email: string; password: string };
 
 type LoginResponse = {
   access_token: string;
+  user: AuthUser;
 };
 
 type LoginTransformed = {
   token: string;
-  user: { email: string };
+  user: AuthUser | null;
 };
 
 export const authApi = createApi({
@@ -42,9 +43,9 @@ export const authApi = createApi({
         method: "POST",
         body,
       }),
-      transformResponse: (response: LoginResponse, _meta, arg) => ({
+      transformResponse: (response: LoginResponse) => ({
         token: response.access_token,
-        user: { email: arg.email },
+        user: response.user ?? null,
       }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {

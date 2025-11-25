@@ -50,6 +50,11 @@ export class UserService {
     return this.userModel.findOne({ email }).exec();
   }
 
+  async findById(id: string) {
+    const user = await this.userModel.findById(id).lean().exec();
+    return this.toSafeUser(user);
+  }
+
   toSafeUser<T extends { password?: string } | null>(
     user: T,
   ): Omit<T, 'password'> | null {

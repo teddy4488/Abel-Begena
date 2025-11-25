@@ -22,6 +22,11 @@ import { ClassOwnerGuard } from '../auth/guards/class-owner.guard';
 export class ClassController {
   constructor(private readonly classService: ClassService) {}
 
+  @Get('public')
+  getPublicCatalog() {
+    return this.classService.getPublicCatalog();
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, EnrolledGuard)
   findAll() {

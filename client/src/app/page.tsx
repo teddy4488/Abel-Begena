@@ -5,6 +5,8 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useAppSelector } from "@/store/hooks";
+import { useGetProductsQuery } from "@/store/api/storeApi";
+import { useGetPublicClassesQuery } from "@/store/api/classApi";
 
 const heroImage =
   "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
@@ -17,7 +19,14 @@ const galleryImages = [
 ];
 
 export default function Home() {
-  const { isLoggedIn } = useAppSelector((state) => state.auth);
+  const { isLoggedIn, user } = useAppSelector((state) => state.auth);
+  const role = user?.role;
+  const { data: products, isLoading: isLoadingProducts } =
+    useGetProductsQuery();
+  const { data: classHighlights, isLoading: isLoadingClasses } =
+    useGetPublicClassesQuery();
+  const featuredProducts = (products ?? []).slice(0, 3);
+
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const springX = useSpring(x, { stiffness: 80, damping: 15 });
@@ -72,6 +81,22 @@ export default function Home() {
     },
   ];
 
+  const primaryCta =
+    !isLoggedIn || role === undefined
+      ? { href: "#services", label: "Start Learning" }
+      : role === "Teacher"
+        ? { href: "/teacher", label: "Open Teacher Studio" }
+        : role === "Admin"
+          ? { href: "/admin", label: "Open Admin Console" }
+          : { href: "/dashboard", label: "Continue Learning" };
+
+  const secondaryCta =
+    role === "Admin"
+      ? { href: "/store", label: "Manage Store" }
+      : role === "Teacher"
+        ? { href: "/teacher", label: "View Materials" }
+        : { href: "/store", label: "Visit Shop" };
+
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors">
       <main className="mx-auto flex max-w-6xl flex-col gap-20 px-6 py-16 md:px-10 lg:px-16">
@@ -104,16 +129,16 @@ export default function Home() {
               </div>
               <div className="flex flex-col gap-4 sm:flex-row">
                 <Link
-                  href="#services"
+                  href={primaryCta.href}
                   className="rounded-full bg-primary px-8 py-3 text-center text-primary-foreground shadow-[0_25px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5 hover:brightness-95"
                 >
-                  Start Learning
+                  {primaryCta.label}
                 </Link>
                 <Link
-                  href="/store"
+                  href={secondaryCta.href}
                   className="rounded-full border border-secondary px-8 py-3 text-center text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
                 >
-                  Visit Shop
+                  {secondaryCta.label}
                 </Link>
               </div>
             </FadeIn>
@@ -191,6 +216,134 @@ export default function Home() {
               </FadeIn>
             ))}
           </div>
+        </section>
+
+        <section className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]">
+          <FadeIn className="flex flex-col gap-2">
+            <p className="text-xs uppercase tracking-[0.35em] text-secondary">
+              Class Highlights
+            </p>
+            <h2 className="text-3xl font-serif text-primary">
+              Upcoming cohorts & live rooms
+            </h2>
+            <p className="text-sm text-foreground/70">
+              Pulled directly from the LMS so guests can see what&apos;s active.
+            </p>
+          </FadeIn>
+          {isLoadingClasses ? (
+            <p className="text-sm text-foreground/70">
+              Loading sacred classes...
+            </p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {(classHighlights ?? []).map((klass) => (
+                <FadeIn
+                  key={klass._id}
+                  className="rounded-3xl border border-border bg-background/70 p-5"
+                >
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {new Date(klass.createdAt ?? Date.now()).toLocaleDateString(
+                      undefined,
+                      { month: "short", day: "numeric" },
+                    )}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-serif text-primary">
+                    {klass.title}
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-secondary">
+                    {klass.isLive ? "Live now" : "Enrollment open"}
+                  </p>
+                  <Link
+                    href={isLoggedIn ? "/dashboard" : "/register"}
+                    className="mt-4 inline-flex text-sm font-semibold text-secondary underline-offset-4 hover:underline"
+                  >
+                    {isLoggedIn ? "View in dashboard →" : "Register to enroll →"}
+                  </Link>
+                </FadeIn>
+              ))}
+              {!classHighlights?.length && !isLoadingClasses && (
+                <p className="text-sm text-foreground/70">
+                  New cohorts are being prepared. Join the newsletter for
+                  announcements.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section
+          id="featured-store"
+          className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+        >
+          <FadeIn className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-secondary">
+                Featured Instruments
+              </p>
+              <h2 className="text-3xl font-serif text-primary">
+                Crafted for the liturgy
+              </h2>
+            </div>
+            <Link
+              href="/store"
+              className="rounded-full border border-secondary px-6 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[color:var(--color-secondary-soft)]"
+            >
+              View full shop
+            </Link>
+          </FadeIn>
+          {isLoadingProducts ? (
+            <p className="text-sm text-foreground/70">Loading catalog...</p>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-3">
+              {featuredProducts.map((product) => (
+                <FadeIn
+                  key={product._id}
+                  className="flex flex-col rounded-3xl border border-border bg-background/70 p-5"
+                >
+                  <div className="relative mb-4 h-48 overflow-hidden rounded-2xl border border-border">
+                    {product.images?.[0] ? (
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-foreground/50">
+                        Image coming soon
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs uppercase tracking-[0.35em] text-secondary/80">
+                    {product.instrumentType}
+                  </p>
+                  <h3 className="text-xl font-serif text-primary">
+                    {product.name}
+                  </h3>
+                  <p className="mt-2 text-sm text-foreground/70">
+                    {product.shortDescription}
+                  </p>
+                  <p className="mt-4 text-lg font-semibold text-primary">
+                    {product.price.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    })}
+                  </p>
+                  <Link
+                    href={`/store/${product._id}`}
+                    className="mt-4 inline-flex items-center text-sm font-semibold text-secondary"
+                  >
+                    View details →
+                  </Link>
+                </FadeIn>
+              ))}
+              {!featuredProducts.length && !isLoadingProducts && (
+                <p className="text-sm text-foreground/70">
+                  Products will appear here once the store is configured.
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         <section

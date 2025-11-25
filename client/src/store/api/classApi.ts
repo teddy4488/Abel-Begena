@@ -10,6 +10,13 @@ type ClassAccess = {
   isLive: boolean;
 };
 
+export type ClassSummary = {
+  _id: string;
+  title: string;
+  isLive?: boolean;
+  createdAt?: string;
+};
+
 export const classApi = createApi({
   reducerPath: "classApi",
   baseQuery: fetchBaseQuery({
@@ -23,6 +30,9 @@ export const classApi = createApi({
     },
   }),
   endpoints: (builder) => ({
+    getPublicClasses: builder.query<ClassSummary[], void>({
+      query: () => "/classes/public",
+    }),
     getClassAccess: builder.query<ClassAccess, string>({
       query: (id) => `/classes/${id}/access`,
     }),
@@ -44,5 +54,9 @@ export const classApi = createApi({
   }),
 });
 
-export const { useGetClassAccessQuery, useUploadMaterialMutation } = classApi;
+export const {
+  useGetPublicClassesQuery,
+  useGetClassAccessQuery,
+  useUploadMaterialMutation,
+} = classApi;
 

@@ -15,7 +15,21 @@ export class ClassService {
   ) {}
 
   findAll() {
-    return this.classModel.find().select('title isLive').lean().exec();
+    return this.classModel
+      .find()
+      .select('title isLive instructorId createdAt')
+      .lean()
+      .exec();
+  }
+
+  getPublicCatalog(limit = 6) {
+    return this.classModel
+      .find()
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .select('title isLive createdAt')
+      .lean()
+      .exec();
   }
 
   findById(id: string) {
