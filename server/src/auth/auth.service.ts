@@ -34,15 +34,38 @@ export class AuthService {
     );
   }
 
-  async login(user: Record<string, any>) {
-    const safeUser = this.userService.toSafeUser(user);
+  login(user: Record<string, unknown>) {
+    const plainUser = this.extractPlainUser(user);
+    const safeUser = this.userService.toSafeUser(plainUser);
+    const rawId =
+      (safeUser as { _id?: { toString: () => string } })?._id ??
+      (plainUser as { _id?: { toString: () => string } })?._id ??
+      (plainUser as { id?: string })?.id;
     const payload = {
-      sub: safeUser?._id?.toString?.() ?? user._id ?? user.id,
-      role: safeUser?.role ?? user.role,
+      sub: typeof rawId === 'string' ? rawId : (rawId?.toString?.() ?? ''),
+      role:
+        (safeUser as { role?: string })?.role ??
+        (plainUser as { role?: string })?.role ??
+        'User',
     };
+    const accessToken = this.jwtService.sign(payload);
+    const decoded = this.jwtService.decode(accessToken);
+    const expiresAt = decoded?.exp
+      ? new Date(decoded.exp * 1000).toISOString()
+      : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
     return {
-      access_token: this.jwtService.sign(payload),
+      accessToken,
       user: safeUser,
+      expiresAt,
     };
+  }
+
+  getSession(userId: string) {
+    return this.userService.findById(userId);
+  }
+
+  private extractPlainUser(user: Record<string, unknown>) {
+    const maybeDoc = user as { toObject?: () => Record<string, unknown> };
+    return typeof maybeDoc.toObject === 'function' ? maybeDoc.toObject() : user;
   }
 }

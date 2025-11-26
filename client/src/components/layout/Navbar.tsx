@@ -5,18 +5,20 @@ import Link from "next/link";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import ThemeSwitcher from "@/components/layout/ThemeSwitcher";
+import { LanguageToggle } from "@/components/layout/LanguageToggle";
 import { useAppSelector } from "@/store/hooks";
 import { useRouter } from "next/navigation";
 import { useLogoutMutation } from "@/store/api/authApi";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 type RoleKey = "guest" | "User" | "Teacher" | "Admin";
-type NavLink = { label: string; href: string };
+type NavLink = { labelKey: string; href: string };
 
 const guestServices: NavLink[] = [
-  { label: "Online Teaching", href: "#online-learning" },
-  { label: "Physical Classes", href: "#physical-learning" },
-  { label: "Sacred Instruments", href: "#sacred-market" },
+  { labelKey: "services.online", href: "#online-learning" },
+  { labelKey: "services.physical", href: "#physical-learning" },
+  { labelKey: "services.atelier", href: "#sacred-market" },
 ];
 
 const navConfig: Record<
@@ -28,62 +30,62 @@ const navConfig: Record<
 > = {
   guest: {
     links: [
-      { label: "Home", href: "/" },
-      { label: "Heritage", href: "/heritage" },
-      { label: "About Us", href: "#about" },
-      { label: "Contact Us", href: "#contact" },
+      { labelKey: "nav.home", href: "/" },
+      { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.about", href: "#about" },
+      { labelKey: "nav.contact", href: "#contact" },
     ],
     services: guestServices,
   },
   User: {
     links: [
-      { label: "Dashboard", href: "/dashboard" },
-      { label: "My Classes", href: "/dashboard#classes" },
-      { label: "Heritage", href: "/heritage" },
-      { label: "Store", href: "/store" },
-      { label: "Orders", href: "/account/orders" },
-      { label: "Support", href: "#contact" },
+      { labelKey: "nav.dashboard", href: "/dashboard" },
+      { labelKey: "nav.classes", href: "/dashboard#classes" },
+      { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.store", href: "/store" },
+      { labelKey: "nav.orders", href: "/account/orders" },
+      { labelKey: "nav.contact", href: "#contact" },
     ],
   },
   Teacher: {
     links: [
-      { label: "Teacher Studio", href: "/teacher" },
-      { label: "Heritage", href: "/heritage" },
-      { label: "Upload Materials", href: "/teacher" },
-      { label: "Live Classes", href: "/dashboard" },
-      { label: "Store", href: "/store" },
+      { labelKey: "nav.teacherStudio", href: "/teacher" },
+      { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.classes", href: "/teacher" },
+      { labelKey: "nav.dashboard", href: "/dashboard" },
+      { labelKey: "nav.store", href: "/store" },
     ],
   },
   Admin: {
     links: [
-      { label: "Admin Console", href: "/admin" },
-      { label: "Heritage", href: "/heritage" },
-      { label: "Users", href: "/admin#users" },
-      { label: "Classes", href: "/admin#classes" },
-      { label: "Store", href: "/store" },
-      { label: "Analytics", href: "/admin#analytics" },
+      { labelKey: "nav.adminConsole", href: "/admin/console" },
+      { labelKey: "nav.analytics", href: "/admin/analytics" },
+      { labelKey: "nav.users", href: "/admin/users" },
+      { labelKey: "nav.classes", href: "/admin/classes" },
+      { labelKey: "nav.store", href: "/admin/store" },
+      { labelKey: "nav.orders", href: "/admin/orders" },
     ],
   },
 };
 
 const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
   User: [
-    { label: "Profile", href: "/profile" },
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Orders", href: "/account/orders" },
-    { label: "Store", href: "/store" },
+    { labelKey: "nav.profile", href: "/profile" },
+    { labelKey: "nav.dashboard", href: "/dashboard" },
+    { labelKey: "nav.orders", href: "/account/orders" },
+    { labelKey: "nav.store", href: "/store" },
   ],
   Teacher: [
-    { label: "Profile", href: "/profile" },
-    { label: "Teacher Studio", href: "/teacher" },
-    { label: "Upload Materials", href: "/teacher" },
-    { label: "Store", href: "/store" },
+    { labelKey: "nav.profile", href: "/profile" },
+    { labelKey: "nav.teacherStudio", href: "/teacher" },
+    { labelKey: "nav.classes", href: "/teacher" },
+    { labelKey: "nav.store", href: "/store" },
   ],
   Admin: [
-    { label: "Profile", href: "/profile" },
-    { label: "Admin Console", href: "/admin" },
-    { label: "Manage Users", href: "/admin#users" },
-    { label: "Store", href: "/store" },
+    { labelKey: "nav.profile", href: "/profile" },
+    { labelKey: "nav.adminConsole", href: "/admin/console" },
+    { labelKey: "nav.analytics", href: "/admin/analytics" },
+    { labelKey: "nav.store", href: "/admin/store" },
   ],
 };
 
@@ -98,6 +100,7 @@ export default function Navbar() {
   const router = useRouter();
   const { pushToast } = useToast();
   const [requestLogout, { isLoading: isLoggingOut }] = useLogoutMutation();
+  const { t } = useI18n();
 
   const roleKey: RoleKey = isLoggedIn
     ? (user?.role as RoleKey) || "User"
@@ -110,15 +113,15 @@ export default function Navbar() {
     try {
       await requestLogout().unwrap();
       pushToast({
-        title: "Signed out",
-        description: "See you again soon.",
+        title: t("nav.logoutSuccess", "Signed out"),
+        description: t("nav.logoutDesc", "See you again soon."),
         variant: "success",
       });
     } catch (error) {
       console.error("Failed to logout", error);
       pushToast({
-        title: "Unable to log out",
-        description: "Please try again.",
+        title: t("nav.logoutError", "Unable to log out"),
+        description: t("nav.retry", "Please try again."),
         variant: "error",
       });
     } finally {
@@ -164,7 +167,7 @@ export default function Navbar() {
       >
         {servicesLinks.map((link) => (
           <Link
-            key={link.label}
+            key={link.labelKey}
             href={link.href}
             className={`block px-5 py-3 text-base font-normal transition hover:bg-(--color-secondary-soft) ${
               isMobile ? "py-1 px-0" : ""
@@ -174,7 +177,7 @@ export default function Navbar() {
               setServicesOpen(false);
             }}
           >
-            {link.label}
+            {t(link.labelKey)}
           </Link>
         ))}
       </div>
@@ -194,12 +197,12 @@ export default function Navbar() {
       >
         {items.map((item) => (
           <Link
-            key={item.label}
+            key={item.labelKey}
             href={item.href}
             className="block rounded-lg px-4 py-2 text-left text-foreground transition hover:bg-(--color-secondary-soft)"
             onClick={() => setUserMenuOpen(false)}
           >
-            {item.label}
+            {t(item.labelKey)}
           </Link>
         ))}
         <button
@@ -208,7 +211,9 @@ export default function Navbar() {
           onClick={handleLogout}
           disabled={isLoggingOut}
         >
-          {isLoggingOut ? "Logging out..." : "Log out"}
+          {isLoggingOut
+            ? t("nav.loggingOut", "Logging out...")
+            : t("nav.logout", "Log out")}
         </button>
       </div>
     );
@@ -237,11 +242,11 @@ export default function Navbar() {
         <nav className="hidden items-center gap-6 text-sm font-semibold uppercase lg:flex">
           {navSettings.links.map((link) => (
             <Link
-              key={link.label}
+              key={link.labelKey}
               href={link.href}
               className="transition hover:text-secondary"
             >
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           ))}
           {servicesLinks.length > 0 && (
@@ -255,7 +260,7 @@ export default function Navbar() {
                 className="inline-flex items-center gap-1 transition hover:text-secondary"
                 onClick={() => setServicesOpen((prev) => !prev)}
               >
-                Services
+                {t("nav.services")}
                 <ChevronDown className="h-4 w-4" />
               </button>
               {servicesOpen && renderServicesDropdown()}
@@ -265,19 +270,20 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <ThemeSwitcher />
+          <LanguageToggle />
           {!isLoggedIn ? (
             <>
               <Link
                 href="/login"
                 className="rounded-full border border-border px-5 py-2 text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
               >
-                Sign In
+                {t("nav.signIn", "Sign In")}
               </Link>
               <Link
                 href="/register"
                 className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:brightness-95"
               >
-                Sign Up
+                {t("nav.signUp", "Sign Up")}
               </Link>
             </>
           ) : (
@@ -291,7 +297,9 @@ export default function Navbar() {
                 className="inline-flex items-center gap-2 rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
                 onClick={() => setUserMenuOpen((prev) => !prev)}
               >
-                {user?.firstName || user?.email || "My Account"}
+                {user?.firstName ||
+                  user?.email ||
+                  t("nav.profile", "My Account")}
                 <ChevronDown className="h-4 w-4" />
               </button>
               {userMenuOpen && renderUserMenu()}
@@ -312,18 +320,18 @@ export default function Navbar() {
         <div className="space-y-2 border-t border-border bg-surface px-5 py-4 text-base font-medium uppercase text-foreground lg:hidden">
           {navSettings.links.map((link) => (
             <Link
-              key={link.label}
+              key={link.labelKey}
               href={link.href}
               className="block py-2"
               onClick={() => setMobileOpen(false)}
             >
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           ))}
           {servicesLinks.length > 0 && (
             <details className="group">
               <summary className="flex cursor-pointer items-center justify-between py-2">
-                Services
+                {t("nav.services")}
                 <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
               </summary>
               {renderServicesDropdown(true)}
@@ -331,6 +339,7 @@ export default function Navbar() {
           )}
           <div className="flex items-center justify-between gap-4 pt-2">
             <ThemeSwitcher />
+            <LanguageToggle />
             {!isLoggedIn ? (
               <>
                 <Link
@@ -338,20 +347,22 @@ export default function Navbar() {
                   className="grow rounded-full border border-secondary px-4 py-2 text-center text-secondary"
                   onClick={() => setMobileOpen(false)}
                 >
-                  Sign In
+                  {t("nav.signIn", "Sign In")}
                 </Link>
                 <Link
                   href="/register"
                   className="grow rounded-full bg-primary px-4 py-2 text-center text-primary-foreground"
                   onClick={() => setMobileOpen(false)}
                 >
-                  Sign Up
+                  {t("nav.signUp", "Sign Up")}
                 </Link>
               </>
             ) : (
               <details className="group w-full">
                 <summary className="flex cursor-pointer items-center justify-between rounded-full border border-secondary px-4 py-2 text-secondary">
-                  {user?.firstName || user?.email || "My Account"}
+                  {user?.firstName ||
+                    user?.email ||
+                    t("nav.profile", "My Account")}
                   <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
                 </summary>
                 <div className="mt-2 space-y-1 rounded-2xl border border-border bg-background/80 p-3 text-sm normal-case">
@@ -359,21 +370,23 @@ export default function Navbar() {
                     resolvedRole as Exclude<RoleKey, "guest">
                   ].map((item) => (
                     <Link
-                      key={item.label}
+                      key={item.labelKey}
                       href={item.href}
                       className="block rounded-lg px-3 py-2 text-foreground transition hover:bg-(--color-secondary-soft)"
                       onClick={() => setMobileOpen(false)}
                     >
-                      {item.label}
+                      {t(item.labelKey)}
                     </Link>
                   ))}
                   <button
                     type="button"
-                      className="w-full rounded-lg px-3 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
-                      onClick={handleLogout}
-                      disabled={isLoggingOut}
+                    className="w-full rounded-lg px-3 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
                   >
-                      {isLoggingOut ? "Logging out..." : "Log out"}
+                    {isLoggingOut
+                      ? t("nav.loggingOut", "Logging out...")
+                      : t("nav.logout", "Log out")}
                   </button>
                 </div>
               </details>

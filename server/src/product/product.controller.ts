@@ -56,7 +56,6 @@ export class ProductController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   @UseInterceptors(
     FileInterceptor('file', {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       storage: memoryStorage(),
     }),
   )

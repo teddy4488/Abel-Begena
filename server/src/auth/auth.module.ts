@@ -19,11 +19,17 @@ import { EnrolledGuard } from './guards/enrolled.guard';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET') ?? 'development_secret',
-        signOptions: { expiresIn: '1d' },
+        signOptions: { expiresIn: '2h' },
       }),
     }),
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy, RoleGuard, EnrolledGuard],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    RoleGuard,
+    EnrolledGuard,
+  ],
   controllers: [AuthController],
   exports: [RoleGuard, EnrolledGuard],
 })

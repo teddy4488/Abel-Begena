@@ -1,9 +1,49 @@
-export class CreateUserDto {
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  role?: 'User' | 'Teacher' | 'Admin';
-}
+import {
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  MinLength,
+  IsUrl,
+} from 'class-validator';
 
+export class CreateUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(6)
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsIn(['User', 'Teacher', 'Admin'])
+  role?: 'User' | 'Teacher' | 'Admin';
+
+  @IsOptional()
+  @IsUrl()
+  avatarUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @IsOptional()
+  @IsIn(['en', 'am'])
+  languagePreference?: 'en' | 'am';
+
+  @IsOptional()
+  @IsIn(['pending', 'approved', 'suspended'])
+  teacherStatus?: 'pending' | 'approved' | 'suspended';
+}

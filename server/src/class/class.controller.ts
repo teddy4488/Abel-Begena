@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -17,6 +19,9 @@ import { EnrolledGuard } from '../auth/guards/enrolled.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { ClassOwnerGuard } from '../auth/guards/class-owner.guard';
+import { UpdateLiveStateDto } from './dto/update-live-state.dto';
+import { CreateClassDto } from './dto/create-class.dto';
+import { UpdateClassDto } from './dto/update-class.dto';
 
 @Controller('classes')
 export class ClassController {
@@ -33,6 +38,44 @@ export class ClassController {
     return this.classService.findAll();
   }
 
+  @Get('manage')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  findManaged() {
+    return this.classService.getManagedCatalog();
+  }
+
+  @Post()
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  createClass(@Body() dto: CreateClassDto) {
+    return this.classService.createClass(dto);
+  }
+
+  @Patch(':id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  updateClass(@Param('id') id: string, @Body() dto: UpdateClassDto) {
+    return this.classService.updateClass(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  removeClass(@Param('id') id: string) {
+    return this.classService.removeClass(id);
+  }
+
+  @Patch(':id/instructor/:instructorId')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  assignInstructor(
+    @Param('id') id: string,
+    @Param('instructorId') instructorId: string,
+  ) {
+    return this.classService.assignInstructor(id, instructorId);
+  }
+
   @Get(':id/access')
   @UseGuards(JwtAuthGuard, EnrolledGuard)
   getAccess(@Param('id') id: string) {
@@ -44,7 +87,6 @@ export class ClassController {
   @UseGuards(JwtAuthGuard, RoleGuard, ClassOwnerGuard)
   @UseInterceptors(
     FileInterceptor('file', {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       storage: memoryStorage(),
     }),
   )
@@ -59,12 +101,22 @@ export class ClassController {
     const updatedClass = await this.classService.appendMaterial(
       id,
       file,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+
       title || file.originalname,
     );
     return {
       message: 'Material uploaded successfully',
       materials: updatedClass.materials,
     };
+  }
+
+  @Patch(':id/live')
+  @Roles('Teacher', 'Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard, ClassOwnerGuard)
+  updateLiveState(
+    @Param('id') id: string,
+    @Body() updateLiveStateDto: UpdateLiveStateDto,
+  ) {
+    return this.classService.updateLiveState(id, updateLiveStateDto);
   }
 }

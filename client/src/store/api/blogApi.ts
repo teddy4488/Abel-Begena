@@ -1,6 +1,5 @@
-"use client";
-
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { authorizedBaseQuery } from "./baseQuery";
 
 export type BlogAuthor = {
   _id?: string;
@@ -25,10 +24,7 @@ export type BlogPost = {
 
 export const blogApi = createApi({
   reducerPath: "blogApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
-    credentials: "include",
-  }),
+  baseQuery: authorizedBaseQuery,
   tagTypes: ["Blog"],
   endpoints: (builder) => ({
     getPublishedPosts: builder.query<BlogPost[], { search?: string } | void>({

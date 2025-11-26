@@ -6,18 +6,17 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument, OrderStatus } from './schemas/order.schema';
-import { CartItem } from './schemas/cart-item.schema';
+import { Cart, CartDocument } from './schemas/cart.schema';
 import { ProductService } from '../product/product.service';
 import { CheckoutDto } from './dto/checkout.dto';
 
 @Injectable()
 export class OrderService {
-  // In-memory cart storage (userId -> cart items)
-  private carts: Map<string, CartItem[]> = new Map();
-
   constructor(
     @InjectModel(Order.name)
     private readonly orderModel: Model<OrderDocument>,
+    @InjectModel(Cart.name)
+    private readonly cartModel: Model<CartDocument>,
     private readonly productService: ProductService,
   ) {}
 
@@ -26,16 +25,23 @@ export class OrderService {
       throw new BadRequestException('Invalid product id');
     }
 
-    const cart = this.getCart(userId);
-    const existingItemIndex = cart.findIndex(
+    const userObjectId = new Types.ObjectId(userId);
+    let cart = await this.cartModel.findOne({ user: userObjectId }).exec();
+
+    if (!cart) {
+      cart = new this.cartModel({ user: userObjectId, items: [] });
+    }
+
+    const cartItems = cart.items ?? [];
+    const existingItemIndex = cartItems.findIndex(
       (item) => item.productId.toString() === productId,
     );
 
     // Remove item entirely when quantity is zero
     if (quantity === 0) {
       if (existingItemIndex >= 0) {
-        cart.splice(existingItemIndex, 1);
-        this.persistCart(userId, cart);
+        cartItems.splice(existingItemIndex, 1);
+        await this.persistCart(cart);
       }
       return this.getCartSummary(userId);
     }
@@ -57,16 +63,17 @@ export class OrderService {
       }
 
       if (existingItemIndex >= 0) {
-        cart[existingItemIndex].quantity += quantity;
+        cartItems[existingItemIndex].quantity += quantity;
       } else {
-        cart.push({
+        cartItems.push({
           productId: new Types.ObjectId(productId),
           quantity,
           priceAtCheckout: product.price,
         });
       }
 
-      this.persistCart(userId, cart);
+      cart.items = cartItems;
+      await this.persistCart(cart);
       return this.getCartSummary(userId);
     }
 
@@ -75,34 +82,38 @@ export class OrderService {
       throw new BadRequestException('Item not found in cart');
     }
 
-    const newQuantity = cart[existingItemIndex].quantity + quantity;
+    const newQuantity = cartItems[existingItemIndex].quantity + quantity;
 
     if (newQuantity <= 0) {
-      cart.splice(existingItemIndex, 1);
+      cartItems.splice(existingItemIndex, 1);
     } else {
-      cart[existingItemIndex].quantity = newQuantity;
+      cartItems[existingItemIndex].quantity = newQuantity;
     }
 
-    this.persistCart(userId, cart);
+    cart.items = cartItems;
+    await this.persistCart(cart);
     return this.getCartSummary(userId);
   }
 
-  getCart(userId: string): CartItem[] {
-    return this.carts.get(userId) ?? [];
-  }
-
-  private persistCart(userId: string, cart: CartItem[]) {
-    if (!cart.length) {
-      this.carts.delete(userId);
-    } else {
-      this.carts.set(userId, cart);
+  private async persistCart(cart: CartDocument) {
+    if (!cart.items.length) {
+      if (!cart.isNew) {
+        await cart.deleteOne();
+      }
+      return;
     }
+    cart.markModified('items');
+    await cart.save();
   }
 
   async getCartSummary(userId: string) {
-    const cart = this.getCart(userId);
+    const cart = await this.cartModel
+      .findOne({ user: new Types.ObjectId(userId) })
+      .lean()
+      .exec();
+    const cartItems = cart?.items ?? [];
     const items = await Promise.all(
-      cart.map(async (item) => {
+      cartItems.map(async (item) => {
         const product = await this.productService.findById(
           item.productId.toString(),
         );
@@ -121,34 +132,36 @@ export class OrderService {
       }),
     );
 
-    const totalAmount = items.reduce(
-      (sum, item) => sum + item.subtotal,
-      0,
-    );
+    const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
 
     return {
       items,
       totalAmount,
-      itemCount: cart.reduce((sum, item) => sum + item.quantity, 0),
+      itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
     };
   }
 
   async checkout(userId: string, checkoutDto: CheckoutDto) {
-    const cart = this.getCart(userId);
+    const cart = await this.cartModel
+      .findOne({ user: new Types.ObjectId(userId) })
+      .exec();
 
-    if (cart.length === 0) {
+    if (!cart || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty');
     }
 
+    const cartItems = cart.items;
+
     // Validate all products and stock
-    for (const item of cart) {
+    for (const item of cartItems) {
       const product = await this.productService.findById(
         item.productId.toString(),
       );
 
       if (!product || !product.isActive) {
+        const productLabel = item.productId.toString();
         throw new BadRequestException(
-          `Product ${item.productId} is no longer available`,
+          `Product ${productLabel} is no longer available`,
         );
       }
 
@@ -165,7 +178,7 @@ export class OrderService {
     }
 
     // Calculate total
-    const totalAmount = cart.reduce(
+    const totalAmount = cartItems.reduce(
       (sum, item) => sum + item.quantity * item.priceAtCheckout,
       0,
     );
@@ -173,7 +186,7 @@ export class OrderService {
     // Create order
     const order = await this.orderModel.create({
       user: new Types.ObjectId(userId),
-      items: cart,
+      items: cartItems,
       totalAmount,
       shippingAddress: checkoutDto.shippingAddress,
       paymentMethod: checkoutDto.paymentMethod,
@@ -182,7 +195,7 @@ export class OrderService {
     });
 
     // Reduce stock for all products
-    for (const item of cart) {
+    for (const item of cartItems) {
       await this.productService.reduceStock(
         item.productId.toString(),
         item.quantity,
@@ -190,7 +203,7 @@ export class OrderService {
     }
 
     // Clear cart
-    this.carts.delete(userId);
+    await this.cartModel.deleteOne({ _id: cart._id });
 
     return order.toObject();
   }

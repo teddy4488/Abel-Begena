@@ -1,8 +1,7 @@
-"use client";
-
 // src/store/api/authApi.ts
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import { AuthUser, logout, setCredentials } from "../slices/authSlice";
+import { authorizedBaseQuery } from "./baseQuery";
 
 type RegisterBody = {
   email: string;
@@ -15,14 +14,12 @@ type LoginBody = { email: string; password: string };
 
 type LoginResponse = {
   user: AuthUser | null;
+  expiresAt?: string | null;
 };
 
 export const authApi = createApi({
   reducerPath: "authApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
-    credentials: "include",
-  }),
+  baseQuery: authorizedBaseQuery,
   endpoints: (builder) => ({
     register: builder.mutation<unknown, RegisterBody>({
       query: (body) => ({
@@ -31,20 +28,20 @@ export const authApi = createApi({
         body,
       }),
     }),
-    login: builder.mutation<AuthUser | null, LoginBody>({
+    login: builder.mutation<LoginResponse, LoginBody>({
       query: (body) => ({
         url: "/auth/login",
         method: "POST",
         body,
       }),
-      transformResponse: (response: LoginResponse) => response.user ?? null,
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           dispatch(
             setCredentials({
               token: null,
-              user: data,
+              user: data.user ?? null,
+              sessionExpiresAt: data.expiresAt ?? null,
             }),
           );
         } catch (error) {
@@ -65,7 +62,7 @@ export const authApi = createApi({
         }
       },
     }),
-    session: builder.query<AuthUser | null, void>({
+    session: builder.query<LoginResponse, void>({
       query: () => ({
         url: "/auth/session",
         method: "GET",
@@ -73,8 +70,14 @@ export const authApi = createApi({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          if (data) {
-            dispatch(setCredentials({ token: null, user: data }));
+          if (data?.user) {
+            dispatch(
+              setCredentials({
+                token: null,
+                user: data.user,
+                sessionExpiresAt: data.expiresAt ?? null,
+              }),
+            );
           }
         } catch (error) {
           console.warn("Session lookup failed", error);

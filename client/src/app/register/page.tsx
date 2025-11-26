@@ -16,9 +16,31 @@ export default function RegisterPage() {
     password: "",
   });
   const [register, { isLoading }] = useRegisterMutation();
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!form.firstName.trim()) {
+      next.firstName = "First name is required.";
+    }
+    if (!form.lastName.trim()) {
+      next.lastName = "Last name is required.";
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      next.email = "Enter a valid email address.";
+    }
+    if (form.password.length < 6) {
+      next.password = "Password must be at least 6 characters.";
+    }
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!validate()) {
+      return;
+    }
     try {
       await register(form).unwrap();
       pushToast({
@@ -68,9 +90,14 @@ export default function RegisterPage() {
               required
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                fieldErrors.firstName ? "border-red-400" : "border-border focus:border-secondary"
+              } bg-background/80`}
               placeholder="Kidus"
             />
+            {fieldErrors.firstName && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.firstName}</p>
+            )}
           </div>
 
           <div className="md:col-span-1">
@@ -82,9 +109,14 @@ export default function RegisterPage() {
               required
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                fieldErrors.lastName ? "border-red-400" : "border-border focus:border-secondary"
+              } bg-background/80`}
               placeholder="Haile"
             />
+            {fieldErrors.lastName && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.lastName}</p>
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -96,9 +128,14 @@ export default function RegisterPage() {
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                fieldErrors.email ? "border-red-400" : "border-border focus:border-secondary"
+              } bg-background/80`}
               placeholder="you@example.com"
             />
+            {fieldErrors.email && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -110,9 +147,14 @@ export default function RegisterPage() {
               required
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                fieldErrors.password ? "border-red-400" : "border-border focus:border-secondary"
+              } bg-background/80`}
               placeholder="Create a strong password"
             />
+            {fieldErrors.password && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>
+            )}
           </div>
 
           <div className="md:col-span-2">

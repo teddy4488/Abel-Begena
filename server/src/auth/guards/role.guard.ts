@@ -5,7 +5,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+
+type RequestWithUser = Request & {
+  user?: { role?: string };
+};
 
 @Injectable()
 export class RoleGuard implements CanActivate {
@@ -22,13 +27,12 @@ export class RoleGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
+    const { user } = context.switchToHttp().getRequest<RequestWithUser>();
 
     if (!user) {
       throw new UnauthorizedException('Missing authentication context');
     }
 
-    return requiredRoles.includes(user.role);
+    return user.role ? requiredRoles.includes(user.role) : false;
   }
 }
-

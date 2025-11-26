@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
@@ -26,16 +26,36 @@ export class UserService {
       ...createUserDto,
       password: hashedPassword,
       role: createUserDto.role ?? 'User',
+      teacherStatus:
+        createUserDto.teacherStatus ??
+        (createUserDto.role === 'Teacher' ? 'pending' : undefined),
     });
     return this.toSafeUser(user.toObject());
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
+    if (updateUserDto.password) {
+      updateUserDto.password = await this.hashPassword(updateUserDto.password);
+    }
+
     const updatedUser = await this.userModel
       .findByIdAndUpdate(id, updateUserDto, { new: true })
       .lean()
       .exec();
+
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+
     return this.toSafeUser(updatedUser);
+  }
+
+  async remove(id: string) {
+    const result = await this.userModel.findByIdAndDelete(id).lean().exec();
+    if (!result) {
+      throw new NotFoundException('User not found');
+    }
+    return { message: 'User removed' };
   }
 
   async hashPassword(password: string): Promise<string> {
@@ -62,7 +82,8 @@ export class UserService {
       return null;
     }
 
-    const { password, ...rest } = user as Record<string, unknown>;
+    const { password: _password, ...rest } = user as Record<string, unknown>;
+    void _password;
     return rest as Omit<T, 'password'>;
   }
 }

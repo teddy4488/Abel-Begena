@@ -8,6 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { ClassModule } from './class/class.module';
 import { ProductModule } from './product/product.module';
 import { OrderModule } from './order/order.module';
+import { BlogModule } from './blog/blog.module';
+import { CmsModule } from './cms/cms.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import { OrderModule } from './order/order.module';
     ClassModule,
     ProductModule,
     OrderModule,
+    BlogModule,
+    CmsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

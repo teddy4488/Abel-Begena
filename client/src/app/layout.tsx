@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Inter, Merriweather } from "next/font/google";
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Providers } from "@/components/providers/StoreProvider";
 import { ToastProvider } from "@/components/providers/ToastProvider";
 import { AuthHydrator } from "@/components/providers/AuthHydrator";
+import { I18nProvider } from "@/components/providers/I18nProvider";
+import { NavbarGate } from "@/components/layout/NavbarGate";
 import "./globals.css";
 
 const inter = Inter({
@@ -38,12 +39,14 @@ export default function RootLayout({
         <Providers>
           <ThemeProvider>
             <ToastProvider>
-              <AuthHydrator />
-              <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
-                <Navbar />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
+              <I18nProvider>
+                <AuthHydrator />
+                <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
+                  <NavbarGate />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </div>
+              </I18nProvider>
             </ToastProvider>
           </ThemeProvider>
         </Providers>

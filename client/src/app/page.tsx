@@ -4,9 +4,11 @@ import FadeIn from "@/components/animations/FadeIn";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo } from "react";
 import { useAppSelector } from "@/store/hooks";
 import { useGetProductsQuery } from "@/store/api/storeApi";
 import { useGetPublicClassesQuery } from "@/store/api/classApi";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 const heroImage =
   "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
@@ -19,6 +21,7 @@ const galleryImages = [
 ];
 
 export default function Home() {
+  const { t } = useI18n();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const role = user?.role;
   const { data: products, isLoading: isLoadingProducts } =
@@ -53,58 +56,60 @@ export default function Home() {
 
   // Safe date formatter for classes
   const formatClassDate = (createdAt: string | undefined) => {
-    if (!createdAt) return "Coming soon";
+    if (!createdAt) return t("classHighlights.comingSoon");
     return new Date(createdAt).toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
     });
   };
 
-  const serviceCards = [
-    {
-      id: "online-learning",
-      title: "Online Teaching",
-      copy:
-        "Attend live Begena, Masinko, and Washint lessons with clergy-approved instructors, streamed from Addis Ababa.",
-      image: "/assets/abel.jpg",
-      ctaHref: isLoggedIn ? "/dashboard" : "/register",
-      ctaLabel: isLoggedIn ? "Go to Dashboard" : "Join Online Class",
-    },
-    {
-      id: "physical-learning",
-      title: "Physical Conservatory",
-      copy:
-        "Visit our studio for private tutelage, choir rehearsals, and heritage labs preserving Saint Yared's repertoire.",
-      image: "/assets/abel2.jpg",
-      ctaHref: "#contact",
-      ctaLabel: "Book a Visit",
-    },
-    {
-      id: "sacred-market",
-      title: "Instrument Atelier",
-      copy:
-        "Commission handcrafted Begena, Kirar, drums, and manuscripts produced by artisans devoted to the Orthodox liturgy.",
-      image: "/assets/stock%20begena.jpg",
-      ctaHref: "/store",
-      ctaLabel: "Browse Store",
-    },
-  ];
+  const serviceCards = useMemo(
+    () => [
+      {
+        id: "online-learning",
+        title: t("services.online"),
+        copy: t("services.online.copy"),
+        image: "/assets/abel.jpg",
+        ctaHref: isLoggedIn ? "/dashboard" : "/register",
+        ctaLabel: isLoggedIn
+          ? t("services.online.cta.auth")
+          : t("services.online.cta"),
+      },
+      {
+        id: "physical-learning",
+        title: t("services.physical"),
+        copy: t("services.physical.copy"),
+        image: "/assets/abel2.jpg",
+        ctaHref: "#contact",
+        ctaLabel: t("services.physical.cta"),
+      },
+      {
+        id: "sacred-market",
+        title: t("services.atelier"),
+        copy: t("services.atelier.copy"),
+        image: "/assets/stock%20begena.jpg",
+        ctaHref: "/store",
+        ctaLabel: t("services.atelier.cta"),
+      },
+    ],
+    [isLoggedIn, t],
+  );
 
   const primaryCta =
     !isLoggedIn || role === undefined
-      ? { href: "#services", label: "Start Learning" }
+      ? { href: "#services", label: t("hero.cta.default") }
       : role === "Teacher"
-        ? { href: "/teacher", label: "Open Teacher Studio" }
+        ? { href: "/teacher", label: t("hero.cta.teacher") }
         : role === "Admin"
-          ? { href: "/admin", label: "Open Admin Console" }
-          : { href: "/dashboard", label: "Continue Learning" };
+          ? { href: "/admin/console", label: t("hero.cta.admin") }
+          : { href: "/dashboard", label: t("hero.cta.student") };
 
   const secondaryCta =
     role === "Admin"
-      ? { href: "/store", label: "Manage Store" }
+      ? { href: "/admin/store", label: t("hero.secondary.admin") }
       : role === "Teacher"
-        ? { href: "/teacher", label: "View Materials" }
-        : { href: "/store", label: "Visit Shop" };
+        ? { href: "/teacher", label: t("hero.secondary.teacher") }
+        : { href: "/store", label: t("hero.secondary.default") };
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors">
@@ -114,7 +119,7 @@ export default function Home() {
           <div className="relative grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">
               <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-                Ethiopian Orthodox Tewahedo
+                {t("hero.kicker")}
               </p>
               <div className="space-y-4">
                 <motion.h1
@@ -123,7 +128,7 @@ export default function Home() {
                   transition={{ duration: 1, ease: "easeOut" }}
                   className="text-4xl font-serif text-primary sm:text-5xl lg:text-6xl"
                 >
-                  The Harp of David
+                  {t("hero.title")}
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -131,9 +136,7 @@ export default function Home() {
                   transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
                   className="text-lg text-foreground opacity-80"
                 >
-                  Restoring the ancient sound of praise through immersive study,
-                  artisanship, and community worship rooted in Saint Yared&apos;s
-                  inheritance.
+                  {t("hero.subtitle")}
                 </motion.p>
               </div>
               <div className="flex flex-col gap-4 sm:flex-row">
@@ -184,10 +187,10 @@ export default function Home() {
         <section id="services" className="space-y-6">
           <FadeIn>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              Offerings
+              {t("services.kicker")}
             </p>
             <h2 className="text-3xl font-serif text-primary">
-              Serve the Church through practice, formation, and craft.
+              {t("services.title")}
             </h2>
           </FadeIn>
           <div className="grid gap-6 md:grid-cols-3">
@@ -230,18 +233,18 @@ export default function Home() {
         <section className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]">
           <FadeIn className="flex flex-col gap-2">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              Class Highlights
+              {t("classHighlights.kicker")}
             </p>
             <h2 className="text-3xl font-serif text-primary">
-              Upcoming cohorts & live rooms
+              {t("classHighlights.title")}
             </h2>
             <p className="text-sm text-foreground/70">
-              Pulled directly from the LMS so guests can see what&apos;s active.
+              {t("classHighlights.description")}
             </p>
           </FadeIn>
           {isLoadingClasses ? (
             <p className="text-sm text-foreground/70">
-              Loading sacred classes...
+              {t("classHighlights.loading")}
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -257,20 +260,23 @@ export default function Home() {
                     {klass.title}
                   </h3>
                   <p className="mt-1 text-sm font-semibold text-secondary">
-                    {klass.isLive ? "Live now" : "Enrollment open"}
+                    {klass.isLive
+                      ? t("classHighlights.liveNow")
+                      : t("classHighlights.enrollmentOpen")}
                   </p>
                   <Link
                     href={isLoggedIn ? "/dashboard" : "/register"}
                     className="mt-4 inline-flex text-sm font-semibold text-secondary underline-offset-4 hover:underline"
                   >
-                    {isLoggedIn ? "View in dashboard →" : "Register to enroll →"}
+                    {isLoggedIn
+                      ? t("classHighlights.viewDashboard")
+                      : t("classHighlights.register")}
                   </Link>
                 </FadeIn>
               ))}
               {!classHighlights?.length && !isLoadingClasses && (
                 <p className="text-sm text-foreground/70">
-                  New cohorts are being prepared. Join the newsletter for
-                  announcements.
+                  {t("classHighlights.empty")}
                 </p>
               )}
             </div>
@@ -284,21 +290,23 @@ export default function Home() {
           <FadeIn className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-                Featured Instruments
+                {t("store.kicker")}
               </p>
               <h2 className="text-3xl font-serif text-primary">
-                Crafted for the liturgy
+                {t("store.title")}
               </h2>
             </div>
             <Link
               href="/store"
               className="rounded-full border border-secondary px-6 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
             >
-              View full shop
+              {t("store.viewAll")}
             </Link>
           </FadeIn>
           {isLoadingProducts ? (
-            <p className="text-sm text-foreground/70">Loading catalog...</p>
+            <p className="text-sm text-foreground/70">
+              {t("store.loading")}
+            </p>
           ) : (
             <div className="grid gap-6 md:grid-cols-3">
               {featuredProducts.map((product) => (
@@ -316,7 +324,7 @@ export default function Home() {
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm text-foreground/50">
-                        Image coming soon
+                        {t("store.imagePlaceholder")}
                       </div>
                     )}
                   </div>
@@ -339,13 +347,13 @@ export default function Home() {
                     href={`/store/${product._id}`}
                     className="mt-4 inline-flex items-center text-sm font-semibold text-secondary"
                   >
-                    View details →
+                    {t("store.viewDetails")}
                   </Link>
                 </FadeIn>
               ))}
               {!featuredProducts.length && !isLoadingProducts && (
                 <p className="text-sm text-foreground/70">
-                  Products will appear here once the store is configured.
+                  {t("store.empty")}
                 </p>
               )}
             </div>
@@ -358,32 +366,29 @@ export default function Home() {
         >
           <FadeIn className="space-y-5">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              Sacred Atelier
+              {t("sacred.kicker")}
             </p>
             <h2 className="text-3xl font-serif text-primary">
-              Every instrument is blessed, tuned, and delivered with reverence.
+              {t("sacred.title")}
             </h2>
-            <p className="text-sm text-foreground/80">
-              Work with our craftsmen to source sustainably harvested wood,
-              engrave Ge&apos;ez prayers, and ship worldwide through ethical partners.
-            </p>
+            <p className="text-sm text-foreground/80">{t("sacred.copy")}</p>
             <ul className="space-y-3 text-sm text-foreground/80">
-              <li>• Custom Begena & Kirar sizing consultations</li>
-              <li>• Live video approvals before shipping</li>
-              <li>• Cloudinary media archive for each build</li>
+              <li>• {t("sacred.bullet.one")}</li>
+              <li>• {t("sacred.bullet.two")}</li>
+              <li>• {t("sacred.bullet.three")}</li>
             </ul>
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/store"
                 className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_20px_30px_var(--color-primary-glow)] transition hover:-translate-y-0.5"
               >
-                Browse Shop
+                {t("sacred.cta.store")}
               </Link>
               <Link
                 href="#contact"
                 className="rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
               >
-                Request a Quote
+                {t("sacred.cta.quote")}
               </Link>
             </div>
           </FadeIn>
@@ -413,25 +418,28 @@ export default function Home() {
         >
           <FadeIn className="space-y-5">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              About Us
+              {t("about.kicker")}
             </p>
             <h2 className="text-3xl font-serif text-primary">
-              Guided by the liturgy, accountable to the faithful.
+              {t("about.title")}
             </h2>
-            <p className="text-sm text-foreground/80">
-              Abel Begena is a collective of deacons, artisans, and cultural
-              historians preserving Ethiopian Orthodox musical heritage. From
-              Addis Ababa to diaspora communities, we steward instruments,
-              lessons, archives, and e-commerce in one prayerful ecosystem.
-            </p>
+            <p className="text-sm text-foreground/80">{t("about.copy")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm">
-                <p className="text-2xl font-semibold text-primary">30+</p>
-                <p className="text-foreground/70">Years combined teaching</p>
+                <p className="text-2xl font-semibold text-primary">
+                  {t("about.statOne.value")}
+                </p>
+                <p className="text-foreground/70">
+                  {t("about.statOne.label")}
+                </p>
               </div>
               <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm">
-                <p className="text-2xl font-semibold text-primary">150+</p>
-                <p className="text-foreground/70">Instruments delivered</p>
+                <p className="text-2xl font-semibold text-primary">
+                  {t("about.statTwo.value")}
+                </p>
+                <p className="text-foreground/70">
+                  {t("about.statTwo.label")}
+                </p>
               </div>
             </div>
           </FadeIn>
@@ -451,14 +459,14 @@ export default function Home() {
         >
           <FadeIn className="space-y-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              Contact
+              {t("contact.kicker")}
             </p>
             <h2 className="text-3xl font-serif text-primary">
-              Reach out for lessons, commissions, or collaborations.
+              {t("contact.title")}
             </h2>
             <div className="space-y-3 text-sm text-foreground/80">
               <p>
-                Email:{" "}
+                {t("contact.emailLabel")}{" "}
                 <a
                   href="mailto:hello@abelbegena.com"
                   className="font-semibold text-secondary"
@@ -467,7 +475,7 @@ export default function Home() {
                 </a>
               </p>
               <p>
-                Phone / Telegram:{" "}
+                {t("contact.phoneLabel")}{" "}
                 <a
                   href="tel:+251911000000"
                   className="font-semibold text-secondary"
@@ -475,7 +483,7 @@ export default function Home() {
                   +251 911 000 000
                 </a>
               </p>
-              <p>Studio: Bole Sub-City, Addis Ababa, Ethiopia</p>
+              <p>{t("contact.location")}</p>
             </div>
             <Link
               href="https://maps.app.goo.gl/"
@@ -483,26 +491,26 @@ export default function Home() {
               rel="noreferrer"
               className="inline-flex items-center justify-center rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
             >
-              View Map
+              {t("contact.viewMap")}
             </Link>
           </FadeIn>
           <FadeIn className="space-y-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              Quick message
+              {t("contact.form.kicker")}
             </p>
             <div className="space-y-3">
               <input
                 type="text"
-                placeholder="Full name"
+                placeholder={t("contact.form.name")}
                 className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
               <input
                 type="email"
-                placeholder="Email address"
+                placeholder={t("contact.form.email")}
                 className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
               <textarea
-                placeholder="How can we serve you?"
+                placeholder={t("contact.form.message")}
                 rows={5}
                 className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
@@ -511,7 +519,7 @@ export default function Home() {
               href="mailto:hello@abelbegena.com"
               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_20px_30px_var(--color-primary-glow)] transition hover:-translate-y-0.5"
             >
-              Send Message
+              {t("contact.form.submit")}
             </Link>
           </FadeIn>
         </section>

@@ -1,13 +1,32 @@
-import { Body, Controller, Get, Patch, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Request,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UploadService } from '../upload/upload.service';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   @Get()
   @Roles('Admin')
@@ -38,6 +57,82 @@ export class UserController {
     if (typeof dto.phone !== 'undefined') {
       payload.phone = dto.phone;
     }
+    if (typeof dto.avatarUrl !== 'undefined') {
+      payload.avatarUrl = dto.avatarUrl;
+    }
+    if (typeof dto.bio !== 'undefined') {
+      payload.bio = dto.bio;
+    }
+    if (typeof dto.languagePreference !== 'undefined') {
+      payload.languagePreference = dto.languagePreference;
+    }
     return this.userService.update(req.user.sub, payload);
+  }
+
+  @Post('profile/avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  async uploadOwnAvatar(
+    @Request() req: { user: { sub: string } },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const avatarUrl = await this.uploadService.uploadMaterial(
+      file,
+      'abel-begena/avatars',
+    );
+    await this.userService.update(req.user.sub, { avatarUrl });
+    return { avatarUrl };
+  }
+
+  @Post(':id/avatar')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  async uploadAvatarForUser(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const avatarUrl = await this.uploadService.uploadMaterial(
+      file,
+      'abel-begena/avatars',
+    );
+    await this.userService.update(id, { avatarUrl });
+    return { avatarUrl };
+  }
+
+  @Get(':id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  findOne(@Param('id') id: string) {
+    return this.userService.findById(id);
+  }
+
+  @Post()
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  create(@Body() dto: CreateUserDto) {
+    return this.userService.create(dto);
+  }
+
+  @Patch(':id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.userService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  remove(@Param('id') id: string) {
+    return this.userService.remove(id);
   }
 }

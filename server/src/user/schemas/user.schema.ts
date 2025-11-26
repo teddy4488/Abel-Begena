@@ -7,7 +7,13 @@ export type UserRole = 'User' | 'Teacher' | 'Admin';
 
 @Schema({ timestamps: true })
 export class User {
-  @Prop({ required: true, unique: true, lowercase: true, trim: true, index: true })
+  @Prop({
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+    index: true,
+  })
   email: string;
 
   @Prop({ required: true })
@@ -32,6 +38,20 @@ export class User {
   @Prop({ required: true, default: true })
   isActive: boolean;
 
+  @Prop({
+    enum: ['pending', 'approved', 'suspended'],
+  })
+  teacherStatus?: 'pending' | 'approved' | 'suspended';
+
+  @Prop()
+  avatarUrl?: string;
+
+  @Prop({ trim: true })
+  bio?: string;
+
+  @Prop({ enum: ['en', 'am'], default: 'en' })
+  languagePreference?: 'en' | 'am';
+
   @Prop()
   createdAt: Date;
 
@@ -40,4 +60,3 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-

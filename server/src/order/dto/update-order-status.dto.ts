@@ -10,4 +10,3 @@ export class UpdateOrderStatusDto {
   @IsBoolean()
   isPaid?: boolean;
 }
-

@@ -25,6 +25,7 @@ export default function CheckoutPage() {
     paymentMethod: "CashOnDelivery",
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { pushToast } = useToast();
 
   if (!isLoggedIn) {
@@ -32,10 +33,24 @@ export default function CheckoutPage() {
     return null;
   }
 
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!form.city.trim()) next.city = "City is required.";
+    if (!form.street.trim()) next.street = "Street is required.";
+    if (!form.postalCode.trim()) next.postalCode = "Postal code is required.";
+    if (!/^[+0-9\s-]{6,}$/.test(form.phone)) next.phone = "Enter a valid phone number.";
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!data || data.items.length === 0) {
       setErrorMessage("Your cart is empty.");
+      return;
+    }
+    if (!validate()) {
+      setErrorMessage("Please fix the highlighted fields.");
       return;
     }
 
@@ -93,8 +108,13 @@ export default function CheckoutPage() {
                 required
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                  fieldErrors.city ? "border-red-400" : "border-border focus:border-secondary"
+                } bg-background/80`}
               />
+              {fieldErrors.city && (
+                <p className="mt-1 text-xs text-red-500">{fieldErrors.city}</p>
+              )}
             </div>
 
             <div>
@@ -106,8 +126,13 @@ export default function CheckoutPage() {
                 required
                 value={form.street}
                 onChange={(e) => setForm({ ...form, street: e.target.value })}
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                  fieldErrors.street ? "border-red-400" : "border-border focus:border-secondary"
+                } bg-background/80`}
               />
+              {fieldErrors.street && (
+                <p className="mt-1 text-xs text-red-500">{fieldErrors.street}</p>
+              )}
             </div>
 
             <div>
@@ -119,8 +144,13 @@ export default function CheckoutPage() {
                 required
                 value={form.postalCode}
                 onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                  fieldErrors.postalCode ? "border-red-400" : "border-border focus:border-secondary"
+                } bg-background/80`}
               />
+              {fieldErrors.postalCode && (
+                <p className="mt-1 text-xs text-red-500">{fieldErrors.postalCode}</p>
+              )}
             </div>
 
             <div>
@@ -132,8 +162,13 @@ export default function CheckoutPage() {
                 required
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                  fieldErrors.phone ? "border-red-400" : "border-border focus:border-secondary"
+                } bg-background/80`}
               />
+              {fieldErrors.phone && (
+                <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>
+              )}
             </div>
 
             <div>

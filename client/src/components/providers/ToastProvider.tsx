@@ -7,6 +7,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -68,10 +69,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [pushToast, dismissToast],
   );
 
+  useEffect(() => {
+    const handleSessionExpiry = () => {
+      pushToast({
+        title: "Session expired",
+        description: "Please sign in again to continue.",
+        variant: "error",
+      });
+    };
+    const handleApiError = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      pushToast({
+        title: "Something went wrong",
+        description: detail?.message ?? "Please try again.",
+        variant: "error",
+      });
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("session-expired", handleSessionExpiry);
+      window.addEventListener("api-error", handleApiError);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("session-expired", handleSessionExpiry);
+        window.removeEventListener("api-error", handleApiError);
+      }
+    };
+  }, [pushToast]);
+
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-2000 flex w-full max-w-sm flex-col gap-3">
+      <div className="pointer-events-none fixed bottom-4 right-4 z-[2000] flex w-full max-w-sm flex-col gap-3">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
@@ -118,4 +147,6 @@ export function useToast() {
   }
   return context;
 }
+
+export default ToastProvider;
 

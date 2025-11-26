@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -120,16 +122,40 @@ export default function TeacherPage() {
     <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
       <div className="mx-auto max-w-6xl space-y-12">
         <header className="space-y-4 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_100px_rgba(34,6,9,0.25)]">
-          <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-            Teacher Studio
-          </p>
-          <h1 className="text-3xl font-serif text-primary md:text-4xl">
-            Steward your classes, materials, and live rooms.
-          </h1>
-          <p className="text-sm text-foreground/75">
-            Upload lesson plans, keep rosters ready, and light up live rooms for
-            the faithful.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-secondary">
+                Teacher Studio
+              </p>
+              <h1 className="text-3xl font-serif text-primary md:text-4xl">
+                Steward your classes, materials, and live rooms.
+              </h1>
+              <p className="text-sm text-foreground/75">
+                Upload lesson plans, keep rosters ready, and light up live rooms for
+                the faithful.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/70 px-4 py-2">
+              {user?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatarUrl}
+                  alt={user.email}
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                  {(user.firstName?.[0] ?? user.email?.[0] ?? "").toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-semibold text-primary">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-foreground/70">{user.email}</p>
+              </div>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-secondary/70">
             <span>{teacherClasses.length} Active classes</span>
             <span>•</span>

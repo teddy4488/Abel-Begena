@@ -1,6 +1,5 @@
-"use client";
-
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { authorizedBaseQuery } from "./baseQuery";
 
 export type Product = {
   _id: string;
@@ -39,10 +38,7 @@ export type Order = {
 
 export const storeApi = createApi({
   reducerPath: "storeApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
-    credentials: "include",
-  }),
+  baseQuery: authorizedBaseQuery,
   tagTypes: ["Products", "Cart", "Orders"],
   endpoints: (builder) => ({
     getProducts: builder.query<Product[], void>({
@@ -95,6 +91,51 @@ export const storeApi = createApi({
       query: () => "/orders",
       providesTags: ["Orders"],
     }),
+    createProduct: builder.mutation<Product, Partial<Product>>({
+      query: (body) => ({
+        url: "/products",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Products"],
+    }),
+    updateProduct: builder.mutation<
+      Product,
+      { id: string; data: Partial<Product> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/products/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["Products"],
+    }),
+    updateOrderStatus: builder.mutation<
+      Order,
+      { id: string; status?: string; isPaid?: boolean }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/orders/${id}/status`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Orders"],
+    }),
+    uploadProductImage: builder.mutation<
+      Product,
+      { id: string; file: File }
+    >({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          url: `/products/${id}/images`,
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: ["Products"],
+    }),
   }),
 });
 
@@ -106,5 +147,9 @@ export const {
   useCheckoutMutation,
   useGetMyOrdersQuery,
   useGetAllOrdersQuery,
+  useCreateProductMutation,
+  useUpdateProductMutation,
+  useUpdateOrderStatusMutation,
+  useUploadProductImageMutation,
 } = storeApi;
 

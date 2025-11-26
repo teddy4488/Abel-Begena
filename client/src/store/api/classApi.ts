@@ -1,6 +1,5 @@
-"use client";
-
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { authorizedBaseQuery } from "./baseQuery";
 
 type ClassAccess = {
   class: { _id: string; title: string };
@@ -19,10 +18,7 @@ export type ClassSummary = {
 
 export const classApi = createApi({
   reducerPath: "classApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
-    credentials: "include",
-  }),
+  baseQuery: authorizedBaseQuery,
   tagTypes: ["Classes"],
   endpoints: (builder) => ({
     getPublicClasses: builder.query<ClassSummary[], void>({

@@ -16,4 +16,3 @@ export class CartItem {
 }
 
 export const CartItemSchema = SchemaFactory.createForClass(CartItem);
-

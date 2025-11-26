@@ -8,8 +8,20 @@ export class Class {
   @Prop({ required: true })
   title: string;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
-  instructorId: Types.ObjectId;
+  @Prop({ trim: true })
+  description?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  instructorId?: Types.ObjectId;
+
+  @Prop()
+  startDate?: Date;
+
+  @Prop()
+  endDate?: Date;
+
+  @Prop({ min: 0 })
+  capacity?: number;
 
   @Prop({
     type: [
@@ -31,4 +43,3 @@ export class Class {
 }
 
 export const ClassSchema = SchemaFactory.createForClass(Class);
-

@@ -35,4 +35,3 @@ export class CheckoutDto {
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
 }
-
