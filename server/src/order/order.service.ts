@@ -62,13 +62,16 @@ export class OrderService {
         throw new BadRequestException('Insufficient stock');
       }
 
+      const unitPrice = this.resolveProductPrice(product);
+
       if (existingItemIndex >= 0) {
         cartItems[existingItemIndex].quantity += quantity;
+        cartItems[existingItemIndex].priceAtCheckout = unitPrice;
       } else {
         cartItems.push({
           productId: new Types.ObjectId(productId),
           quantity,
-          priceAtCheckout: product.price,
+          priceAtCheckout: unitPrice,
         });
       }
 
@@ -172,8 +175,9 @@ export class OrderService {
       }
 
       // Update price if it changed
-      if (product.price !== item.priceAtCheckout) {
-        item.priceAtCheckout = product.price;
+      const latestPrice = this.resolveProductPrice(product);
+      if (latestPrice !== item.priceAtCheckout) {
+        item.priceAtCheckout = latestPrice;
       }
     }
 
@@ -263,5 +267,16 @@ export class OrderService {
       .sort({ createdAt: -1 })
       .lean()
       .exec();
+  }
+
+  private resolveProductPrice(product: {
+    price: number;
+    discountPrice?: number;
+    promoActive?: boolean;
+  }) {
+    if (product.promoActive && typeof product.discountPrice === 'number') {
+      return product.discountPrice;
+    }
+    return product.price;
   }
 }

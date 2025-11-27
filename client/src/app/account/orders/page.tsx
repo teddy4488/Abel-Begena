@@ -5,12 +5,35 @@ import { useGetMyOrdersQuery } from "@/store/api/storeApi";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 
-const statusColors: Record<string, string> = {
-  Pending: "text-yellow-600",
-  Processing: "text-blue-600",
-  Shipped: "text-indigo-600",
-  Delivered: "text-green-600",
-  Cancelled: "text-red-600",
+const statusStyles: Record<
+  string,
+  { text: string; bg: string; border: string }
+> = {
+  Pending: {
+    text: "text-yellow-800",
+    bg: "bg-yellow-100",
+    border: "border-yellow-200",
+  },
+  Processing: {
+    text: "text-blue-800",
+    bg: "bg-blue-100",
+    border: "border-blue-200",
+  },
+  Shipped: {
+    text: "text-indigo-800",
+    bg: "bg-indigo-100",
+    border: "border-indigo-200",
+  },
+  Delivered: {
+    text: "text-green-800",
+    bg: "bg-green-100",
+    border: "border-green-200",
+  },
+  Cancelled: {
+    text: "text-red-800",
+    bg: "bg-red-100",
+    border: "border-red-200",
+  },
 };
 
 export default function OrdersPage() {
@@ -94,13 +117,20 @@ export default function OrdersPage() {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                <span
-                  className={`rounded-full border border-border px-4 py-1 font-semibold ${
-                    statusColors[order.status] ?? "text-secondary"
-                  }`}
-                >
-                  {order.status}
-                </span>
+                {(() => {
+                  const style = statusStyles[order.status] ?? {
+                    text: "text-secondary",
+                    bg: "bg-transparent",
+                    border: "border-border",
+                  };
+                  return (
+                    <span
+                      className={`rounded-full border px-4 py-1 font-semibold ${style.text} ${style.bg} ${style.border}`}
+                    >
+                      {order.status}
+                    </span>
+                  );
+                })()}
                 <span className="rounded-full border border-border px-4 py-1 text-foreground/70">
                   Payment: {order.paymentMethod}
                 </span>

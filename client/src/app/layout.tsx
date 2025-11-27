@@ -40,12 +40,12 @@ export default function RootLayout({
           <ThemeProvider>
             <ToastProvider>
               <I18nProvider>
-                <AuthHydrator />
-                <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
+              <AuthHydrator />
+              <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
                   <NavbarGate />
-                  <main className="flex-1">{children}</main>
-                  <Footer />
-                </div>
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </div>
               </I18nProvider>
             </ToastProvider>
           </ThemeProvider>

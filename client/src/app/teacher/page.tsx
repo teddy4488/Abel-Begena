@@ -1,41 +1,15 @@
-"use client"
+"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { useMemo } from "react";
 import { useAppSelector } from "@/store/hooks";
-import {
-  useGetClassesQuery,
-  useUpdateLiveStateMutation,
-  useUploadMaterialMutation,
-} from "@/store/api/classApi";
-import { useToast } from "@/components/providers/ToastProvider";
-import { BlogStudio } from "@/components/blog/BlogStudio";
+import { useGetClassesQuery } from "@/store/api/classApi";
+import { useGetManagePostsQuery } from "@/store/api/blogApi";
 
-type UploadDraft = Record<
-  string,
-  {
-    title: string;
-    file?: File;
-  }
->;
-
-export default function TeacherPage() {
-  const { isLoggedIn, user } = useAppSelector((state) => state.auth);
-  const router = useRouter();
-  const { pushToast } = useToast();
-  const { data: classes, isLoading } = useGetClassesQuery();
-  const [updateLiveState] = useUpdateLiveStateMutation();
-  const [uploadMaterial, { isLoading: isUploading }] =
-    useUploadMaterialMutation();
-  const [uploadDrafts, setUploadDrafts] = useState<UploadDraft>({});
-
-  useEffect(() => {
-    if (!isLoggedIn || user?.role !== "Teacher") {
-      router.replace(isLoggedIn ? "/dashboard" : "/login");
-    }
-  }, [isLoggedIn, router, user?.role]);
+export default function TeacherDashboardPage() {
+  const { user } = useAppSelector((state) => state.auth);
+  const { data: classes, isLoading: classesLoading } = useGetClassesQuery();
+  const { data: posts = [], isLoading: postsLoading } = useGetManagePostsQuery();
 
   const teacherClasses = useMemo(
     () =>
@@ -45,247 +19,133 @@ export default function TeacherPage() {
     [classes, user?._id, user?.id],
   );
 
-  if (!isLoggedIn || user?.role !== "Teacher") {
-    return null;
-  }
-
-  const handleToggleLive = async (classId: string, current: boolean) => {
-    try {
-      await updateLiveState({
-        classId,
-        isLive: !current,
-      }).unwrap();
-      pushToast({
-        title: !current ? "Live session started" : "Session ended",
-        variant: "success",
-      });
-    } catch {
-      pushToast({
-        title: "Unable to update session",
-        variant: "error",
-      });
-    }
-  };
-
-  const handleLiveLinkBlur = async (classId: string, link: string) => {
-    const trimmed = link.trim();
-    if (!trimmed) return;
-    try {
-      await updateLiveState({
-        classId,
-        liveRoomCode: trimmed,
-      }).unwrap();
-      pushToast({
-        title: "Live link saved",
-        variant: "success",
-      });
-    } catch {
-      pushToast({
-        title: "Unable to save link",
-        variant: "error",
-      });
-    }
-  };
-
-  const handleUpload = async (classId: string) => {
-    const draft = uploadDrafts[classId];
-    if (!draft?.file) {
-      pushToast({
-        title: "Choose a file first",
-        variant: "error",
-      });
-      return;
-    }
-    try {
-      await uploadMaterial({
-        classId,
-        file: draft.file,
-        title: draft.title || draft.file.name,
-      }).unwrap();
-      pushToast({
-        title: "Material uploaded",
-        variant: "success",
-      });
-      setUploadDrafts((prev) => ({
-        ...prev,
-        [classId]: { title: "", file: undefined },
-      }));
-    } catch {
-      pushToast({
-        title: "Upload failed",
-        variant: "error",
-      });
-    }
-  };
+  const myPosts = useMemo(
+    () =>
+      posts.filter(
+        (post) => post.author?._id === user?._id || post.author?._id === user?.id,
+      ),
+    [posts, user?._id, user?.id],
+  );
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto max-w-6xl space-y-12">
-        <header className="space-y-4 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_100px_rgba(34,6,9,0.25)]">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-                Teacher Studio
-              </p>
-              <h1 className="text-3xl font-serif text-primary md:text-4xl">
-                Steward your classes, materials, and live rooms.
-              </h1>
-              <p className="text-sm text-foreground/75">
-                Upload lesson plans, keep rosters ready, and light up live rooms for
-                the faithful.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/70 px-4 py-2">
-              {user?.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.avatarUrl}
-                  alt={user.email}
-                  className="h-12 w-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-                  {(user.firstName?.[0] ?? user.email?.[0] ?? "").toUpperCase()}
-                </div>
-              )}
-              <div>
-                <p className="text-sm font-semibold text-primary">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-xs text-foreground/70">{user.email}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-secondary/70">
-            <span>{teacherClasses.length} Active classes</span>
-            <span>•</span>
-            <span>Cloudinary media pipeline</span>
-            <span>•</span>
-            <span>Zoom / Meet ready</span>
-          </div>
-        </header>
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+            Active Classes
+          </p>
+          <p className="mt-2 text-3xl font-serif text-primary">
+            {classesLoading ? "..." : teacherClasses.length}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+            Published Posts
+          </p>
+          <p className="mt-2 text-3xl font-serif text-primary">
+            {postsLoading ? "..." : myPosts.filter((p) => p.isPublished).length}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+            Drafts
+          </p>
+          <p className="mt-2 text-3xl font-serif text-primary">
+            {postsLoading ? "..." : myPosts.filter((p) => !p.isPublished).length}
+          </p>
+        </div>
+      </div>
 
-        <div className="space-y-4 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                My classes
-              </p>
-              <h2 className="text-2xl font-serif text-primary">
-                Live control room
-              </h2>
-            </div>
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wider"
-            >
-              View as student
-            </Link>
-          </div>
-
-          {isLoading && (
-            <p className="text-sm text-foreground/70">Loading assignments...</p>
-          )}
-
-          {!isLoading && teacherClasses.length === 0 && (
-            <p className="text-sm text-foreground/70">
-              No classes assigned yet. Coordinate with the admin team to become
-              an instructor.
+      <div className="rounded-2xl border border-border bg-surface p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+              Quick Actions
             </p>
-          )}
+            <h2 className="text-2xl font-serif text-primary">Get Started</h2>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Link
+            href="/teacher/posts"
+            className="rounded-xl border border-border bg-background/50 p-4 transition hover:bg-secondary/5"
+          >
+            <p className="text-sm font-semibold text-primary">Create Post</p>
+            <p className="mt-1 text-xs text-foreground/70">
+              Write a new blog post or lesson
+            </p>
+          </Link>
+          <Link
+            href="/teacher/materials"
+            className="rounded-xl border border-border bg-background/50 p-4 transition hover:bg-secondary/5"
+          >
+            <p className="text-sm font-semibold text-primary">Upload Materials</p>
+            <p className="mt-1 text-xs text-foreground/70">
+              Add PDFs, slides, or videos
+            </p>
+          </Link>
+          <Link
+            href="/teacher/live"
+            className="rounded-xl border border-border bg-background/50 p-4 transition hover:bg-secondary/5"
+          >
+            <p className="text-sm font-semibold text-primary">Manage Live Classes</p>
+            <p className="mt-1 text-xs text-foreground/70">
+              Start or stop live sessions
+            </p>
+          </Link>
+          <Link
+            href="/teacher/students"
+            className="rounded-xl border border-border bg-background/50 p-4 transition hover:bg-secondary/5"
+          >
+            <p className="text-sm font-semibold text-primary">View Students</p>
+            <p className="mt-1 text-xs text-foreground/70">
+              See enrolled students
+            </p>
+          </Link>
+          <Link
+            href="/teacher/schedule"
+            className="rounded-xl border border-border bg-background/50 p-4 transition hover:bg-secondary/5"
+          >
+            <p className="text-sm font-semibold text-primary">Schedule Classes</p>
+            <p className="mt-1 text-xs text-foreground/70">
+              Plan class times
+            </p>
+          </Link>
+        </div>
+      </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            {teacherClasses.map((klass) => (
-              <div
+      {teacherClasses.length > 0 && (
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <div className="mb-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+              My Classes
+            </p>
+            <h2 className="text-2xl font-serif text-primary">Recent Activity</h2>
+          </div>
+          <div className="space-y-3">
+            {teacherClasses.slice(0, 5).map((klass) => (
+              <Link
                 key={klass._id}
-                className="space-y-4 rounded-3xl border border-border bg-background/70 p-5"
+                href="/teacher/live"
+                className="flex items-center justify-between rounded-xl border border-border bg-background/50 p-4 transition hover:bg-secondary/5"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                      Class
-                    </p>
-                    <h3 className="text-xl font-serif text-primary">
-                      {klass.title}
-                    </h3>
-                  </div>
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => handleToggleLive(klass._id, klass.isLive ?? false)}
-                    className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
-                      klass.isLive
-                        ? "bg-green-500 text-white"
-                        : "border border-border text-foreground"
-                    }`}
-                  >
-                    {klass.isLive ? "End live session" : "Go live"}
-                  </motion.button>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-widest text-secondary">
-                    Live link
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://meet.google.com/..."
-                    onBlur={(e) => handleLiveLinkBlur(klass._id, e.target.value)}
-                    className="w-full rounded-2xl border border-border bg-background/60 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                  />
-                </div>
-
-                <div className="space-y-3 rounded-2xl border border-border bg-background/60 p-4">
-                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                    Upload materials
+                <div>
+                  <p className="font-semibold text-primary">{klass.title}</p>
+                  <p className="text-xs text-foreground/70">
+                    {klass.isLive ? "Live now" : "Offline"}
                   </p>
-                  <input
-                    type="text"
-                    placeholder="Material title"
-                    value={uploadDrafts[klass._id]?.title ?? ""}
-                    onChange={(e) =>
-                      setUploadDrafts((prev) => ({
-                        ...prev,
-                        [klass._id]: {
-                          ...(prev[klass._id] ?? { file: undefined }),
-                          title: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                  />
-                  <input
-                    type="file"
-                    onChange={(e) =>
-                      setUploadDrafts((prev) => ({
-                        ...prev,
-                        [klass._id]: {
-                          ...(prev[klass._id] ?? { title: "" }),
-                          file: e.target.files?.[0],
-                        },
-                      }))
-                    }
-                    className="text-xs text-foreground/70 file:mr-3 file:rounded-full file:border-0 file:bg-secondary/20 file:px-4 file:py-2 file:text-secondary"
-                  />
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    disabled={isUploading}
-                    onClick={() => handleUpload(klass._id)}
-                    className="w-full rounded-full bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-widest text-primary-foreground disabled:opacity-60"
-                  >
-                    Upload to class
-                  </motion.button>
                 </div>
-              </div>
+                <div
+                  className={`h-2 w-2 rounded-full ${
+                    klass.isLive ? "bg-green-500" : "bg-gray-400"
+                  }`}
+                />
+              </Link>
             ))}
           </div>
         </div>
-
-        <BlogStudio
-          filterByAuthorId={user?._id ?? user?.id}
-          title="Contribute to Heritage"
-        />
-      </div>
-    </section>
+      )}
+    </div>
   );
 }
 

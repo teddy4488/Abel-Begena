@@ -39,6 +39,15 @@ export class CreateProductDto {
   attributes?: Record<string, unknown>;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountPrice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  promoActive?: boolean;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }

@@ -10,6 +10,10 @@ export type Product = {
   stock: number;
   images?: string[];
   attributes?: Record<string, unknown>;
+  discountPrice?: number;
+  promoActive?: boolean;
+  isActive?: boolean;
+  createdAt?: string;
 };
 
 export type CartItemResponse = {
@@ -43,6 +47,10 @@ export const storeApi = createApi({
   endpoints: (builder) => ({
     getProducts: builder.query<Product[], void>({
       query: () => "/products",
+      providesTags: ["Products"],
+    }),
+    getManageProducts: builder.query<Product[], void>({
+      query: () => "/products/manage",
       providesTags: ["Products"],
     }),
     getProductById: builder.query<Product, string>({
@@ -141,6 +149,7 @@ export const storeApi = createApi({
 
 export const {
   useGetProductsQuery,
+  useGetManageProductsQuery,
   useGetProductByIdQuery,
   useAddToCartMutation,
   useGetCartQuery,

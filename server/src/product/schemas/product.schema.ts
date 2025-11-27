@@ -39,6 +39,12 @@ export class Product {
   @Prop({ type: Object, default: {} })
   attributes?: Record<string, unknown>;
 
+  @Prop({ min: 0 })
+  discountPrice?: number;
+
+  @Prop({ default: false })
+  promoActive: boolean;
+
   @Prop({ default: true })
   isActive: boolean;
 }

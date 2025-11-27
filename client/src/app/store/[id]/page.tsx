@@ -63,6 +63,10 @@ export default function ProductDetailPage() {
     );
   }
 
+  const onPromo =
+    data.promoActive && typeof data.discountPrice === "number";
+  const displayPrice = onPromo ? data.discountPrice! : data.price;
+
   return (
     <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
       <div className="mx-auto flex max-w-5xl flex-col gap-10 lg:flex-row">
@@ -101,12 +105,22 @@ export default function ProductDetailPage() {
             <p className="text-sm text-foreground/70">{data.shortDescription}</p>
           </div>
 
-          <p className="text-3xl font-semibold text-foreground">
-            {data.price.toLocaleString("en-US", {
-              style: "currency",
-              currency: "USD",
-            })}
-          </p>
+          <div className="text-3xl font-semibold text-secondary">
+            {onPromo && (
+              <span className="mr-3 text-lg text-foreground/50 line-through">
+                {data.price.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })}
+              </span>
+            )}
+            <span>
+              {displayPrice.toLocaleString("en-US", {
+                style: "currency",
+                currency: "USD",
+              })}
+            </span>
+          </div>
 
           <div className="flex items-center gap-4">
             <span className="text-sm text-foreground/70">Quantity</span>

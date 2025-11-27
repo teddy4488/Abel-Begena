@@ -294,12 +294,26 @@ export default function Navbar() {
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+                className="inline-flex items-center gap-3 rounded-full border border-secondary px-4 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
                 onClick={() => setUserMenuOpen((prev) => !prev)}
               >
-                {user?.firstName ||
-                  user?.email ||
-                  t("nav.profile", "My Account")}
+                {user?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.avatarUrl}
+                    alt={user?.email ?? "avatar"}
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary/10 text-[11px] uppercase text-secondary">
+                    {(user?.firstName?.[0] ?? user?.email?.[0] ?? "").toUpperCase()}
+                  </span>
+                )}
+                <span>
+                  {user?.firstName ||
+                    user?.email ||
+                    t("nav.profile", "My Account")}
+                </span>
                 <ChevronDown className="h-4 w-4" />
               </button>
               {userMenuOpen && renderUserMenu()}
@@ -360,9 +374,25 @@ export default function Navbar() {
             ) : (
               <details className="group w-full">
                 <summary className="flex cursor-pointer items-center justify-between rounded-full border border-secondary px-4 py-2 text-secondary">
-                  {user?.firstName ||
-                    user?.email ||
-                    t("nav.profile", "My Account")}
+                  <span className="flex items-center gap-2">
+                    {user?.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={user.avatarUrl}
+                        alt={user?.email ?? "avatar"}
+                        className="h-6 w-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary/10 text-[11px] uppercase text-secondary">
+                        {(user?.firstName?.[0] ?? user?.email?.[0] ?? "").toUpperCase()}
+                      </span>
+                    )}
+                    <span>
+                      {user?.firstName ||
+                        user?.email ||
+                        t("nav.profile", "My Account")}
+                    </span>
+                  </span>
                   <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
                 </summary>
                 <div className="mt-2 space-y-1 rounded-2xl border border-border bg-background/80 p-3 text-sm normal-case">

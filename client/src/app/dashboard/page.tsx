@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 type ClassSummary = {
   _id: string;
@@ -27,10 +28,12 @@ export default function DashboardPage() {
   const [classes, setClasses] = useState<ClassAccess[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [materialsOpen, setMaterialsOpen] = useState<string | null>(null);
   const apiBase = useMemo(
     () => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
     [],
   );
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!isLoggedIn) {

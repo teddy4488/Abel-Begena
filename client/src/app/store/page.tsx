@@ -37,6 +37,15 @@ export default function StorePage() {
   const heroTranslate = useTransform(scrollYProgress, [0, 0.2], [0, -60]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0.4]);
 
+  const resolvePrice = (product: {
+    promoActive?: boolean;
+    discountPrice?: number;
+    price: number;
+  }) =>
+    product.promoActive && typeof product.discountPrice === "number"
+      ? product.discountPrice
+      : product.price;
+
   const filteredProducts = useMemo(() => {
     if (!data) {
       return [];
@@ -55,10 +64,10 @@ export default function StorePage() {
       })
       .sort((a, b) => {
         if (sortOrder === "priceAsc") {
-          return a.price - b.price;
+          return resolvePrice(a) - resolvePrice(b);
         }
         if (sortOrder === "priceDesc") {
-          return b.price - a.price;
+          return resolvePrice(b) - resolvePrice(a);
         }
         return (
           new Date(b.createdAt ?? "").getTime() -
@@ -166,19 +175,28 @@ export default function StorePage() {
         )}
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.map((product) => (
-            <motion.div
-              key={product._id}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="group flex flex-col rounded-3xl border border-border bg-surface p-5 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
-            >
-              <Link
-                href={`/store/${product._id}`}
-                className="relative block aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-background/80"
+          {filteredProducts.map((product) => {
+            const onPromo =
+              product.promoActive && typeof product.discountPrice === "number";
+            const displayPrice = resolvePrice(product);
+            return (
+              <motion.div
+                key={product._id}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="group flex flex-col rounded-3xl border border-border bg-surface p-5 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
               >
+                <Link
+                  href={`/store/${product._id}`}
+                  className="relative block aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-background/80"
+                >
+                {onPromo && (
+                  <span className="absolute left-3 top-3 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-primary-foreground shadow">
+                    Promo
+                  </span>
+                )}
                 {product.images?.length ? (
                   <motion.div
                     className="h-full w-full bg-cover bg-center"
@@ -206,12 +224,22 @@ export default function StorePage() {
                     {product.shortDescription || "Awaiting description."}
                   </p>
                 </div>
-                <p className="text-lg font-semibold text-foreground">
-                  {product.price.toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  })}
-                </p>
+                <div className="text-lg font-semibold text-foreground">
+                  {onPromo && (
+                    <span className="mr-2 text-sm text-foreground/50 line-through">
+                      {product.price.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      })}
+                    </span>
+                  )}
+                  <span className="text-secondary">
+                    {displayPrice.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    })}
+                  </span>
+                </div>
                 <motion.button
                   onClick={() => handleAddToCart(product._id)}
                   disabled={pendingProductId === product._id}
@@ -221,8 +249,9 @@ export default function StorePage() {
                   {pendingProductId === product._id ? "Adding..." : "Add to Cart"}
                 </motion.button>
               </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
 
         {!isLoading && !error && filteredProducts.length === 0 && (

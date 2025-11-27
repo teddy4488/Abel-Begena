@@ -6,8 +6,9 @@ import Navbar from "./Navbar";
 export function NavbarGate() {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith("/admin");
+  const isTeacherRoute = pathname?.startsWith("/teacher");
 
-  if (isAdminRoute) {
+  if (isAdminRoute || isTeacherRoute) {
     return null;
   }
 

@@ -16,10 +16,41 @@ export type ClassSummary = {
   instructorId?: string;
 };
 
+export type ClassRosterResponse = {
+  classId: string;
+  title: string;
+  students: Array<{
+    _id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email: string;
+    avatarUrl?: string | null;
+    enrolledAt?: string;
+    status: "active" | "pending" | "withdrawn";
+  }>;
+};
+
+export type ClassScheduleItem = {
+  _id: string;
+  title: string;
+  startTime: string | null;
+  endTime: string | null;
+  location?: string | null;
+  notes?: string | null;
+};
+
+type SchedulePayload = {
+  title: string;
+  startTime: string;
+  endTime?: string;
+  location?: string;
+  notes?: string;
+};
+
 export const classApi = createApi({
   reducerPath: "classApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["Classes"],
+  tagTypes: ["Classes", "ClassRoster", "ClassSchedule"],
   endpoints: (builder) => ({
     getPublicClasses: builder.query<ClassSummary[], void>({
       query: () => "/classes/public",
@@ -30,6 +61,14 @@ export const classApi = createApi({
     }),
     getClassAccess: builder.query<ClassAccess, string>({
       query: (id) => `/classes/${id}/access`,
+    }),
+    getClassStudents: builder.query<ClassRosterResponse, string>({
+      query: (id) => `/classes/${id}/students`,
+      providesTags: (_result, _error, id) => [{ type: "ClassRoster", id }],
+    }),
+    getClassSchedule: builder.query<ClassScheduleItem[], string>({
+      query: (id) => `/classes/${id}/schedule`,
+      providesTags: (_result, _error, id) => [{ type: "ClassSchedule", id }],
     }),
     uploadMaterial: builder.mutation<
       { message: string; materials: ClassAccess["materials"] },
@@ -58,6 +97,44 @@ export const classApi = createApi({
       }),
       invalidatesTags: ["Classes"],
     }),
+    createScheduleItem: builder.mutation<
+      ClassScheduleItem[],
+      { classId: string; payload: SchedulePayload }
+    >({
+      query: ({ classId, payload }) => ({
+        url: `/classes/${classId}/schedule`,
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: (_result, _error, { classId }) => [
+        { type: "ClassSchedule", id: classId },
+      ],
+    }),
+    updateScheduleItem: builder.mutation<
+      ClassScheduleItem[],
+      { classId: string; sessionId: string; payload: Partial<SchedulePayload> }
+    >({
+      query: ({ classId, sessionId, payload }) => ({
+        url: `/classes/${classId}/schedule/${sessionId}`,
+        method: "PATCH",
+        body: payload,
+      }),
+      invalidatesTags: (_result, _error, { classId }) => [
+        { type: "ClassSchedule", id: classId },
+      ],
+    }),
+    deleteScheduleItem: builder.mutation<
+      ClassScheduleItem[],
+      { classId: string; sessionId: string }
+    >({
+      query: ({ classId, sessionId }) => ({
+        url: `/classes/${classId}/schedule/${sessionId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { classId }) => [
+        { type: "ClassSchedule", id: classId },
+      ],
+    }),
   }),
 });
 
@@ -65,7 +142,12 @@ export const {
   useGetPublicClassesQuery,
   useGetClassesQuery,
   useGetClassAccessQuery,
+  useGetClassStudentsQuery,
+  useGetClassScheduleQuery,
   useUploadMaterialMutation,
   useUpdateLiveStateMutation,
+  useCreateScheduleItemMutation,
+  useUpdateScheduleItemMutation,
+  useDeleteScheduleItemMutation,
 } = classApi;
 

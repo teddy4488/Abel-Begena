@@ -28,6 +28,13 @@ export class ProductController {
     return this.productService.findAll();
   }
 
+  @Get('manage')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  findAllManaged() {
+    return this.productService.findAll(true);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const product = await this.productService.findById(id);

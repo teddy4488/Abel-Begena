@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from './schemas/product.schema';
@@ -27,26 +31,68 @@ export class ProductService {
   }
 
   async create(createProductDto: CreateProductDto) {
+    this.validatePricing(
+      createProductDto.price,
+      createProductDto.discountPrice,
+      createProductDto.promoActive ?? false,
+    );
+
     const product = await this.productModel.create({
       ...createProductDto,
       images: createProductDto.images ?? [],
       attributes: createProductDto.attributes ?? {},
+      promoActive: createProductDto.promoActive ?? false,
       isActive: createProductDto.isActive ?? true,
     });
     return product.toObject();
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
-    const product = await this.productModel
-      .findByIdAndUpdate(id, updateProductDto, { new: true })
-      .lean()
-      .exec();
-
+    const product = await this.productModel.findById(id).exec();
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
-    return product;
+    if (typeof updateProductDto.name !== 'undefined') {
+      product.name = updateProductDto.name;
+    }
+    if (typeof updateProductDto.instrumentType !== 'undefined') {
+      product.instrumentType = updateProductDto.instrumentType;
+    }
+    if (typeof updateProductDto.shortDescription !== 'undefined') {
+      product.shortDescription = updateProductDto.shortDescription;
+    }
+    if (typeof updateProductDto.price === 'number') {
+      product.price = updateProductDto.price;
+    }
+    if (typeof updateProductDto.stock === 'number') {
+      product.stock = updateProductDto.stock;
+    }
+    if (Array.isArray(updateProductDto.images)) {
+      product.images = updateProductDto.images;
+    }
+    if (typeof updateProductDto.attributes !== 'undefined') {
+      product.attributes = updateProductDto.attributes ?? {};
+    }
+    if (typeof updateProductDto.isActive === 'boolean') {
+      product.isActive = updateProductDto.isActive;
+    }
+    if ('discountPrice' in updateProductDto) {
+      product.discountPrice = updateProductDto.discountPrice;
+    }
+    if (typeof updateProductDto.promoActive === 'boolean') {
+      product.promoActive = updateProductDto.promoActive;
+    }
+
+    this.validatePricing(
+      product.price,
+      product.discountPrice,
+      product.promoActive ?? false,
+    );
+
+    await product.save();
+
+    return product.toObject();
   }
 
   async addImage(id: string, file: Express.Multer.File) {
@@ -77,12 +123,33 @@ export class ProductService {
     }
 
     if (product.stock < quantity) {
-      throw new NotFoundException('Insufficient stock');
+      throw new BadRequestException('Insufficient stock');
     }
 
     product.stock -= quantity;
     await product.save();
 
     return product.toObject();
+  }
+
+  private validatePricing(
+    price: number,
+    discountPrice?: number,
+    promoActive = false,
+  ) {
+    if (promoActive && (discountPrice === null || discountPrice === undefined)) {
+      throw new BadRequestException(
+        'discountPrice is required while promoActive is true',
+      );
+    }
+
+    if (
+      typeof discountPrice === 'number' &&
+      discountPrice >= price
+    ) {
+      throw new BadRequestException(
+        'discountPrice must be lower than the base price',
+      );
+    }
   }
 }

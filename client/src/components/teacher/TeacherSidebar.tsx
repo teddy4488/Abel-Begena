@@ -6,12 +6,11 @@ import { clsx } from "clsx";
 import Image from "next/image";
 import {
   LayoutDashboard,
-  BarChart3,
+  FileText,
+  Upload,
   Users,
-  GraduationCap,
-  Package2,
-  Receipt,
-  Type,
+  Calendar,
+  Video,
   LogOut,
   User,
 } from "lucide-react";
@@ -23,16 +22,15 @@ import { LanguageToggle } from "@/components/layout/LanguageToggle";
 import { useI18n } from "@/components/providers/I18nProvider";
 
 const links = [
-  { href: "/admin/console", label: "Console", icon: LayoutDashboard },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/classes", label: "Classes", icon: GraduationCap },
-  { href: "/admin/store", label: "Store", icon: Package2 },
-  { href: "/admin/orders", label: "Orders", icon: Receipt },
-  { href: "/admin/cms", label: "Content", icon: Type },
+  { href: "/teacher", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/teacher/posts", label: "Posts", icon: FileText },
+  { href: "/teacher/materials", label: "Materials", icon: Upload },
+  { href: "/teacher/students", label: "Students", icon: Users },
+  { href: "/teacher/schedule", label: "Schedule", icon: Calendar },
+  { href: "/teacher/live", label: "Live Classes", icon: Video },
 ];
 
-export function AdminSidebar() {
+export function TeacherSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
@@ -75,7 +73,7 @@ export function AdminSidebar() {
             <p className="text-xs uppercase tracking-[0.4em] text-secondary">
               Abel Begena
             </p>
-            <p className="text-xl font-serif text-primary">Admin Console</p>
+            <p className="text-xl font-serif text-primary">Teacher Studio</p>
           </div>
         </div>
         <Link
@@ -99,7 +97,7 @@ export function AdminSidebar() {
               {user?.firstName} {user?.lastName}
             </p>
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/80">
-              Super Admin
+              Instructor
             </p>
           </div>
         </Link>
@@ -107,7 +105,7 @@ export function AdminSidebar() {
       <nav className="flex flex-1 flex-col gap-1">
         {links.map((link) => {
           const Icon = link.icon;
-          const active = pathname?.startsWith(link.href);
+          const active = pathname === link.href || (link.href !== "/teacher" && pathname?.startsWith(link.href));
           return (
             <Link
               key={link.href}
