@@ -13,6 +13,11 @@ type ClassSummary = {
   _id: string;
   title: string;
   isLive?: boolean;
+  myEnrollment?: {
+    status: "active" | "pending" | "withdrawn";
+    paymentReference?: string | null;
+    note?: string | null;
+  } | null;
 };
 
 type ClassAccess = {
@@ -22,11 +27,15 @@ type ClassAccess = {
   isLive: boolean;
 };
 
+type DashboardClass = ClassAccess & {
+  enrollment?: ClassSummary["myEnrollment"];
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { pushToast } = useToast();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
-  const [classes, setClasses] = useState<ClassAccess[]>([]);
+  const [classes, setClasses] = useState<DashboardClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const apiBase = useMemo(
@@ -68,7 +77,11 @@ export default function DashboardPage() {
             if (!accessResponse.ok) {
               throw new Error("Unable to load class access data");
             }
-            return accessResponse.json() as Promise<ClassAccess>;
+            const payload = (await accessResponse.json()) as ClassAccess;
+            return {
+              ...payload,
+              enrollment: classItem.myEnrollment ?? null,
+            };
           }),
         );
         setClasses(accessPayloads);
@@ -94,6 +107,26 @@ export default function DashboardPage() {
   if (!isLoggedIn) {
     return null;
   }
+
+  const hasPendingEnrollment = classes.some(
+    (klass) => klass.enrollment?.status === "pending",
+  );
+
+  const renderStatusChip = (status?: string | null) => {
+    if (!status) return null;
+    const palette: Record<string, string> = {
+      active: "bg-emerald-500/15 text-emerald-500",
+      pending: "bg-amber-500/15 text-amber-600",
+      withdrawn: "bg-rose-500/15 text-rose-500",
+    };
+    return (
+      <span
+        className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${palette[status] ?? "bg-secondary/20 text-secondary"}`}
+      >
+        {t(`classes.status.${status}`, status)}
+      </span>
+    );
+  };
 
   return (
     <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
@@ -136,6 +169,15 @@ export default function DashboardPage() {
             </div>
           </div>
         </header>
+
+        {hasPendingEnrollment && (
+          <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-800">
+            {t(
+              "dashboard.pendingNotice",
+              "One or more enrollments are awaiting review. Access will unlock as soon as the admin verifies your payment.",
+            )}
+          </div>
+        )}
 
         {isLoading && (
           <p className="text-sm text-foreground/70">
@@ -181,6 +223,12 @@ export default function DashboardPage() {
                   "Browse our offerings to begin your musical journey.",
                 )}
               </p>
+              <Link
+                href="/classes"
+                className="mt-4 inline-flex items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:bg-(--color-secondary-soft)"
+              >
+                {t("dashboard.empty.cta", "Browse classes")}
+              </Link>
             </div>
           )}
 
@@ -191,13 +239,27 @@ export default function DashboardPage() {
                 className="rounded-3xl border border-border bg-background/70 p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                      {t("dashboard.card.label", "Active Class")}
-                    </p>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {renderStatusChip(classAccess.enrollment?.status ?? null)}
+                      {!classAccess.isLive && (
+                        <span className="text-xs font-medium uppercase tracking-wide text-foreground/60">
+                          {t("dashboard.card.offline", "Live session offline")}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-2xl font-serif text-primary">
                       {classAccess.class.title}
                     </h3>
+                    {classAccess.enrollment?.paymentReference && (
+                      <p className="text-xs text-foreground/60">
+                        {t(
+                          "dashboard.enrollment.reference",
+                          "Payment ref:",
+                        )}{" "}
+                        {classAccess.enrollment.paymentReference}
+                      </p>
+                    )}
                   </div>
                   {classAccess.isLive && classAccess.liveLink ? (
                     <Link
@@ -206,11 +268,7 @@ export default function DashboardPage() {
                     >
                       {t("dashboard.card.join", "Join Live Class")}
                     </Link>
-                  ) : (
-                    <span className="text-sm font-medium text-foreground/70">
-                      {t("dashboard.card.offline", "Live session offline")}
-                    </span>
-                  )}
+                  ) : null}
                 </div>
                 <div className="mt-6 space-y-3">
                   <p className="text-sm font-semibold uppercase tracking-wide text-secondary">

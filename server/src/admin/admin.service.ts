@@ -14,6 +14,13 @@ type MonthlyValue = {
   total: number;
 };
 
+type MonthlyAggregate = {
+  _id: { year: number; month: number };
+  total: number;
+};
+
+type StatusAggregate = { _id: OrderStatus; total: number };
+
 type AnalyticsOverview = {
   revenue: {
     total: number;
@@ -49,8 +56,18 @@ export class AdminService {
     const now = new Date();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-    const [revenueAgg, userAgg, statusAgg, counts] = await Promise.all([
-      this.orderModel.aggregate([
+    const [
+      revenueAgg,
+      userAgg,
+      statusAgg,
+      totalRevenueAgg,
+      totalUsers,
+      activeUsers,
+      totalOrders,
+      totalClasses,
+      liveClasses,
+    ] = await Promise.all([
+      this.orderModel.aggregate<MonthlyAggregate>([
         {
           $match: {
             createdAt: { $gte: sixMonthsAgo },
@@ -67,7 +84,7 @@ export class AdminService {
         },
         { $sort: { '_id.year': 1, '_id.month': 1 } },
       ]),
-      this.userModel.aggregate([
+      this.userModel.aggregate<MonthlyAggregate>([
         {
           $match: {
             createdAt: { $gte: sixMonthsAgo },
@@ -84,7 +101,7 @@ export class AdminService {
         },
         { $sort: { '_id.year': 1, '_id.month': 1 } },
       ]),
-      this.orderModel.aggregate([
+      this.orderModel.aggregate<StatusAggregate>([
         {
           $group: {
             _id: '$status',
@@ -92,26 +109,15 @@ export class AdminService {
           },
         },
       ]),
-      Promise.all([
-        this.orderModel.aggregate([
-          { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-        ]),
-        this.userModel.countDocuments(),
-        this.userModel.countDocuments({ isActive: true }),
-        this.orderModel.countDocuments(),
-        this.classModel.countDocuments(),
-        this.classModel.countDocuments({ isLive: true }),
+      this.orderModel.aggregate<{ total: number }>([
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
       ]),
+      this.userModel.countDocuments(),
+      this.userModel.countDocuments({ isActive: true }),
+      this.orderModel.countDocuments(),
+      this.classModel.countDocuments(),
+      this.classModel.countDocuments({ isLive: true }),
     ]);
-
-    const [
-      totalRevenueAgg,
-      totalUsers,
-      activeUsers,
-      totalOrders,
-      totalClasses,
-      liveClasses,
-    ] = counts;
 
     const totalRevenue =
       totalRevenueAgg.length > 0 ? totalRevenueAgg[0].total : 0;
@@ -149,7 +155,7 @@ export class AdminService {
   }
 
   private fillMonthlySeries(
-    data: { _id: { year: number; month: number }; total: number }[],
+    data: MonthlyAggregate[],
     startDate: Date,
   ): MonthlyValue[] {
     const series: MonthlyValue[] = [];

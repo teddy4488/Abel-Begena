@@ -32,6 +32,7 @@ const navConfig: Record<
     links: [
       { labelKey: "nav.home", href: "/" },
       { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.classes", href: "/classes" },
       { labelKey: "nav.about", href: "#about" },
       { labelKey: "nav.contact", href: "#contact" },
     ],
@@ -40,7 +41,7 @@ const navConfig: Record<
   User: {
     links: [
       { labelKey: "nav.dashboard", href: "/dashboard" },
-      { labelKey: "nav.classes", href: "/dashboard#classes" },
+      { labelKey: "nav.classes", href: "/classes" },
       { labelKey: "nav.heritage", href: "/heritage" },
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.orders", href: "/account/orders" },
@@ -72,6 +73,7 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
   User: [
     { labelKey: "nav.profile", href: "/profile" },
     { labelKey: "nav.dashboard", href: "/dashboard" },
+    { labelKey: "nav.classes", href: "/classes" },
     { labelKey: "nav.orders", href: "/account/orders" },
     { labelKey: "nav.store", href: "/store" },
   ],

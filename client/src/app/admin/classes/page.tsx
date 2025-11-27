@@ -18,6 +18,9 @@ const emptyForm = {
   startDate: "",
   endDate: "",
   capacity: "",
+  tuition: "",
+  currency: "ETB",
+  enrollmentDeadline: "",
 };
 
 export default function AdminClassesPage() {
@@ -43,6 +46,9 @@ export default function AdminClassesPage() {
     if (form.capacity && Number(form.capacity) < 0) {
       next.capacity = "Capacity must be zero or higher.";
     }
+    if (form.tuition && Number(form.tuition) < 0) {
+      next.tuition = "Tuition must be zero or higher.";
+    }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -59,6 +65,9 @@ export default function AdminClassesPage() {
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
       capacity: form.capacity ? Number(form.capacity) : undefined,
+      tuition: form.tuition ? Number(form.tuition) : undefined,
+      currency: form.currency || undefined,
+      enrollmentDeadline: form.enrollmentDeadline || undefined,
     };
     try {
       if (editingId) {
@@ -91,6 +100,11 @@ export default function AdminClassesPage() {
       startDate: klass.startDate ? klass.startDate.slice(0, 10) : "",
       endDate: klass.endDate ? klass.endDate.slice(0, 10) : "",
       capacity: (klass.capacity ?? "").toString(),
+      tuition: (klass.tuition ?? "").toString(),
+      currency: klass.currency ?? "ETB",
+      enrollmentDeadline: klass.enrollmentDeadline
+        ? klass.enrollmentDeadline.slice(0, 10)
+        : "",
     });
   };
 
@@ -201,6 +215,17 @@ export default function AdminClassesPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
               className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm"
             />
+            <input
+              type="date"
+              value={form.enrollmentDeadline}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, enrollmentDeadline: e.target.value }))
+              }
+              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm"
+              placeholder="Enrollment deadline"
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
             <div>
               <input
                 type="number"
@@ -216,6 +241,30 @@ export default function AdminClassesPage() {
                 <p className="mt-1 text-xs text-red-500">{fieldErrors.capacity}</p>
               )}
             </div>
+            <div>
+              <input
+                type="number"
+                min={0}
+                value={form.tuition}
+                onChange={(e) => setForm((prev) => ({ ...prev, tuition: e.target.value }))}
+                placeholder="Tuition"
+                className={`w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm ${
+                  fieldErrors.tuition ? "border-red-400" : ""
+                }`}
+              />
+              {fieldErrors.tuition && (
+                <p className="mt-1 text-xs text-red-500">{fieldErrors.tuition}</p>
+              )}
+            </div>
+            <select
+              value={form.currency}
+              onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))}
+              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm"
+            >
+              <option value="ETB">ETB</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
           </div>
           <button
             type="submit"
@@ -278,6 +327,18 @@ export default function AdminClassesPage() {
                       : "TBD"}
                   </span>
                   <span>Capacity: {klass.capacity ?? "∞"}</span>
+                  <span>
+                    Tuition:{" "}
+                    {klass.tuition
+                      ? `${klass.tuition.toLocaleString()} ${klass.currency ?? "ETB"}`
+                      : "Free"}
+                  </span>
+                  <span>
+                    Enrollment deadline:{" "}
+                    {klass.enrollmentDeadline
+                      ? new Date(klass.enrollmentDeadline).toLocaleDateString()
+                      : "Rolling"}
+                  </span>
                 </div>
                 <select
                   value={klass.instructorId?._id ?? ""}

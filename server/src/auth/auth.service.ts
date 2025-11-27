@@ -49,8 +49,8 @@ export class AuthService {
         'User',
     };
     const accessToken = this.jwtService.sign(payload);
-    const decoded = this.jwtService.decode(accessToken);
-    const expiresAt = decoded?.exp
+    const decoded: unknown = this.jwtService.decode(accessToken);
+    const expiresAt = this.hasExpiry(decoded)
       ? new Date(decoded.exp * 1000).toISOString()
       : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
     return {
@@ -67,5 +67,14 @@ export class AuthService {
   private extractPlainUser(user: Record<string, unknown>) {
     const maybeDoc = user as { toObject?: () => Record<string, unknown> };
     return typeof maybeDoc.toObject === 'function' ? maybeDoc.toObject() : user;
+  }
+
+  private hasExpiry(decoded: unknown): decoded is { exp: number } {
+    return (
+      decoded !== null &&
+      typeof decoded === 'object' &&
+      'exp' in decoded &&
+      typeof (decoded as { exp?: unknown }).exp === 'number'
+    );
   }
 }

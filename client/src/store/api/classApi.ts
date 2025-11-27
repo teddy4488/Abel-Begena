@@ -8,12 +8,31 @@ type ClassAccess = {
   isLive: boolean;
 };
 
+export type EnrollmentSnapshot = {
+  status: "active" | "pending" | "withdrawn";
+  amountPaid?: number | null;
+  paymentMethod?: string | null;
+  paymentReference?: string | null;
+  currency?: string | null;
+  note?: string | null;
+  enrolledAt?: string | null;
+  classId?: string | null;
+  classTitle?: string | null;
+};
+
 export type ClassSummary = {
   _id: string;
   title: string;
   isLive?: boolean;
   createdAt?: string;
-  instructorId?: string;
+  instructorId?: string | null;
+  description?: string | null;
+  tuition?: number | null;
+  currency?: string | null;
+  enrollmentDeadline?: string | null;
+  capacity?: number | null;
+  enrollmentCount?: number;
+  myEnrollment?: EnrollmentSnapshot | null;
 };
 
 export type ClassRosterResponse = {
@@ -27,6 +46,11 @@ export type ClassRosterResponse = {
     avatarUrl?: string | null;
     enrolledAt?: string;
     status: "active" | "pending" | "withdrawn";
+    amountPaid?: number | null;
+    currency?: string | null;
+    paymentMethod?: string | null;
+    paymentReference?: string | null;
+    note?: string | null;
   }>;
 };
 
@@ -47,10 +71,18 @@ type SchedulePayload = {
   notes?: string;
 };
 
+type EnrollmentRequest = {
+  amount: number;
+  currency?: string;
+  paymentMethod: string;
+  paymentReference: string;
+  note?: string;
+};
+
 export const classApi = createApi({
   reducerPath: "classApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["Classes", "ClassRoster", "ClassSchedule"],
+  tagTypes: ["Classes", "ClassRoster", "ClassSchedule", "ClassEnrollment"],
   endpoints: (builder) => ({
     getPublicClasses: builder.query<ClassSummary[], void>({
       query: () => "/classes/public",
@@ -135,6 +167,47 @@ export const classApi = createApi({
         { type: "ClassSchedule", id: classId },
       ],
     }),
+    enrollInClass: builder.mutation<
+      { message: string; enrollment: EnrollmentSnapshot },
+      { classId: string; payload: EnrollmentRequest }
+    >({
+      query: ({ classId, payload }) => ({
+        url: `/classes/${classId}/enroll`,
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: ["Classes", "ClassEnrollment"],
+    }),
+    getEnrollmentStatus: builder.query<EnrollmentSnapshot, string>({
+      query: (classId) => `/classes/${classId}/enrollment`,
+      providesTags: (_result, _error, classId) => [
+        { type: "ClassEnrollment", id: classId },
+      ],
+    }),
+    getMyEnrollments: builder.query<EnrollmentSnapshot[], void>({
+      query: () => "/classes/enrollments/me",
+      providesTags: ["ClassEnrollment"],
+    }),
+    updateEnrollmentStatus: builder.mutation<
+      { message: string; enrollment: EnrollmentSnapshot },
+      {
+        classId: string;
+        studentId: string;
+        status: "active" | "pending" | "withdrawn";
+        note?: string;
+      }
+    >({
+      query: ({ classId, studentId, ...body }) => ({
+        url: `/classes/${classId}/enrollments/${studentId}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { classId }) => [
+        { type: "ClassRoster", id: classId },
+        { type: "ClassEnrollment", id: classId },
+        "Classes",
+      ],
+    }),
   }),
 });
 
@@ -149,5 +222,9 @@ export const {
   useCreateScheduleItemMutation,
   useUpdateScheduleItemMutation,
   useDeleteScheduleItemMutation,
+  useEnrollInClassMutation,
+  useGetEnrollmentStatusQuery,
+  useGetMyEnrollmentsQuery,
+  useUpdateEnrollmentStatusMutation,
 } = classApi;
 

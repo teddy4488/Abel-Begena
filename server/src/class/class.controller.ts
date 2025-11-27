@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Request,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -15,7 +16,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ClassService } from './class.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { EnrolledGuard } from '../auth/guards/enrolled.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { ClassOwnerGuard } from '../auth/guards/class-owner.guard';
@@ -24,6 +24,9 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateScheduleItemDto } from './dto/create-schedule-item.dto';
 import { UpdateScheduleItemDto } from './dto/update-schedule-item.dto';
+import { EnrollClassDto } from './dto/enroll-class.dto';
+import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
+import { Request as ExpressRequest } from 'express';
 
 @Controller('classes')
 export class ClassController {
@@ -35,9 +38,11 @@ export class ClassController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, EnrolledGuard)
-  findAll() {
-    return this.classService.findAll();
+  @UseGuards(JwtAuthGuard)
+  findAll(
+    @Request() req: ExpressRequest & { user: { sub: string; role: string } },
+  ) {
+    return this.classService.findForUser(req.user);
   }
 
   @Get('manage')
@@ -79,9 +84,37 @@ export class ClassController {
   }
 
   @Get(':id/access')
-  @UseGuards(JwtAuthGuard, EnrolledGuard)
-  getAccess(@Param('id') id: string) {
-    return this.classService.getAccessPayload(id);
+  @UseGuards(JwtAuthGuard)
+  getAccess(
+    @Param('id') id: string,
+    @Request() req: ExpressRequest & { user: { sub: string; role: string } },
+  ) {
+    return this.classService.getAccessPayload(id, req.user);
+  }
+
+  @Post(':id/enroll')
+  @UseGuards(JwtAuthGuard)
+  enrollInClass(
+    @Param('id') id: string,
+    @Body() enrollClassDto: EnrollClassDto,
+    @Request() req: ExpressRequest & { user: { sub: string } },
+  ) {
+    return this.classService.enrollStudent(id, req.user.sub, enrollClassDto);
+  }
+
+  @Get(':id/enrollment')
+  @UseGuards(JwtAuthGuard)
+  getEnrollmentStatus(
+    @Param('id') id: string,
+    @Request() req: ExpressRequest & { user: { sub: string } },
+  ) {
+    return this.classService.getEnrollmentDetail(id, req.user.sub);
+  }
+
+  @Get('enrollments/me')
+  @UseGuards(JwtAuthGuard)
+  getMyEnrollments(@Request() req: ExpressRequest & { user: { sub: string } }) {
+    return this.classService.getStudentEnrollments(req.user.sub);
   }
 
   @Get(':id/students')
@@ -169,5 +202,22 @@ export class ClassController {
     @Body() updateLiveStateDto: UpdateLiveStateDto,
   ) {
     return this.classService.updateLiveState(id, updateLiveStateDto);
+  }
+
+  @Patch(':id/enrollments/:studentId')
+  @Roles('Teacher', 'Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard, ClassOwnerGuard)
+  updateEnrollmentStatus(
+    @Param('id') id: string,
+    @Param('studentId') studentId: string,
+    @Body() updateEnrollmentStatusDto: UpdateEnrollmentStatusDto,
+    @Request() req: ExpressRequest & { user: { sub: string } },
+  ) {
+    return this.classService.updateEnrollmentStatus(
+      id,
+      studentId,
+      updateEnrollmentStatusDto,
+      req.user.sub,
+    );
   }
 }

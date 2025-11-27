@@ -36,4 +36,18 @@ export class CreateClassDto {
   @IsNumber()
   @Min(0)
   capacity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  tuition?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(12)
+  currency?: string;
+
+  @IsOptional()
+  @IsDateString()
+  enrollmentDeadline?: string;
 }

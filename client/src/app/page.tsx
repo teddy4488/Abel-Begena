@@ -97,7 +97,7 @@ export default function Home() {
 
   const primaryCta =
     !isLoggedIn || role === undefined
-      ? { href: "#services", label: t("hero.cta.default") }
+      ? { href: "/classes", label: t("hero.cta.default") }
       : role === "Teacher"
         ? { href: "/teacher", label: t("hero.cta.teacher") }
         : role === "Admin"

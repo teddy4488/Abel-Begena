@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -9,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   Class,
   ClassDocument,
+  ClassEnrollment,
   ClassSession,
 } from './schemas/class.schema';
 import { UploadService } from '../upload/upload.service';
@@ -17,6 +20,13 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateScheduleItemDto } from './dto/create-schedule-item.dto';
 import { UpdateScheduleItemDto } from './dto/update-schedule-item.dto';
+import { EnrollClassDto, ClassPaymentMethod } from './dto/enroll-class.dto';
+import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
+
+type AuthenticatedUser = {
+  sub: string;
+  role?: string;
+};
 
 @Injectable()
 export class ClassService {
@@ -27,21 +37,57 @@ export class ClassService {
     private readonly uploadService: UploadService,
   ) {}
 
-  findAll() {
-    return this.classModel
-      .find()
-      .select('title isLive instructorId createdAt')
+  async findForUser(user: AuthenticatedUser) {
+    const userId = user.sub;
+    const role = user.role;
+
+    if (!userId) {
+      throw new UnauthorizedException('Missing user context');
+    }
+
+    if (role === 'Admin') {
+      const classes = await this.classModel
+        .find()
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+      return this.mapClassSummaries(classes, userId, true);
+    }
+
+    if (role === 'Teacher') {
+      const classes = await this.classModel
+        .find({ instructorId: new Types.ObjectId(userId) })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+      return this.mapClassSummaries(classes, userId, true);
+    }
+
+    const classes = await this.classModel
+      .find({
+        'enrollments.student': new Types.ObjectId(userId),
+        'enrollments.status': { $ne: 'withdrawn' },
+      })
+      .sort({ createdAt: -1 })
       .lean()
       .exec();
+    return this.mapClassSummaries(classes, userId, false);
   }
 
-  getManagedCatalog() {
-    return this.classModel
+  async getManagedCatalog() {
+    const classes = await this.classModel
       .find()
       .populate('instructorId', 'firstName lastName email avatarUrl')
       .sort({ createdAt: -1 })
       .lean()
       .exec();
+
+    return classes.map((klass) => ({
+      ...klass,
+      enrollmentCount: (klass.enrollments ?? []).filter(
+        (enrollment) => enrollment.status !== 'withdrawn',
+      ).length,
+    }));
   }
 
   async createClass(dto: CreateClassDto) {
@@ -64,6 +110,18 @@ export class ClassService {
 
     if (dto.endDate) {
       payload.endDate = new Date(dto.endDate);
+    }
+
+    if (typeof dto.tuition === 'number') {
+      payload.tuition = dto.tuition;
+    }
+
+    if (dto.currency) {
+      payload.currency = dto.currency.toUpperCase();
+    }
+
+    if (dto.enrollmentDeadline) {
+      payload.enrollmentDeadline = new Date(dto.enrollmentDeadline);
     }
 
     const created = await this.classModel.create(payload);
@@ -90,6 +148,18 @@ export class ClassService {
 
     if (dto.endDate) {
       update.endDate = new Date(dto.endDate);
+    }
+
+    if (typeof dto.tuition === 'number') {
+      update.tuition = dto.tuition;
+    }
+
+    if (typeof dto.currency === 'string') {
+      update.currency = dto.currency.toUpperCase();
+    }
+
+    if (dto.enrollmentDeadline) {
+      update.enrollmentDeadline = new Date(dto.enrollmentDeadline);
     }
 
     if (dto.instructorId) {
@@ -123,14 +193,49 @@ export class ClassService {
     return { message: 'Class removed' };
   }
 
-  getPublicCatalog(limit = 6) {
-    return this.classModel
+  async getPublicCatalog(limit = 6) {
+    const classes = await this.classModel
       .find()
       .sort({ createdAt: -1 })
       .limit(limit)
-      .select('title isLive createdAt')
+      .select(
+        'title description startDate endDate tuition currency capacity enrollmentDeadline enrollments instructorId createdAt',
+      )
+      .populate('instructorId', 'firstName lastName')
       .lean()
       .exec();
+
+    return classes.map((klass) => {
+      const enrollmentCount = (klass.enrollments ?? []).filter(
+        (enrollment) => enrollment.status !== 'withdrawn',
+      ).length;
+      const instructor = klass.instructorId as
+        | { firstName?: string; lastName?: string }
+        | undefined;
+      const instructorName = instructor
+        ? `${instructor.firstName ?? ''} ${instructor.lastName ?? ''}`.trim() ||
+          null
+        : null;
+      const enrollmentDeadline =
+        klass.enrollmentDeadline instanceof Date
+          ? klass.enrollmentDeadline.toISOString()
+          : null;
+      const createdAt =
+        klass.createdAt instanceof Date ? klass.createdAt.toISOString() : null;
+
+      return {
+        _id: klass._id?.toString(),
+        title: klass.title,
+        description: klass.description ?? null,
+        tuition: klass.tuition ?? 0,
+        currency: klass.currency ?? 'ETB',
+        capacity: klass.capacity ?? null,
+        enrollmentDeadline,
+        enrollmentCount,
+        instructorName,
+        createdAt,
+      };
+    });
   }
 
   findById(id: string) {
@@ -141,11 +246,26 @@ export class ClassService {
     return this.classModel.findById(id).exec();
   }
 
-  async getAccessPayload(id: string) {
+  async getAccessPayload(id: string, user: AuthenticatedUser) {
     const classEntity = await this.classModel.findById(id).lean().exec();
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
+    }
+
+    const userId = user.sub;
+    const isAdmin = user.role === 'Admin';
+    const isInstructor =
+      user.role === 'Teacher' &&
+      classEntity.instructorId?.toString() === userId;
+    const isEnrolled = (classEntity.enrollments ?? []).some(
+      (enrollment) =>
+        enrollment.student?.toString() === userId &&
+        enrollment.status === 'active',
+    );
+
+    if (!isAdmin && !isInstructor && !isEnrolled) {
+      throw new ForbiddenException('You are not enrolled in this class');
     }
 
     const baseUrl =
@@ -193,6 +313,90 @@ export class ClassService {
     return classEntity;
   }
 
+  async enrollStudent(classId: string, studentId: string, dto: EnrollClassDto) {
+    this.ensureValidClassId(classId);
+    const classEntity = await this.classModel.findById(classId).exec();
+
+    if (!classEntity) {
+      throw new NotFoundException('Class not found');
+    }
+
+    if (!Types.ObjectId.isValid(studentId)) {
+      throw new BadRequestException('Invalid student id');
+    }
+
+    if (
+      classEntity.enrollmentDeadline &&
+      classEntity.enrollmentDeadline.getTime() < Date.now()
+    ) {
+      throw new BadRequestException('Enrollment period has ended');
+    }
+
+    const activeCount = (classEntity.enrollments ?? []).filter(
+      (enrollment) => enrollment.status !== 'withdrawn',
+    ).length;
+
+    const studentObjectId = new Types.ObjectId(studentId);
+    classEntity.enrollments = classEntity.enrollments ?? [];
+    const existingIndex = classEntity.enrollments.findIndex(
+      (enrollment) => enrollment.student?.toString() === studentId,
+    );
+
+    if (
+      classEntity.capacity &&
+      activeCount >= classEntity.capacity &&
+      existingIndex === -1
+    ) {
+      throw new BadRequestException('This class has reached capacity');
+    }
+
+    if (
+      typeof classEntity.tuition === 'number' &&
+      classEntity.tuition > 0 &&
+      dto.amount < classEntity.tuition
+    ) {
+      throw new BadRequestException(
+        'Amount paid is less than the required tuition',
+      );
+    }
+
+    const currency =
+      dto.currency?.toUpperCase() ?? classEntity.currency ?? 'ETB';
+
+    const enrollmentPayload: ClassEnrollment = {
+      student: studentObjectId,
+      enrolledAt: new Date(),
+      status: 'active' as const,
+      amountPaid: dto.amount,
+      currency,
+      paymentMethod: dto.paymentMethod ?? ClassPaymentMethod.MANUAL,
+      paymentReference: dto.paymentReference,
+      note: dto.note,
+    };
+
+    if (existingIndex >= 0) {
+      classEntity.enrollments[existingIndex] = {
+        ...classEntity.enrollments[existingIndex],
+        ...enrollmentPayload,
+      };
+    } else {
+      classEntity.enrollments.push(enrollmentPayload);
+    }
+
+    classEntity.markModified('enrollments');
+    await classEntity.save();
+
+    const enrollment =
+      classEntity.enrollments[
+        existingIndex >= 0 ? existingIndex : classEntity.enrollments.length - 1
+      ];
+
+    return {
+      message: 'Enrollment recorded',
+      enrollment: this.mapEnrollmentResponse(enrollment, classEntity),
+    };
+  }
+
   async updateLiveState(id: string, dto: UpdateLiveStateDto) {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Class not found');
@@ -219,6 +423,115 @@ export class ClassService {
     }
 
     return updated;
+  }
+
+  async getEnrollmentDetail(classId: string, studentId: string) {
+    if (!Types.ObjectId.isValid(studentId)) {
+      throw new BadRequestException('Invalid student id');
+    }
+    const classEntity = await this.classModel.findById(classId).lean().exec();
+
+    if (!classEntity) {
+      throw new NotFoundException('Class not found');
+    }
+
+    const enrollment = (classEntity.enrollments ?? []).find(
+      (entry) => entry.student?.toString() === studentId,
+    );
+
+    if (!enrollment) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    return this.mapEnrollmentResponse(
+      enrollment,
+      classEntity as Class & { _id: Types.ObjectId },
+    );
+  }
+
+  async getStudentEnrollments(studentId: string) {
+    if (!Types.ObjectId.isValid(studentId)) {
+      throw new BadRequestException('Invalid student id');
+    }
+
+    const classes = await this.classModel
+      .find({
+        'enrollments.student': new Types.ObjectId(studentId),
+      })
+      .select(
+        'title enrollments startDate endDate tuition currency enrollmentDeadline',
+      )
+      .lean()
+      .exec();
+
+    return classes
+      .map((klass) => {
+        const enrollment = (klass.enrollments ?? []).find(
+          (entry) => entry.student?.toString() === studentId,
+        );
+        if (!enrollment) {
+          return null;
+        }
+        return {
+          ...this.mapEnrollmentResponse(
+            enrollment,
+            klass as Class & { _id: Types.ObjectId },
+          ),
+          startDate: klass.startDate ? klass.startDate.toISOString() : null,
+          endDate: klass.endDate ? klass.endDate.toISOString() : null,
+          enrollmentDeadline: klass.enrollmentDeadline
+            ? klass.enrollmentDeadline.toISOString()
+            : null,
+          tuition: klass.tuition ?? 0,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  }
+
+  async updateEnrollmentStatus(
+    classId: string,
+    studentId: string,
+    dto: UpdateEnrollmentStatusDto,
+    approverId: string,
+  ) {
+    this.ensureValidClassId(classId);
+    if (!Types.ObjectId.isValid(studentId)) {
+      throw new BadRequestException('Invalid student id');
+    }
+
+    const classEntity = await this.classModel.findById(classId).exec();
+
+    if (!classEntity) {
+      throw new NotFoundException('Class not found');
+    }
+
+    const targetIndex = (classEntity.enrollments ?? []).findIndex(
+      (enrollment) => enrollment.student?.toString() === studentId,
+    );
+
+    if (targetIndex === -1) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    classEntity.enrollments[targetIndex].status = dto.status;
+    if (typeof dto.note !== 'undefined') {
+      classEntity.enrollments[targetIndex].note = dto.note;
+    }
+    classEntity.enrollments[targetIndex].approvedBy = new Types.ObjectId(
+      approverId,
+    );
+    classEntity.enrollments[targetIndex].approvedAt = new Date();
+
+    classEntity.markModified('enrollments');
+    await classEntity.save();
+
+    return {
+      message: 'Enrollment status updated',
+      enrollment: this.mapEnrollmentResponse(
+        classEntity.enrollments[targetIndex],
+        classEntity,
+      ),
+    };
   }
 
   async assignInstructor(classId: string, instructorId: string) {
@@ -250,7 +563,7 @@ export class ClassService {
     this.ensureValidClassId(classId);
     const roster = await this.classModel
       .findById(classId)
-      .select('title enrollments')
+      .select('title enrollments currency')
       .populate('enrollments.student', 'firstName lastName email avatarUrl')
       .lean()
       .exec();
@@ -276,8 +589,15 @@ export class ClassService {
           lastName: student?.lastName ?? null,
           email: student?.email ?? '',
           avatarUrl: student?.avatarUrl ?? null,
-          enrolledAt: enrollment.enrolledAt,
+          enrolledAt: enrollment.enrolledAt
+            ? new Date(enrollment.enrolledAt).toISOString()
+            : null,
           status: enrollment.status,
+          amountPaid: enrollment.amountPaid ?? null,
+          currency: enrollment.currency ?? roster.currency ?? 'ETB',
+          paymentMethod: enrollment.paymentMethod ?? null,
+          paymentReference: enrollment.paymentReference ?? null,
+          note: enrollment.note ?? null,
         };
       });
 
@@ -321,7 +641,7 @@ export class ClassService {
     };
 
     classEntity.schedule = classEntity.schedule ?? [];
-    classEntity.schedule.push(newSession as any);
+    (classEntity.schedule as unknown as ClassSession[]).push(newSession);
     classEntity.markModified('schedule');
     await classEntity.save();
 
@@ -348,7 +668,14 @@ export class ClassService {
       throw new NotFoundException('Schedule entry not found');
     }
 
-    const targetSession = classEntity.schedule[targetIndex];
+    const existingSession = classEntity.schedule[targetIndex];
+
+    if (!existingSession) {
+      throw new NotFoundException('Schedule entry not found');
+    }
+
+    const targetSession: ClassSession =
+      existingSession as unknown as ClassSession;
 
     if (dto.title) {
       targetSession.title = dto.title;
@@ -370,7 +697,8 @@ export class ClassService {
       targetSession.notes = dto.notes;
     }
 
-    classEntity.schedule[targetIndex] = targetSession;
+    (classEntity.schedule as unknown as ClassSession[])[targetIndex] =
+      targetSession;
     classEntity.markModified('schedule');
     await classEntity.save();
 
@@ -393,11 +721,68 @@ export class ClassService {
       throw new NotFoundException('Schedule entry not found');
     }
 
-    classEntity.schedule = nextSchedule as any;
+    classEntity.schedule = nextSchedule;
     classEntity.markModified('schedule');
     await classEntity.save();
 
     return this.mapScheduleResponse(classEntity.schedule);
+  }
+
+  private mapClassSummaries(
+    classes: Array<Class & { _id: Types.ObjectId }>,
+    userId: string,
+    includeInstructor: boolean,
+  ) {
+    return classes.map((klass) => {
+      const enrollmentCount = (klass.enrollments ?? []).filter(
+        (enrollment) => enrollment.status !== 'withdrawn',
+      ).length;
+
+      const myEnrollment = (klass.enrollments ?? []).find(
+        (enrollment) => enrollment.student?.toString() === userId,
+      );
+
+      const instructorId =
+        klass.instructorId instanceof Types.ObjectId
+          ? klass.instructorId.toString()
+          : typeof klass.instructorId === 'string'
+            ? klass.instructorId
+            : null;
+      const createdAt =
+        klass.createdAt instanceof Date ? klass.createdAt.toISOString() : null;
+      const enrollmentDeadline =
+        klass.enrollmentDeadline instanceof Date
+          ? klass.enrollmentDeadline.toISOString()
+          : null;
+      const enrolledAt =
+        myEnrollment?.enrolledAt instanceof Date
+          ? myEnrollment.enrolledAt.toISOString()
+          : null;
+
+      return {
+        _id: klass._id.toString(),
+        title: klass.title,
+        isLive: klass.isLive ?? false,
+        createdAt,
+        instructorId: includeInstructor ? instructorId : null,
+        tuition: klass.tuition ?? 0,
+        currency: klass.currency ?? 'ETB',
+        enrollmentDeadline,
+        capacity: klass.capacity ?? null,
+        enrollmentCount,
+        myEnrollment: myEnrollment
+          ? {
+              status: myEnrollment.status,
+              amountPaid: myEnrollment.amountPaid ?? null,
+              paymentMethod: myEnrollment.paymentMethod ?? null,
+              paymentReference: myEnrollment.paymentReference ?? null,
+              currency: myEnrollment.currency ?? klass.currency ?? 'ETB',
+              note: myEnrollment.note ?? null,
+              enrolledAt,
+            }
+          : null,
+      };
+    });
   }
 
   private mapScheduleResponse(schedule: ClassSession[]) {
@@ -415,6 +800,38 @@ export class ClassService {
         const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
         return aTime - bTime;
       });
+  }
+
+  private mapEnrollmentResponse(
+    enrollment: {
+      status: 'active' | 'pending' | 'withdrawn';
+      amountPaid?: number;
+      paymentMethod?: string;
+      paymentReference?: string;
+      currency?: string;
+      note?: string;
+      enrolledAt?: Date | string | null;
+    },
+    classEntity?: (Class & { _id?: Types.ObjectId }) | null,
+  ) {
+    const enrolledAt =
+      enrollment.enrolledAt instanceof Date
+        ? enrollment.enrolledAt.toISOString()
+        : typeof enrollment.enrolledAt === 'string'
+          ? enrollment.enrolledAt
+          : null;
+
+    return {
+      status: enrollment.status,
+      amountPaid: enrollment.amountPaid ?? null,
+      paymentMethod: enrollment.paymentMethod ?? null,
+      paymentReference: enrollment.paymentReference ?? null,
+      currency: enrollment.currency ?? classEntity?.currency ?? 'ETB',
+      note: enrollment.note ?? null,
+      enrolledAt,
+      classId: classEntity?._id ? classEntity._id.toString() : undefined,
+      classTitle: classEntity?.title ?? null,
+    };
   }
 
   private ensureValidClassId(id: string) {

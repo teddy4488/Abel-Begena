@@ -17,6 +17,31 @@ export class ClassEnrollment {
     default: 'active',
   })
   status: 'active' | 'pending' | 'withdrawn';
+
+  @Prop({ type: Number, min: 0 })
+  amountPaid?: number;
+
+  @Prop({ trim: true, maxlength: 12 })
+  currency?: string;
+
+  @Prop({
+    trim: true,
+    maxlength: 40,
+    enum: ['Chapa', 'Telebirr', 'Stripe', 'BankTransfer', 'Manual', 'Other'],
+  })
+  paymentMethod?: string;
+
+  @Prop({ trim: true, maxlength: 120 })
+  paymentReference?: string;
+
+  @Prop({ trim: true, maxlength: 400 })
+  note?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  approvedBy?: Types.ObjectId;
+
+  @Prop()
+  approvedAt?: Date;
 }
 
 export const ClassEnrollmentSchema =
@@ -88,6 +113,21 @@ export class Class {
 
   @Prop({ type: [ClassSessionSchema], default: [] })
   schedule: ClassSession[];
+
+  @Prop({ min: 0 })
+  tuition?: number;
+
+  @Prop({ trim: true, maxlength: 12, default: 'ETB' })
+  currency?: string;
+
+  @Prop()
+  enrollmentDeadline?: Date;
+
+  @Prop()
+  createdAt: Date;
+
+  @Prop()
+  updatedAt: Date;
 }
 
 export const ClassSchema = SchemaFactory.createForClass(Class);
