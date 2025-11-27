@@ -6,6 +6,7 @@ import {
   useDeleteBlockMutation,
   useGetAllBlocksQuery,
   useUpdateBlockMutation,
+  type CmsBlock,
 } from "@/store/api/cmsApi";
 
 const emptyBlock = {
@@ -24,7 +25,7 @@ export default function AdminCmsPage() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBlock);
 
-  const startEdit = (block: any) => {
+  const startEdit = (block: CmsBlock) => {
     setEditingKey(block.key);
     setForm({
       key: block.key,

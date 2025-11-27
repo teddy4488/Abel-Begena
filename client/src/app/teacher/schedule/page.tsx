@@ -10,7 +10,7 @@ import {
   useUpdateScheduleItemMutation,
   type ClassScheduleItem,
 } from "@/store/api/classApi";
-import { Calendar, Clock, Pencil, Trash2 } from "lucide-react";
+import { Clock, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
 
 const formatDateInputValue = (iso?: string | null) => {

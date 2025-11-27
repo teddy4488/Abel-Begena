@@ -2,23 +2,45 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 const footerLinks = [
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
-  { label: "Contact", href: "#contact" },
+  {
+    labelKey: "footer.links.privacy",
+    fallback: "Privacy Policy",
+    href: "/privacy",
+  },
+  {
+    labelKey: "footer.links.terms",
+    fallback: "Terms of Service",
+    href: "/terms",
+  },
+  {
+    labelKey: "footer.links.contact",
+    fallback: "Contact",
+    href: "#contact",
+  },
 ];
 
 export default function Footer() {
   const pathname = usePathname();
+  const { t } = useI18n();
   const isConsoleRoute =
     pathname?.startsWith("/admin") || pathname?.startsWith("/teacher");
 
   if (isConsoleRoute) {
     return (
       <footer className="bg-[#1a0b12] text-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-center px-4 py-2 text-[10px] uppercase tracking-[0.4em] text-background/70">
-          Console Mode
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-1 px-4 py-3 text-center">
+          <p className="text-[10px] uppercase tracking-[0.4em] text-background/70">
+            {t("footer.console.reference", "Psalm 33:3")}
+          </p>
+          <p className="text-xs font-serif text-secondary">
+            {t(
+              "footer.console.text",
+              "“Sing to Him a new song; play skillfully with a shout of joy.”",
+            )}
+          </p>
         </div>
       </footer>
     );
@@ -28,25 +50,30 @@ export default function Footer() {
     <footer className="bg-[#1a0b12] text-background">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-12 text-center md:px-10">
         <p className="text-sm uppercase tracking-[0.3em] text-secondary">
-          Psalm 150:4
+          {t("footer.verse.reference", "Psalm 150:4")}
         </p>
         <blockquote className="text-2xl font-serif text-secondary">
-          “Praise Him with stringed
-          instruments and organs.”
+          {t(
+            "footer.verse.text",
+            "“Praise Him with stringed instruments and organs.”",
+          )}
         </blockquote>
         <div className="flex flex-wrap items-center justify-center gap-8 text-sm uppercase tracking-wide text-foreground opacity-80">
           {footerLinks.map((link) => (
             <Link
-              key={link.label}
+              key={link.labelKey}
               href={link.href}
               className="transition hover:text-secondary"
             >
-              {link.label}
+              {t(link.labelKey, link.fallback)}
             </Link>
           ))}
         </div>
         <p className="text-xs text-foreground opacity-70">
-          © 2025 Abel Begena. Preserving the Heritage of Saint Yared.
+          {t(
+            "footer.copyright",
+            "© 2025 Abel Begena. Preserving the Heritage of Saint Yared.",
+          )}
         </p>
       </div>
     </footer>

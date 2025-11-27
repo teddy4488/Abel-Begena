@@ -17,7 +17,7 @@ type UploadDraft = {
 
 export default function TeacherMaterialsPage() {
   const { user } = useAppSelector((state) => state.auth);
-  const { data: classes, isLoading } = useGetClassesQuery();
+  const { data: classes } = useGetClassesQuery();
   const [uploadMaterial, { isLoading: isUploading }] =
     useUploadMaterialMutation();
   const { pushToast } = useToast();

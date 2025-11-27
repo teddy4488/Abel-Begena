@@ -38,15 +38,26 @@ export default function ProfilePage() {
   }, [isLoggedIn, router]);
 
   useEffect(() => {
-    if (data) {
-      setForm({
-        firstName: data.firstName ?? "",
-        lastName: data.lastName ?? "",
-        phone: data.phone ?? "",
-        languagePreference: data.languagePreference ?? "en",
-        bio: data.bio ?? "",
-      });
+    if (!data) {
+      return;
     }
+    const frame =
+      typeof window !== "undefined"
+        ? window.requestAnimationFrame(() => {
+            setForm({
+              firstName: data.firstName ?? "",
+              lastName: data.lastName ?? "",
+              phone: data.phone ?? "",
+              languagePreference: data.languagePreference ?? "en",
+              bio: data.bio ?? "",
+            });
+          })
+        : null;
+    return () => {
+      if (frame !== null && typeof window !== "undefined") {
+        window.cancelAnimationFrame(frame);
+      }
+    };
   }, [data]);
 
   if (!isLoggedIn) {

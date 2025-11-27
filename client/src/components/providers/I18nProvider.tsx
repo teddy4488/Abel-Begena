@@ -49,7 +49,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (user.languagePreference === "en" || user.languagePreference === "am") {
-      setLocaleState(user.languagePreference);
+      const frame =
+        typeof window !== "undefined"
+          ? window.requestAnimationFrame(() => {
+              setLocaleState(user.languagePreference);
+            })
+          : null;
+      return () => {
+        if (frame !== null && typeof window !== "undefined") {
+          window.cancelAnimationFrame(frame);
+        }
+      };
     }
   }, [user?.languagePreference]);
 

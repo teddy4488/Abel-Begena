@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { getRoleLandingRoute } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,11 +23,8 @@ export default function LoginPage() {
     if (!isLoggedIn) {
       return;
     }
-    if (user?.role === "Admin") {
-      router.replace("/admin/console");
-    } else {
-      router.replace("/dashboard");
-    }
+    const destination = getRoleLandingRoute(user?.role);
+    router.replace(destination);
   }, [isLoggedIn, user?.role, router]);
 
   const validate = () => {

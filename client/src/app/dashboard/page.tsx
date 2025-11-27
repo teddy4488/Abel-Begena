@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { getRoleLandingRoute } from "@/lib/utils";
 
 type ClassSummary = {
   _id: string;
@@ -28,7 +29,6 @@ export default function DashboardPage() {
   const [classes, setClasses] = useState<ClassAccess[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [materialsOpen, setMaterialsOpen] = useState<string | null>(null);
   const apiBase = useMemo(
     () => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
     [],
@@ -40,8 +40,8 @@ export default function DashboardPage() {
       router.replace("/login");
       return;
     }
-    if (user?.role === "Admin") {
-      router.replace("/admin/console");
+    if (user?.role === "Admin" || user?.role === "Teacher") {
+      router.replace(getRoleLandingRoute(user?.role));
     }
   }, [isLoggedIn, router, user?.role]);
 
@@ -75,10 +75,12 @@ export default function DashboardPage() {
         setError(null);
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to load data";
+          err instanceof Error
+            ? err.message
+            : t("dashboard.errorMessage", "Failed to load data");
         setError(message);
         pushToast({
-          title: "Unable to load classes",
+          title: t("dashboard.errorTitle", "Unable to load classes"),
           description: message,
           variant: "error",
         });
@@ -87,7 +89,7 @@ export default function DashboardPage() {
       }
     };
     void fetchClasses();
-  }, [apiBase, isLoggedIn, pushToast]);
+  }, [apiBase, isLoggedIn, pushToast, t]);
 
   if (!isLoggedIn) {
     return null;
@@ -100,14 +102,16 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                My Conservatory
+                {t("dashboard.kicker", "My Conservatory")}
               </p>
               <h1 className="text-3xl font-serif text-primary md:text-4xl">
-                Student Dashboard
+                {t("dashboard.title", "Student Dashboard")}
               </h1>
               <p className="text-foreground/75">
-                Access your live rooms, download materials, and keep shopping for
-                handcrafted instruments.
+                {t(
+                  "dashboard.description",
+                  "Access your live rooms, download materials, and keep shopping for handcrafted instruments.",
+                )}
               </p>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/80 px-4 py-2">
@@ -134,12 +138,14 @@ export default function DashboardPage() {
         </header>
 
         {isLoading && (
-          <p className="text-sm text-foreground/70">Loading your classes...</p>
+          <p className="text-sm text-foreground/70">
+            {t("dashboard.loading", "Loading your classes...")}
+          </p>
         )}
 
         {error && (
           <p className="text-sm text-red-500">
-            {error}. Please refresh the page.
+            {error}. {t("dashboard.errorRefresh", "Please refresh the page.")}
           </p>
         )}
 
@@ -147,27 +153,33 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                My learning
+                {t("dashboard.section.learning", "My learning")}
               </p>
               <h2 className="text-2xl font-serif text-primary">
-                Active cohorts
+                {t("dashboard.section.active", "Active cohorts")}
               </h2>
             </div>
             <Link
               href="/store"
               className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-widest"
             >
-              Visit Store
+              {t("dashboard.cta.store", "Visit Store")}
             </Link>
           </div>
 
           {!isLoading && !classes.length && !error && (
             <div className="rounded-3xl border border-border bg-background/70 p-6 text-center">
               <p className="text-lg font-semibold text-primary">
-                You are not enrolled in any classes yet.
+                {t(
+                  "dashboard.empty.title",
+                  "You are not enrolled in any classes yet.",
+                )}
               </p>
               <p className="mt-2 text-sm text-foreground/70">
-                Browse our offerings to begin your musical journey.
+                {t(
+                  "dashboard.empty.description",
+                  "Browse our offerings to begin your musical journey.",
+                )}
               </p>
             </div>
           )}
@@ -181,7 +193,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                      Active Class
+                      {t("dashboard.card.label", "Active Class")}
                     </p>
                     <h3 className="text-2xl font-serif text-primary">
                       {classAccess.class.title}
@@ -192,17 +204,17 @@ export default function DashboardPage() {
                       href={`/live/class/${classAccess.class._id}`}
                       className="inline-flex items-center justify-center rounded-full bg-secondary px-6 py-3 text-sm font-semibold text-primary shadow-lg shadow-secondary/40 transition hover:-translate-y-0.5"
                     >
-                      Join Live Class
+                      {t("dashboard.card.join", "Join Live Class")}
                     </Link>
                   ) : (
                     <span className="text-sm font-medium text-foreground/70">
-                      Live session offline
+                      {t("dashboard.card.offline", "Live session offline")}
                     </span>
                   )}
                 </div>
                 <div className="mt-6 space-y-3">
                   <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                    Materials
+                    {t("dashboard.materials.title", "Materials")}
                   </p>
                   {classAccess.materials.length ? (
                     <ul className="space-y-2">
@@ -218,14 +230,17 @@ export default function DashboardPage() {
                             rel="noreferrer"
                             className="text-secondary underline-offset-4 hover:underline"
                           >
-                            View
+                            {t("dashboard.materials.view", "View")}
                           </a>
                         </li>
                       ))}
                     </ul>
                   ) : (
                     <p className="text-sm text-foreground/70">
-                      Materials will appear here once your teacher uploads them.
+                      {t(
+                        "dashboard.materials.empty",
+                        "Materials will appear here once your teacher uploads them.",
+                      )}
                     </p>
                   )}
                 </div>
@@ -240,20 +255,25 @@ export default function DashboardPage() {
             className="space-y-3 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
           >
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-              Storefront access
+              {t("dashboard.store.kicker", "Storefront access")}
             </p>
             <h3 className="text-2xl font-serif text-primary">
-              Commission a new instrument
+              {t(
+                "dashboard.store.title",
+                "Commission a new instrument",
+              )}
             </h3>
             <p className="text-sm text-foreground/70">
-              Browse Begena, Masinko, Washint, and Kebero builds crafted for the
-              liturgy.
+              {t(
+                "dashboard.store.description",
+                "Browse Begena, Masinko, Washint, and Kebero builds crafted for the liturgy.",
+              )}
             </p>
             <Link
               href="/store"
               className="inline-flex w-full items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
             >
-              Browse Store
+              {t("dashboard.store.cta", "Browse Store")}
             </Link>
           </motion.div>
 
@@ -262,23 +282,23 @@ export default function DashboardPage() {
             className="space-y-3 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
           >
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-              Account history
+              {t("dashboard.account.kicker", "Account history")}
             </p>
             <h3 className="text-2xl font-serif text-primary">
-              Orders & profile
+              {t("dashboard.account.title", "Orders & profile")}
             </h3>
             <div className="flex flex-col gap-3 text-sm">
               <Link
                 href="/account/orders"
                 className="rounded-2xl border border-border px-4 py-2 text-left transition hover:border-secondary/50"
               >
-                View order history
+                {t("dashboard.account.orders", "View order history")}
               </Link>
               <Link
                 href="/profile"
                 className="rounded-2xl border border-border px-4 py-2 text-left transition hover:border-secondary/50"
               >
-                Update profile details
+                {t("dashboard.account.profile", "Update profile details")}
               </Link>
             </div>
           </motion.div>
