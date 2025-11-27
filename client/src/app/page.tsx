@@ -1,14 +1,15 @@
 "use client";
 
 import FadeIn from "@/components/animations/FadeIn";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useAppSelector } from "@/store/hooks";
 import { useGetProductsQuery } from "@/store/api/storeApi";
 import { useGetPublicClassesQuery } from "@/store/api/classApi";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 
 const heroImage =
   "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
@@ -20,8 +21,52 @@ const galleryImages = [
   { src: "/assets/begena25.jpg", caption: "Strings of Devotion" },
 ];
 
+// Placeholder videos - Ethiopian Orthodox music related
+const sacredVideos = [
+  {
+    id: 1,
+    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    title: "Begena Meditation",
+    titleAm: "የበገና ማሰላሰል",
+    description: "Ancient melodies for spiritual reflection",
+    descriptionAm: "ለመንፈሳዊ ማሰላሰል ጥንታዊ ዜማዎች",
+  },
+  {
+    id: 2,
+    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    title: "Saint Yared's Hymns",
+    titleAm: "የቅዱስ ያሬድ መዝሙሮች",
+    description: "The foundation of Ethiopian sacred music",
+    descriptionAm: "የኢትዮጵያ ቅዱስ ሙዚቃ መሰረት",
+  },
+  {
+    id: 3,
+    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    title: "Masinko Traditions",
+    titleAm: "የማሲንቆ ወግ",
+    description: "The one-stringed fiddle of Ethiopia",
+    descriptionAm: "የኢትዮጵያ አንድ ገመድ ማሲንቆ",
+  },
+  {
+    id: 4,
+    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    title: "Liturgical Chants",
+    titleAm: "የሥርዓት ዝማሬዎች",
+    description: "Tewahedo church worship music",
+    descriptionAm: "የተዋሕዶ ቤተ ክርስቲያን አምልኮ ሙዚቃ",
+  },
+  {
+    id: 5,
+    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    title: "Kirar Melodies",
+    titleAm: "የኪራር ዜማዎች",
+    description: "The lyre of the Ethiopian highlands",
+    descriptionAm: "የኢትዮጵያ ደጋማ ኪራር",
+  },
+];
+
 export default function Home() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const role = user?.role;
   const { data: products, isLoading: isLoadingProducts } =
@@ -29,6 +74,16 @@ export default function Home() {
   const { data: classHighlights, isLoading: isLoadingClasses } =
     useGetPublicClassesQuery();
   const featuredProducts = (products ?? []).slice(0, 3);
+  
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+
+  const nextVideo = useCallback(() => {
+    setCurrentVideoIndex((prev) => (prev + 1) % sacredVideos.length);
+  }, []);
+
+  const prevVideo = useCallback(() => {
+    setCurrentVideoIndex((prev) => (prev - 1 + sacredVideos.length) % sacredVideos.length);
+  }, []);
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -180,6 +235,112 @@ export default function Home() {
                   priority
                 />
               </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* Sacred Videos Carousel Section */}
+        <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface shadow-[0_60px_120px_var(--color-primary-glow)]">
+          {/* Background gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-surface to-(--color-secondary-soft) opacity-90" />
+          
+          {/* Animated background particles */}
+          <motion.div
+            className="absolute inset-0 opacity-30"
+            animate={{
+              backgroundPosition: ["0% 0%", "100% 100%"],
+            }}
+            transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+            style={{
+              backgroundImage: "radial-gradient(circle at 20% 50%, var(--color-secondary-glow) 0%, transparent 50%), radial-gradient(circle at 80% 50%, var(--color-primary-glow) 0%, transparent 50%)",
+              backgroundSize: "200% 200%",
+            }}
+          />
+
+          <div className="relative px-6 py-14 md:px-12 lg:px-16">
+            <FadeIn className="mb-8 text-center">
+              <p className="text-xs uppercase tracking-[0.35em] text-secondary">
+                {t("video.section.kicker")}
+              </p>
+              <h2 className="mt-2 text-3xl font-serif text-primary sm:text-4xl lg:text-5xl">
+                {t("video.section.title")}
+              </h2>
+            </FadeIn>
+
+            <div className="relative">
+              {/* Video Container */}
+              <div className="relative mx-auto max-w-4xl">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentVideoIndex}
+                    initial={{ opacity: 0, scale: 0.95, x: 50 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, x: -50 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                    className="relative overflow-hidden rounded-[24px] border border-border bg-background/50 shadow-[0_25px_60px_var(--color-primary-glow)]"
+                  >
+                    {/* Video iframe with aspect ratio */}
+                    <div className="relative aspect-video w-full overflow-hidden">
+                      <iframe
+                        src={sacredVideos[currentVideoIndex].url}
+                        title={locale === "am" ? sacredVideos[currentVideoIndex].titleAm : sacredVideos[currentVideoIndex].title}
+                        className="absolute inset-0 h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                      {/* Glowing border effect */}
+                      <div className="pointer-events-none absolute inset-0 rounded-[24px] border-2 border-secondary/20" />
+                    </div>
+
+                    {/* Video info overlay */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6"
+                    >
+                      <h3 className="text-xl font-serif text-white md:text-2xl">
+                        {locale === "am" ? sacredVideos[currentVideoIndex].titleAm : sacredVideos[currentVideoIndex].title}
+                      </h3>
+                      <p className="mt-1 text-sm text-white/80">
+                        {locale === "am" ? sacredVideos[currentVideoIndex].descriptionAm : sacredVideos[currentVideoIndex].description}
+                      </p>
+                    </motion.div>
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Navigation Arrows */}
+                <button
+                  onClick={prevVideo}
+                  className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full border border-secondary/50 bg-surface/90 text-secondary shadow-[0_8px_30px_var(--color-primary-glow)] backdrop-blur-md transition-all hover:-translate-x-1/2 hover:-translate-y-1/2 hover:scale-110 hover:bg-secondary hover:text-primary-foreground md:-translate-x-6 md:hover:-translate-x-6"
+                  aria-label={t("video.section.prev")}
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={nextVideo}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full border border-secondary/50 bg-surface/90 text-secondary shadow-[0_8px_30px_var(--color-primary-glow)] backdrop-blur-md transition-all hover:-translate-y-1/2 hover:translate-x-1/2 hover:scale-110 hover:bg-secondary hover:text-primary-foreground md:translate-x-6 md:hover:translate-x-6"
+                  aria-label={t("video.section.next")}
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Video indicators */}
+              <div className="mt-6 flex items-center justify-center gap-2">
+                {sacredVideos.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentVideoIndex(index)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      index === currentVideoIndex
+                        ? "w-8 bg-secondary shadow-[0_0_12px_var(--color-secondary-glow)]"
+                        : "w-2 bg-secondary/30 hover:bg-secondary/50"
+                    }`}
+                    aria-label={`Go to video ${index + 1}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </section>

@@ -14,7 +14,10 @@ import {
   Type,
   LogOut,
   User,
+  Menu,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 import { useAppSelector } from "@/store/hooks";
 import { useLogoutMutation } from "@/store/api/authApi";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -23,13 +26,13 @@ import { LanguageToggle } from "@/components/layout/LanguageToggle";
 import { useI18n } from "@/components/providers/I18nProvider";
 
 const links = [
-  { href: "/admin/console", label: "Console", icon: LayoutDashboard },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/classes", label: "Classes", icon: GraduationCap },
-  { href: "/admin/store", label: "Store", icon: Package2 },
-  { href: "/admin/orders", label: "Orders", icon: Receipt },
-  { href: "/admin/cms", label: "Content", icon: Type },
+  { href: "/admin/console", labelKey: "admin.sidebar.console", icon: LayoutDashboard },
+  { href: "/admin/analytics", labelKey: "admin.sidebar.analytics", icon: BarChart3 },
+  { href: "/admin/users", labelKey: "admin.sidebar.users", icon: Users },
+  { href: "/admin/classes", labelKey: "admin.sidebar.classes", icon: GraduationCap },
+  { href: "/admin/store", labelKey: "admin.sidebar.store", icon: Package2 },
+  { href: "/admin/orders", labelKey: "admin.sidebar.orders", icon: Receipt },
+  { href: "/admin/cms", labelKey: "admin.sidebar.content", icon: Type },
 ];
 
 export function AdminSidebar() {
@@ -39,6 +42,7 @@ export function AdminSidebar() {
   const [requestLogout, { isLoading: isLoggingOut }] = useLogoutMutation();
   const { pushToast } = useToast();
   const { t } = useI18n();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -59,8 +63,8 @@ export function AdminSidebar() {
     }
   };
 
-  return (
-    <aside className="hidden h-screen w-72 flex-col overflow-y-auto border-r border-border bg-[color:var(--color-background-soft)] p-6 text-sm lg:flex">
+  const sidebarContent = (
+    <>
       <div className="mb-10 space-y-4">
         <div className="flex items-center gap-3">
           <Image
@@ -73,15 +77,14 @@ export function AdminSidebar() {
           />
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-secondary">
-              Abel Begena
+              {t("admin.sidebar.brand", "አቤል በገና")}
             </p>
-            <p className="text-xl font-serif text-primary">Admin Console</p>
+            <p className="text-xl font-serif text-primary">
+              {t("admin.sidebar.title", "Admin Console")}
+            </p>
           </div>
         </div>
-        <Link
-          href="/profile"
-          className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2 transition hover:bg-background"
-        >
+        <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
           {user?.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -99,10 +102,10 @@ export function AdminSidebar() {
               {user?.firstName} {user?.lastName}
             </p>
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/80">
-              Super Admin
+              {t("admin.sidebar.role", "Super Admin")}
             </p>
           </div>
-        </Link>
+        </div>
       </div>
       <nav className="flex flex-1 flex-col gap-1">
         {links.map((link) => {
@@ -112,6 +115,7 @@ export function AdminSidebar() {
             <Link
               key={link.href}
               href={link.href}
+              onClick={() => setMobileOpen(false)}
               className={clsx(
                 "inline-flex items-center gap-3 rounded-xl px-3 py-2 font-semibold transition",
                 active
@@ -120,7 +124,7 @@ export function AdminSidebar() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           );
         })}
@@ -130,18 +134,6 @@ export function AdminSidebar() {
           <ThemeSwitcher />
           <LanguageToggle />
         </div>
-        <Link
-          href="/profile"
-          className={clsx(
-            "inline-flex items-center gap-3 rounded-xl px-3 py-2 font-semibold transition",
-            pathname === "/profile"
-              ? "bg-secondary/10 text-secondary"
-              : "text-foreground/70 hover:bg-secondary/5",
-          )}
-        >
-          <User className="h-4 w-4" />
-          {t("nav.profile", "Profile")}
-        </Link>
         <button
           type="button"
           onClick={handleLogout}
@@ -154,7 +146,52 @@ export function AdminSidebar() {
             : t("nav.logout", "Log out")}
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile hamburger button */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-foreground shadow-lg lg:hidden"
+        aria-label="Open sidebar"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar */}
+      <aside
+        className={clsx(
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col overflow-y-auto border-r border-border bg-[color:var(--color-background-soft)] p-6 text-sm transition-transform duration-300 lg:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-foreground/70 hover:bg-secondary/10"
+          aria-label="Close sidebar"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden h-screen w-72 flex-col overflow-y-auto border-r border-border bg-[color:var(--color-background-soft)] p-6 text-sm lg:flex">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
 

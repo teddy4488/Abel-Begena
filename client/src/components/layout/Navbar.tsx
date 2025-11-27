@@ -230,7 +230,7 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
         <Link
           href="/"
-          className="flex items-center gap-3 rounded-xl bg-secondary/10 px-3 py-2"
+          className="flex items-center gap-3 rounded-xl bg-linear-to-r from-secondary/30 via-primary/20 to-secondary/30 px-4 py-2 shadow-[0_4px_20px_var(--color-primary-glow)] backdrop-blur-sm border border-secondary/30"
         >
           <Image
             src="/assets/logo.png"
@@ -240,8 +240,8 @@ export default function Navbar() {
             className="h-10 w-auto object-contain"
             priority
           />
-          <span className="hidden text-lg font-semibold tracking-widest uppercase text-primary sm:inline">
-            Abel Begena
+          <span className="hidden text-lg font-bold tracking-wide text-primary sm:inline font-serif">
+            አቤል በገና
           </span>
         </Link>
 
