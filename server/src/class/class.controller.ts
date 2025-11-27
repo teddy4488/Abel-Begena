@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UploadedFile,
   UseGuards,
@@ -115,6 +116,15 @@ export class ClassController {
   @UseGuards(JwtAuthGuard)
   getMyEnrollments(@Request() req: ExpressRequest & { user: { sub: string } }) {
     return this.classService.getStudentEnrollments(req.user.sub);
+  }
+
+  @Get('enrollments')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getAllEnrollments(
+    @Query('status') status?: 'active' | 'pending' | 'withdrawn',
+  ) {
+    return this.classService.getAllEnrollments(status);
   }
 
   @Get(':id/students')

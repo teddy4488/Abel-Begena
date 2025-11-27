@@ -38,10 +38,29 @@ export type ManagedClass = ClassSummary & {
   } | null;
 };
 
+export type AdminEnrollment = {
+  classId: string;
+  classTitle: string;
+  instructor?: string | null;
+  student: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email: string;
+  };
+  status: "active" | "pending" | "withdrawn";
+  amountPaid?: number | null;
+  currency?: string | null;
+  paymentMethod?: string | null;
+  paymentReference?: string | null;
+  note?: string | null;
+  enrolledAt?: string | null;
+};
+
 export const adminApi = createApi({
   reducerPath: "adminApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["AdminAnalytics", "AdminClasses"],
+  tagTypes: ["AdminAnalytics", "AdminClasses", "AdminEnrollments"],
   endpoints: (builder) => ({
     getAnalyticsOverview: builder.query<AnalyticsKpi, void>({
       query: () => "/admin/dashboard/analytics",
@@ -87,6 +106,16 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ["AdminClasses"],
     }),
+    getAllEnrollments: builder.query<
+      AdminEnrollment[],
+      { status?: "active" | "pending" | "withdrawn" } | void
+    >({
+      query: (params) => ({
+        url: "/classes/enrollments",
+        params: params ?? undefined,
+      }),
+      providesTags: ["AdminEnrollments"],
+    }),
   }),
 });
 
@@ -97,5 +126,6 @@ export const {
   useUpdateManagedClassMutation,
   useDeleteManagedClassMutation,
   useAssignClassInstructorMutation,
+  useGetAllEnrollmentsQuery,
 } = adminApi;
 

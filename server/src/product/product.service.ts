@@ -137,16 +137,16 @@ export class ProductService {
     discountPrice?: number,
     promoActive = false,
   ) {
-    if (promoActive && (discountPrice === null || discountPrice === undefined)) {
+    if (
+      promoActive &&
+      (discountPrice === null || discountPrice === undefined)
+    ) {
       throw new BadRequestException(
         'discountPrice is required while promoActive is true',
       );
     }
 
-    if (
-      typeof discountPrice === 'number' &&
-      discountPrice >= price
-    ) {
+    if (typeof discountPrice === 'number' && discountPrice >= price) {
       throw new BadRequestException(
         'discountPrice must be lower than the base price',
       );

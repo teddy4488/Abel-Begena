@@ -42,6 +42,7 @@ const navConfig: Record<
     links: [
       { labelKey: "nav.dashboard", href: "/dashboard" },
       { labelKey: "nav.classes", href: "/classes" },
+      { labelKey: "nav.enrollments", href: "/dashboard/enrollments" },
       { labelKey: "nav.heritage", href: "/heritage" },
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.orders", href: "/account/orders" },
@@ -63,6 +64,7 @@ const navConfig: Record<
       { labelKey: "nav.analytics", href: "/admin/analytics" },
       { labelKey: "nav.users", href: "/admin/users" },
       { labelKey: "nav.classes", href: "/admin/classes" },
+      { labelKey: "nav.adminEnrollments", href: "/admin/enrollments" },
       { labelKey: "nav.store", href: "/admin/store" },
       { labelKey: "nav.orders", href: "/admin/orders" },
     ],
@@ -74,6 +76,7 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
     { labelKey: "nav.profile", href: "/profile" },
     { labelKey: "nav.dashboard", href: "/dashboard" },
     { labelKey: "nav.classes", href: "/classes" },
+    { labelKey: "nav.enrollments", href: "/dashboard/enrollments" },
     { labelKey: "nav.orders", href: "/account/orders" },
     { labelKey: "nav.store", href: "/store" },
   ],
@@ -87,6 +90,7 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
     { labelKey: "nav.profile", href: "/profile" },
     { labelKey: "nav.adminConsole", href: "/admin/console" },
     { labelKey: "nav.analytics", href: "/admin/analytics" },
+    { labelKey: "nav.adminEnrollments", href: "/admin/enrollments" },
     { labelKey: "nav.store", href: "/admin/store" },
   ],
 };

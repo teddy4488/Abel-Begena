@@ -464,7 +464,7 @@ export class ClassService {
       .lean()
       .exec();
 
-    return classes
+    const entries = classes
       .map((klass) => {
         const enrollment = (klass.enrollments ?? []).find(
           (entry) => entry.student?.toString() === studentId,
@@ -486,6 +486,83 @@ export class ClassService {
         };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+    return entries.sort((a, b) => {
+      const aTime = a.enrolledAt ? new Date(a.enrolledAt).getTime() : 0;
+      const bTime = b.enrolledAt ? new Date(b.enrolledAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }
+
+  async getAllEnrollments(status?: 'active' | 'pending' | 'withdrawn') {
+    const statusFilter =
+      typeof status === 'string' ? { 'enrollments.status': status } : {};
+
+    const classes = await this.classModel
+      .find(statusFilter)
+      .select('title enrollments currency tuition instructorId')
+      .populate('enrollments.student', 'firstName lastName email')
+      .populate('instructorId', 'firstName lastName email')
+      .lean()
+      .exec();
+
+    const enrollments = classes.flatMap((klass) => {
+      const instructor =
+        typeof klass.instructorId === 'object' && klass.instructorId
+          ? `${
+              (klass.instructorId as { firstName?: string; lastName?: string })
+                .firstName ?? ''
+            } ${
+              (
+                klass.instructorId as {
+                  firstName?: string;
+                  lastName?: string;
+                }
+              ).lastName ?? ''
+            }`.trim() || null
+          : null;
+
+      return (klass.enrollments ?? [])
+        .filter((entry) =>
+          typeof status === 'string' ? entry.status === status : true,
+        )
+        .map((enrollment) => {
+          const student = enrollment.student as
+            | {
+                _id: Types.ObjectId | string;
+                firstName?: string;
+                lastName?: string;
+                email?: string;
+              }
+            | undefined;
+          return {
+            classId: klass._id?.toString?.() ?? '',
+            classTitle: klass.title,
+            instructor,
+            student: {
+              id: student?._id?.toString?.() ?? '',
+              firstName: student?.firstName ?? null,
+              lastName: student?.lastName ?? null,
+              email: student?.email ?? '',
+            },
+            status: enrollment.status,
+            amountPaid: enrollment.amountPaid ?? null,
+            currency: enrollment.currency ?? klass.currency ?? 'ETB',
+            paymentMethod: enrollment.paymentMethod ?? null,
+            paymentReference: enrollment.paymentReference ?? null,
+            note: enrollment.note ?? null,
+            enrolledAt: enrollment.enrolledAt
+              ? new Date(enrollment.enrolledAt).toISOString()
+              : null,
+          };
+        });
+    });
+
+    return enrollments.sort((a, b) => {
+      const aTime = a.enrolledAt ? new Date(a.enrolledAt).getTime() : 0;
+      const bTime = b.enrolledAt ? new Date(b.enrolledAt).getTime() : 0;
+      return bTime - aTime;
+    });
   }
 
   async updateEnrollmentStatus(
