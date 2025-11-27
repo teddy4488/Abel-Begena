@@ -13,7 +13,6 @@ import {
   Receipt,
   Type,
   LogOut,
-  User,
   Menu,
   X,
 } from "lucide-react";

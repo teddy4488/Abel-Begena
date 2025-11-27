@@ -4,41 +4,26 @@ import Link from "next/link";
 import { useGetMyOrdersQuery } from "@/store/api/storeApi";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
+import { motion } from "framer-motion";
+import { useI18n } from "@/components/providers/I18nProvider";
+import { Package, ShoppingBag, ArrowRight, CheckCircle, Clock, Truck, XCircle, CreditCard } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
-const statusStyles: Record<
+const statusConfig: Record<
   string,
-  { text: string; bg: string; border: string }
+  { color: string; bg: string; icon: React.ElementType }
 > = {
-  Pending: {
-    text: "text-yellow-800",
-    bg: "bg-yellow-100",
-    border: "border-yellow-200",
-  },
-  Processing: {
-    text: "text-blue-800",
-    bg: "bg-blue-100",
-    border: "border-blue-200",
-  },
-  Shipped: {
-    text: "text-indigo-800",
-    bg: "bg-indigo-100",
-    border: "border-indigo-200",
-  },
-  Delivered: {
-    text: "text-green-800",
-    bg: "bg-green-100",
-    border: "border-green-200",
-  },
-  Cancelled: {
-    text: "text-red-800",
-    bg: "bg-red-100",
-    border: "border-red-200",
-  },
+  Pending: { color: "text-amber-600", bg: "bg-amber-500/10", icon: Clock },
+  Processing: { color: "text-blue-600", bg: "bg-blue-500/10", icon: Package },
+  Shipped: { color: "text-indigo-600", bg: "bg-indigo-500/10", icon: Truck },
+  Delivered: { color: "text-emerald-600", bg: "bg-emerald-500/10", icon: CheckCircle },
+  Cancelled: { color: "text-red-600", bg: "bg-red-500/10", icon: XCircle },
 };
 
 export default function OrdersPage() {
   const router = useRouter();
   const { isLoggedIn } = useAppSelector((state) => state.auth);
+  const { t } = useI18n();
   const { data, isLoading, error } = useGetMyOrdersQuery(undefined, {
     skip: !isLoggedIn,
   });
@@ -48,128 +33,200 @@ export default function OrdersPage() {
     return null;
   }
 
+  const getStatusTranslation = (status: string) => {
+    const key = `orders.status.${status.toLowerCase()}`;
+    return t(key, status);
+  };
+
   return (
     <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
       <div className="mx-auto max-w-5xl space-y-8">
-        <header className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-            My Orders
-          </p>
-          <h1 className="text-3xl font-serif text-primary md:text-4xl">
-            Order History
-          </h1>
+        <motion.header
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-2 rounded-[32px] border border-border bg-gradient-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
+              <Package className="h-6 w-6 text-secondary" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                {t("orders.page.kicker")}
+              </p>
+              <h1 className="text-3xl font-serif text-primary md:text-4xl">
+                {t("orders.page.title")}
+              </h1>
+            </div>
+          </div>
           <p className="text-sm text-foreground/70">
-            Track the status of your recent instrument purchases.
+            {t("orders.page.subtitle")}
           </p>
-        </header>
+        </motion.header>
 
         {isLoading && (
-          <p className="text-sm text-foreground/70">Loading orders...</p>
-        )}
-
-        {error && (
-          <p className="text-sm text-red-500">
-            Unable to load orders. Please refresh.
-          </p>
-        )}
-
-        {data && data.length === 0 && (
-          <div className="rounded-3xl border border-border bg-surface/80 p-8 text-center">
-            <p className="text-lg font-semibold text-primary">
-              No orders placed yet.
-            </p>
-            <p className="mt-2 text-sm text-foreground/70">
-              Begin your journey by exploring our catalog.
-            </p>
-            <Link
-              href="/store"
-              className="mt-4 inline-block rounded-full bg-primary px-6 py-2 text-primary-foreground"
-            >
-              Visit Store
-            </Link>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-3xl border border-border bg-surface p-6">
+                <div className="flex justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="space-y-2 text-right">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <Skeleton className="h-8 w-24 rounded-full" />
+                  <Skeleton className="h-8 w-32 rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        <div className="space-y-4">
-          {data?.map((order) => (
-            <div
-              key={order._id}
-              className="rounded-3xl border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6 text-center"
+          >
+            <p className="text-sm text-red-500">
+              {t("orders.page.error")}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 rounded-full border border-red-500/50 px-6 py-2 text-sm text-red-500 transition hover:bg-red-500/10"
             >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                    Order #{order._id.slice(-6).toUpperCase()}
-                  </p>
-                  <p className="text-sm text-foreground/60">
-                    {new Date(order.createdAt).toLocaleString()}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-foreground/60">Total</p>
-                  <p className="text-lg font-semibold text-primary">
-                    {order.totalAmount.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    })}
-                  </p>
-                </div>
-              </div>
+              {t("button.retry")}
+            </button>
+          </motion.div>
+        )}
 
-              <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                {(() => {
-                  const style = statusStyles[order.status] ?? {
-                    text: "text-secondary",
-                    bg: "bg-transparent",
-                    border: "border-border",
-                  };
-                  return (
-                    <span
-                      className={`rounded-full border px-4 py-1 font-semibold ${style.text} ${style.bg} ${style.border}`}
-                    >
-                      {order.status}
-                    </span>
-                  );
-                })()}
-                <span className="rounded-full border border-border px-4 py-1 text-foreground/70">
-                  Payment: {order.paymentMethod}
-                </span>
-                <span className="rounded-full border border-border px-4 py-1 text-foreground/70">
-                  {order.isPaid ? "Paid" : "Payment Pending"}
-                </span>
-              </div>
+        {data && data.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-3xl border border-border bg-surface/80 p-12 text-center"
+          >
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/10">
+              <ShoppingBag className="h-10 w-10 text-secondary/60" />
+            </div>
+            <p className="text-xl font-serif text-primary">
+              {t("orders.page.empty")}
+            </p>
+            <p className="mt-2 text-sm text-foreground/70">
+              {t("orders.page.emptyDesc")}
+            </p>
+            <Link
+              href="/store"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_20px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5"
+            >
+              {t("orders.page.browseStore")}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </motion.div>
+        )}
 
-              <div className="mt-6 space-y-3 rounded-2xl border border-border bg-background/60 p-4 text-sm">
-                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                  Items
-                </p>
-                {order.items.map((item) => (
-                  <div
-                    key={item.productId}
-                    className="flex items-center justify-between text-foreground/80"
-                  >
-                    <div>
-                      <p className="font-semibold">
-                        {item.product?.name ?? "Unknown item"}
-                      </p>
-                      <p className="text-xs text-foreground/60">
-                        Qty: {item.quantity}
-                      </p>
-                    </div>
-                    <p className="font-medium text-primary">
-                      {item.subtotal.toLocaleString("en-US", {
+        <div className="space-y-4">
+          {data?.map((order, index) => {
+            const statusStyle = statusConfig[order.status] ?? statusConfig.Pending;
+            const StatusIcon = statusStyle.icon;
+            
+            return (
+              <motion.div
+                key={order._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="group rounded-3xl border border-border bg-surface p-6 shadow-[0_25px_60px_var(--color-primary-glow)] transition hover:border-secondary/30"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                      {t("orders.page.orderId")} #{order._id.slice(-6).toUpperCase()}
+                    </p>
+                    <p className="mt-1 text-sm text-foreground/60">
+                      {new Date(order.createdAt).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-foreground/60">{t("orders.page.total")}</p>
+                    <p className="text-2xl font-serif text-primary">
+                      {order.totalAmount.toLocaleString("en-US", {
                         style: "currency",
                         currency: "USD",
                       })}
                     </p>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${statusStyle.color} ${statusStyle.bg}`}
+                  >
+                    <StatusIcon className="h-4 w-4" />
+                    {getStatusTranslation(order.status)}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-4 py-2 text-sm text-foreground/70">
+                    <CreditCard className="h-4 w-4" />
+                    {order.paymentMethod}
+                  </span>
+                  <span
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                      order.isPaid
+                        ? "bg-emerald-500/10 text-emerald-600"
+                        : "bg-amber-500/10 text-amber-600"
+                    }`}
+                  >
+                    {order.isPaid ? t("orders.page.paid") : t("orders.page.unpaid")}
+                  </span>
+                </div>
+
+                <div className="mt-6 space-y-3 rounded-2xl border border-border bg-background/60 p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                    {t("orders.page.items")} ({order.items.length})
+                  </p>
+                  {order.items.map((item) => (
+                    <div
+                      key={item.productId}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
+                          <Package className="h-5 w-5 text-secondary/60" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-primary">
+                            {item.product?.name ?? "Unknown item"}
+                          </p>
+                          <p className="text-xs text-foreground/60">
+                            {t("cart.quantity")}: {item.quantity}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="font-semibold text-secondary">
+                        {item.subtotal.toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
-

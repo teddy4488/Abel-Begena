@@ -12,7 +12,6 @@ import {
   Calendar,
   Video,
   LogOut,
-  User,
   Menu,
   X,
 } from "lucide-react";

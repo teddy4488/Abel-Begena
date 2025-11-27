@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useLoginMutation } from "@/store/api/authApi";
@@ -8,6 +9,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { getRoleLandingRoute } from "@/lib/utils";
+import { Mail, Lock, LogIn } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -72,9 +74,17 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="w-full max-w-md rounded-3xl border border-border bg-surface/80 p-8 shadow-[0_40px_80px_rgba(0,0,0,0.08)] backdrop-blur"
+        className="w-full max-w-md rounded-3xl border border-border bg-surface/80 p-8 shadow-[0_40px_80px_var(--color-primary-glow)] backdrop-blur"
       >
         <div className="mb-8 text-center">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring" }}
+            className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary/10"
+          >
+            <LogIn className="h-8 w-8 text-secondary" />
+          </motion.div>
           <p className="text-xs uppercase tracking-[0.3em] text-secondary">
             {t("login.kicker", "Welcome back")}
           </p>
@@ -87,8 +97,13 @@ export default function LoginPage() {
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
-          <div>
-            <label className="text-sm font-semibold uppercase tracking-wide text-secondary">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+              <Mail className="h-4 w-4" />
               {t("login.emailLabel", "Email")}
             </label>
             <input
@@ -104,12 +119,25 @@ export default function LoginPage() {
             {fieldErrors.email && (
               <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>
             )}
-          </div>
+          </motion.div>
 
-          <div>
-            <label className="text-sm font-semibold uppercase tracking-wide text-secondary">
-              {t("login.passwordLabel", "Password")}
-            </label>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                <Lock className="h-4 w-4" />
+                {t("login.passwordLabel", "Password")}
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-secondary hover:underline"
+              >
+                {t("login.page.forgotPassword")}
+              </Link>
+            </div>
             <input
               type="password"
               required
@@ -123,23 +151,43 @@ export default function LoginPage() {
             {fieldErrors.password && (
               <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>
             )}
-          </div>
+          </motion.div>
+
+          {errorMessage && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-500"
+            >
+              {errorMessage}
+            </motion.p>
+          )}
 
           <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
             type="submit"
             disabled={isLoading}
             whileTap={{ scale: 0.97 }}
-            className="w-full rounded-2xl bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-full bg-primary px-4 py-4 font-semibold text-primary-foreground shadow-[0_20px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? t("login.loading", "Signing In...") : t("login.submit", "Login")}
           </motion.button>
         </form>
 
-        {errorMessage && (
-          <p className="mt-4 text-center text-sm text-red-500">{errorMessage}</p>
-        )}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-6 text-center text-sm text-foreground/70"
+        >
+          {t("login.page.noAccount")}{" "}
+          <Link href="/register" className="font-semibold text-secondary hover:underline">
+            {t("login.page.signUp")}
+          </Link>
+        </motion.p>
       </motion.div>
     </section>
   );
 }
-

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -9,10 +10,21 @@ import {
 import { useAppSelector } from "@/store/hooks";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
+import { CreditCard, MapPin, Phone, Building2, ArrowLeft, CheckCircle, ShoppingBag } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+
+const paymentMethods = [
+  { id: "CashOnDelivery", labelKey: "checkout.page.cashOnDelivery", icon: "💵" },
+  { id: "BankTransfer", labelKey: "checkout.page.bankTransfer", icon: "🏦" },
+  { id: "Telebirr", labelKey: "checkout.page.telebirr", icon: "📱" },
+  { id: "CBEBirr", labelKey: "checkout.page.cbeBirr", icon: "🏧" },
+];
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { isLoggedIn } = useAppSelector((state) => state.auth);
+  const { t } = useI18n();
   const { data, isLoading } = useGetCartQuery(undefined, {
     skip: !isLoggedIn,
   });
@@ -35,10 +47,10 @@ export default function CheckoutPage() {
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!form.city.trim()) next.city = "City is required.";
-    if (!form.street.trim()) next.street = "Street is required.";
-    if (!form.postalCode.trim()) next.postalCode = "Postal code is required.";
-    if (!/^[+0-9\s-]{6,}$/.test(form.phone)) next.phone = "Enter a valid phone number.";
+    if (!form.city.trim()) next.city = t("checkout.page.cityError");
+    if (!form.street.trim()) next.street = t("checkout.page.streetError");
+    if (!form.postalCode.trim()) next.postalCode = t("checkout.page.postalCodeError");
+    if (!/^[+0-9\s-]{6,}$/.test(form.phone)) next.phone = t("checkout.page.phoneError");
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -46,11 +58,11 @@ export default function CheckoutPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!data || data.items.length === 0) {
-      setErrorMessage("Your cart is empty.");
+      setErrorMessage(t("checkout.page.emptyError"));
       return;
     }
     if (!validate()) {
-      setErrorMessage("Please fix the highlighted fields.");
+      setErrorMessage(t("checkout.page.fixFields"));
       return;
     }
 
@@ -65,18 +77,18 @@ export default function CheckoutPage() {
         paymentMethod: form.paymentMethod,
       }).unwrap();
       pushToast({
-        title: "Order placed",
-        description: "Check your order history for status updates.",
+        title: t("checkout.toast.success"),
+        description: t("checkout.toast.successDesc"),
         variant: "success",
       });
       router.push("/account/orders");
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Checkout failed. Please try again.",
+        err instanceof Error ? err.message : t("checkout.toast.errorDesc"),
       );
       pushToast({
-        title: "Checkout failed",
-        description: "Please verify the form and try again.",
+        title: t("checkout.toast.error"),
+        description: t("checkout.toast.errorDesc"),
         variant: "error",
       });
     }
@@ -84,180 +96,277 @@ export default function CheckoutPage() {
 
   return (
     <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-surface p-8 shadow-[0_25px_60px_rgba(45,10,18,0.08)]">
-          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-            Checkout
-          </p>
-          <h1 className="mt-2 text-3xl font-serif text-primary">
-            Shipping Information
-          </h1>
-          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-            {errorMessage && (
-              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
-                {errorMessage}
+      <div className="mx-auto max-w-5xl">
+        {/* Back to cart */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-6"
+        >
+          <Link
+            href="/cart"
+            className="inline-flex items-center gap-2 text-sm text-secondary hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("cart.title")}
+          </Link>
+        </motion.div>
+
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Shipping Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl border border-border bg-surface p-8 shadow-[0_25px_60px_var(--color-primary-glow)]"
+          >
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10">
+                <MapPin className="h-5 w-5 text-secondary" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                  {t("checkout.page.kicker")}
+                </p>
+                <h1 className="text-2xl font-serif text-primary">
+                  {t("checkout.page.title")}
+                </h1>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {errorMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500"
+                >
+                  {errorMessage}
+                </motion.div>
+              )}
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                  <Building2 className="h-4 w-4" />
+                  {t("checkout.page.city")}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                    fieldErrors.city ? "border-red-400" : "border-border focus:border-secondary"
+                  } bg-background/80`}
+                  placeholder="Addis Ababa"
+                />
+                {fieldErrors.city && (
+                  <p className="mt-1 text-xs text-red-500">{fieldErrors.city}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                  <MapPin className="h-4 w-4" />
+                  {t("checkout.page.street")}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.street}
+                  onChange={(e) => setForm({ ...form, street: e.target.value })}
+                  className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                    fieldErrors.street ? "border-red-400" : "border-border focus:border-secondary"
+                  } bg-background/80`}
+                  placeholder="Bole Sub-City, House 123"
+                />
+                {fieldErrors.street && (
+                  <p className="mt-1 text-xs text-red-500">{fieldErrors.street}</p>
+                )}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-semibold uppercase tracking-wide text-secondary">
+                    {t("checkout.page.postalCode")}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.postalCode}
+                    onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                    className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                      fieldErrors.postalCode ? "border-red-400" : "border-border focus:border-secondary"
+                    } bg-background/80`}
+                    placeholder="1000"
+                  />
+                  {fieldErrors.postalCode && (
+                    <p className="mt-1 text-xs text-red-500">{fieldErrors.postalCode}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                    <Phone className="h-4 w-4" />
+                    {t("checkout.page.phone")}
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                      fieldErrors.phone ? "border-red-400" : "border-border focus:border-secondary"
+                    } bg-background/80`}
+                    placeholder="+251 911 000 000"
+                  />
+                  {fieldErrors.phone && (
+                    <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                  <CreditCard className="h-4 w-4" />
+                  {t("checkout.page.paymentMethod")}
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {paymentMethods.map((method) => (
+                    <label
+                      key={method.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
+                        form.paymentMethod === method.id
+                          ? "border-secondary bg-secondary/10 text-secondary"
+                          : "border-border bg-background/60 hover:border-secondary/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={method.id}
+                        checked={form.paymentMethod === method.id}
+                        onChange={(e) =>
+                          setForm({ ...form, paymentMethod: e.target.value })
+                        }
+                        className="sr-only"
+                      />
+                      <span className="text-lg">{method.icon}</span>
+                      <span>{t(method.labelKey)}</span>
+                      {form.paymentMethod === method.id && (
+                        <CheckCircle className="ml-auto h-4 w-4" />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <motion.button
+                type="submit"
+                disabled={isSubmitting || isLoading}
+                whileTap={{ scale: 0.97 }}
+                className="w-full rounded-full bg-primary px-6 py-4 text-center text-sm font-semibold text-primary-foreground shadow-[0_20px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? t("checkout.page.processing") : t("checkout.page.placeOrder")}
+              </motion.button>
+            </form>
+          </motion.div>
+
+          {/* Order Summary */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-3xl border border-border bg-surface p-8 shadow-[0_25px_60px_var(--color-primary-glow)]"
+          >
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10">
+                <ShoppingBag className="h-5 w-5 text-secondary" />
+              </div>
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                {t("checkout.page.orderSummary")}
+              </p>
+            </div>
+
+            {isLoading && (
+              <div className="space-y-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-4 rounded-2xl border border-border bg-background/80 p-4">
+                    <Skeleton className="h-16 w-16 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                ))}
+                <div className="border-t border-border pt-4">
+                  <Skeleton className="h-8 w-32" />
+                </div>
               </div>
             )}
 
-            <div>
-              <label className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                City
-              </label>
-              <input
-                type="text"
-                required
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                  fieldErrors.city ? "border-red-400" : "border-border focus:border-secondary"
-                } bg-background/80`}
-              />
-              {fieldErrors.city && (
-                <p className="mt-1 text-xs text-red-500">{fieldErrors.city}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                Street / House
-              </label>
-              <input
-                type="text"
-                required
-                value={form.street}
-                onChange={(e) => setForm({ ...form, street: e.target.value })}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                  fieldErrors.street ? "border-red-400" : "border-border focus:border-secondary"
-                } bg-background/80`}
-              />
-              {fieldErrors.street && (
-                <p className="mt-1 text-xs text-red-500">{fieldErrors.street}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                Postal Code
-              </label>
-              <input
-                type="text"
-                required
-                value={form.postalCode}
-                onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                  fieldErrors.postalCode ? "border-red-400" : "border-border focus:border-secondary"
-                } bg-background/80`}
-              />
-              {fieldErrors.postalCode && (
-                <p className="mt-1 text-xs text-red-500">{fieldErrors.postalCode}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                Phone
-              </label>
-              <input
-                type="tel"
-                required
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                  fieldErrors.phone ? "border-red-400" : "border-border focus:border-secondary"
-                } bg-background/80`}
-              />
-              {fieldErrors.phone && (
-                <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>
-              )}
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                Payment Method
-              </p>
-              <div className="mt-3 space-y-2">
-                {["CashOnDelivery", "BankTransfer"].map((method) => (
-                  <label
-                    key={method}
-                    className="flex items-center gap-3 rounded-2xl border border-border bg-background/60 px-4 py-3 text-sm"
+            {data && data.items.length > 0 ? (
+              <div className="space-y-4">
+                {data.items.map((item, index) => (
+                  <motion.div
+                    key={item.productId}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center justify-between rounded-2xl border border-border bg-background/80 px-4 py-3"
                   >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value={method}
-                      checked={form.paymentMethod === method}
-                      onChange={(e) =>
-                        setForm({ ...form, paymentMethod: e.target.value })
-                      }
-                      className="h-4 w-4"
-                    />
-                    <span>{method === "CashOnDelivery" ? "Cash on Delivery" : "Bank Transfer"}</span>
-                  </label>
+                    <div className="flex-1">
+                      <p className="font-semibold text-primary">
+                        {item.product?.name ?? "Unknown"}
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        {t("cart.quantity")}: {item.quantity}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-secondary">
+                      {item.subtotal.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      })}
+                    </p>
+                  </motion.div>
                 ))}
-              </div>
-            </div>
-
-            <motion.button
-              type="submit"
-              disabled={isSubmitting || isLoading}
-              whileTap={{ scale: 0.97 }}
-              className="w-full rounded-full bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? "Processing..." : "Place Order"}
-            </motion.button>
-          </form>
-        </div>
-
-        <div className="rounded-3xl border border-border bg-surface p-8 shadow-[0_25px_60px_rgba(45,10,18,0.08)]">
-          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-            Order Summary
-          </p>
-          {isLoading && (
-            <p className="mt-4 text-sm text-foreground/70">
-              Loading cart summary...
-            </p>
-          )}
-          {data && data.items.length > 0 ? (
-            <div className="mt-4 space-y-4">
-              {data.items.map((item) => (
-                <div
-                  key={item.productId}
-                  className="flex items-center justify-between rounded-2xl border border-border bg-background/80 px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-semibold">
-                      {item.product?.name ?? "Unknown"}
-                    </p>
-                    <p className="text-xs text-foreground/60">
-                      Qty: {item.quantity}
-                    </p>
+                
+                <div className="space-y-3 border-t border-border pt-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-foreground/70">{t("cart.page.subtotal")}</span>
+                    <span>
+                      {data.totalAmount.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      })}
+                    </span>
                   </div>
-                  <p className="text-sm font-semibold text-primary">
-                    {item.subtotal.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    })}
-                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-foreground/70">Shipping</span>
+                    <span className="text-emerald-500">Free</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border pt-3">
+                    <span className="text-lg font-semibold">{t("checkout.page.total")}</span>
+                    <span className="text-2xl font-serif text-primary">
+                      {data.totalAmount.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      })}
+                    </span>
+                  </div>
                 </div>
-              ))}
-              <div className="flex items-center justify-between border-t border-border pt-4">
-                <span className="text-sm text-foreground/70">Total</span>
-                <span className="text-2xl font-semibold text-primary">
-                  {data.totalAmount.toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  })}
-                </span>
               </div>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-foreground/70">
-              No items in cart.
-            </p>
-          )}
+            ) : (
+              !isLoading && (
+                <p className="text-sm text-foreground/70">
+                  {t("checkout.page.noItems")}
+                </p>
+              )
+            )}
+          </motion.div>
         </div>
       </div>
     </section>
   );
 }
-
