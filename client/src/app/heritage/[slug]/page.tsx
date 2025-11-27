@@ -1,137 +1,302 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
+import { ArrowLeft, Share2, Facebook, Twitter, Link as LinkIcon } from "lucide-react";
 import { useGetPostBySlugQuery } from "@/store/api/blogApi";
+import { useI18n } from "@/components/providers/I18nProvider";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function HeritageArticlePage() {
   const params = useParams();
   const slug = params?.slug as string;
   const router = useRouter();
+  const { t } = useI18n();
   const {
     data: post,
     isLoading,
     error,
   } = useGetPostBySlugQuery(slug, { skip: !slug });
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: post?.title,
+          url: window.location.href,
+        });
+      } catch {
+        // User cancelled or error
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-        <p>Loading heritage entry...</p>
-      </div>
+      <article className="min-h-screen bg-background text-foreground">
+        <Skeleton className="h-[420px] w-full rounded-none" />
+        <div className="mx-auto max-w-3xl space-y-6 px-6 py-12">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-3/4" />
+          <Skeleton className="h-4 w-48" />
+          <div className="space-y-4 pt-8">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-5/6" />
+          </div>
+        </div>
+      </article>
     );
   }
 
   if (error || !post) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
-        <p className="text-lg font-semibold text-primary">
-          This article could not be found.
-        </p>
-        <button
-          type="button"
-          onClick={() => router.push("/heritage")}
-          className="mt-4 rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground"
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
         >
-          Return to heritage
-        </button>
+          <p className="text-6xl">📜</p>
+          <p className="mt-4 text-lg font-semibold text-primary">
+            This article could not be found.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/heritage")}
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_20px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("heritage.single.back")}
+          </button>
+        </motion.div>
       </div>
     );
   }
 
-  // Simple solution - just use new Date() without Date.now()
-  // This is pure because it creates a consistent date object for this render
   const displayDate = new Date(
     post.publishedAt ?? post.createdAt ?? new Date()
-  ).toLocaleDateString();
+  ).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <article className="min-h-screen bg-background text-foreground">
-      <div className="relative h-[420px] w-full overflow-hidden">
-        <div
+      {/* Hero with cover image */}
+      <div className="relative h-[420px] w-full overflow-hidden md:h-[500px]">
+        <motion.div
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
           className="h-full w-full bg-cover bg-center"
           style={{ backgroundImage: `url(${post.coverImage})` }}
         />
-        <div className="absolute inset-0 bg-linear-to-t from-background to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 px-6 py-8 md:px-12">
-          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-            Heritage Journal
-          </p>
-          <h1 className="text-4xl font-serif text-white md:text-5xl">
-            {post.title}
-          </h1>
-          <p className="mt-3 text-sm text-gray-200">
-            {post.author?.firstName || post.author?.email || "Editorial Team"} •{" "}
-            {displayDate}
-          </p>
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        
+        {/* Back button */}
+        <Link
+          href="/heritage"
+          className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/30 bg-black/30 px-4 py-2 text-sm text-white backdrop-blur-md transition hover:bg-black/50 md:left-8 md:top-8"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t("heritage.single.back")}
+        </Link>
+
+        <div className="absolute inset-x-0 bottom-0 px-6 py-8 md:px-12 lg:px-16">
+          <div className="mx-auto max-w-3xl">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-xs uppercase tracking-[0.3em] text-secondary"
+            >
+              {t("heritage.page.kicker")}
+            </motion.p>
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mt-2 text-3xl font-serif text-white md:text-4xl lg:text-5xl"
+            >
+              {post.title}
+            </motion.h1>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-200"
+            >
+              <span>
+                {t("heritage.single.by")}{" "}
+                <span className="font-semibold text-white">
+                  {post.author?.firstName || post.author?.email || t("heritage.page.editorial")}
+                </span>
+              </span>
+              <span className="text-white/50">•</span>
+              <span>{displayDate}</span>
+            </motion.div>
+          </div>
         </div>
       </div>
 
+      {/* Content */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="mx-auto max-w-3xl space-y-6 px-6 py-12 md:px-0"
+        className="mx-auto max-w-3xl space-y-8 px-6 py-12 md:px-8"
       >
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            // Apply Tailwind classes to markdown elements
-            h1: ({ children }) => (
-              <h1 className="font-serif text-3xl text-primary md:text-4xl">
-                {children}
-              </h1>
-            ),
-            h2: ({ children }) => (
-              <h2 className="font-serif text-2xl text-primary md:text-3xl">
-                {children}
-              </h2>
-            ),
-            h3: ({ children }) => (
-              <h3 className="font-serif text-xl text-primary md:text-2xl">
-                {children}
-              </h3>
-            ),
-            p: ({ children }) => (
-              <p className="text-foreground text-lg leading-relaxed">
-                {children}
-              </p>
-            ),
-            strong: ({ children }) => (
-              <strong className="font-semibold text-primary">
-                {children}
-              </strong>
-            ),
-            a: ({ children, href }) => (
-              <a
-                href={href}
-                className="text-secondary underline hover:text-secondary/80"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {children}
-              </a>
-            ),
-            ul: ({ children }) => (
-              <ul className="list-disc pl-6 text-foreground">{children}</ul>
-            ),
-            ol: ({ children }) => (
-              <ol className="list-decimal pl-6 text-foreground">{children}</ol>
-            ),
-            li: ({ children }) => (
-              <li className="mb-2 text-foreground">{children}</li>
-            ),
-            blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-secondary pl-4 italic text-foreground/80">
-                {children}
-              </blockquote>
-            ),
-          }}
-        >
-          {post.content}
-        </ReactMarkdown>
+        {/* Share buttons */}
+        <div className="flex items-center justify-between border-b border-border pb-6">
+          <p className="text-sm font-semibold text-secondary">
+            {t("heritage.single.share")}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              aria-label="Share"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+            <a
+              href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}&text=${encodeURIComponent(post.title)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              aria-label="Share on Twitter"
+            >
+              <Twitter className="h-4 w-4" />
+            </a>
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              aria-label="Share on Facebook"
+            >
+              <Facebook className="h-4 w-4" />
+            </a>
+            <button
+              onClick={() => navigator.clipboard.writeText(window.location.href)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              aria-label="Copy link"
+            >
+              <LinkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Article content */}
+        <div className="prose-custom">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({ children }) => (
+                <h1 className="mb-6 mt-10 font-serif text-3xl text-primary md:text-4xl">
+                  {children}
+                </h1>
+              ),
+              h2: ({ children }) => (
+                <h2 className="mb-4 mt-8 font-serif text-2xl text-primary md:text-3xl">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="mb-3 mt-6 font-serif text-xl text-primary md:text-2xl">
+                  {children}
+                </h3>
+              ),
+              p: ({ children }) => (
+                <p className="mb-6 text-lg leading-relaxed text-foreground/90">
+                  {children}
+                </p>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold text-primary">
+                  {children}
+                </strong>
+              ),
+              a: ({ children, href }) => (
+                <a
+                  href={href}
+                  className="text-secondary underline-offset-4 hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {children}
+                </a>
+              ),
+              ul: ({ children }) => (
+                <ul className="mb-6 list-disc space-y-2 pl-6 text-foreground/90">
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="mb-6 list-decimal space-y-2 pl-6 text-foreground/90">
+                  {children}
+                </ol>
+              ),
+              li: ({ children }) => (
+                <li className="text-lg leading-relaxed">{children}</li>
+              ),
+              blockquote: ({ children }) => (
+                <blockquote className="my-8 border-l-4 border-secondary bg-secondary/5 py-4 pl-6 pr-4 italic text-foreground/80">
+                  {children}
+                </blockquote>
+              ),
+              img: ({ src, alt }) => (
+                <figure className="my-8">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt={alt || ""}
+                    className="w-full rounded-2xl border border-border"
+                  />
+                  {alt && (
+                    <figcaption className="mt-2 text-center text-sm text-foreground/60">
+                      {alt}
+                    </figcaption>
+                  )}
+                </figure>
+              ),
+              hr: () => (
+                <hr className="my-10 border-t border-border" />
+              ),
+              code: ({ children }) => (
+                <code className="rounded bg-secondary/10 px-2 py-1 font-mono text-sm text-secondary">
+                  {children}
+                </code>
+              ),
+              pre: ({ children }) => (
+                <pre className="my-6 overflow-x-auto rounded-2xl border border-border bg-background/80 p-4">
+                  {children}
+                </pre>
+              ),
+            }}
+          >
+            {post.content}
+          </ReactMarkdown>
+        </div>
+
+        {/* Back to heritage link */}
+        <div className="border-t border-border pt-8">
+          <Link
+            href="/heritage"
+            className="inline-flex items-center gap-2 rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("heritage.single.back")}
+          </Link>
+        </div>
       </motion.div>
     </article>
   );

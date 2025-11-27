@@ -9,7 +9,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useGetProductsQuery } from "@/store/api/storeApi";
 import { useGetPublicClassesQuery } from "@/store/api/classApi";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
 
 const heroImage =
   "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
@@ -611,6 +611,86 @@ export default function Home() {
               fill
               className="object-cover"
             />
+          </FadeIn>
+        </section>
+
+        {/* FAQ Section */}
+        <section
+          id="faq"
+          className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+        >
+          <FadeIn className="text-center">
+            <p className="text-xs uppercase tracking-[0.35em] text-secondary">
+              {t("faq.kicker")}
+            </p>
+            <h2 className="mt-2 text-3xl font-serif text-primary">
+              {t("faq.title")}
+            </h2>
+            <p className="mt-2 text-sm text-foreground/70">
+              {t("faq.subtitle")}
+            </p>
+          </FadeIn>
+          <div className="mx-auto max-w-3xl space-y-4">
+            {[1, 2, 3, 4, 5].map((num) => (
+              <FadeIn key={num} delay={0.1 * num}>
+                <details className="group rounded-2xl border border-border bg-background/70 transition-all hover:border-secondary/50">
+                  <summary className="flex cursor-pointer items-center justify-between px-6 py-4 text-sm font-semibold text-primary">
+                    {t(`faq.q${num}`)}
+                    <ChevronDown className="h-5 w-5 text-secondary transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="px-6 pb-4 text-sm text-foreground/80">
+                    {t(`faq.a${num}`)}
+                  </div>
+                </details>
+              </FadeIn>
+            ))}
+          </div>
+        </section>
+
+        {/* Newsletter Section */}
+        <section className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-primary/10 via-surface to-secondary/10 p-8 shadow-[0_40px_80px_var(--color-primary-glow)]">
+          <div className="absolute inset-0 opacity-30">
+            <motion.div
+              className="absolute inset-0"
+              animate={{
+                backgroundPosition: ["0% 0%", "100% 100%"],
+              }}
+              transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
+              style={{
+                backgroundImage: "radial-gradient(circle at 30% 30%, var(--color-secondary-glow) 0%, transparent 50%)",
+                backgroundSize: "200% 200%",
+              }}
+            />
+          </div>
+          <FadeIn className="relative mx-auto max-w-2xl text-center">
+            <p className="text-xs uppercase tracking-[0.35em] text-secondary">
+              {t("newsletter.kicker")}
+            </p>
+            <h2 className="mt-2 text-3xl font-serif text-primary">
+              {t("newsletter.title")}
+            </h2>
+            <p className="mt-2 text-sm text-foreground/70">
+              {t("newsletter.subtitle")}
+            </p>
+            <form className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+              <div className="relative flex-1 sm:max-w-sm">
+                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground/40" />
+                <input
+                  type="email"
+                  placeholder={t("newsletter.placeholder")}
+                  className="w-full rounded-full border border-border bg-background/80 py-3 pl-12 pr-4 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                />
+              </div>
+              <button
+                type="submit"
+                className="rounded-full bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow-[0_15px_30px_var(--color-primary-glow)] transition hover:-translate-y-0.5 hover:brightness-95"
+              >
+                {t("newsletter.cta")}
+              </button>
+            </form>
+            <p className="mt-4 text-xs text-foreground/50">
+              {t("newsletter.privacy")}
+            </p>
           </FadeIn>
         </section>
 

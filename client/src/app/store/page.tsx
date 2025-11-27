@@ -10,6 +10,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 const instrumentFilters = [
   "All",
@@ -27,6 +28,7 @@ export default function StorePage() {
   const { isLoggedIn } = useAppSelector((state) => state.auth);
   const [addToCart] = useAddToCartMutation();
   const { pushToast } = useToast();
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "priceAsc" | "priceDesc">(
@@ -86,14 +88,14 @@ export default function StorePage() {
       setPendingProductId(productId);
       await addToCart({ productId, quantity: 1 }).unwrap();
       pushToast({
-        title: "Added to cart",
-        description: "Continue browsing or proceed to checkout.",
+        title: t("store.toast.added"),
+        description: t("store.toast.addedDesc"),
         variant: "success",
       });
     } catch {
       pushToast({
-        title: "Unable to add item",
-        description: "Please try again or refresh.",
+        title: t("store.toast.error"),
+        description: t("store.toast.errorDesc"),
         variant: "error",
       });
     } finally {
@@ -106,22 +108,21 @@ export default function StorePage() {
       <div className="mx-auto max-w-6xl space-y-10">
         <motion.header
           style={{ y: heroTranslate, opacity: heroOpacity }}
-          className="space-y-4 rounded-[32px] border border-border bg-gradient-to-br from-surface via-background to-[color:var(--color-secondary-soft)] p-8 shadow-[0_40px_100px_rgba(34,6,9,0.25)]"
+          className="space-y-4 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_100px_rgba(34,6,9,0.25)]"
         >
           <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-            Instrument Boutique
+            {t("store.page.kicker")}
           </p>
           <h1 className="text-3xl font-serif text-primary md:text-4xl">
-            Curated Liturgical Instruments
+            {t("store.page.title")}
           </h1>
           <p className="text-sm text-foreground/80">
-            Explore handcrafted Begena, Kirar, Masinko, Washint, and Kebero
-            collections sourced from our sacred atelier.
+            {t("store.page.subtitle")}
           </p>
           <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-secondary/70">
-            <span>Cloud-archived builds</span>
-            <span>Worldwide delivery</span>
-            <span>Blessed before shipment</span>
+            <span>{t("store.page.features.archive")}</span>
+            <span>{t("store.page.features.delivery")}</span>
+            <span>{t("store.page.features.blessed")}</span>
           </div>
         </motion.header>
 
@@ -131,7 +132,7 @@ export default function StorePage() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search instruments or materials..."
+              placeholder={t("store.page.search")}
               className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
             <select
@@ -141,9 +142,9 @@ export default function StorePage() {
               }
               className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             >
-              <option value="newest">Newest arrivals</option>
-              <option value="priceAsc">Price: Low to High</option>
-              <option value="priceDesc">Price: High to Low</option>
+              <option value="newest">{t("store.page.sort.newest")}</option>
+              <option value="priceAsc">{t("store.page.sort.priceAsc")}</option>
+              <option value="priceDesc">{t("store.page.sort.priceDesc")}</option>
             </select>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -158,19 +159,19 @@ export default function StorePage() {
                     : "border-border text-foreground/70 hover:border-secondary/60"
                 }`}
               >
-                {filter}
+                {filter === "All" ? t("store.page.filter.all") : filter}
               </button>
             ))}
           </div>
         </div>
 
         {isLoading && (
-          <p className="text-sm text-foreground/70">Loading sacred catalog...</p>
+          <p className="text-sm text-foreground/70">{t("store.page.loading")}</p>
         )}
 
         {error && (
           <p className="text-sm text-red-500">
-            Unable to load catalog. Please refresh.
+            {t("store.page.error")}
           </p>
         )}
 
@@ -194,7 +195,7 @@ export default function StorePage() {
                 >
                 {onPromo && (
                   <span className="absolute left-3 top-3 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-primary-foreground shadow">
-                    Promo
+                    {t("store.page.promo")}
                   </span>
                 )}
                 {product.images?.length ? (
@@ -206,7 +207,7 @@ export default function StorePage() {
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-foreground/50">
-                    Image coming soon
+                    {t("store.page.imageSoon")}
                   </div>
                 )}
               </Link>
@@ -246,7 +247,7 @@ export default function StorePage() {
                   whileTap={{ scale: 0.97 }}
                   className="w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {pendingProductId === product._id ? "Adding..." : "Add to Cart"}
+                  {pendingProductId === product._id ? t("store.page.adding") : t("store.page.addToCart")}
                 </motion.button>
               </div>
               </motion.div>
@@ -256,8 +257,7 @@ export default function StorePage() {
 
         {!isLoading && !error && filteredProducts.length === 0 && (
           <p className="text-center text-sm text-foreground/70">
-            No instruments match your filters. Clear the filters or check back
-            soon.
+            {t("store.page.empty")}
           </p>
         )}
       </div>

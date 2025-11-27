@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, ShoppingCart } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import ThemeSwitcher from "@/components/layout/ThemeSwitcher";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useLogoutMutation } from "@/store/api/authApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { useGetCartQuery } from "@/store/api/storeApi";
 
 type RoleKey = "guest" | "User" | "Teacher" | "Admin";
 type NavLink = { labelKey: string; href: string };
@@ -107,6 +108,8 @@ export default function Navbar() {
   const { pushToast } = useToast();
   const [requestLogout, { isLoading: isLoggingOut }] = useLogoutMutation();
   const { t } = useI18n();
+  const { data: cart } = useGetCartQuery(undefined, { skip: !isLoggedIn });
+  const cartItemCount = cart?.itemCount ?? 0;
 
   const roleKey: RoleKey = isLoggedIn
     ? (user?.role as RoleKey) || "User"
@@ -277,6 +280,20 @@ export default function Navbar() {
         <div className="hidden items-center gap-3 lg:flex">
           <ThemeSwitcher />
           <LanguageToggle />
+          {isLoggedIn && (
+            <Link
+              href="/cart"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              aria-label="Shopping Cart"
+            >
+              <ShoppingCart className="h-5 w-5 text-foreground" />
+              {cartItemCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-primary-foreground shadow">
+                  {cartItemCount > 9 ? "9+" : cartItemCount}
+                </span>
+              )}
+            </Link>
+          )}
           {!isLoggedIn ? (
             <>
               <Link
@@ -357,9 +374,26 @@ export default function Navbar() {
               {renderServicesDropdown(true)}
             </details>
           )}
-          <div className="flex items-center justify-between gap-4 pt-2">
-            <ThemeSwitcher />
-            <LanguageToggle />
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+            <div className="flex items-center gap-2">
+              <ThemeSwitcher />
+              <LanguageToggle />
+              {isLoggedIn && (
+                <Link
+                  href="/cart"
+                  onClick={() => setMobileOpen(false)}
+                  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary"
+                  aria-label="Shopping Cart"
+                >
+                  <ShoppingCart className="h-5 w-5 text-foreground" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-primary-foreground shadow">
+                      {cartItemCount > 9 ? "9+" : cartItemCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+            </div>
             {!isLoggedIn ? (
               <>
                 <Link

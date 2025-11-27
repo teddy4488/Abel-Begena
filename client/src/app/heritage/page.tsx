@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useGetPublishedPostsQuery } from "@/store/api/blogApi";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 export default function HeritagePage() {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const { data, isLoading, error } = useGetPublishedPostsQuery(
@@ -46,7 +48,7 @@ export default function HeritagePage() {
   // Safe date formatter function
   const formatPostDate = (post: typeof posts[0]) => {
     const date = post.publishedAt ?? post.createdAt;
-    if (!date) return "Recent";
+    if (!date) return t("heritage.page.recent");
     
     return new Date(date).toLocaleDateString(undefined, {
       month: "short",
@@ -63,14 +65,13 @@ export default function HeritagePage() {
           className="space-y-4 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_100px_rgba(16,0,0,0.25)]"
         >
           <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-            Heritage Journal
+            {t("heritage.page.kicker")}
           </p>
           <h1 className="text-3xl font-serif text-primary md:text-4xl">
-            Dispatches from the Abel Begena Conservatory
+            {t("heritage.page.title")}
           </h1>
           <p className="text-sm text-foreground/80">
-            Essays, field notes, and luthier diaries chronicling the revival of
-            Ethiopian Orthodox instruments.
+            {t("heritage.page.subtitle")}
           </p>
         </motion.header>
 
@@ -80,7 +81,7 @@ export default function HeritagePage() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search chants, instruments, or authors..."
+              placeholder={t("heritage.page.search")}
               className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
             <select
@@ -90,19 +91,19 @@ export default function HeritagePage() {
               }
               className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
+              <option value="newest">{t("heritage.page.sort.newest")}</option>
+              <option value="oldest">{t("heritage.page.sort.oldest")}</option>
             </select>
           </div>
         </div>
 
         {isLoading && (
-          <p className="text-sm text-foreground/70">Loading stories...</p>
+          <p className="text-sm text-foreground/70">{t("heritage.page.loading")}</p>
         )}
 
         {error && (
           <p className="text-sm text-red-500">
-            Unable to load stories. Please refresh.
+            {t("heritage.page.error")}
           </p>
         )}
 
@@ -133,16 +134,16 @@ export default function HeritagePage() {
                 </p>
                 <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3em] text-secondary/70">
                   <span>
-                    {post.author?.firstName || post.author?.email || "Editorial"}
+                    {post.author?.firstName || post.author?.email || t("heritage.page.editorial")}
                   </span>
                   <span>•</span>
-                  <span>{post.isPublished ? "Published" : "Draft"}</span>
+                  <span>{post.isPublished ? t("heritage.page.published") : t("heritage.page.draft")}</span>
                 </div>
                 <Link
                   href={`/heritage/${post.slug}`}
                   className="inline-flex text-sm font-semibold text-secondary"
                 >
-                  Read story →
+                  {t("heritage.page.readMore")}
                 </Link>
               </div>
             </motion.article>
@@ -151,7 +152,7 @@ export default function HeritagePage() {
 
         {!isLoading && !error && !filteredPosts.length && (
           <p className="text-center text-sm text-foreground/70">
-            No posts match your search. Try a different keyword.
+            {t("heritage.page.empty")}
           </p>
         )}
       </div>
