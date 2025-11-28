@@ -17,11 +17,24 @@ type LoginResponse = {
   expiresAt?: string | null;
 };
 
+type RegisterResponse = {
+  message: string;
+  email: string;
+  expiresInMinutes?: number;
+  devCode?: string;
+};
+
+type VerificationResponse = {
+  message: string;
+  expiresInMinutes?: number;
+  devCode?: string;
+};
+
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: authorizedBaseQuery,
   endpoints: (builder) => ({
-    register: builder.mutation<unknown, RegisterBody>({
+    register: builder.mutation<RegisterResponse, RegisterBody>({
       query: (body) => ({
         url: "/auth/register",
         method: "POST",
@@ -84,6 +97,20 @@ export const authApi = createApi({
         }
       },
     }),
+    verifyEmail: builder.mutation<{ message: string }, { email: string; code: string }>({
+      query: (body) => ({
+        url: "/auth/verify-email",
+        method: "POST",
+        body,
+      }),
+    }),
+    resendVerification: builder.mutation<VerificationResponse, { email: string }>({
+      query: (body) => ({
+        url: "/auth/resend-verification",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -92,4 +119,6 @@ export const {
   useRegisterMutation,
   useLogoutMutation,
   useSessionQuery,
+  useVerifyEmailMutation,
+  useResendVerificationMutation,
 } = authApi;

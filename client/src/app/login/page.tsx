@@ -9,6 +9,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { getRoleLandingRoute } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/errors";
 import { Mail, Lock, LogIn } from "lucide-react";
 
 export default function LoginPage() {
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -49,20 +51,27 @@ export default function LoginPage() {
     try {
       await login(form).unwrap();
       setErrorMessage(null);
+      setPendingEmail(null);
       pushToast({
         title: t("login.successTitle", "Welcome back"),
         description: t("login.successDescription", "Redirecting you to your dashboard."),
         variant: "success",
       });
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : t("login.errorMessage", "Invalid credentials. Please try again."),
+      const fallback = t(
+        "login.errorMessage",
+        "Invalid credentials. Please try again.",
       );
+      const message = extractErrorMessage(err, fallback);
+      setErrorMessage(message);
+      if (message.toLowerCase().includes("verify")) {
+        setPendingEmail(form.email);
+      } else {
+        setPendingEmail(null);
+      }
       pushToast({
         title: t("login.failureTitle", "Login failed"),
-        description: t("login.failureDescription", "Double-check your email and password."),
+        description: message,
         variant: "error",
       });
     }
@@ -154,13 +163,21 @@ export default function LoginPage() {
           </motion.div>
 
           {errorMessage && (
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-500"
             >
-              {errorMessage}
-            </motion.p>
+              <p>{errorMessage}</p>
+              {pendingEmail && (
+                <Link
+                  href={`/verify-email?email=${encodeURIComponent(pendingEmail)}`}
+                  className="mt-2 inline-flex items-center justify-center text-xs text-secondary hover:underline"
+                >
+                  {t("login.verifyLink", "Verify my email")}
+                </Link>
+              )}
+            </motion.div>
           )}
 
           <motion.button

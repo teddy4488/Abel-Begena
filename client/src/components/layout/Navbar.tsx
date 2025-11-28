@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import clsx from "clsx";
 import { Menu, X, ChevronDown, ShoppingCart } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import ThemeSwitcher from "@/components/layout/ThemeSwitcher";
@@ -111,7 +112,7 @@ export default function Navbar() {
   const router = useRouter();
   const { pushToast } = useToast();
   const [requestLogout, { isLoading: isLoggingOut }] = useLogoutMutation();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { data: cart } = useGetCartQuery(undefined, { skip: !isLoggedIn });
   const cartItemCount = cart?.itemCount ?? 0;
 
@@ -121,6 +122,13 @@ export default function Navbar() {
 
   const navSettings = useMemo(() => navConfig[roleKey], [roleKey]);
   const servicesLinks = navSettings.services ?? [];
+
+  const isEnglishLocale = locale === "en";
+  const navLinkBaseClass = clsx(
+    "group relative inline-flex items-center justify-center whitespace-nowrap px-1 py-1 font-semibold uppercase text-foreground/70 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary",
+    isEnglishLocale ? "text-[11px] tracking-[0.28em]" : "text-xs tracking-[0.32em]",
+    "after:absolute after:-bottom-1 after:left-1/2 after:h-[2px] after:w-0 after:rounded-full after:bg-secondary after:opacity-0 after:transition-all after:duration-300 hover:text-secondary focus-visible:text-secondary hover:after:left-0 hover:after:w-full hover:after:opacity-100 focus-visible:after:left-0 focus-visible:after:w-full focus-visible:after:opacity-100",
+  );
 
   const handleLogout = async () => {
     try {
@@ -247,17 +255,17 @@ export default function Navbar() {
             className="h-10 w-auto object-contain"
             priority
           />
-          <span className="hidden text-lg font-bold tracking-wide text-primary sm:inline font-serif">
+          <span className="hidden text-sm font-bold tracking-wide text-primary sm:inline font-serif">
             አቤል በገና
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm font-semibold uppercase lg:flex">
+        <nav className="hidden items-center gap-4 lg:flex">
           {navSettings.links.map((link) => (
             <Link
               key={link.labelKey}
               href={link.href}
-              className="transition hover:text-secondary"
+              className={navLinkBaseClass}
             >
               {t(link.labelKey)}
             </Link>
@@ -270,7 +278,7 @@ export default function Navbar() {
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-1 transition hover:text-secondary"
+                className={clsx(navLinkBaseClass, "gap-2 pl-2 pr-1")}
                 onClick={() => setServicesOpen((prev) => !prev)}
               >
                 {t("nav.services")}

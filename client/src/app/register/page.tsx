@@ -7,6 +7,7 @@ import { useRegisterMutation } from "@/store/api/authApi";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { extractErrorMessage } from "@/lib/errors";
 import { User, Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
@@ -46,18 +47,29 @@ export default function RegisterPage() {
       return;
     }
     try {
-      await register(form).unwrap();
+      const result = await register(form).unwrap();
+      if (result?.devCode) {
+        console.info(
+          `[DEV] Verification code for ${form.email}: ${result.devCode}`,
+        );
+      }
       pushToast({
         title: t("register.toast.success"),
-        description: t("register.toast.successDesc"),
+        description: t(
+          "register.toast.verifyDesc",
+          "Check your inbox for a verification code.",
+        ),
         variant: "success",
       });
-      router.push("/login");
+      router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
     } catch (error) {
-      console.error(error);
+      const message = extractErrorMessage(
+        error,
+        t("register.toast.errorDesc"),
+      );
       pushToast({
         title: t("register.toast.error"),
-        description: t("register.toast.errorDesc"),
+        description: message,
         variant: "error",
       });
     }

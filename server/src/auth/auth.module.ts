@@ -9,6 +9,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RoleGuard } from './guards/role.guard';
 import { EnrolledGuard } from './guards/enrolled.guard';
+import { MailService } from '../mail/mail.service';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { EnrolledGuard } from './guards/enrolled.guard';
     JwtStrategy,
     RoleGuard,
     EnrolledGuard,
+    MailService,
   ],
   controllers: [AuthController],
   exports: [RoleGuard, EnrolledGuard],

@@ -70,6 +70,39 @@ export class UserService {
     return this.userModel.findOne({ email }).exec();
   }
 
+  async assignVerificationCode(
+    userId: string,
+    codeHash: string,
+    expiresAt: Date,
+  ) {
+    await this.userModel
+      .findByIdAndUpdate(userId, {
+        verificationCode: codeHash,
+        verificationCodeExpiresAt: expiresAt,
+        isVerified: false,
+      })
+      .exec();
+  }
+
+  async markEmailVerified(userId: string) {
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          isVerified: true,
+          verificationCode: null,
+          verificationCodeExpiresAt: null,
+        },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+    return this.toSafeUser(updatedUser);
+  }
+
   async findById(id: string) {
     const user = await this.userModel.findById(id).lean().exec();
     return this.toSafeUser(user);
@@ -82,8 +115,15 @@ export class UserService {
       return null;
     }
 
-    const { password: _password, ...rest } = user as Record<string, unknown>;
+    const {
+      password: _password,
+      verificationCode: _verificationCode,
+      verificationCodeExpiresAt: _verificationExpires,
+      ...rest
+    } = user as Record<string, unknown>;
     void _password;
+    void _verificationCode;
+    void _verificationExpires;
     return rest as Omit<T, 'password'>;
   }
 }

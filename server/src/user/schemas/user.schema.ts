@@ -38,6 +38,15 @@ export class User {
   @Prop({ required: true, default: true })
   isActive: boolean;
 
+  @Prop({ default: false })
+  isVerified: boolean;
+
+  @Prop({ default: null })
+  verificationCode?: string | null;
+
+  @Prop({ default: null })
+  verificationCodeExpiresAt?: Date | null;
+
   @Prop({
     enum: ['pending', 'approved', 'suspended'],
   })

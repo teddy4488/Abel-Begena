@@ -42,7 +42,7 @@ export function LanguageToggle() {
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 font-semibold uppercase tracking-wide text-foreground/80 transition hover:text-secondary"
+        className="group relative inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 font-semibold uppercase tracking-wide text-foreground/80 transition hover:-translate-y-0.5 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary after:absolute after:-bottom-1 after:left-1/2 after:h-[2px] after:w-0 after:rounded-full after:bg-secondary after:opacity-0 after:transition-all after:duration-300 group-hover:after:left-0 group-hover:after:w-full group-hover:after:opacity-100 focus-visible:after:left-0 focus-visible:after:w-full focus-visible:after:opacity-100"
         onClick={() => setOpen((prev) => !prev)}
         disabled={isPending}
       >
