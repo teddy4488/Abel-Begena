@@ -80,7 +80,7 @@ export default function AdminConsolePage() {
         {summaryCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-3xl border border-border bg-[color:var(--color-background-soft)] p-4"
+            className="rounded-3xl border border-border bg-(--color-background-soft) p-4"
           >
             <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
               {card.label}

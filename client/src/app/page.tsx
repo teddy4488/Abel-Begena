@@ -242,7 +242,7 @@ export default function Home() {
         {/* Sacred Videos Carousel Section */}
         <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface shadow-[0_60px_120px_var(--color-primary-glow)]">
           {/* Background gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-background via-surface to-(--color-secondary-soft) opacity-90" />
+          <div className="absolute inset-0 bg-linear-to-br from-background via-surface to-(--color-secondary-soft) opacity-90" />
           
           {/* Animated background particles */}
           <motion.div
@@ -297,7 +297,7 @@ export default function Home() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 }}
-                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6"
+                      className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 via-black/50 to-transparent p-6"
                     >
                       <h3 className="text-xl font-serif text-white md:text-2xl">
                         {locale === "am" ? sacredVideos[currentVideoIndex].titleAm : sacredVideos[currentVideoIndex].title}
@@ -648,7 +648,7 @@ export default function Home() {
         </section>
 
         {/* Newsletter Section */}
-        <section className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-primary/10 via-surface to-secondary/10 p-8 shadow-[0_40px_80px_var(--color-primary-glow)]">
+        <section className="relative overflow-hidden rounded-[32px] border border-border bg-linear-to-br from-primary/10 via-surface to-secondary/10 p-8 shadow-[0_40px_80px_var(--color-primary-glow)]">
           <div className="absolute inset-0 opacity-30">
             <motion.div
               className="absolute inset-0"

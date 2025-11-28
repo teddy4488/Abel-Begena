@@ -337,8 +337,7 @@ export default function ClassesPage() {
                 {t("classes.modal.paymentMethod", "Payment method")}
                 <select
                   value={form.paymentMethod}
-                  onChange={(e) =>
-                    setForm((prev) => ({
+                  onChange={(e) => setForm((prev) => ({
                       ...prev,
                       paymentMethod: e.target.value as (typeof paymentMethods)[number],
                     }))

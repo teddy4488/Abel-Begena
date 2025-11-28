@@ -171,7 +171,7 @@ export function AdminSidebar() {
       {/* Mobile sidebar */}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col overflow-y-auto border-r border-border bg-[color:var(--color-background-soft)] p-6 text-sm transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col overflow-y-auto border-r border-border bg-(--color-background-soft) p-6 text-sm transition-transform duration-300 lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -187,7 +187,7 @@ export function AdminSidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden h-screen w-72 flex-col overflow-y-auto border-r border-border bg-[color:var(--color-background-soft)] p-6 text-sm lg:flex">
+      <aside className="hidden h-screen w-72 flex-col overflow-y-auto border-r border-border bg-(--color-background-soft) p-6 text-sm lg:flex">
         {sidebarContent}
       </aside>
     </>

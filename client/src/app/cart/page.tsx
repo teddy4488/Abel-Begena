@@ -63,7 +63,7 @@ export default function CartPage() {
         <motion.header
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-2 rounded-[32px] border border-border bg-gradient-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="space-y-2 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
@@ -245,7 +245,7 @@ export default function CartPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex flex-col gap-4 rounded-3xl border border-secondary/30 bg-gradient-to-br from-secondary/5 via-surface to-primary/5 p-6 shadow-[0_25px_60px_var(--color-primary-glow)] sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-4 rounded-3xl border border-secondary/30 bg-linear-to-br from-secondary/5 via-surface to-primary/5 p-6 shadow-[0_25px_60px_var(--color-primary-glow)] sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="text-sm text-foreground/70">{t("cart.page.totalAmount")}</p>

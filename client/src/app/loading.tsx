@@ -21,7 +21,7 @@ export default function Loading() {
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           />
           {/* Inner glow */}
-          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-secondary/10 to-primary/10" />
+          <div className="absolute inset-2 rounded-full bg-linear-to-br from-secondary/10 to-primary/10" />
           {/* Center dot */}
           <motion.div
             className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary"

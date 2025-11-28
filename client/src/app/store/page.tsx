@@ -191,7 +191,7 @@ export default function StorePage() {
               >
                 <Link
                   href={`/store/${product._id}`}
-                  className="relative block aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-background/80"
+                  className="relative block aspect-4/3 overflow-hidden rounded-2xl border border-border bg-background/80"
                 >
                 {onPromo && (
                   <span className="absolute left-3 top-3 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-primary-foreground shadow">

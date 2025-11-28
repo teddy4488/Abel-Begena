@@ -27,7 +27,7 @@ export default function Error({
           className="relative"
         >
           {/* Decorative background */}
-          <div className="absolute inset-0 -z-10 mx-auto h-64 w-64 rounded-full bg-gradient-to-br from-red-500/20 via-primary/10 to-red-500/20 blur-3xl" />
+          <div className="absolute inset-0 -z-10 mx-auto h-64 w-64 rounded-full bg-linear-to-br from-red-500/20 via-primary/10 to-red-500/20 blur-3xl" />
           
           {/* Error Icon */}
           <motion.div

@@ -61,7 +61,7 @@ export default function AdminAnalyticsPage() {
 
 function AnalyticsStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-3xl border border-border bg-[color:var(--color-background-soft)] p-4">
+    <div className="rounded-3xl border border-border bg-(--color-background-soft) p-4">
       <p className="text-xs uppercase tracking-[0.4em] text-secondary/60">
         {label}
       </p>

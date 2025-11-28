@@ -100,7 +100,7 @@ export default function HeritageArticlePage() {
           className="h-full w-full bg-cover bg-center"
           style={{ backgroundImage: `url(${post.coverImage})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-background via-background/50 to-transparent" />
         
         {/* Back button */}
         <Link

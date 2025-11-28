@@ -44,7 +44,7 @@ export default function OrdersPage() {
         <motion.header
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-2 rounded-[32px] border border-border bg-gradient-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="space-y-2 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">

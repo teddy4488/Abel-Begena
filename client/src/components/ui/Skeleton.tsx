@@ -10,7 +10,7 @@ export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
       className={cn(
-        "animate-pulse rounded-xl bg-gradient-to-r from-secondary/10 via-secondary/20 to-secondary/10 bg-[length:200%_100%]",
+        "animate-pulse rounded-xl bg-linear-to-r from-secondary/10 via-secondary/20 to-secondary/10 bg-size-[200%_100%]",
         className
       )}
       style={{
