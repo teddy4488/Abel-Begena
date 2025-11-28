@@ -33,6 +33,7 @@ const navConfig: Record<
     links: [
       { labelKey: "nav.home", href: "/" },
       { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.classes", href: "/classes" },
       { labelKey: "nav.about", href: "#about" },
       { labelKey: "nav.contact", href: "#contact" },
@@ -46,6 +47,7 @@ const navConfig: Record<
       { labelKey: "nav.enrollments", href: "/dashboard/enrollments" },
       { labelKey: "nav.heritage", href: "/heritage" },
       { labelKey: "nav.store", href: "/store" },
+      { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.orders", href: "/account/orders" },
       { labelKey: "nav.contact", href: "#contact" },
     ],
@@ -57,6 +59,7 @@ const navConfig: Record<
       { labelKey: "nav.classes", href: "/teacher" },
       { labelKey: "nav.dashboard", href: "/dashboard" },
       { labelKey: "nav.store", href: "/store" },
+      { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
     ],
   },
   Admin: {
@@ -68,6 +71,7 @@ const navConfig: Record<
       { labelKey: "nav.adminEnrollments", href: "/admin/enrollments" },
       { labelKey: "nav.store", href: "/admin/store" },
       { labelKey: "nav.orders", href: "/admin/orders" },
+      { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
     ],
   },
 };

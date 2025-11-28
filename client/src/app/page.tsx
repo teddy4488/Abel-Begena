@@ -10,6 +10,7 @@ import { useGetProductsQuery } from "@/store/api/storeApi";
 import { useGetPublicClassesQuery } from "@/store/api/classApi";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
+import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
 
 const heroImage =
   "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
@@ -344,6 +345,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <VirtualBegenaPreview />
 
         <section id="services" className="space-y-6">
           <FadeIn>

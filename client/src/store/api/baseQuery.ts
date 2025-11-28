@@ -26,10 +26,19 @@ export const authorizedBaseQuery: BaseQueryFn<
       window.dispatchEvent(new CustomEvent("session-expired"));
     }
   } else if (result.error) {
+    const fallback = "Something went wrong. Please try again.";
+    const statusText =
+      "statusText" in result.error &&
+      typeof (result.error as { statusText?: unknown }).statusText === "string"
+        ? (result.error as { statusText: string }).statusText
+        : undefined;
     const message =
       (result.error.data as { message?: string })?.message ??
-      result.error.statusText ??
-      "Something went wrong. Please try again.";
+      statusText ??
+      (typeof result.error.error === "string"
+        ? result.error.error
+        : undefined) ??
+      fallback;
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("api-error", {

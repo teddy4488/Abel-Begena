@@ -23,14 +23,34 @@ const paymentMethods = [
   "Other",
 ] as const;
 
-const currencyOptions = ["ETB", "USD", "EUR"];
+const currencyOptions = ["ETB", "USD", "EUR"] as const;
+
+type PaymentMethod = (typeof paymentMethods)[number];
+type CurrencyCode = (typeof currencyOptions)[number];
+
+const isCurrencyCode = (code: string): code is CurrencyCode =>
+  (currencyOptions as readonly string[]).includes(code);
+
+const isPaymentMethod = (method: string): method is PaymentMethod =>
+  (paymentMethods as readonly string[]).includes(method);
+
+const resolveCurrency = (code?: string | null): CurrencyCode =>
+  code && isCurrencyCode(code) ? code : currencyOptions[0];
+
+type EnrollmentForm = {
+  amount: string;
+  paymentMethod: PaymentMethod;
+  paymentReference: string;
+  note: string;
+  currency: CurrencyCode;
+};
 
 export default function ClassesPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const { data: classes, isLoading } = useGetPublicClassesQuery();
   const [selectedClass, setSelectedClass] = useState<ClassSummary | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<EnrollmentForm>({
     amount: "",
     paymentMethod: paymentMethods[0],
     paymentReference: "",
@@ -59,7 +79,7 @@ export default function ClassesPage() {
       paymentMethod: paymentMethods[0],
       paymentReference: "",
       note: "",
-      currency: klass.currency ?? currencyOptions[0],
+      currency: resolveCurrency(klass.currency ?? undefined),
     });
   };
 
@@ -319,9 +339,10 @@ export default function ClassesPage() {
                   {t("classes.modal.currency", "Currency")}
                   <select
                     value={form.currency}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, currency: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      const nextCurrency = resolveCurrency(e.target.value);
+                      setForm((prev) => ({ ...prev, currency: nextCurrency }));
+                    }}
                     className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                   >
                     {currencyOptions.map((option) => (
@@ -337,11 +358,12 @@ export default function ClassesPage() {
                 {t("classes.modal.paymentMethod", "Payment method")}
                 <select
                   value={form.paymentMethod}
-                  onChange={(e) => setForm((prev) => ({
-                      ...prev,
-                      paymentMethod: e.target.value as (typeof paymentMethods)[number],
-                    }))
-                  }
+                  onChange={(e) => {
+                    const nextMethod = e.target.value;
+                    if (isPaymentMethod(nextMethod)) {
+                      setForm((prev) => ({ ...prev, paymentMethod: nextMethod }));
+                    }
+                  }}
                   className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 >
                   {paymentMethods.map((method) => (

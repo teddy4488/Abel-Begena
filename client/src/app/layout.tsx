@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   title: "Abel Begena | Ethiopian Liturgical Instruments",
   description:
     "Learn, shop, and experience the sacred instruments of the Ethiopian Orthodox Tewahedo Church.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
