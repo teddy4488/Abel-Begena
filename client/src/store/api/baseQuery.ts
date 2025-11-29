@@ -32,12 +32,14 @@ export const authorizedBaseQuery: BaseQueryFn<
       typeof (result.error as { statusText?: unknown }).statusText === "string"
         ? (result.error as { statusText: string }).statusText
         : undefined;
+    const networkError =
+      "error" in result.error && typeof result.error.error === "string"
+        ? result.error.error
+        : undefined;
     const message =
       (result.error.data as { message?: string })?.message ??
       statusText ??
-      (typeof result.error.error === "string"
-        ? result.error.error
-        : undefined) ??
+      networkError ??
       fallback;
     if (typeof window !== "undefined") {
       window.dispatchEvent(

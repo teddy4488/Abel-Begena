@@ -48,11 +48,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (!user?.languagePreference) {
       return;
     }
-    if (user.languagePreference === "en" || user.languagePreference === "am") {
+    const preference = user.languagePreference;
+    if (preference === "en" || preference === "am") {
       const frame =
         typeof window !== "undefined"
           ? window.requestAnimationFrame(() => {
-              setLocaleState(user.languagePreference);
+              setLocaleState(preference);
             })
           : null;
       return () => {

@@ -25,6 +25,24 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Environment Variables
+
+Create a `.env` file based on the values below before running the API:
+
+```bash
+MONGO_URI=mongodb://localhost:27017/abel-begena
+JWT_SECRET=change-me
+
+# Abel Begena SMTP settings (defaults target Outlook/Office365)
+EMAIL_HOST=smtp.office365.com
+EMAIL_PORT=587
+EMAIL_USER=abelbegena@outlook.com
+EMAIL_PASS=<app-password-or-real-password>
+EMAIL_FROM="Abel Begena Conservatory <abelbegena@outlook.com>"
+```
+
+The mailer will fail fast (and log an explicit warning) if `EMAIL_PASS` is missing, so wire this up with the actual company mailbox before deploying.
+
 ## Project setup
 
 ```bash

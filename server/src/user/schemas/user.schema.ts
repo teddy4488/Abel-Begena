@@ -41,11 +41,11 @@ export class User {
   @Prop({ default: false })
   isVerified: boolean;
 
-  @Prop({ default: null })
-  verificationCode?: string | null;
+  @Prop({ type: String, required: false, default: null })
+  verificationCode?: string;
 
-  @Prop({ default: null })
-  verificationCodeExpiresAt?: Date | null;
+  @Prop({ type: Date, required: false, default: null })
+  verificationCodeExpiresAt?: Date;
 
   @Prop({
     enum: ['pending', 'approved', 'suspended'],
@@ -60,6 +60,12 @@ export class User {
 
   @Prop({ enum: ['en', 'am'], default: 'en' })
   languagePreference?: 'en' | 'am';
+
+  @Prop({ type: String, required: false, default: null })
+  passwordResetCode?: string;
+
+  @Prop({ type: Date, required: false, default: null })
+  passwordResetCodeExpiresAt?: Date;
 
   @Prop()
   createdAt: Date;

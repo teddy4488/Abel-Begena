@@ -14,6 +14,8 @@ export type AuthUser = {
   bio?: string;
   teacherStatus?: "pending" | "approved" | "suspended";
   languagePreference?: "en" | "am";
+  isActive?: boolean;
+  isVerified?: boolean;
 };
 
 type AuthState = {

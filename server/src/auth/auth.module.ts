@@ -9,11 +9,12 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RoleGuard } from './guards/role.guard';
 import { EnrolledGuard } from './guards/enrolled.guard';
-import { MailService } from '../mail/mail.service';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
     UserModule,
+    MailModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -30,7 +31,6 @@ import { MailService } from '../mail/mail.service';
     JwtStrategy,
     RoleGuard,
     EnrolledGuard,
-    MailService,
   ],
   controllers: [AuthController],
   exports: [RoleGuard, EnrolledGuard],

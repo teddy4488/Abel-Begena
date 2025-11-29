@@ -3,40 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
+import { ArrowLeft, Mail, CheckCircle, RotateCw } from "lucide-react";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { useForgotPasswordMutation } from "@/store/api/authApi";
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [intendedEmail, setIntendedEmail] = useState("");
+  const [forgotPassword, { isLoading, isSuccess }] =
+    useForgotPasswordMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setError("");
-
+    setIntendedEmail(email);
     try {
-      // TODO: Implement actual password reset API call
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-      const response = await fetch(`${apiBase}/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to send reset email");
-      }
-
-      setIsSuccess(true);
+      await forgotPassword({ email }).unwrap();
     } catch {
-      // Even on error, show success to prevent email enumeration
-      setIsSuccess(true);
-    } finally {
-      setIsSubmitting(false);
+      // suppress to avoid revealing whether email exists
     }
   };
 
@@ -80,16 +64,12 @@ export default function ForgotPasswordPage() {
                   </div>
                 </div>
 
-                {error && (
-                  <p className="text-sm text-red-500">{error}</p>
-                )}
-
                 <button
                   type="submit"
-                  disabled={isSubmitting || !email}
+                  disabled={!email || isLoading}
                   className="w-full rounded-full bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow-[0_20px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubmitting
+                  {isLoading
                     ? t("forgotPassword.sending")
                     : t("forgotPassword.submit")}
                 </button>
@@ -118,15 +98,29 @@ export default function ForgotPasswordPage() {
                 {t("forgotPassword.success")}
               </h2>
               <p className="mt-4 text-sm text-foreground/70">
-                If an account exists with that email, you will receive password reset instructions.
+                {t(
+                  "forgotPassword.successMessage",
+                  "If an account exists with that email, you will receive password reset instructions.",
+                )}
               </p>
-              <Link
-                href="/login"
-                className="mt-6 inline-flex items-center gap-2 rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                {t("forgotPassword.backToLogin")}
-              </Link>
+              <div className="mt-6 flex flex-col gap-3">
+                <Link
+                  href={`/reset-password?email=${encodeURIComponent(
+                    intendedEmail,
+                  )}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-semibold text-foreground transition hover:-translate-y-0.5 hover:border-secondary"
+                >
+                  <RotateCw className="h-4 w-4" />
+                  {t("forgotPassword.goToReset", "Enter reset code")}
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {t("forgotPassword.backToLogin")}
+                </Link>
+              </div>
             </motion.div>
           )}
         </motion.div>

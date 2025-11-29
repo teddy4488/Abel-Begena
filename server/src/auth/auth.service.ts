@@ -9,6 +9,8 @@ import { UserService } from '../user/user.service';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { MailService } from '../mail/mail.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +24,9 @@ export class AuthService {
 
   async register(dto: CreateUserDto) {
     const safeUser = await this.userService.create({ ...dto, role: 'User' });
+    if (!safeUser) {
+      throw new BadRequestException('Unable to create account');
+    }
     const userId = this.extractUserId(safeUser);
     if (!userId) {
       throw new BadRequestException('Unable to create account');
@@ -144,6 +149,45 @@ export class AuthService {
     };
   }
 
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) {
+      return {
+        message: 'If that email exists, a reset code has been sent.',
+      };
+    }
+    const devCode = await this.issuePasswordResetCode(user.email);
+    return {
+      message: 'If that email exists, a reset code has been sent.',
+      ...(devCode ? { devCode } : {}),
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (
+      !user.passwordResetCode ||
+      !user.passwordResetCodeExpiresAt ||
+      user.passwordResetCodeExpiresAt.getTime() < Date.now()
+    ) {
+      throw new BadRequestException(
+        'Reset code has expired. Please request a new code.',
+      );
+    }
+    const matches = await this.userService.comparePassword(
+      dto.code,
+      user.passwordResetCode,
+    );
+    if (!matches) {
+      throw new BadRequestException('Invalid reset code.');
+    }
+    await this.userService.resetPasswordWithCode(dto.email, dto.password);
+    return { message: 'Password updated successfully.' };
+  }
+
   private async issueVerificationCode(userId: string, email: string) {
     const code = this.generateVerificationCode();
     const hash = await this.userService.hashPassword(code);
@@ -151,7 +195,7 @@ export class AuthService {
       Date.now() + this.verificationTtlMinutes * 60 * 1000,
     );
     await this.userService.assignVerificationCode(userId, hash, expiresAt);
-    this.mailService.sendVerificationEmail(email, code);
+    await this.mailService.sendVerificationEmail(email, code);
     return process.env.NODE_ENV !== 'production' ? code : undefined;
   }
 
@@ -159,10 +203,24 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private extractUserId(source: Record<string, unknown>) {
-    const maybeId =
-      (source as { _id?: { toString: () => string } })._id ??
-      (source as { id?: string }).id;
+  private async issuePasswordResetCode(email: string) {
+    const code = this.generateVerificationCode();
+    const hash = await this.userService.hashPassword(code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await this.userService.assignPasswordResetCode(email, hash, expiresAt);
+    await this.mailService.sendPasswordResetEmail(email, code);
+    return process.env.NODE_ENV !== 'production' ? code : undefined;
+  }
+
+  private extractUserId(source: unknown) {
+    if (!source || typeof source !== 'object') {
+      return null;
+    }
+    const maybeWithObjectId = source as {
+      _id?: { toString: () => string } | string;
+      id?: string;
+    };
+    const maybeId = maybeWithObjectId._id ?? maybeWithObjectId.id;
     if (!maybeId) {
       return null;
     }
@@ -171,7 +229,10 @@ export class AuthService {
       : (maybeId.toString?.() ?? null);
   }
 
-  private extractPlainUser(user: Record<string, unknown>) {
+  private extractPlainUser(user: unknown) {
+    if (!user || typeof user !== 'object') {
+      return {};
+    }
     const maybeDoc = user as { toObject?: () => Record<string, unknown> };
     return typeof maybeDoc.toObject === 'function' ? maybeDoc.toObject() : user;
   }

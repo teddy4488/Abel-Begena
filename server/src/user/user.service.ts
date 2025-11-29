@@ -103,27 +103,68 @@ export class UserService {
     return this.toSafeUser(updatedUser);
   }
 
-  async findById(id: string) {
-    const user = await this.userModel.findById(id).lean().exec();
-    return this.toSafeUser(user);
+  async assignPasswordResetCode(
+    email: string,
+    codeHash: string,
+    expiresAt: Date,
+  ) {
+    await this.userModel
+      .findOneAndUpdate(
+        { email },
+        {
+          passwordResetCode: codeHash,
+          passwordResetCodeExpiresAt: expiresAt,
+        },
+        { new: false },
+      )
+      .exec();
   }
 
+  async resetPasswordWithCode(email: string, newPassword: string) {
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    user.password = await this.hashPassword(newPassword);
+    user.passwordResetCode = undefined;
+    user.passwordResetCodeExpiresAt = undefined;
+    await user.save();
+    return this.toSafeUser(user.toObject());
+  }
+
+  async findById(id: string) {
+    const user = await this.userModel.findById(id).lean().exec();
+    return user ? this.toSafeUser(user) : null;
+  }
+
+  toSafeUser<T extends { password?: string }>(user: T): Omit<T, 'password'>;
   toSafeUser<T extends { password?: string } | null>(
     user: T,
-  ): Omit<T, 'password'> | null {
+  ): T extends null ? null : Omit<NonNullable<T>, 'password'>;
+  toSafeUser(user: { password?: string } | null) {
     if (!user) {
       return null;
     }
+
+    const plain =
+      typeof (user as { toObject?: () => Record<string, unknown> }).toObject ===
+      'function'
+        ? (user as { toObject: () => Record<string, unknown> }).toObject()
+        : user;
 
     const {
       password: _password,
       verificationCode: _verificationCode,
       verificationCodeExpiresAt: _verificationExpires,
+      passwordResetCode: _passwordResetCode,
+      passwordResetCodeExpiresAt: _passwordResetExpires,
       ...rest
-    } = user as Record<string, unknown>;
+    } = plain as Record<string, unknown>;
     void _password;
     void _verificationCode;
     void _verificationExpires;
-    return rest as Omit<T, 'password'>;
+    void _passwordResetCode;
+    void _passwordResetExpires;
+    return rest;
   }
 }

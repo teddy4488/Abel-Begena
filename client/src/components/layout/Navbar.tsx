@@ -8,7 +8,7 @@ import { useMemo, useRef, useState } from "react";
 import ThemeSwitcher from "@/components/layout/ThemeSwitcher";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
 import { useAppSelector } from "@/store/hooks";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useLogoutMutation } from "@/store/api/authApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
@@ -110,6 +110,7 @@ export default function Navbar() {
 
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const router = useRouter();
+  const pathname = usePathname();
   const { pushToast } = useToast();
   const [requestLogout, { isLoading: isLoggingOut }] = useLogoutMutation();
   const { t, locale } = useI18n();
@@ -124,11 +125,42 @@ export default function Navbar() {
   const servicesLinks = navSettings.services ?? [];
 
   const isEnglishLocale = locale === "en";
+  const inkUnderlineBase =
+    "nav-ink-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
   const navLinkBaseClass = clsx(
-    "group relative inline-flex items-center justify-center whitespace-nowrap px-1 py-1 font-semibold uppercase text-foreground/70 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary",
+    inkUnderlineBase,
+    "group inline-flex items-center justify-center whitespace-nowrap px-1 py-1 font-semibold uppercase text-foreground/70 transition-colors",
     isEnglishLocale ? "text-[11px] tracking-[0.28em]" : "text-xs tracking-[0.32em]",
-    "after:absolute after:-bottom-1 after:left-1/2 after:h-[2px] after:w-0 after:rounded-full after:bg-secondary after:opacity-0 after:transition-all after:duration-300 hover:text-secondary focus-visible:text-secondary hover:after:left-0 hover:after:w-full hover:after:opacity-100 focus-visible:after:left-0 focus-visible:after:w-full focus-visible:after:opacity-100",
+    "hover:text-secondary focus-visible:text-secondary",
   );
+
+  const navLinkMobileClass = clsx(
+    inkUnderlineBase,
+    "block py-2 text-sm font-semibold uppercase text-foreground/80",
+    isEnglishLocale ? "tracking-[0.3em]" : "tracking-[0.2em]",
+  );
+
+  const navButtonClass = clsx(
+    inkUnderlineBase,
+    "inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition hover:-translate-y-0.5",
+  );
+
+  const dropdownLinkClass = clsx(
+    inkUnderlineBase,
+    "block px-5 py-3 text-left text-foreground/80 uppercase font-semibold",
+    isEnglishLocale ? "tracking-[0.25em]" : "tracking-[0.18em]",
+  );
+
+  const isActiveLink = (href: string) => {
+    if (href.startsWith("#")) {
+      return false;
+    }
+    if (href === "/") {
+      return pathname === "/";
+    }
+    return pathname.startsWith(href);
+  };
 
   const handleLogout = async () => {
     try {
@@ -190,9 +222,10 @@ export default function Navbar() {
           <Link
             key={link.labelKey}
             href={link.href}
-            className={`block px-5 py-3 text-base font-normal transition hover:bg-(--color-secondary-soft) ${
-              isMobile ? "py-1 px-0" : ""
-            }`}
+            className={clsx(
+              "block text-base font-normal transition hover:bg-(--color-secondary-soft)",
+              isMobile ? navLinkMobileClass : dropdownLinkClass,
+            )}
             onClick={() => {
               setMobileOpen(false);
               setServicesOpen(false);
@@ -220,7 +253,7 @@ export default function Navbar() {
           <Link
             key={item.labelKey}
             href={item.href}
-            className="block rounded-lg px-4 py-2 text-left text-foreground transition hover:bg-(--color-secondary-soft)"
+            className="nav-ink-link block rounded-lg px-4 py-2 text-left text-foreground transition hover:bg-(--color-secondary-soft)"
             onClick={() => setUserMenuOpen(false)}
           >
             {t(item.labelKey)}
@@ -228,7 +261,7 @@ export default function Navbar() {
         ))}
         <button
           type="button"
-          className="mt-1 w-full rounded-lg px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+          className="nav-ink-link mt-1 w-full rounded-lg px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
           onClick={handleLogout}
           disabled={isLoggingOut}
         >
@@ -242,10 +275,10 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-(--color-background-soft) text-foreground backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
+      <div className="mx-auto flex max-w-8xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
         <Link
           href="/"
-          className="flex items-center gap-3 rounded-xl bg-linear-to-r from-secondary/30 via-primary/20 to-secondary/30 px-4 py-2 shadow-[0_4px_20px_var(--color-primary-glow)] backdrop-blur-sm border border-secondary/30"
+          className="flex items-center gap-2 rounded-xl bg-linear-to-r from-secondary/30 via-primary/20 to-secondary/30 px-4 py-2 shadow-[0_4px_20px_var(--color-primary-glow)] backdrop-blur-sm border border-secondary/30"
         >
           <Image
             src="/assets/logo.png"
@@ -266,6 +299,7 @@ export default function Navbar() {
               key={link.labelKey}
               href={link.href}
               className={navLinkBaseClass}
+              data-active={isActiveLink(link.href) ? "true" : undefined}
             >
               {t(link.labelKey)}
             </Link>
@@ -278,7 +312,7 @@ export default function Navbar() {
             >
               <button
                 type="button"
-                className={clsx(navLinkBaseClass, "gap-2 pl-2 pr-1")}
+              className={clsx(navLinkBaseClass, "gap-2 pl-2 pr-1")}
                 onClick={() => setServicesOpen((prev) => !prev)}
               >
                 {t("nav.services")}
@@ -310,13 +344,21 @@ export default function Navbar() {
             <>
               <Link
                 href="/login"
-                className="rounded-full border border-border px-5 py-2 text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+                className={clsx(
+                  navButtonClass,
+                  "border-border text-foreground hover:bg-(--color-secondary-soft)",
+                )}
+                data-active={isActiveLink("/login") ? "true" : undefined}
               >
                 {t("nav.signIn", "Sign In")}
               </Link>
               <Link
                 href="/register"
-                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:brightness-95"
+                className={clsx(
+                  navButtonClass,
+                  "border-transparent bg-primary text-primary-foreground shadow-sm hover:brightness-95",
+                )}
+                data-active={isActiveLink("/register") ? "true" : undefined}
               >
                 {t("nav.signUp", "Sign Up")}
               </Link>
@@ -329,7 +371,10 @@ export default function Navbar() {
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-3 rounded-full border border-secondary px-4 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+                className={clsx(
+                  navButtonClass,
+                  "gap-3 border-secondary text-secondary hover:bg-(--color-secondary-soft)",
+                )}
                 onClick={() => setUserMenuOpen((prev) => !prev)}
               >
                 {user?.avatarUrl ? (
@@ -371,7 +416,8 @@ export default function Navbar() {
             <Link
               key={link.labelKey}
               href={link.href}
-              className="block py-2"
+              className={clsx(navLinkMobileClass, "w-full")}
+              data-active={isActiveLink(link.href) ? "true" : undefined}
               onClick={() => setMobileOpen(false)}
             >
               {t(link.labelKey)}
@@ -380,8 +426,10 @@ export default function Navbar() {
           {servicesLinks.length > 0 && (
             <details className="group">
               <summary className="flex cursor-pointer items-center justify-between py-2">
+              <span className={clsx(navLinkMobileClass, "w-full py-0 text-left")}>
                 {t("nav.services")}
-                <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+              </span>
+              <ChevronDown className="ml-2 h-4 w-4 transition group-open:rotate-180" />
               </summary>
               {renderServicesDropdown(true)}
             </details>
@@ -410,14 +458,22 @@ export default function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className="grow rounded-full border border-secondary px-4 py-2 text-center text-secondary"
+                  className={clsx(
+                    navButtonClass,
+                    "w-full border-secondary text-center text-secondary",
+                  )}
+                  data-active={isActiveLink("/login") ? "true" : undefined}
                   onClick={() => setMobileOpen(false)}
                 >
                   {t("nav.signIn", "Sign In")}
                 </Link>
                 <Link
                   href="/register"
-                  className="grow rounded-full bg-primary px-4 py-2 text-center text-primary-foreground"
+                  className={clsx(
+                    navButtonClass,
+                    "w-full border-transparent bg-primary text-center text-primary-foreground",
+                  )}
+                  data-active={isActiveLink("/register") ? "true" : undefined}
                   onClick={() => setMobileOpen(false)}
                 >
                   {t("nav.signUp", "Sign Up")}
@@ -425,7 +481,12 @@ export default function Navbar() {
               </>
             ) : (
               <details className="group w-full">
-                <summary className="flex cursor-pointer items-center justify-between rounded-full border border-secondary px-4 py-2 text-secondary">
+                <summary
+                  className={clsx(
+                    navButtonClass,
+                    "flex cursor-pointer items-center justify-between border-secondary text-secondary",
+                  )}
+                >
                   <span className="flex items-center gap-2">
                     {user?.avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -454,7 +515,7 @@ export default function Navbar() {
                     <Link
                       key={item.labelKey}
                       href={item.href}
-                      className="block rounded-lg px-3 py-2 text-foreground transition hover:bg-(--color-secondary-soft)"
+                      className="nav-ink-link block rounded-lg px-3 py-2 text-foreground transition hover:bg-(--color-secondary-soft)"
                       onClick={() => setMobileOpen(false)}
                     >
                       {t(item.labelKey)}
@@ -462,7 +523,7 @@ export default function Navbar() {
                   ))}
                   <button
                     type="button"
-                    className="w-full rounded-lg px-3 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                    className="nav-ink-link w-full rounded-lg px-3 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-60"
                     onClick={handleLogout}
                     disabled={isLoggingOut}
                   >

@@ -418,7 +418,7 @@ export default function VirtualBegenaExperience() {
         onClose={() => setIsSettingsOpen(false)}
         showHands={showHands}
         onToggleHands={() => setShowHands(!showHands)}
-        darkMode={darkMode}
+        darkMode={isDark}
         onToggleDarkMode={toggleDarkMode}
       />
 
