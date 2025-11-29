@@ -44,9 +44,6 @@ export class MailService {
         user,
         pass,
       },
-      tls: {
-        ciphers: 'SSLv3',
-      },
     });
 
     void this.verifyConnection();
