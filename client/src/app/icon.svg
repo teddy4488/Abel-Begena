@@ -1,47 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img">
-  <defs>
-    <radialGradient id="abelGlow" cx="50%" cy="35%" r="70%">
-      <stop offset="0%" stop-color="#FFF4CF" />
-      <stop offset="45%" stop-color="#F7C750" />
-      <stop offset="100%" stop-color="#B17713" />
-    </radialGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#1a0f05" flood-opacity="0.4" />
-    </filter>
-    <clipPath id="logoMask">
-      <circle cx="256" cy="220" r="120" />
-    </clipPath>
-  </defs>
+<svg width="800" height="800" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+  <pattern id="woodGrain" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+   <path d="M0,10 Q25,0 50,10 T100,10 M0,30 Q25,40 50,30 T100,30 M0,50 Q25,40 50,50 T100,50 M0,70 Q25,80 50,70 T100,70 M0,90 Q25,80 50,90 T100,90" 
+      fill="none" stroke="#FFC107" stroke-width="1.5" stroke-linecap="round" />
+   <path d="M10,0 Q20,25 10,50 T10,100 M40,0 Q30,25 40,50 T40,100 M70,0 Q80,25 70,50 T70,100" 
+      fill="none" stroke="#FFC107" stroke-width="1" opacity="0.6" />
+  </pattern>
+  
+  <mask id="textureMask">
+   <rect x="0" y="0" width="800" height="800" fill="white" />
+   <rect x="0" y="0" width="800" height="800" fill="url(#woodGrain)" />
+  </mask>
 
-  <circle cx="256" cy="256" r="238" fill="url(#abelGlow)" filter="url(#softShadow)" />
-  <circle cx="256" cy="256" r="230" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="12" />
+  <clipPath id="circleClip">
+   <circle cx="400" cy="400" r="390" />
+  </clipPath>
+ </defs>
 
-  <!-- Company logo inside a golden medallion -->
-  <circle cx="256" cy="220" r="128" fill="rgba(0,0,0,0.15)" />
-  <circle cx="256" cy="220" r="120" fill="#FFF7E3" stroke="#E0B547" stroke-width="10" />
-  <g clip-path="url(#logoMask)">
-    <circle cx="256" cy="220" r="120" fill="#F8DFC0" />
-    <image
-      href="/assets/logo.png"
-      x="136"
-      y="100"
-      width="240"
-      height="240"
-      preserveAspectRatio="xMidYMid slice"
-    />
+ <rect width="100%" height="100%" fill="#FFC107" clip-path="url(#circleClip)" />
+ <circle cx="400" cy="400" r="390" fill="none" stroke="black" stroke-width="10" />
+
+ <g fill="black" stroke="none" clip-path="url(#circleClip)">
+  
+  <path d="M120,100 L520,100 L530,90 L535,110 L520,130 L120,130 L105,110 L110,90 Z" mask="url(#textureMask)" />
+  <path d="M140,130 L180,500 L210,500 L165,130 Z" mask="url(#textureMask)" />
+  <path d="M475,130 L430,500 L400,500 L450,130 Z" mask="url(#textureMask)" />
+
+  <g transform="translate(-100, -30)">
+  <path d="M460,420 L580,420 L590,440 L570,640 L550,640 L565,450 L460,450 Z" mask="url(#textureMask)" />
+  <path d="M480,450 L480,470 M500,450 L500,480 M520,450 L520,465" stroke="black" stroke-width="3" />
+
+  <path d="M620,420 L740,420 L730,440 L710,510 L640,510 L640,530 L705,530 L700,640 L680,640 L685,550 L620,550 L625,440 Z" mask="url(#textureMask)" />
+  <path d="M660,440 L660,460 M690,440 L690,475 M715,440 L715,460" stroke="black" stroke-width="3" />
   </g>
+ </g>
 
-  <!-- Brand name -->
-  <text
-    x="50%"
-    y="400"
-    text-anchor="middle"
-    font-family="'Noto Sans Ethiopic','Merriweather',serif"
-    font-size="82"
-    fill="#3B190B"
-    letter-spacing="4"
-  >
-    አቤል በገና
-  </text>
+ <g stroke="black" stroke-width="2" fill="none" clip-path="url(#circleClip)">
+  <line x1="250" y1="130" x2="270" y2="500" />
+  <line x1="270" y1="130" x2="285" y2="480" />
+  <line x1="290" y1="130" x2="300" y2="530" />
+  <line x1="310" y1="130" x2="315" y2="450" /> 
+  <line x1="330" y1="130" x2="330" y2="520" />
+  <line x1="350" y1="130" x2="345" y2="500" />
+  <line x1="370" y1="130" x2="360" y2="400" /> 
+  <line x1="390" y1="130" x2="375" y2="530" />
+ </g>
+ 
+ <circle cx="315" cy="450" r="3" fill="black" clip-path="url(#circleClip)"/>
+ <circle cx="360" cy="400" r="3" fill="black" clip-path="url(#circleClip)"/>
+
+
+ <rect x="180" y="530" width="260" height="160" rx="40" ry="40" 
+    fill="none" stroke="black" stroke-width="12" clip-path="url(#circleClip)" />
+ 
+ <g stroke="#FFC107" stroke-width="4" clip-path="url(#circleClip)">
+  <line x1="174" y1="600" x2="186" y2="600" />
+  <line x1="174" y1="620" x2="186" y2="620" />
+  <line x1="174" y1="640" x2="186" y2="640" />
+  
+  <line x1="434" y1="600" x2="446" y2="600" />
+  <line x1="434" y1="620" x2="446" y2="620" />
+  <line x1="434" y1="640" x2="446" y2="640" />
+ </g>
+
+ <g fill="black" clip-path="url(#circleClip)" transform="translate(10, 0)">
+  <path d="M230,560 L245,560 L245,600 L270,600 L270,560 L285,560 L285,650 L270,650 L270,620 L245,620 L245,650 L230,650 Z" />
+    <path d="M340,610 Q340,560 370,560 Q400,560 400,610 L400,650 L385,650 L385,610 Q385,580 370,580 Q355,580 355,610 L355,650 L370,650 L370,670 L340,670 Z" />
+ </g>
+
 </svg>
-
