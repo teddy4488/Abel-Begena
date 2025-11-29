@@ -1,52 +1,31 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createTransport } from 'nodemailer';
-import type SMTPTransport from 'nodemailer/lib/smtp-transport';
-import type Mail from 'nodemailer/lib/mailer';
+import { Resend } from 'resend';
 
-type MailTransporter = {
-  sendMail: (mail: Mail.Options) => Promise<unknown>;
-  verify: () => Promise<void>;
-};
+// 1. Define the shape of the response to satisfy strict linting
+interface ResendResponse {
+  data: { id: string } | null;
+  error: { message: string; name: string } | null;
+}
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly transporter: MailTransporter;
+  private readonly resend: Resend;
   private readonly fromAddress: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.fromAddress =
-      this.configService.get<string>('EMAIL_FROM') ??
-      'Abel Begena Conservatory <abelbegena@outlook.com>';
-    const host =
-      this.configService.get<string>('EMAIL_HOST') ?? 'smtp.office365.com';
-    const port = Number(this.configService.get<string>('EMAIL_PORT') ?? 587);
-    const user =
-      this.configService.get<string>('EMAIL_USER') ?? 'abelbegena@outlook.com';
-    const pass = this.configService.get<string>('EMAIL_PASS') ?? '';
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
 
-    if (!pass) {
-      this.logger.warn(
-        'EMAIL_PASS is not set. Mail delivery will fail until valid Outlook credentials are configured.',
-      );
+    if (!apiKey) {
+      this.logger.error('RESEND_API_KEY is not set. Mail delivery will fail.');
     }
 
-    const transportFactory = createTransport as (
-      options: SMTPTransport.Options,
-    ) => MailTransporter;
+    this.resend = new Resend(apiKey);
 
-    this.transporter = transportFactory({
-      host,
-      port,
-      secure: port === 465,
-      auth: {
-        user,
-        pass,
-      },
-    });
-
-    void this.verifyConnection();
+    this.fromAddress =
+      this.configService.get<string>('EMAIL_FROM') ??
+      'Abel Begena Conservatory <onboarding@resend.dev>';
   }
 
   async sendVerificationEmail(email: string, code: string) {
@@ -84,13 +63,31 @@ export class MailService {
     html: string;
   }) {
     try {
-      await this.transporter.sendMail({
+      // 2. Cast the result to 'unknown' then to our Interface.
+      // This tells the Linter: "I know what this data is, treat it as ResendResponse"
+      const response = (await this.resend.emails.send({
         from: this.fromAddress,
-        ...options,
-      });
+        to: [options.to],
+        subject: options.subject,
+        html: options.html,
+      })) as unknown as ResendResponse;
+
+      // Now we destructure from our safe variable
+      const { data, error } = response;
+
+      if (error) {
+        this.logger.error(
+          `Resend API Error for ${options.to}: ${error.message} (Type: ${error.name})`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        `Email sent to ${options.to} successfully. ID: ${data?.id}`,
+      );
     } catch (error) {
       this.logger.error(
-        `Failed to send email to ${options.to}: ${this.describeError(error)}`,
+        `Unexpected error sending email to ${options.to}: ${this.describeError(error)}`,
       );
     }
   }
@@ -123,17 +120,6 @@ export class MailService {
         <p style="margin-top: 32px;">With gratitude,<br/>Abel Begena Conservatory</p>
       </div>
     `;
-  }
-
-  private async verifyConnection() {
-    try {
-      await this.transporter.verify();
-      this.logger.log('SMTP connection verified successfully.');
-    } catch (error) {
-      this.logger.error(
-        `Unable to verify SMTP credentials at startup: ${this.describeError(error)}`,
-      );
-    }
   }
 
   private describeError(error: unknown) {
