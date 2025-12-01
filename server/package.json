@@ -22,6 +22,7 @@
     "seed": "ts-node seed.ts"
   },
   "dependencies": {
+    "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -31,6 +32,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@types/bcrypt": "^6.0.0",
+    "@types/nodemailer": "^7.0.4",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
@@ -38,11 +40,11 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "mongoose": "^8.8.3",
+    "nodemailer": "^7.0.11",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.2",
-    "resend": "^6.5.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
