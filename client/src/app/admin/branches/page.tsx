@@ -77,6 +77,9 @@ export default function AdminBranchesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    // Check if we're on the client side before using window
+    if (typeof window === 'undefined') return;
+    
     if (!window.confirm(t("branches.admin.confirmDelete", "Delete this branch?"))) {
       return;
     }
