@@ -35,6 +35,8 @@ export class MailService {
         user,
         pass,
       },
+      connectionTimeout: 20000,
+      greetingTimeout: 20000,
     }) as Transporter<SMTPTransport.Options>;
 
     void this.verifyConnection();
