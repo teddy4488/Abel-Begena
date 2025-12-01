@@ -2,7 +2,7 @@
 
 import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 import type { Branch } from "@/store/api/branchApi";
 import L from "leaflet";
@@ -17,7 +17,7 @@ type Props = {
 function MapUpdater({ center, zoom }: { center: LatLngExpression; zoom: number }) {
   const map = useMap();
 
-  useMemo(() => {
+  useEffect(() => {
     if (center && zoom) {
       map.setView(center, zoom, { animate: true, duration: 0.5 });
     }

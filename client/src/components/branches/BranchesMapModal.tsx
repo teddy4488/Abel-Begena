@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapContainer, TileLayer, Circle, Marker, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
@@ -19,7 +19,7 @@ type Center = { lat: number; lng: number };
 function MapEffect({ center }: { center: Center | null }) {
   const map = useMap();
 
-  useMemo(() => {
+  useEffect(() => {
     if (!center || center.lat === undefined || center.lng === undefined) {
       return;
     }
@@ -36,16 +36,13 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
   // Wrap safeBranches in useMemo to prevent dependency issues
   const safeBranches = useMemo(() => branches ?? [], [branches]);
   
-  // Calculate initial activeId from safeBranches (only when branches change)
-  const computedInitialActiveId = useMemo(() => 
+  // Calculate initial activeId from safeBranches
+  const initialActiveId = useMemo(() => 
     safeBranches.length > 0 ? safeBranches[0]._id : null,
   [safeBranches]);
   
-  // Use a ref to track if we should reset to initial value when modal opens
-  const [activeId, setActiveId] = useState<string | null>(null);
-  
-  // Determine the actual active ID to use
-  const effectiveActiveId = activeId || computedInitialActiveId;
+  // Track active branch ID
+  const [activeId, setActiveId] = useState<string | null>(initialActiveId);
 
   // Handle branch selection
   const handleSelectBranch = useCallback((branchId: string) => {
@@ -53,8 +50,8 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
   }, []);
 
   const activeBranch = useMemo(
-    () => safeBranches.find((b) => b._id === effectiveActiveId),
-    [safeBranches, effectiveActiveId],
+    () => safeBranches.find((b) => b._id === activeId),
+    [safeBranches, activeId],
   );
 
   const mapCenter: Center | null = useMemo(() => {
@@ -74,9 +71,9 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
 
   // Handle modal close with cleanup
   const handleClose = useCallback(() => {
-    setActiveId(null); // Reset state
+    setActiveId(initialActiveId); // Reset to initial state
     onClose();
-  }, [onClose]);
+  }, [onClose, initialActiveId]);
 
   if (!open) {
     return null;
@@ -123,7 +120,7 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
                 type="button"
                 onClick={() => handleSelectBranch(branch._id)}
                 className={`flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1 transition ${
-                  branch._id === effectiveActiveId
+                  branch._id === activeId
                     ? "bg-secondary text-primary-foreground shadow-[0_0_16px_var(--color-secondary-glow)]"
                     : "bg-background text-foreground/80 hover:bg-(--color-secondary-soft)"
                 }`}
@@ -158,7 +155,7 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
                 {safeBranches.map((branch) => {
                   const [lng, lat] = branch.location.coordinates;
                   const pos: LatLngExpression = [lat, lng];
-                  const isActive = branch._id === effectiveActiveId;
+                  const isActive = branch._id === activeId;
                   const radius = branch.radiusMeters ?? 600;
                   return (
                     <Circle
