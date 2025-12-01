@@ -77,7 +77,10 @@ export class AuthController {
   private setSessionCookie(res: Response, token: string) {
     res.cookie('access_token', token, {
       httpOnly: true,
-      sameSite: 'lax',
+      // In production, frontend (Vercel) and backend (Render) are on different domains.
+      // To allow the browser to send this cookie on cross-site XHR/fetch requests,
+      // we must use SameSite=None; Secure.
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: process.env.NODE_ENV === 'production',
       maxAge: 2 * 60 * 60 * 1000,
     });
@@ -86,7 +89,7 @@ export class AuthController {
   private clearSessionCookie(res: Response) {
     res.clearCookie('access_token', {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: process.env.NODE_ENV === 'production',
     });
   }
