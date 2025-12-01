@@ -22,44 +22,47 @@ const galleryImages = [
   { src: "/assets/begena25.jpg", caption: "Strings of Devotion" },
 ];
 
-// Placeholder videos - Ethiopian Orthodox music related
+// Sacred media carousel - Ethiopian Orthodox begena / mezmur / hymn only.
+// IMPORTANT: Replace the `url` values with your own approved recordings
+// (no secular music). Each entry should be a YouTube embed URL such as:
+// https://www.youtube.com/embed/VIDEO_ID
 const sacredVideos = [
   {
     id: 1,
-    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    title: "Begena Meditation",
+    url: "https://www.youtube.com/embed/VIDEO_ID_BEGENA_1",
+    title: "Begena Meditative Hymn",
     titleAm: "የበገና ማሰላሰል",
     description: "Ancient melodies for spiritual reflection",
     descriptionAm: "ለመንፈሳዊ ማሰላሰል ጥንታዊ ዜማዎች",
   },
   {
     id: 2,
-    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    title: "Saint Yared's Hymns",
+    url: "https://www.youtube.com/embed/VIDEO_ID_BEGENA_2",
+    title: "Saint Yared Hymn on Begena",
     titleAm: "የቅዱስ ያሬድ መዝሙሮች",
     description: "The foundation of Ethiopian sacred music",
     descriptionAm: "የኢትዮጵያ ቅዱስ ሙዚቃ መሰረት",
   },
   {
     id: 3,
-    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    title: "Masinko Traditions",
+    url: "https://www.youtube.com/embed/VIDEO_ID_MEZMUR_1",
+    title: "Orthodox Mezmur – Harp",
     titleAm: "የማሲንቆ ወግ",
     description: "The one-stringed fiddle of Ethiopia",
     descriptionAm: "የኢትዮጵያ አንድ ገመድ ማሲንቆ",
   },
   {
     id: 4,
-    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    title: "Liturgical Chants",
+    url: "https://www.youtube.com/embed/VIDEO_ID_MEZMUR_2",
+    title: "Liturgical Chant (Zema)",
     titleAm: "የሥርዓት ዝማሬዎች",
     description: "Tewahedo church worship music",
     descriptionAm: "የተዋሕዶ ቤተ ክርስቲያን አምልኮ ሙዚቃ",
   },
   {
     id: 5,
-    url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    title: "Kirar Melodies",
+    url: "https://www.youtube.com/embed/VIDEO_ID_MEZMUR_3",
+    title: "Kirar & Begena Hymn",
     titleAm: "የኪራር ዜማዎች",
     description: "The lyre of the Ethiopian highlands",
     descriptionAm: "የኢትዮጵያ ደጋማ ኪራር",

@@ -1,45 +1,36 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createTransport } from 'nodemailer';
-import type { Transporter } from 'nodemailer';
-import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly transporter: Transporter<SMTPTransport.Options>;
   private readonly fromAddress: string;
+  /**
+   * Required HTTP email relay endpoint (e.g. Cloudflare Worker, Resend, etc).
+   * This service NEVER uses SMTP; all mail is sent via HTTPS JSON POST.
+   */
+  private readonly httpEndpoint: string | null;
+  private readonly httpApiKey: string | null;
 
   constructor(private readonly configService: ConfigService) {
     this.fromAddress =
       this.configService.get<string>('EMAIL_FROM') ??
-      'Abel Begena Conservatory <abelbegena@outlook.com>';
-    const host =
-      this.configService.get<string>('EMAIL_HOST') ?? 'smtp.office365.com';
-    const port = Number(this.configService.get<string>('EMAIL_PORT') ?? 587);
-    const user =
-      this.configService.get<string>('EMAIL_USER') ?? 'abelbegena@outlook.com';
-    const pass = this.configService.get<string>('EMAIL_PASS') ?? '';
+      'Abel Begena Conservatory <no-reply@abelbegena.com>';
 
-    if (!pass) {
-      this.logger.warn(
-        'EMAIL_PASS is not set. Mail delivery will fail until valid Outlook credentials are configured.',
+    this.httpEndpoint =
+      this.configService.get<string>('EMAIL_HTTP_ENDPOINT') ?? null;
+    this.httpApiKey =
+      this.configService.get<string>('EMAIL_HTTP_API_KEY') ?? null;
+
+    if (!this.httpEndpoint) {
+      this.logger.error(
+        'EMAIL_HTTP_ENDPOINT is not set. Outbound email (OTP, verification, password reset) will NOT work until this is configured.',
+      );
+    } else {
+      this.logger.log(
+        `Using HTTP email relay at ${this.httpEndpoint} for outbound mail.`,
       );
     }
-
-    this.transporter = createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: {
-        user,
-        pass,
-      },
-      connectionTimeout: 20000,
-      greetingTimeout: 20000,
-    }) as Transporter<SMTPTransport.Options>;
-
-    // void this.verifyConnection();
   }
 
   async sendVerificationEmail(email: string, code: string) {
@@ -76,11 +67,40 @@ export class MailService {
     subject: string;
     html: string;
   }) {
+    if (!this.httpEndpoint) {
+      this.logger.error(
+        `Cannot send email to ${options.to}: EMAIL_HTTP_ENDPOINT is not configured.`,
+      );
+      return;
+    }
+
     try {
-      await this.transporter.sendMail({
+      const payload = {
         from: this.fromAddress,
-        ...options,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      };
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (this.httpApiKey) {
+        headers['Authorization'] = `Bearer ${this.httpApiKey}`;
+      }
+
+      const response = await fetch(this.httpEndpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
       });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(
+          `HTTP email relay responded with ${response.status} ${response.statusText}: ${text}`,
+        );
+      }
     } catch (error) {
       this.logger.error(
         `Failed to send email to ${options.to}: ${this.describeError(error)}`,

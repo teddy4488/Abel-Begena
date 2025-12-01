@@ -49,7 +49,7 @@ export default function LoginPage() {
       return;
     }
     try {
-      await login(form).unwrap();
+      const result = await login(form).unwrap();
       setErrorMessage(null);
       setPendingEmail(null);
       pushToast({
@@ -57,6 +57,8 @@ export default function LoginPage() {
         description: t("login.successDescription", "Redirecting you to your dashboard."),
         variant: "success",
       });
+      const destination = getRoleLandingRoute(result.user?.role);
+      router.replace(destination);
     } catch (err) {
       const fallback = t(
         "login.errorMessage",

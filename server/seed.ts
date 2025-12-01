@@ -7,7 +7,7 @@ config({ path: '.env' });
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/abel-begena';
 
-// User Schema (simplified for seeding)
+// User Schema (aligned with main application for seeding)
 const UserSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true },
@@ -21,6 +21,12 @@ const UserSchema = new mongoose.Schema(
       default: 'User',
     },
     isActive: { type: Boolean, default: true },
+    isVerified: { type: Boolean, default: false },
+    teacherStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'suspended'],
+      default: undefined,
+    },
   },
   { timestamps: true },
 );
@@ -73,7 +79,7 @@ async function seed() {
     // Hash password
     const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // Create Admin User
+    // Create Admin User (verified & active)
     const admin = await User.create({
       email: 'admin@abelbegena.com',
       password: hashedPassword,
@@ -81,10 +87,11 @@ async function seed() {
       lastName: 'User',
       role: 'Admin',
       isActive: true,
+      isVerified: true,
     });
     console.log('✅ Created Admin user:', admin.email);
 
-    // Create Teacher User
+    // Create Teacher User (verified, active, approved)
     const teacher = await User.create({
       email: 'teacher@abelbegena.com',
       password: hashedPassword,
@@ -92,10 +99,12 @@ async function seed() {
       lastName: 'Instructor',
       role: 'Teacher',
       isActive: true,
+      isVerified: true,
+      teacherStatus: 'approved',
     });
     console.log('✅ Created Teacher user:', teacher.email);
 
-    // Create Sample Class
+    // Create Sample Class taught by the teacher
     const sampleClass = await Class.create({
       title: 'Introduction to Begena: The Harp of David',
       instructorId: teacher._id,
@@ -111,22 +120,23 @@ async function seed() {
     });
     console.log('✅ Created sample class:', sampleClass.title);
 
-    // Create a Student User for testing
+    // Create a Standard User for testing
     const student = await User.create({
-      email: 'student@abelbegena.com',
+      email: 'user@abelbegena.com',
       password: hashedPassword,
       firstName: 'Test',
       lastName: 'Student',
       role: 'User',
       isActive: true,
+      isVerified: true,
     });
     console.log('✅ Created Student user:', student.email);
 
     console.log('\n🎉 Seed completed successfully!');
-    console.log('\n📋 Test Credentials:');
+    console.log('\n📋 Test Credentials (all verified & active):');
     console.log('   Admin:   admin@abelbegena.com / password123');
     console.log('   Teacher: teacher@abelbegena.com / password123');
-    console.log('   Student: student@abelbegena.com / password123');
+    console.log('   User:    user@abelbegena.com / password123');
 
     await mongoose.disconnect();
     console.log('\n👋 Disconnected from MongoDB');
