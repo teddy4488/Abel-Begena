@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapContainer, TileLayer, Circle, Marker, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
@@ -19,7 +19,7 @@ type Center = { lat: number; lng: number };
 function MapEffect({ center }: { center: Center | null }) {
   const map = useMap();
 
-  useEffect(() => {
+  useMemo(() => {
     if (!center || center.lat === undefined || center.lng === undefined) {
       return;
     }
@@ -33,14 +33,28 @@ function MapEffect({ center }: { center: Center | null }) {
 }
 
 export function BranchesMapModal({ open, onClose, branches }: Props) {
-  const safeBranches = branches ?? [];
+  // Wrap safeBranches in useMemo to prevent dependency issues
+  const safeBranches = useMemo(() => branches ?? [], [branches]);
+  
+  // Calculate initial activeId from safeBranches (only when branches change)
+  const computedInitialActiveId = useMemo(() => 
+    safeBranches.length > 0 ? safeBranches[0]._id : null,
+  [safeBranches]);
+  
+  // Use a ref to track if we should reset to initial value when modal opens
   const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // Determine the actual active ID to use
+  const effectiveActiveId = activeId || computedInitialActiveId;
+
+  // Handle branch selection
+  const handleSelectBranch = useCallback((branchId: string) => {
+    setActiveId(branchId);
+  }, []);
 
   const activeBranch = useMemo(
-    () =>
-      safeBranches.find((b) => b._id === activeId) ??
-      (safeBranches.length ? safeBranches[0] : undefined),
-    [safeBranches, activeId],
+    () => safeBranches.find((b) => b._id === effectiveActiveId),
+    [safeBranches, effectiveActiveId],
   );
 
   const mapCenter: Center | null = useMemo(() => {
@@ -49,12 +63,20 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
     return { lat, lng };
   }, [activeBranch]);
 
-  useEffect(() => {
-    if (!open || !safeBranches.length) {
-      return;
-    }
-    setActiveId((prev) => prev ?? safeBranches[0]._id);
-  }, [open, safeBranches]);
+  // Calculate initial map center for MapContainer
+  const initialCenter = useMemo(() => {
+    if (!safeBranches.length) return [9.01, 38.79] as LatLngExpression;
+    
+    const firstBranch = safeBranches[0];
+    const [lng, lat] = firstBranch.location.coordinates;
+    return [lat, lng] as LatLngExpression;
+  }, [safeBranches]);
+
+  // Handle modal close with cleanup
+  const handleClose = useCallback(() => {
+    setActiveId(null); // Reset state
+    onClose();
+  }, [onClose]);
 
   if (!open) {
     return null;
@@ -63,7 +85,7 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 px-4 py-8"
+        className="fixed inset-0 z-1200 flex items-center justify-center bg-black/60 px-4 py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -86,7 +108,7 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-foreground/80 hover:border-secondary hover:text-secondary"
               aria-label="Close"
             >
@@ -99,9 +121,9 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
               <button
                 key={branch._id}
                 type="button"
-                onClick={() => setActiveId(branch._id)}
+                onClick={() => handleSelectBranch(branch._id)}
                 className={`flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1 transition ${
-                  branch._id === activeBranch?._id
+                  branch._id === effectiveActiveId
                     ? "bg-secondary text-primary-foreground shadow-[0_0_16px_var(--color-secondary-glow)]"
                     : "bg-background text-foreground/80 hover:bg-(--color-secondary-soft)"
                 }`}
@@ -118,25 +140,25 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
           </div>
 
           <div className="relative h-[320px] overflow-hidden rounded-2xl border border-border bg-background/80">
-            {safeBranches.length === 0 || !mapCenter ? (
+            {safeBranches.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-foreground/60">
                 Branches will appear here once locations are configured.
               </div>
             ) : (
               <MapContainer
-                center={[mapCenter.lat, mapCenter.lng] as LatLngExpression}
+                center={initialCenter}
                 zoom={13}
                 style={{ height: "100%", width: "100%" }}
-                scrollWheelZoom
+                scrollWheelZoom={true}
               >
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
                 {safeBranches.map((branch) => {
                   const [lng, lat] = branch.location.coordinates;
                   const pos: LatLngExpression = [lat, lng];
-                  const isActive = branch._id === activeBranch?._id;
+                  const isActive = branch._id === effectiveActiveId;
                   const radius = branch.radiusMeters ?? 600;
                   return (
                     <Circle
@@ -153,7 +175,7 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
                     </Circle>
                   );
                 })}
-                <MapEffect center={mapCenter} />
+                {mapCenter && <MapEffect center={mapCenter} />}
               </MapContainer>
             )}
           </div>
@@ -162,5 +184,3 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
     </AnimatePresence>
   );
 }
-
-

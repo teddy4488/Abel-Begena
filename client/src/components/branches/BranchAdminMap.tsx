@@ -1,10 +1,11 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import "leaflet/dist/leaflet.css";
 import type { Branch } from "@/store/api/branchApi";
+import L from "leaflet";
 
 type Props = {
   branches: Branch[];
@@ -13,28 +14,45 @@ type Props = {
   onPositionChange: (lat: number, lng: number) => void;
 };
 
+function MapUpdater({ center, zoom }: { center: LatLngExpression; zoom: number }) {
+  const map = useMap();
+
+  useMemo(() => {
+    if (center && zoom) {
+      map.setView(center, zoom, { animate: true, duration: 0.5 });
+    }
+  }, [center, zoom, map]);
+
+  return null;
+}
+
 export default function BranchAdminMap({
   branches,
   selectedBranchId,
   radiusMeters,
   onPositionChange,
 }: Props) {
-  const [center, setCenter] = useState<LatLngExpression>([9.01, 38.79]); // Addis Ababa approx
-  const [zoom, setZoom] = useState(12);
-
-  useEffect(() => {
-    const active =
-      branches.find((b) => b._id === selectedBranchId) ?? branches[0];
+  // Calculate center and zoom based on props directly
+  const { center, zoom } = useMemo(() => {
+    const active = branches.find((b) => b._id === selectedBranchId) ?? branches[0];
+    
     if (active) {
       const [lng, lat] = active.location.coordinates;
-      setCenter([lat, lng]);
-      setZoom(13);
+      return {
+        center: [lat, lng] as LatLngExpression,
+        zoom: 13
+      };
     }
+    
+    // Default values
+    return {
+      center: [9.01, 38.79] as LatLngExpression, // Addis Ababa approx
+      zoom: 12
+    };
   }, [branches, selectedBranchId]);
 
-  const handleClick = (event: { latlng: { lat: number; lng: number } }) => {
+  const handleClick = (event: L.LeafletMouseEvent) => {
     const { lat, lng } = event.latlng;
-    setCenter([lat, lng]);
     onPositionChange(lat, lng);
   };
 
@@ -43,16 +61,16 @@ export default function BranchAdminMap({
       center={center}
       zoom={zoom}
       style={{ height: "100%", width: "100%" }}
-      scrollWheelZoom
+      scrollWheelZoom={true}
       doubleClickZoom={false}
-      whenCreated={(map) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (map as any).on("click", handleClick);
+      whenReady={(map) => {
+        map.target.on("click", handleClick);
       }}
     >
+      <MapUpdater center={center} zoom={zoom} />
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
       {branches.map((branch) => {
         const [lng, lat] = branch.location.coordinates;
@@ -77,5 +95,3 @@ export default function BranchAdminMap({
     </MapContainer>
   );
 }
-
-
