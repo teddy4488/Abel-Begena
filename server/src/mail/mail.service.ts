@@ -39,7 +39,7 @@ export class MailService {
       greetingTimeout: 20000,
     }) as Transporter<SMTPTransport.Options>;
 
-    void this.verifyConnection();
+    // void this.verifyConnection();
   }
 
   async sendVerificationEmail(email: string, code: string) {
@@ -118,16 +118,16 @@ export class MailService {
     `;
   }
 
-  private async verifyConnection() {
-    try {
-      await this.transporter.verify();
-      this.logger.log('SMTP connection verified successfully.');
-    } catch (error) {
-      this.logger.error(
-        `Unable to verify SMTP credentials at startup: ${this.describeError(error)}`,
-      );
-    }
-  }
+  // private async verifyConnection() {
+  //   try {
+  //     await this.transporter.verify();
+  //     this.logger.log('SMTP connection verified successfully.');
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Unable to verify SMTP credentials at startup: ${this.describeError(error)}`,
+  //     );
+  //   }
+  // }
 
   private describeError(error: unknown) {
     if (error instanceof Error) {
