@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import { useMemo, useEffect } from "react";
 import "leaflet/dist/leaflet.css";
@@ -23,6 +23,17 @@ function MapUpdater({ center, zoom }: { center: LatLngExpression; zoom: number }
     }
   }, [center, zoom, map]);
 
+  return null;
+}
+
+function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (event) => {
+      const { lat, lng } = event.latlng;
+      onClick(lat, lng);
+    },
+  });
+  
   return null;
 }
 
@@ -51,11 +62,6 @@ export default function BranchAdminMap({
     };
   }, [branches, selectedBranchId]);
 
-  const handleClick = (event: L.LeafletMouseEvent) => {
-    const { lat, lng } = event.latlng;
-    onPositionChange(lat, lng);
-  };
-
   return (
     <MapContainer
       center={center}
@@ -63,11 +69,9 @@ export default function BranchAdminMap({
       style={{ height: "100%", width: "100%" }}
       scrollWheelZoom={true}
       doubleClickZoom={false}
-      whenReady={(map) => {
-        map.target.on("click", handleClick);
-      }}
     >
       <MapUpdater center={center} zoom={zoom} />
+      <ClickHandler onClick={onPositionChange} />
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
