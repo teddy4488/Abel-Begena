@@ -93,7 +93,10 @@ export default function AdminBranchesPage() {
     } catch (error) {
       pushToast({
         title: t("branches.admin.errorTitle", "Unable to delete branch"),
-        description: extractErrorMessage(error),
+        description: extractErrorMessage(
+          error, 
+          t("branches.admin.genericError", "An unexpected error occurred")
+        ),
         variant: "error",
       });
     }
@@ -147,7 +150,10 @@ export default function AdminBranchesPage() {
     } catch (error) {
       pushToast({
         title: t("branches.admin.errorTitle", "Unable to save branch"),
-        description: extractErrorMessage(error),
+        description: extractErrorMessage(
+          error,
+          t("branches.admin.saveError", "Failed to save branch details")
+        ),
         variant: "error",
       });
     }
@@ -482,5 +488,3 @@ export default function AdminBranchesPage() {
     </div>
   );
 }
-
-
