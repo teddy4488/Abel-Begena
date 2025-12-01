@@ -12,6 +12,7 @@ import { useGetBranchesQuery } from "@/store/api/branchApi";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
 import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
+import { BranchesMapModal } from "@/components/branches/BranchesMapModal";
 
 const heroImage =
   "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
@@ -80,8 +81,8 @@ export default function Home() {
     useGetPublicClassesQuery();
   const { data: branches } = useGetBranchesQuery();
   const featuredProducts = (products ?? []).slice(0, 3);
-  
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
   const nextVideo = useCallback(() => {
     setCurrentVideoIndex((prev) => (prev + 1) % sacredVideos.length);
@@ -734,36 +735,13 @@ export default function Home() {
               </p>
               <p>{t("contact.location")}</p>
             </div>
-            <Link
-              href="https://maps.app.goo.gl/"
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => setIsMapModalOpen(true)}
               className="inline-flex items-center justify-center rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
             >
               {t("contact.viewMap")}
-            </Link>
-            {branches && branches.length > 0 && (
-              <div className="mt-4 space-y-2 text-sm text-foreground/80">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
-                  {t("branches.public.kicker", "Branches in Addis Ababa")}
-                </p>
-                <ul className="space-y-1">
-                  {branches.map((branch) => (
-                    <li key={branch._id} className="flex items-start gap-2">
-                      <span className="mt-1 inline-block h-2 w-2 rounded-full bg-secondary" />
-                      <span>
-                        <span className="block font-semibold text-primary">
-                          {branch.name}
-                        </span>
-                        <span className="block text-foreground/70">
-                          {branch.address || branch.city || branch.region}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            </button>
           </FadeIn>
           <FadeIn className="space-y-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -795,6 +773,11 @@ export default function Home() {
           </FadeIn>
         </section>
       </main>
+      <BranchesMapModal
+        open={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        branches={branches}
+      />
     </div>
   );
 }
