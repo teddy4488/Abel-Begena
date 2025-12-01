@@ -8,6 +8,7 @@ import { useMemo, useState, useCallback } from "react";
 import { useAppSelector } from "@/store/hooks";
 import { useGetProductsQuery } from "@/store/api/storeApi";
 import { useGetPublicClassesQuery } from "@/store/api/classApi";
+import { useGetBranchesQuery } from "@/store/api/branchApi";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
 import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
@@ -77,6 +78,7 @@ export default function Home() {
     useGetProductsQuery();
   const { data: classHighlights, isLoading: isLoadingClasses } =
     useGetPublicClassesQuery();
+  const { data: branches } = useGetBranchesQuery();
   const featuredProducts = (products ?? []).slice(0, 3);
   
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -740,6 +742,28 @@ export default function Home() {
             >
               {t("contact.viewMap")}
             </Link>
+            {branches && branches.length > 0 && (
+              <div className="mt-4 space-y-2 text-sm text-foreground/80">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                  {t("branches.public.kicker", "Branches in Addis Ababa")}
+                </p>
+                <ul className="space-y-1">
+                  {branches.map((branch) => (
+                    <li key={branch._id} className="flex items-start gap-2">
+                      <span className="mt-1 inline-block h-2 w-2 rounded-full bg-secondary" />
+                      <span>
+                        <span className="block font-semibold text-primary">
+                          {branch.name}
+                        </span>
+                        <span className="block text-foreground/70">
+                          {branch.address || branch.city || branch.region}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </FadeIn>
           <FadeIn className="space-y-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">

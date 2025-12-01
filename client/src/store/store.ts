@@ -8,6 +8,7 @@ import { userApi } from "./api/userApi";
 import { blogApi } from "./api/blogApi";
 import { cmsApi } from "./api/cmsApi";
 import { adminApi } from "./api/adminApi";
+import { branchApi } from "./api/branchApi";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -20,6 +21,7 @@ export const store = configureStore({
     [blogApi.reducerPath]: blogApi.reducer,
     [cmsApi.reducerPath]: cmsApi.reducer,
     [adminApi.reducerPath]: adminApi.reducer,
+    [branchApi.reducerPath]: branchApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -30,6 +32,7 @@ export const store = configureStore({
       blogApi.middleware,
       cmsApi.middleware,
       adminApi.middleware,
+      branchApi.middleware,
     ),
 });
 
