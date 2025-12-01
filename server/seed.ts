@@ -56,8 +56,35 @@ const ClassSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Branch Schema (simplified for seeding)
+const BranchSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    slug: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
+    address: { type: String, trim: true },
+    city: { type: String, trim: true },
+    region: { type: String, trim: true },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number],
+        required: true,
+      },
+    },
+    radiusMeters: { type: Number, default: 500 },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
 const User = mongoose.model('User', UserSchema);
 const Class = mongoose.model('Class', ClassSchema);
+const Branch = mongoose.model('Branch', BranchSchema);
 
 async function seed() {
   try {
@@ -73,6 +100,9 @@ async function seed() {
     });
     await Class.collection.drop().catch(() => {
       console.log('⚠️  Classes collection does not exist, skipping drop');
+    });
+    await Branch.collection.drop().catch(() => {
+      console.log('⚠️  Branches collection does not exist, skipping drop');
     });
     console.log('🗑️  Dropped existing collections');
 
@@ -131,6 +161,45 @@ async function seed() {
       isVerified: true,
     });
     console.log('✅ Created Student user:', student.email);
+
+    // Create sample branches in Addis Ababa
+    const branches = await Branch.insertMany([
+      {
+        name: 'Bole Main Studio',
+        slug: 'bole-main-studio',
+        description: 'Primary conservatory studio near Bole Medhane Alem.',
+        address: 'Bole Medhane Alem area',
+        city: 'Addis Ababa',
+        region: 'Addis Ababa',
+        // [lng, lat]
+        location: { type: 'Point', coordinates: [38.788, 8.993] },
+        radiusMeters: 600,
+        isActive: true,
+      },
+      {
+        name: 'Piassa Heritage Branch',
+        slug: 'piassa-heritage-branch',
+        description: 'Heritage-focused atelier near Piassa and St. George Cathedral.',
+        address: 'Piassa, near St. George Cathedral',
+        city: 'Addis Ababa',
+        region: 'Addis Ababa',
+        location: { type: 'Point', coordinates: [38.753, 9.037] },
+        radiusMeters: 500,
+        isActive: true,
+      },
+      {
+        name: 'CMC Practice Studio',
+        slug: 'cmc-practice-studio',
+        description: 'Quiet practice studio in the CMC residential area.',
+        address: 'CMC area, Yeka Sub-City',
+        city: 'Addis Ababa',
+        region: 'Addis Ababa',
+        location: { type: 'Point', coordinates: [38.86, 9.03] },
+        radiusMeters: 700,
+        isActive: true,
+      },
+    ]);
+    console.log('✅ Created branches:', branches.map((b) => b.name).join(', '));
 
     console.log('\n🎉 Seed completed successfully!');
     console.log('\n📋 Test Credentials (all verified & active):');

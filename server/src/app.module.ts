@@ -11,6 +11,7 @@ import { OrderModule } from './order/order.module';
 import { BlogModule } from './blog/blog.module';
 import { CmsModule } from './cms/cms.module';
 import { AdminModule } from './admin/admin.module';
+import { BranchModule } from './branch/branch.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AdminModule } from './admin/admin.module';
     BlogModule,
     CmsModule,
     AdminModule,
+    BranchModule,
   ],
   controllers: [AppController],
   providers: [AppService],
