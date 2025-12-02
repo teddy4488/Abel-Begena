@@ -637,5 +637,9 @@
   "live.external.kicker": "External meeting",
   "live.external.subtitle": "Join via Zoom, Google Meet, or another platform.",
   "live.external.join": "Open external meeting",
-  "live.external.teacherHint": "Share this link with students who prefer joining via the external platform."
+  "live.external.teacherHint": "Share this link with students who prefer joining via the external platform.",
+  "admin.analytics.revenueTrend": "Revenue Trend",
+  "admin.analytics.userSignups": "User Signups",
+  "admin.analytics.orderDistribution": "Order Distribution",
+  "admin.analytics.enrollmentStatus": "Enrollment Status"
 }

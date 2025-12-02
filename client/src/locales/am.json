@@ -637,5 +637,9 @@
   "live.external.kicker": "ውጭ ስብሰባ",
   "live.external.subtitle": "በZoom፣ Google Meet ወይም በሌላ መድረክ ይቀላቀሉ።",
   "live.external.join": "ውጭ ስብሰባን ክፈት",
-  "live.external.teacherHint": "ይህንን አገናኝ የውጭ መድረክን መመርጠው ለመቀላቀል የሚመርጡ ተማሪዎች ጋር ያካፍሉ።"
+  "live.external.teacherHint": "ይህንን አገናኝ የውጭ መድረክን መመርጠው ለመቀላቀል የሚመርጡ ተማሪዎች ጋር ያካፍሉ።",
+  "admin.analytics.revenueTrend": "የገቢ ትርኢት",
+  "admin.analytics.userSignups": "የተጠቃሚ ምዝገባዎች",
+  "admin.analytics.orderDistribution": "የትእዛዝ ስርጭት",
+  "admin.analytics.enrollmentStatus": "የምዝገባ ሁኔታ"
 }
