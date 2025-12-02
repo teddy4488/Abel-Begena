@@ -7,5 +7,3 @@ import { ClassModule } from '../class/class.module';
   providers: [LiveGateway],
 })
 export class RealtimeModule {}
-
-

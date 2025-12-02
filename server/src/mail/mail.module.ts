@@ -16,7 +16,9 @@ import { MailService } from './mail.service';
           port: configService.get<number>('EMAIL_PORT') ?? 587,
           secure: configService.get<number>('EMAIL_PORT') === 465,
           auth: {
-            user: configService.get<string>('EMAIL_USER') ?? 'abelbegena@outlook.com',
+            user:
+              configService.get<string>('EMAIL_USER') ??
+              'abelbegena@outlook.com',
             pass: configService.get<string>('EMAIL_PASS') ?? '',
           },
           // This is generally used for port 587 (STARTTLS)
@@ -24,7 +26,9 @@ import { MailService } from './mail.service';
         },
         defaults: {
           // Default sender address
-          from: configService.get<string>('EMAIL_FROM') ?? 'Abel Begena Conservatory <abelbegena@outlook.com>',
+          from:
+            configService.get<string>('EMAIL_FROM') ??
+            'Abel Begena Conservatory <abelbegena@outlook.com>',
         },
         // Optional: Template engine setup (e.g., HandlebarsAdapter) would go here
       }),

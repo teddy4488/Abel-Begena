@@ -5,7 +5,6 @@ import type { LatLngExpression } from "leaflet";
 import { useMemo, useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 import type { Branch } from "@/store/api/branchApi";
-import L from "leaflet";
 
 type Props = {
   branches: Branch[];

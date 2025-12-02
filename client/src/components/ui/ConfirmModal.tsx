@@ -1,6 +1,5 @@
 "use client";
 
-import { Fragment } from "react";
 import { X } from "lucide-react";
 
 type Props = {

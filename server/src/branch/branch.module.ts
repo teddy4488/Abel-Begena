@@ -5,11 +5,11 @@ import { BranchService } from './branch.service';
 import { Branch, BranchSchema } from './schemas/branch.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Branch.name, schema: BranchSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: Branch.name, schema: BranchSchema }]),
+  ],
   controllers: [BranchController],
   providers: [BranchService],
   exports: [BranchService],
 })
 export class BranchModule {}
-
-

@@ -29,6 +29,18 @@ export default function LiveClassPage() {
   }
 
   const isTeacher = user?.role === "Teacher" || user?.role === "Admin";
+  const resolvedUserId =
+    typeof user?._id === "string"
+      ? user._id
+      : typeof user?.id === "string"
+        ? user.id
+        : "";
+  const resolvedRole: "Teacher" | "Admin" | "Student" =
+    user?.role === "Teacher"
+      ? "Teacher"
+      : user?.role === "Admin"
+        ? "Admin"
+        : "Student";
 
   if (isLoading) {
     return (
@@ -77,7 +89,6 @@ export default function LiveClassPage() {
   }
 
   const handleEndSession = () => {
-    // eslint-disable-next-line no-alert
     if (
       confirm(
         t(
@@ -93,7 +104,6 @@ export default function LiveClassPage() {
   const handleShareLink = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
-      // eslint-disable-next-line no-alert
       alert(t("live.share.copied", "Link copied to clipboard!"));
     }
   };
@@ -174,13 +184,13 @@ export default function LiveClassPage() {
         <div className="flex min-h-0 flex-1">
           <LiveRoom
             classId={classId}
-            userId={user?._id ?? (user as any)?.id ?? ""}
+            userId={resolvedUserId}
             displayName={
               `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
               user?.email ||
               "Guest"
             }
-            role={(user?.role as any) ?? "Student"}
+            role={resolvedRole}
             onLeave={() => router.push("/dashboard")}
             isTeacherSession={isTeacher}
           />

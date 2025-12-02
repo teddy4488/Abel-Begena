@@ -55,5 +55,3 @@ export class Branch {
 export const BranchSchema = SchemaFactory.createForClass(Branch);
 
 BranchSchema.index({ location: '2dsphere' });
-
-

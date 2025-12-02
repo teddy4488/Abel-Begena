@@ -163,7 +163,6 @@ export function useWebRTC({
 
       peer.on("close", () => removePeer(remoteSocketId));
       peer.on("error", (err) => {
-        // eslint-disable-next-line no-console
         console.error("Peer connection error:", err);
         removePeer(remoteSocketId);
       });
@@ -254,7 +253,6 @@ export function useWebRTC({
         });
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
         console.error("Camera/mic blocked", err);
       });
 

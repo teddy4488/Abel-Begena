@@ -76,5 +76,3 @@ export class BranchService {
     return { message: 'Branch removed' };
   }
 }
-
-

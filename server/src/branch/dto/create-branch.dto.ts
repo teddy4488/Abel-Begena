@@ -1,4 +1,12 @@
-import { IsBoolean, IsLatitude, IsLongitude, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsLatitude,
+  IsLongitude,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateBranchDto {
   @IsString()
@@ -43,5 +51,3 @@ export class CreateBranchDto {
   @IsOptional()
   isActive?: boolean;
 }
-
-

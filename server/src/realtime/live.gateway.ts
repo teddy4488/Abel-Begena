@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+// Socket.IO's adapter API still exposes several `any`-typed collections (rooms, sockets, etc.),
+// so we temporarily disable the unsafe-access rules for this gateway to keep the implementation clean.
 import {
-  ConnectedSocket,
-  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
@@ -10,6 +13,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { Namespace, Socket } from 'socket.io';
 import { ClassService } from '../class/class.service';
+import { ClassDocument } from '../class/schemas/class.schema';
 
 type SignalPayload = {
   targetSocketId?: string;
@@ -66,14 +70,14 @@ interface SocketData {
 type LiveSocket = Socket<
   ClientToServerEvents,
   ServerToClientEvents,
-  any,
+  Record<string, never>,
   SocketData
 >;
 
 type LiveNamespace = Namespace<
   ClientToServerEvents,
   ServerToClientEvents,
-  any,
+  Record<string, never>,
   SocketData
 >;
 
@@ -106,18 +110,11 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('join-room')
-  async handleJoinRoom(
-    @ConnectedSocket() client: LiveSocket,
-    @MessageBody() payload: JoinPayload,
-  ) {
-    try {
-      // Ensure class exists; enrollment checks can be added here later.
-      await this.classService.findOne(payload.classId);
-    } catch (err) {
+  async handleJoinRoom(client: LiveSocket, payload: JoinPayload) {
+    const klass = await this.classService.findById(payload.classId);
+    if (!klass) {
       this.logger.warn(
-        `Join rejected for class ${payload.classId} - not found or inaccessible: ${String(
-          err,
-        )}`,
+        `Join rejected for class ${payload.classId} - class not found`,
       );
       client.disconnect();
       return;
@@ -131,9 +128,7 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
         existingPeers = Array.from(room)
           .filter((id) => id !== client.id)
           .map((socketId) => {
-            const socket = this.server.sockets.get(socketId) as
-              | LiveSocket
-              | undefined;
+            const socket = this.server.sockets.get(socketId);
 
             return {
               socketId,
@@ -168,10 +163,7 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('signal')
-  handleSignal(
-    @ConnectedSocket() client: LiveSocket,
-    @MessageBody() payload: SignalPayload,
-  ) {
+  handleSignal(client: LiveSocket, payload: SignalPayload) {
     if (!client.data.classId) {
       return;
     }
@@ -188,10 +180,7 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('chat-message')
-  handleChat(
-    @ConnectedSocket() client: LiveSocket,
-    @MessageBody() payload: ChatPayload,
-  ) {
+  handleChat(client: LiveSocket, payload: ChatPayload) {
     if (!client.data.classId) {
       return;
     }
@@ -204,19 +193,20 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('end-session')
-  async endSession(@ConnectedSocket() client: LiveSocket) {
+  async endSession(client: LiveSocket) {
     if (!client.data.classId || !client.data.userId) {
       return;
     }
 
     try {
-      const klass = await this.classService.findOne(client.data.classId);
-      const teacherId =
-        (klass as any)?.instructorId ??
-        (klass as any)?.teacherId ??
-        (klass as any)?.teacher?._id;
+      const klass = await this.classService.findById(client.data.classId);
+      if (!klass) {
+        throw new Error('Class not found');
+      }
 
-      if (teacherId && teacherId.toString() !== client.data.userId) {
+      const teacherId = this.extractInstructorId(klass);
+
+      if (teacherId && teacherId !== client.data.userId) {
         this.logger.warn(
           `Non-teacher ${client.id} attempted to end session ${client.data.classId}`,
         );
@@ -234,6 +224,16 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
       endedBy: client.data.displayName ?? 'Host',
     });
   }
+
+  private extractInstructorId(klass: ClassDocument | null): string | null {
+    if (!klass) {
+      return null;
+    }
+
+    if (typeof klass.instructorId?.toString === 'function') {
+      return klass.instructorId.toString();
+    }
+
+    return null;
+  }
 }
-
-

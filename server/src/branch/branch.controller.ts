@@ -58,5 +58,3 @@ export class BranchController {
     return this.branchService.remove(id);
   }
 }
-
-
