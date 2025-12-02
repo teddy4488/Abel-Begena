@@ -607,5 +607,31 @@
   "branches.admin.deletedTitle": "Branch deleted",
   "branches.admin.deletedDesc": "The branch has been removed from the map.",
   "branches.admin.confirmDelete": "Delete this branch?"
-}
 
+  ,
+  "live.loading": "Loading classroom...",
+  "live.error.title": "Unable to load classroom",
+  "live.error.backDashboard": "Return to Dashboard",
+  "live.notAvailable": "Live session is not available",
+  "live.confirm.endSession": "Are you sure you want to end this session for everyone?",
+  "live.share.copied": "Link copied to clipboard!",
+  "live.teacher.kicker": "Teacher Controls",
+  "live.teacher.closePanel": "Close panel",
+  "live.teacher.shareLink": "Share live link",
+  "live.teacher.endSession": "End session",
+  "live.teacher.classInfo": "Class Info",
+  "live.status.liveNow": "Live Now",
+  "live.status.offline": "Session Offline",
+  "live.header.kicker": "Live Class",
+  "live.header.backDashboard": "Back to dashboard",
+  "live.status.live": "Live",
+  "live.status.participants": "{{count}} participants",
+  "live.status.endedBy": "Session ended by {{name}}",
+  "live.controls.endForAll": "End for everyone",
+  "live.controls.leave": "Leave",
+  "live.chat.kicker": "Classroom Chat",
+  "live.chat.subtitle": "Stay in sync with your cohort.",
+  "live.chat.empty": "No messages yet. Say selam to your classmates.",
+  "live.chat.placeholder": "Type a message to your class...",
+  "live.chat.send": "Send"
+}

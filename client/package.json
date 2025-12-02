@@ -25,7 +25,9 @@
     "recharts": "^2.15.4",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.4.0",
-    "tone": "^15.1.22"
+    "tone": "^15.1.22",
+    "simple-peer": "^9.11.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

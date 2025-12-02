@@ -607,5 +607,31 @@
   "branches.admin.deletedTitle": "ቅርንጫፍ ተሰርዟል",
   "branches.admin.deletedDesc": "ቅርንጫፉ ከካርታው ተወግዷል።",
   "branches.admin.confirmDelete": "ይህን ቅርንጫፍ መሰረዝ ትፈልጋለህ?"
-}
 
+  ,
+  "live.loading": "ክፍል በመጫን ላይ...",
+  "live.error.title": "ክፍሉን ማስመጣት አልተቻለም",
+  "live.error.backDashboard": "ወደ ዳሽቦርድ ተመለስ",
+  "live.notAvailable": "በቀጥታ ክፍል አይኖርም",
+  "live.confirm.endSession": "ይህንን ክፍል ለሁሉም ማቋረጥ እርግጠኛ ነህ?",
+  "live.share.copied": "አገናኙ ወደ ቅንጥብ ተቀድቷል!",
+  "live.teacher.kicker": "የመምህር ቁጥጥር",
+  "live.teacher.closePanel": "ፓነሉን ዝጋ",
+  "live.teacher.shareLink": "የበቀጥታ አገናኝ አካፍል",
+  "live.teacher.endSession": "ክፍሉን ጨርስ",
+  "live.teacher.classInfo": "የክፍል መረጃ",
+  "live.status.liveNow": "አሁን በቀጥታ",
+  "live.status.offline": "ክፍሉ ጠፍቷል",
+  "live.header.kicker": "በቀጥታ ክፍል",
+  "live.header.backDashboard": "ወደ ዳሽቦርድ ተመለስ",
+  "live.status.live": "በቀጥታ",
+  "live.status.participants": "{{count}} ተሳታፊዎች",
+  "live.status.endedBy": "ክፍሉ በ{{name}} ተዘግቷል",
+  "live.controls.endForAll": "ለሁሉም ክፍሉን ጨርስ",
+  "live.controls.leave": "ውጣ",
+  "live.chat.kicker": "የክፍል ውይይት",
+  "live.chat.subtitle": "ከኮርትዎ ጋር በአንድ ላይ ይቆዩ።",
+  "live.chat.empty": "መልዕክት ገና የለም። ሰላም ብለው ይጀምሩ።",
+  "live.chat.placeholder": "ለክፍልዎ መልዕክት ይፃፉ...",
+  "live.chat.send": "ላክ"
+}

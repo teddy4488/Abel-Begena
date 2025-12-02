@@ -12,6 +12,7 @@ import { BlogModule } from './blog/blog.module';
 import { CmsModule } from './cms/cms.module';
 import { AdminModule } from './admin/admin.module';
 import { BranchModule } from './branch/branch.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { BranchModule } from './branch/branch.module';
     CmsModule,
     AdminModule,
     BranchModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
