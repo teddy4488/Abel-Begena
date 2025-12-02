@@ -15,6 +15,7 @@ type LoginBody = { email: string; password: string };
 type LoginResponse = {
   user: AuthUser | null;
   expiresAt?: string | null;
+  accessToken?: string | null;
 };
 
 type RegisterResponse = {
@@ -52,7 +53,7 @@ export const authApi = createApi({
           const { data } = await queryFulfilled;
           dispatch(
             setCredentials({
-              token: null,
+              token: data.accessToken ?? null,
               user: data.user ?? null,
               sessionExpiresAt: data.expiresAt ?? null,
             }),

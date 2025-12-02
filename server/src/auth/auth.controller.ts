@@ -53,8 +53,14 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, user, expiresAt } = this.authService.login(req.user);
+
+    // Set an httpOnly cookie for desktop browsers and environments where
+    // cross-site cookies are allowed, but also return the token in the JSON
+    // payload so that mobile browsers (especially Safari) that block
+    // third-party cookies can authenticate using an Authorization header.
     this.setSessionCookie(res, accessToken);
-    return { user, expiresAt };
+
+    return { user, expiresAt, accessToken };
   }
 
   @Post('logout')
