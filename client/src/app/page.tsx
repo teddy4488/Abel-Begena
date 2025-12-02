@@ -12,7 +12,14 @@ import { useGetBranchesQuery } from "@/store/api/branchApi";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
 import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
-import { BranchesMapModal } from "@/components/branches/BranchesMapModal";
+// import { BranchesMapModal } from "@/components/branches/BranchesMapModal";
+import dynamic from "next/dynamic";
+
+
+const BranchesMapModal = dynamic(
+  () => import("@/components/branches/BranchesMapModal").then((mod) => mod.BranchesMapModal),
+  { ssr: false }
+);
 
 const heroImage =
   "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
