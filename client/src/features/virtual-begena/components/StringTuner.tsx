@@ -46,11 +46,11 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
 
   const playableStrings = PLAYABLE_STRINGS;
   const keyLabels: Record<number, string> = {
-    1: "A",
-    4: "S",
+    1: "Space",
+    4: "F",
     6: "D",
-    8: "F",
-    10: "Space",
+    8: "S",
+    10: "A",
   };
 
   const handleOctaveChange = (octave: number) => {

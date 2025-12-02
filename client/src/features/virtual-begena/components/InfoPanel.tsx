@@ -136,14 +136,16 @@ export default function InfoPanel() {
                     {PLAYABLE_STRINGS.map((stringNum, index) => {
                       const keyLabel =
                         stringNum === 1
-                          ? "A"
+                          ? "Space"
                           : stringNum === 4
-                          ? "S"
+                          ? "F"
                           : stringNum === 6
                           ? "D"
                           : stringNum === 8
-                          ? "F"
-                          : "Space";
+                          ? "S"
+                          : stringNum === 10
+                          ? "A"
+                          : "";
 
                       return (
                         <motion.div

@@ -40,20 +40,46 @@ export interface SoundSettings {
   ambienceVolume: number;
 }
 
-// Physical string numbers mapped to playable indices
-// Strings 1, 4, 6, 8, 10 are playable (0-indexed: 0, 3, 5, 7, 9)
-export const PLAYABLE_STRINGS = [1, 4, 6, 8, 10]; // Physical string numbers
+// Physical string numbers: All 10 strings (1-10), but only 5 are playable
+// Playable strings: 1, 4, 6, 8, 10 (mapped to keys: Space, F, D, S, A)
+// Sound order (increasing pitch): 2-3-1-5-4
+//   String 2 (F, physical 4) = lowest sound
+//   String 3 (D, physical 6) = second lowest
+//   String 1 (Space, physical 1) = middle
+//   String 5 (A, physical 10) = second highest
+//   String 4 (S, physical 8) = highest sound
+export const ALL_STRINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // All 10 strings
+export const PLAYABLE_STRINGS = [1, 4, 6, 8, 10]; // Physical string numbers that are playable
 export const STRING_TO_INDEX: Record<number, number> = {
   1: 0, 4: 1, 6: 2, 8: 3, 10: 4,
 };
 
+// Keyboard mapping: Key -> Physical String Number
+export const KEY_TO_STRING: Record<string, number> = {
+  Space: 1,  // String 1 (middle pitch)
+  KeyF: 4,   // String 2 (lowest sound, physical string 4)
+  KeyD: 6,   // String 3 (second lowest, physical string 6)
+  KeyS: 8,   // String 4 (highest sound, physical string 8)
+  KeyA: 10,  // String 5 (second highest, physical string 10)
+};
+
+// Sound order mapping: playable index -> physical string number (in pitch order)
+// Order: 2-3-1-5-4 (increasing pitch)
+export const SOUND_ORDER: number[] = [4, 6, 1, 10, 8]; // Physical strings in pitch order
+
 // Default note assignments matching Tizita scale
+// Note: The sound order is 2-3-1-5-4, so we assign notes accordingly
+// String 2 (physical 4) = lowest = C
+// String 3 (physical 6) = second lowest = D
+// String 1 (physical 1) = middle = E
+// String 5 (physical 10) = second highest = G
+// String 4 (physical 8) = highest = A
 const DEFAULT_STRING_NOTES: Record<number, NoteName> = {
-  1: "C",  // String 1
-  4: "D",  // String 4
-  6: "E",  // String 6
-  8: "G",  // String 8
-  10: "A", // String 10
+  1: "E",  // String 1 (middle pitch, Space key)
+  4: "C",  // String 2 (lowest sound, F key)
+  6: "D",  // String 3 (second lowest, D key)
+  8: "A",  // String 4 (highest sound, S key)
+  10: "G", // String 5 (second highest, A key)
 };
 
 const DEFAULT_SETTINGS: SoundSettings = {
@@ -140,31 +166,42 @@ function semitonesToFrequency(semitones: number, rootOctave: number): number {
 /**
  * Authentic Ethiopian pentatonic intervals (in semitones from root C)
  * 
+ * Sound order: 2-3-1-5-4 (increasing pitch)
+ * Physical strings: 4, 6, 1, 10, 8
+ * 
  * Tizita: T – T – TS – T – TS = C – D – E – G – A
+ *   In sound order (2-3-1-5-4): String 2=C, String 3=D, String 1=E, String 5=G, String 4=A
  *   Intervals: 0, 2, 4, 7, 9 semitones
  * 
  * Bati: DT – St – T – DT – St = C – E – F – G – B
+ *   In sound order: String 2=C, String 3=E, String 1=F, String 5=G, String 4=B
  *   Intervals: 0, 4, 5, 7, 11 semitones
  * 
  * Ambassel: St – DT – T – St – DT = C – Db – F – G – Ab
+ *   In sound order: String 2=C, String 3=Db, String 1=F, String 5=G, String 4=Ab
  *   Intervals: 0, 1, 5, 7, 8 semitones
  * 
  * Anchihoye: St – DT – St – TS – TS = C – Db – F – Gb – A
+ *   In sound order: String 2=C, String 3=Db, String 1=F, String 5=Gb, String 4=A
  *   Intervals: 0, 1, 5, 6, 9 semitones
+ * 
+ * Note: Intervals are stored in sound order: 2-3-1-5-4 (physical strings: 4, 6, 1, 10, 8)
  */
 const QINIT_INTERVALS: Record<QinitMode, number[]> = {
-  tizita: [0, 2, 4, 7, 9], // T – T – TS – T – TS: C – D – E – G – A
-  bati: [0, 4, 5, 7, 11], // DT – St – T – DT – St: C – E – F – G – B
-  ambassel: [0, 1, 5, 7, 8], // St – DT – T – St – DT: C – Db – F – G – Ab
-  anchihoye: [0, 1, 5, 6, 9], // St – DT – St – TS – TS: C – Db – F – Gb – A
+  tizita: [0, 2, 4, 7, 9], // Sound order 2-3-1-5-4: C – D – E – G – A
+  bati: [0, 4, 5, 7, 11], // Sound order 2-3-1-5-4: C – E – F – G – B
+  ambassel: [0, 1, 5, 7, 8], // Sound order 2-3-1-5-4: C – Db – F – G – Ab
+  anchihoye: [0, 1, 5, 6, 9], // Sound order 2-3-1-5-4: C – Db – F – Gb – A
   custom: [], // Custom uses stringNotes, not fixed intervals
 };
 
 /**
  * Calculate frequencies for each qiñit mode based on selected octave
+ * Returns frequencies in sound order: 2-3-1-5-4 (increasing pitch)
  */
 function getQinitFrequencies(qinit: QinitMode, octave: number): number[] {
   const intervals = QINIT_INTERVALS[qinit];
+  // Intervals are already in sound order: 2-3-1-5-4
   return intervals.map(semitones => semitonesToFrequency(semitones, octave));
 }
 
@@ -178,10 +215,12 @@ function getNoteFrequency(noteName: NoteName, octave: number): number {
 
 /**
  * Calculate frequencies based on custom string note assignments
+ * Returns frequencies in sound order: 2-3-1-5-4 (increasing pitch)
  */
 function getCustomFrequencies(stringNotes: Record<number, NoteName>, octave: number): number[] {
-  const playableStrings = [1, 4, 6, 8, 10];
-  return playableStrings.map(stringNum => {
+  // Map in sound order: 2-3-1-5-4 (physical strings: 4, 6, 1, 10, 8)
+  const soundOrderStrings = [4, 6, 1, 10, 8];
+  return soundOrderStrings.map(stringNum => {
     const noteName = stringNotes[stringNum] || "C";
     return getNoteFrequency(noteName, octave);
   });
@@ -189,14 +228,19 @@ function getCustomFrequencies(stringNotes: Record<number, NoteName>, octave: num
 
 /**
  * Get note names for display based on authentic Ethiopian scale examples
- * Returns note names with the selected octave
+ * Returns note names with the selected octave, in sound order: 2-3-1-5-4
  */
 function getNoteNames(qinit: QinitMode, octave: number): string[] {
-  // Base note names without octave
+  // Base note names without octave, in sound order: 2-3-1-5-4
+  // Sound order mapping: String 2 (lowest) -> String 3 -> String 1 -> String 5 -> String 4 (highest)
   const baseNoteNames: Record<QinitMode, string[]> = {
-    tizita: ["C", "D", "E", "G", "A"],
+    // Tizita: C-D-E-G-A in sound order (2-3-1-5-4)
+    tizita: ["C", "D", "E", "G", "A"], // String 2, 3, 1, 5, 4
+    // Bati: C-E-F-G-B in sound order
     bati: ["C", "E", "F", "G", "B"],
+    // Ambassel: C-Db-F-G-Ab in sound order
     ambassel: ["C", "Db", "F", "G", "Ab"],
+    // Anchihoye: C-Db-F-Gb-A in sound order
     anchihoye: ["C", "Db", "F", "Gb", "A"],
     custom: [], // Custom will be built from stringNotes
   };
@@ -207,21 +251,24 @@ function getNoteNames(qinit: QinitMode, octave: number): string[] {
 
 /**
  * Apply a qinit preset to string notes
+ * Maps notes to physical strings in sound order: 2-3-1-5-4 (physical: 4, 6, 1, 10, 8)
  */
 function applyQinitPreset(qinit: QinitMode): Record<number, NoteName> {
+  // Notes in sound order: 2-3-1-5-4 (increasing pitch)
   const presetNotes: Record<QinitMode, NoteName[]> = {
-    tizita: ["C", "D", "E", "G", "A"],
+    tizita: ["C", "D", "E", "G", "A"], // String 2, 3, 1, 5, 4
     bati: ["C", "E", "F", "G", "B"],
     ambassel: ["C", "Db", "F", "G", "Ab"],
     anchihoye: ["C", "Db", "F", "Gb", "A"],
     custom: ["C", "C", "C", "C", "C"], // Default
   };
   
-  const playableStrings = [1, 4, 6, 8, 10];
+  // Physical strings in sound order: 4, 6, 1, 10, 8
+  const soundOrderStrings = [4, 6, 1, 10, 8];
   const notes = presetNotes[qinit] || presetNotes.tizita;
   
   const result: Record<number, NoteName> = {};
-  playableStrings.forEach((stringNum, index) => {
+  soundOrderStrings.forEach((stringNum, index) => {
     result[stringNum] = notes[index] as NoteName;
   });
   
@@ -515,10 +562,13 @@ class SoundManager {
       frequency = getNoteFrequency(noteName, this.settings.octave);
     } else {
       // Use preset frequencies (recalculate if needed)
+      // Frequencies are stored in sound order: 2-3-1-5-4 (physical: 4, 6, 1, 10, 8)
       if (!this.frequencies || this.frequencies.length !== 5) {
         this.frequencies = getQinitFrequencies(this.settings.qinit, this.settings.octave);
       }
-      frequency = this.frequencies[playableIndex];
+      // Map physical string to sound order index
+      const soundOrderIndex = SOUND_ORDER.indexOf(physicalStringNumber);
+      frequency = soundOrderIndex >= 0 ? this.frequencies[soundOrderIndex] : this.frequencies[0];
     }
     
     // Safety check - ensure frequency is valid
@@ -619,10 +669,11 @@ class SoundManager {
 
   getQinitInfo(): { mode: QinitMode; octave: number; frequencies: number[]; noteNames: string[]; rootFreq: number; stringNotes: Record<number, NoteName> } {
     // Build note names from custom tuning or qinit preset
+    // Note names are in sound order: 2-3-1-5-4 (physical: 4, 6, 1, 10, 8)
     let noteNames: string[];
     if (this.settings.qinit === "custom") {
-      const playableStrings = [1, 4, 6, 8, 10];
-      noteNames = playableStrings.map(stringNum => {
+      const soundOrderStrings = [4, 6, 1, 10, 8]; // Physical strings in sound order
+      noteNames = soundOrderStrings.map(stringNum => {
         const noteName = this.settings.stringNotes[stringNum] || "C";
         return `${noteName}${this.settings.octave}`;
       });

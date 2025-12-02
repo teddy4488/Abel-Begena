@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 
 interface BegenaVisualProps {
-  stringNumbers: number[]; // Physical string numbers [1, 4, 6, 8, 10]
+  stringNumbers: number[]; // All physical string numbers [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  playableStrings: number[]; // Playable physical string numbers [1, 4, 6, 8, 10]
   pressedStrings: Set<number>; // Set of pressed physical string numbers
   onStringPress?: (stringNumber: number) => void;
 }
@@ -16,36 +17,37 @@ interface BegenaVisualProps {
  */
 export default function BegenaVisual({
   stringNumbers,
+  playableStrings,
   pressedStrings,
   onStringPress,
 }: BegenaVisualProps) {
   const [hoveredString, setHoveredString] = useState<number | null>(null);
 
-  // Only the 5 playable strings
-  const playableStrings = stringNumbers; // [1, 4, 6, 8, 10]
+  // All 10 strings, but only 5 are playable
+  const allStrings = stringNumbers; // [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   
   // Calculate string positions on the top bar
-  // All 5 strings evenly spaced across the top bar
+  // All 10 strings evenly spaced across the top bar
   const getStringTopPosition = (stringNum: number) => {
-    const index = playableStrings.indexOf(stringNum);
+    const index = allStrings.indexOf(stringNum);
     if (index === -1) return null;
 
     // Top bar spans from left arm tip to right arm tip
-    // 5 strings evenly spaced
+    // 10 strings evenly spaced
     const topBarLeft = 140; // Left tip of top bar
     const topBarRight = 660; // Right tip of top bar
     const topBarWidth = topBarRight - topBarLeft;
-    const spacing = topBarWidth / 4; // 4 gaps between 5 strings
+    const spacing = topBarWidth / 9; // 9 gaps between 10 strings
     
     const topX = topBarLeft + index * spacing;
     
     // Bottom attachment is narrower, centered on box
     const boxCenter = 400;
     const bottomBarWidth = 360; // Bottom bar width
-    const bottomSpacing = bottomBarWidth / 4;
+    const bottomSpacing = bottomBarWidth / 9;
     const bottomX = boxCenter - bottomBarWidth/2 + index * bottomSpacing;
     
-    return { topX, bottomX, index };
+    return { topX, bottomX, index, isPlayable: playableStrings.includes(stringNum) };
   };
 
   return (
@@ -468,15 +470,26 @@ export default function BegenaVisual({
             />
           </motion.g>
 
-          {/* Five Playable Strings - From top bar through center to box */}
-          {playableStrings.map((stringNum) => {
+          {/* All 10 Strings - From top bar through center to box */}
+          {allStrings.map((stringNum) => {
             const pos = getStringTopPosition(stringNum);
             if (!pos) return null;
 
             const isPressed = pressedStrings.has(stringNum);
             const isHovered = hoveredString === stringNum;
+            const isPlayable = pos.isPlayable;
             const topX = pos.topX; // Already in viewBox coordinates
             const bottomX = pos.bottomX;
+
+            // Get key label for playable strings
+            const getKeyLabel = (strNum: number): string => {
+              if (strNum === 1) return "Space";
+              if (strNum === 4) return "F";
+              if (strNum === 6) return "D";
+              if (strNum === 8) return "S";
+              if (strNum === 10) return "A";
+              return "";
+            };
 
             return (
               <g key={stringNum}>
@@ -486,13 +499,13 @@ export default function BegenaVisual({
                   y1="65"
                   x2={bottomX}
                   y2="967"
-                  stroke="#D4AF37"
-                  strokeWidth="5"
-                  opacity={isPressed ? 1 : 0.95}
-                  filter={isPressed ? "url(#goldGlow)" : isHovered ? "url(#stringGlow)" : "none"}
+                  stroke={isPlayable ? "#D4AF37" : "#6B5237"}
+                  strokeWidth={isPlayable ? "5" : "3"}
+                  opacity={isPlayable ? (isPressed ? 1 : 0.95) : 0.4}
+                  filter={isPlayable && isPressed ? "url(#goldGlow)" : isPlayable && isHovered ? "url(#stringGlow)" : "none"}
                   initial={false}
                   animate={
-                    isPressed
+                    isPressed && isPlayable
                       ? {
                           x1: [topX, topX - 5, topX + 5, topX - 4, topX + 4, topX],
                           x2: [bottomX, bottomX - 5, bottomX + 5, bottomX - 4, bottomX + 4, bottomX],
@@ -501,124 +514,144 @@ export default function BegenaVisual({
                       : {
                           x1: topX,
                           x2: bottomX,
-                          opacity: 0.95,
+                          opacity: isPlayable ? 0.95 : 0.4,
                         }
                   }
                   transition={{
                     duration: 0.6,
                     ease: "easeOut",
                   }}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onStringPress?.(stringNum)}
-                  onMouseEnter={() => setHoveredString(stringNum)}
+                  style={{ cursor: isPlayable ? "pointer" : "default" }}
+                  onClick={() => isPlayable && onStringPress?.(stringNum)}
+                  onMouseEnter={() => isPlayable && setHoveredString(stringNum)}
                   onMouseLeave={() => setHoveredString(null)}
                 />
 
-                {/* U-shaped Leather Buzz Thong at bridge on box */}
-                <motion.g
-                  initial={false}
-                  animate={
-                    isPressed
-                      ? {
-                          scale: [1, 1.6, 1.3, 1],
-                          opacity: [0.9, 1, 0.96, 0.9],
-                        }
-                      : {
-                          scale: 1,
-                          opacity: 0.9,
-                        }
-                  }
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                >
-                  {/* U-shaped leather piece */}
-                  <path
-                    d={`M ${bottomX - 8} 967 
-                        Q ${bottomX} 952 ${bottomX + 8} 967
-                        Q ${bottomX} 982 ${bottomX - 8} 967`}
-                    fill="#2A1510"
-                    stroke="#1A0A00"
-                    strokeWidth="2.5"
-                    opacity="0.95"
-                  />
-                  {/* Inner highlight */}
-                  <path
-                    d={`M ${bottomX - 6} 967 
-                        Q ${bottomX} 955 ${bottomX + 6} 967`}
-                    fill="#3A2518"
-                    opacity="0.7"
-                  />
-                  {/* Buzz vibration indicators */}
-                  {isPressed && (
-                    <>
-                      <circle
-                        cx={bottomX - 7}
-                        cy={965}
-                        r="3"
-                        fill="#D4AF37"
-                        opacity="0.98"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.98;1;0.75;0.98"
-                          dur="0.04s"
-                          repeatCount="30"
-                        />
-                      </circle>
-                      <circle
-                        cx={bottomX + 7}
-                        cy={965}
-                        r="3"
-                        fill="#D4AF37"
-                        opacity="0.98"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.98;1;0.75;0.98"
-                          dur="0.04s"
-                          repeatCount="30"
-                        />
-                      </circle>
-                    </>
-                  )}
-                </motion.g>
+                {/* U-shaped Leather Buzz Thong at bridge on box (only for playable strings) */}
+                {isPlayable && (
+                  <motion.g
+                    initial={false}
+                    animate={
+                      isPressed
+                        ? {
+                            scale: [1, 1.6, 1.3, 1],
+                            opacity: [0.9, 1, 0.96, 0.9],
+                          }
+                        : {
+                            scale: 1,
+                            opacity: 0.9,
+                          }
+                    }
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  >
+                    {/* U-shaped leather piece */}
+                    <path
+                      d={`M ${bottomX - 8} 967 
+                          Q ${bottomX} 952 ${bottomX + 8} 967
+                          Q ${bottomX} 982 ${bottomX - 8} 967`}
+                      fill="#2A1510"
+                      stroke="#1A0A00"
+                      strokeWidth="2.5"
+                      opacity="0.95"
+                    />
+                    {/* Inner highlight */}
+                    <path
+                      d={`M ${bottomX - 6} 967 
+                          Q ${bottomX} 955 ${bottomX + 6} 967`}
+                      fill="#3A2518"
+                      opacity="0.7"
+                    />
+                    {/* Buzz vibration indicators */}
+                    {isPressed && (
+                      <>
+                        <circle
+                          cx={bottomX - 7}
+                          cy={965}
+                          r="3"
+                          fill="#D4AF37"
+                          opacity="0.98"
+                        >
+                          <animate
+                            attributeName="opacity"
+                            values="0.98;1;0.75;0.98"
+                            dur="0.04s"
+                            repeatCount="30"
+                          />
+                        </circle>
+                        <circle
+                          cx={bottomX + 7}
+                          cy={965}
+                          r="3"
+                          fill="#D4AF37"
+                          opacity="0.98"
+                        >
+                          <animate
+                            attributeName="opacity"
+                            values="0.98;1;0.75;0.98"
+                            dur="0.04s"
+                            repeatCount="30"
+                          />
+                        </circle>
+                      </>
+                    )}
+                  </motion.g>
+                )}
 
                 {/* String anchor on top bar */}
                 <circle
                   cx={topX}
                   cy="65"
-                  r={isPressed ? 8 : 7}
-                  fill={isPressed ? "#D4AF37" : "#6B5237"}
-                  stroke={isPressed ? "#F4CF57" : "#4A3728"}
-                  strokeWidth={isPressed ? 3.5 : 3}
-                  opacity={isPressed ? 1 : 0.9}
-                  filter={isPressed ? "url(#goldGlow)" : "none"}
+                  r={isPlayable ? (isPressed ? 8 : 7) : 5}
+                  fill={isPlayable ? (isPressed ? "#D4AF37" : "#6B5237") : "#4A3728"}
+                  stroke={isPlayable ? (isPressed ? "#F4CF57" : "#4A3728") : "#3A2518"}
+                  strokeWidth={isPlayable ? (isPressed ? 3.5 : 3) : 2}
+                  opacity={isPlayable ? (isPressed ? 1 : 0.9) : 0.5}
+                  filter={isPlayable && isPressed ? "url(#goldGlow)" : "none"}
                 />
                 
                 {/* String anchor on bottom bar */}
                 <circle
                   cx={bottomX}
                   cy="967"
-                  r={isPressed ? 6 : 5}
-                  fill={isPressed ? "#D4AF37" : "#6B5237"}
-                  stroke={isPressed ? "#F4CF57" : "#4A3728"}
-                  strokeWidth={isPressed ? 2.5 : 2}
-                  opacity={isPressed ? 1 : 0.9}
-                  filter={isPressed ? "url(#goldGlow)" : "none"}
+                  r={isPlayable ? (isPressed ? 6 : 5) : 4}
+                  fill={isPlayable ? (isPressed ? "#D4AF37" : "#6B5237") : "#4A3728"}
+                  stroke={isPlayable ? (isPressed ? "#F4CF57" : "#4A3728") : "#3A2518"}
+                  strokeWidth={isPlayable ? (isPressed ? 2.5 : 2) : 1.5}
+                  opacity={isPlayable ? (isPressed ? 1 : 0.9) : 0.5}
+                  filter={isPlayable && isPressed ? "url(#goldGlow)" : "none"}
                 />
 
                 {/* String number label above top bar */}
                 <text
                   x={topX}
                   y="35"
-                  fontSize="20"
-                  fill="#D4AF37"
+                  fontSize={isPlayable ? "20" : "16"}
+                  fill={isPlayable ? "#D4AF37" : "#6B5237"}
                   textAnchor="middle"
-                  fontWeight={isPressed ? "bold" : "700"}
+                  fontWeight={isPlayable ? (isPressed ? "bold" : "700") : "500"}
                   fontFamily="serif"
-                  filter={isPressed ? "url(#goldGlow)" : "none"}
+                  opacity={isPlayable ? 1 : 0.6}
+                  filter={isPlayable && isPressed ? "url(#goldGlow)" : "none"}
                 >
                   {stringNum}
                 </text>
+
+                {/* Key label for playable strings */}
+                {isPlayable && (
+                  <text
+                    x={topX}
+                    y="25"
+                    fontSize="14"
+                    fill="#D4AF37"
+                    textAnchor="middle"
+                    fontWeight="600"
+                    fontFamily="mono"
+                    opacity={isPressed ? 1 : 0.8}
+                    filter={isPressed ? "url(#goldGlow)" : "none"}
+                  >
+                    {getKeyLabel(stringNum)}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -653,15 +686,31 @@ export default function BegenaVisual({
         {playableStrings.map((stringNum) => {
           const keyLabel =
             stringNum === 1
-              ? "A"
+              ? "Space"
               : stringNum === 4
-              ? "S"
+              ? "F"
               : stringNum === 6
               ? "D"
               : stringNum === 8
-              ? "F"
-              : "Space";
+              ? "S"
+              : stringNum === 10
+              ? "A"
+              : "";
           const isPressed = pressedStrings.has(stringNum);
+          
+          // Sound order labels
+          const soundOrderLabel =
+            stringNum === 4
+              ? "String 2 (Lowest)"
+              : stringNum === 6
+              ? "String 3"
+              : stringNum === 1
+              ? "String 1"
+              : stringNum === 10
+              ? "String 5"
+              : stringNum === 8
+              ? "String 4 (Highest)"
+              : `String ${stringNum}`;
 
           return (
             <motion.div
@@ -674,7 +723,7 @@ export default function BegenaVisual({
               whileHover={{ scale: 1.08, y: -2 }}
               whileTap={{ scale: 0.95 }}
             >
-              <div className="text-xs md:text-sm opacity-80 mb-1 font-semibold">String {stringNum}</div>
+              <div className="text-xs md:text-sm opacity-80 mb-1 font-semibold">{soundOrderLabel}</div>
               <div className="font-mono font-bold text-lg md:text-xl">{keyLabel}</div>
             </motion.div>
           );

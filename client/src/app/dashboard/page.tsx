@@ -34,7 +34,7 @@ type DashboardClass = ClassAccess & {
 export default function DashboardPage() {
   const router = useRouter();
   const { pushToast } = useToast();
-  const { isLoggedIn, user } = useAppSelector((state) => state.auth);
+  const { isLoggedIn, user, token } = useAppSelector((state) => state.auth);
   const [classes, setClasses] = useState<DashboardClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +59,12 @@ export default function DashboardPage() {
     const fetchClasses = async () => {
       try {
         setIsLoading(true);
+        const headers: HeadersInit = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
         const listResponse = await fetch(`${apiBase}/classes`, {
           credentials: "include",
+          headers,
         });
         if (!listResponse.ok) {
           throw new Error("Unable to load classes");
@@ -72,6 +76,7 @@ export default function DashboardPage() {
               `${apiBase}/classes/${classItem._id}/access`,
               {
                 credentials: "include",
+                headers,
               },
             );
             if (!accessResponse.ok) {

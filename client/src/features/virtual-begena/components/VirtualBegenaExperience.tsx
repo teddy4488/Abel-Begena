@@ -23,6 +23,7 @@ import StringTuner from "@/features/virtual-begena/components/StringTuner";
 import {
   soundManager,
   PLAYABLE_STRINGS,
+  ALL_STRINGS,
 } from "@/features/virtual-begena/lib/sound";
 import { recorder } from "@/features/virtual-begena/lib/recorder";
 import {
@@ -31,13 +32,13 @@ import {
 } from "@/features/virtual-begena/lib/audioExport";
 
 // Keyboard mapping using event.code for reliability
-// Physical string numbers: A→1, S→4, D→6, F→8, Space→10
+// New mapping: Space→1, F→4 (String 2, lowest), D→6 (String 3), S→8 (String 4, highest), A→10 (String 5)
 const KEY_CODE_TO_STRING: Record<string, number> = {
-  KeyA: 1, // String 1
-  KeyS: 4, // String 4
-  KeyD: 6, // String 6
-  KeyF: 8, // String 8
-  Space: 10, // String 10
+  Space: 1,  // String 1 (middle pitch)
+  KeyF: 4,   // String 2 (lowest sound, physical string 4)
+  KeyD: 6,   // String 3 (second lowest, physical string 6)
+  KeyS: 8,   // String 4 (highest sound, physical string 8)
+  KeyA: 10,  // String 5 (second highest, physical string 10)
 };
 
 export default function VirtualBegenaExperience() {
@@ -54,13 +55,14 @@ export default function VirtualBegenaExperience() {
   const [isTunerOpen, setIsTunerOpen] = useState(false);
 
   // Map physical string number to finger index for hand animation
+  // Updated mapping: Space (1) = thumb, F (4) = index, D (6) = middle, S (8) = ring, A (10) = little
   const stringToFingerIndex = useMemo<Record<number, number>>(
     () => ({
-      1: 0, // Little finger
-      4: 1, // Ring finger
-      6: 2, // Middle finger
-      8: 3, // Index finger
-      10: 4, // Thumb
+      1: 4, // Thumb (Space)
+      4: 3, // Index finger (F - String 2)
+      6: 2, // Middle finger (D - String 3)
+      8: 1, // Ring finger (S - String 4)
+      10: 0, // Little finger (A - String 5)
     }),
     [],
   );
@@ -209,11 +211,11 @@ export default function VirtualBegenaExperience() {
     );
 
   const keyboardGuide = [
-    { key: "A", string: 1, finger: t("virtualExperience.fingers.little", "Little") },
-    { key: "S", string: 4, finger: t("virtualExperience.fingers.ring", "Ring") },
-    { key: "D", string: 6, finger: t("virtualExperience.fingers.middle", "Middle") },
-    { key: "F", string: 8, finger: t("virtualExperience.fingers.index", "Index") },
-    { key: "Space", string: 10, finger: t("virtualExperience.fingers.thumb", "Thumb") },
+    { key: "Space", string: 1, finger: t("virtualExperience.fingers.thumb", "Thumb"), label: t("virtualExperience.strings.string1", "String 1") },
+    { key: "F", string: 4, finger: t("virtualExperience.fingers.index", "Index"), label: t("virtualExperience.strings.string2", "String 2 (Lowest)") },
+    { key: "D", string: 6, finger: t("virtualExperience.fingers.middle", "Middle"), label: t("virtualExperience.strings.string3", "String 3") },
+    { key: "S", string: 8, finger: t("virtualExperience.fingers.ring", "Ring"), label: t("virtualExperience.strings.string4", "String 4 (Highest)") },
+    { key: "A", string: 10, finger: t("virtualExperience.fingers.little", "Little"), label: t("virtualExperience.strings.string5", "String 5") },
   ];
 
   return (
@@ -301,7 +303,8 @@ export default function VirtualBegenaExperience() {
         {/* Begena Visualization - Center stage */}
         <div className="flex-1 max-w-full lg:max-w-3xl w-full">
           <BegenaVisual
-            stringNumbers={PLAYABLE_STRINGS}
+            stringNumbers={ALL_STRINGS}
+            playableStrings={PLAYABLE_STRINGS}
             pressedStrings={pressedStrings}
             onStringPress={(stringNum) => playString(stringNum)}
           />
@@ -395,17 +398,17 @@ export default function VirtualBegenaExperience() {
         <p className="text-xs md:text-sm text-begena-brown/80 dark:text-begena-cream/80 mb-4 font-semibold">
           {t(
             "virtualExperience.keyboard.instructions",
-            "Use your keyboard to play (strings 1, 4, 6, 8, 10):",
+            "Use your keyboard to play (10 strings total, 5 playable):",
           )}
         </p>
         <div className="flex justify-center gap-2 md:gap-3 flex-wrap">
-          {keyboardGuide.map(({ key, string, finger }) => (
+          {keyboardGuide.map(({ key, string, finger, label }) => (
             <div
               key={key}
               className="px-4 py-2 rounded-lg bg-begena-brown/20 dark:bg-begena-cream/20 text-begena-brown dark:text-begena-cream"
             >
               <div className="font-mono font-bold text-lg">{key}</div>
-              <div className="text-xs opacity-75">{stringLabel(string)}</div>
+              <div className="text-xs opacity-75">{label || stringLabel(string)}</div>
               <div className="text-xs opacity-75">{finger}</div>
             </div>
           ))}
