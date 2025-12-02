@@ -14,6 +14,7 @@ import { useI18n } from "@/components/providers/I18nProvider";
 import { extractErrorMessage } from "@/lib/errors";
 import { motion } from "framer-motion";
 import { Loader2, MapPin, Plus, Trash2, Save, Globe2 } from "lucide-react";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const BranchMap = dynamic(
   () => import("@/components/branches/BranchAdminMap"),
@@ -76,15 +77,23 @@ export default function AdminBranchesPage() {
     });
   };
 
-  const handleDelete = async (id: string) => {
-    // Check if we're on the client side before using window
-    if (typeof window === 'undefined') return;
-    
-    if (!window.confirm(t("branches.admin.confirmDelete", "Delete this branch?"))) {
-      return;
-    }
+  // deletion handled via confirm modal (requestDelete / confirmDelete)
+
+  // Confirm modal state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const requestDelete = (id: string) => {
+    setPendingDeleteId(id);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    setConfirmLoading(true);
     try {
-      await deleteBranch(id).unwrap();
+      await deleteBranch(pendingDeleteId).unwrap();
       pushToast({
         title: t("branches.admin.deletedTitle", "Branch deleted"),
         description: t(
@@ -97,11 +106,15 @@ export default function AdminBranchesPage() {
       pushToast({
         title: t("branches.admin.errorTitle", "Unable to delete branch"),
         description: extractErrorMessage(
-          error, 
+          error,
           t("branches.admin.genericError", "An unexpected error occurred")
         ),
         variant: "error",
       });
+    } finally {
+      setConfirmLoading(false);
+      setConfirmOpen(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -201,7 +214,8 @@ export default function AdminBranchesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -475,8 +489,9 @@ export default function AdminBranchesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(branch._id)}
+                      onClick={() => requestDelete(branch._id)}
                       disabled={isDeleting}
+                      aria-label={t("branches.admin.delete", "Delete branch")}
                       className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500/40 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -489,5 +504,19 @@ export default function AdminBranchesPage() {
         </motion.section>
       </div>
     </div>
+      <ConfirmModal
+        open={confirmOpen}
+        title={t("branches.admin.confirmDelete", "Delete this branch?")}
+        description={t(
+          "branches.admin.confirmDeleteDesc",
+          "This action cannot be undone. Are you sure you want to delete this branch?",
+        )}
+        confirmLabel={t("button.delete", "Delete")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={confirmLoading}
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   );
 }
