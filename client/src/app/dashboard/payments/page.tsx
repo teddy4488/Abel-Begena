@@ -34,7 +34,7 @@ export default function PaymentHistoryPage() {
   // Transform enrollments into payment items
   const enrollmentPayments = classes
     .filter((c) => c.myEnrollment && c.myEnrollment.amountPaid)
-    .map((c) => ({
+    .map((e) => ({
       id: `${e._id}-enrollment`,
       type: "enrollment" as const,
       title: e.title || t("classes.unknown", "Unknown Class"),
