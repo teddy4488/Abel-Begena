@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 // Socket.IO's adapter API still exposes several `any`-typed collections (rooms, sockets, etc.),
 // so we temporarily disable the unsafe-access rules for this gateway to keep the implementation clean.
 import {
@@ -121,6 +117,20 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    const { allowed, reason } = this.isUserAllowedInClass(
+      klass,
+      payload.userId,
+      payload.role,
+    );
+
+    if (!allowed) {
+      this.logger.warn(
+        `Join rejected for user ${payload.userId} in class ${payload.classId}: ${reason}`,
+      );
+      client.disconnect();
+      return;
+    }
+
     let existingPeers: PeerSummary[] = [];
     try {
       const room = this.server.adapter.rooms.get(payload.classId);
@@ -161,6 +171,35 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: payload.userId,
     });
     return { socketId: client.id };
+  }
+
+  private isUserAllowedInClass(
+    klass: ClassDocument,
+    userId: string,
+    role: JoinPayload['role'],
+  ): { allowed: boolean; reason?: string } {
+    if (!userId) {
+      return { allowed: false, reason: 'Missing user id' };
+    }
+
+    const isAdmin = role === 'admin';
+    const isInstructor =
+      (role === 'teacher' || role === 'admin') &&
+      klass.instructorId?.toString() === userId;
+    const isEnrolled = (klass.enrollments ?? []).some(
+      (enrollment) =>
+        enrollment.student?.toString() === userId &&
+        enrollment.status === 'active',
+    );
+
+    if (isAdmin || isInstructor || isEnrolled) {
+      return { allowed: true };
+    }
+
+    return {
+      allowed: false,
+      reason: 'User is not enrolled or instructor/admin for this class',
+    };
   }
 
   @SubscribeMessage('signal')

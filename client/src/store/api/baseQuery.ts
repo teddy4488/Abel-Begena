@@ -21,7 +21,20 @@ export const authorizedBaseQuery: BaseQueryFn<
   const result = await rawBaseQuery(args, api, extraOptions);
 
   if (result.error?.status === 401) {
-    api.dispatch(logout());
+    // Only force a global logout on 401s from application endpoints
+    // other than `/auth/session`. For the session probe itself, we
+    // simply emit a "session-expired" event so the UI can react
+    // without immediately wiping any optimistic client state.
+    const path =
+      typeof args === "string"
+        ? args
+        : typeof args.url === "string"
+          ? args.url
+          : "";
+
+    if (!path.startsWith("/auth/session")) {
+      api.dispatch(logout());
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("session-expired"));
     }
