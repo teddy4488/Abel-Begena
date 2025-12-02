@@ -372,6 +372,18 @@ export class ClassService {
       paymentMethod: dto.paymentMethod ?? ClassPaymentMethod.MANUAL,
       paymentReference: dto.paymentReference,
       note: dto.note,
+      fullName: dto.fullName,
+      phone: dto.phone,
+      emergencyContactName: dto.emergencyContactName,
+      emergencyContactPhone: dto.emergencyContactPhone,
+      occupation: dto.occupation,
+      city: dto.city,
+      address: dto.address,
+      preferredDaysPerWeek: dto.preferredDaysPerWeek,
+      preferredSchedule: dto.preferredSchedule,
+      learningGoals: dto.learningGoals,
+      notesForTeacher: dto.notesForTeacher,
+      receiptUrl: dto.receiptUrl,
     };
 
     if (existingIndex >= 0) {
@@ -395,6 +407,23 @@ export class ClassService {
       message: 'Enrollment recorded',
       enrollment: this.mapEnrollmentResponse(enrollment, classEntity),
     };
+  }
+
+  async enrollStudentWithReceipt(
+    classId: string,
+    studentId: string,
+    dto: EnrollClassDto,
+    file: Express.Multer.File,
+  ) {
+    const receiptUrl = await this.uploadService.uploadMaterial(
+      file,
+      'abel-begena/payment-receipts',
+    );
+    const enrichedDto: EnrollClassDto = {
+      ...dto,
+      receiptUrl,
+    };
+    return this.enrollStudent(classId, studentId, enrichedDto);
   }
 
   async updateLiveState(id: string, dto: UpdateLiveStateDto) {
@@ -675,6 +704,18 @@ export class ClassService {
           paymentMethod: enrollment.paymentMethod ?? null,
           paymentReference: enrollment.paymentReference ?? null,
           note: enrollment.note ?? null,
+          fullName: enrollment.fullName ?? null,
+          phone: enrollment.phone ?? null,
+          emergencyContactName: enrollment.emergencyContactName ?? null,
+          emergencyContactPhone: enrollment.emergencyContactPhone ?? null,
+          occupation: enrollment.occupation ?? null,
+          city: enrollment.city ?? null,
+          address: enrollment.address ?? null,
+          preferredDaysPerWeek: enrollment.preferredDaysPerWeek ?? null,
+          preferredSchedule: enrollment.preferredSchedule ?? null,
+          learningGoals: enrollment.learningGoals ?? null,
+          notesForTeacher: enrollment.notesForTeacher ?? null,
+          receiptUrl: enrollment.receiptUrl ?? null,
         };
       });
 
@@ -905,6 +946,33 @@ export class ClassService {
       paymentReference: enrollment.paymentReference ?? null,
       currency: enrollment.currency ?? classEntity?.currency ?? 'ETB',
       note: enrollment.note ?? null,
+      fullName:
+        (enrollment as { fullName?: string | null }).fullName ?? null,
+      phone: (enrollment as { phone?: string | null }).phone ?? null,
+      emergencyContactName:
+        (enrollment as { emergencyContactName?: string | null })
+          .emergencyContactName ?? null,
+      emergencyContactPhone:
+        (enrollment as { emergencyContactPhone?: string | null })
+          .emergencyContactPhone ?? null,
+      occupation:
+        (enrollment as { occupation?: string | null }).occupation ?? null,
+      city: (enrollment as { city?: string | null }).city ?? null,
+      address: (enrollment as { address?: string | null }).address ?? null,
+      preferredDaysPerWeek:
+        (enrollment as { preferredDaysPerWeek?: number | null })
+          .preferredDaysPerWeek ?? null,
+      preferredSchedule:
+        (enrollment as { preferredSchedule?: string | null })
+          .preferredSchedule ?? null,
+      learningGoals:
+        (enrollment as { learningGoals?: string | null }).learningGoals ??
+        null,
+      notesForTeacher:
+        (enrollment as { notesForTeacher?: string | null }).notesForTeacher ??
+        null,
+      receiptUrl:
+        (enrollment as { receiptUrl?: string | null }).receiptUrl ?? null,
       enrolledAt,
       classId: classEntity?._id ? classEntity._id.toString() : undefined,
       classTitle: classEntity?.title ?? null,

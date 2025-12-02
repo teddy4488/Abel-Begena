@@ -103,6 +103,30 @@ export class ClassController {
     return this.classService.enrollStudent(id, req.user.sub, enrollClassDto);
   }
 
+  @Post(':id/enroll-with-receipt')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('receipt', {
+      storage: memoryStorage(),
+    }),
+  )
+  async enrollInClassWithReceipt(
+    @Param('id') id: string,
+    @Body() enrollClassDto: EnrollClassDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: ExpressRequest & { user: { sub: string } },
+  ) {
+    if (!file) {
+      throw new BadRequestException('Receipt file is required');
+    }
+    return this.classService.enrollStudentWithReceipt(
+      id,
+      req.user.sub,
+      enrollClassDto,
+      file,
+    );
+  }
+
   @Get(':id/enrollment')
   @UseGuards(JwtAuthGuard)
   getEnrollmentStatus(

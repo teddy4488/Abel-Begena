@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Loader2, Users, X } from "lucide-react";
 import {
   useEnrollInClassMutation,
+  useEnrollInClassWithReceiptMutation,
   useGetPublicClassesQuery,
   type ClassSummary,
 } from "@/store/api/classApi";
@@ -14,18 +15,14 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Link from "next/link";
 
-const paymentMethods = [
-  "Chapa",
-  "Telebirr",
-  "Stripe",
-  "BankTransfer",
-  "Manual",
-  "Other",
-] as const;
+const paymentMethods = ["Chapa", "Telebirr", "Stripe", "BankTransfer", "Manual", "Other"] as const;
+
+type PaymentMethod = (typeof paymentMethods)[number];
+
+type PaymentOption = "BankWithReceipt" | "Telebirr" | "BankNoReceipt";
 
 const currencyOptions = ["ETB", "USD", "EUR"] as const;
 
-type PaymentMethod = (typeof paymentMethods)[number];
 type CurrencyCode = (typeof currencyOptions)[number];
 
 const isCurrencyCode = (code: string): code is CurrencyCode =>
@@ -39,10 +36,24 @@ const resolveCurrency = (code?: string | null): CurrencyCode =>
 
 type EnrollmentForm = {
   amount: string;
+  currency: CurrencyCode;
+  // high-level option for the student
+  paymentOption: PaymentOption;
+  // fine-grained fields sent to the API
   paymentMethod: PaymentMethod;
   paymentReference: string;
   note: string;
-  currency: CurrencyCode;
+  fullName: string;
+  phone: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  occupation: string;
+  city: string;
+  address: string;
+  preferredDaysPerWeek: string;
+  preferredSchedule: string;
+  learningGoals: string;
+  notesForTeacher: string;
 };
 
 export default function ClassesPage() {
@@ -52,14 +63,29 @@ export default function ClassesPage() {
   const [selectedClass, setSelectedClass] = useState<ClassSummary | null>(null);
   const [form, setForm] = useState<EnrollmentForm>({
     amount: "",
-    paymentMethod: paymentMethods[0],
+    currency: currencyOptions[0],
+    paymentOption: "BankWithReceipt",
+    paymentMethod: "BankTransfer",
     paymentReference: "",
     note: "",
-    currency: currencyOptions[0],
+    fullName: "",
+    phone: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    occupation: "",
+    city: "",
+    address: "",
+    preferredDaysPerWeek: "",
+    preferredSchedule: "",
+    learningGoals: "",
+    notesForTeacher: "",
   });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [enroll, { isLoading: isSubmitting }] = useEnrollInClassMutation();
+  const [enrollWithReceipt, { isLoading: isSubmittingWithReceipt }] =
+    useEnrollInClassWithReceiptMutation();
 
   const handleOpen = (klass: ClassSummary) => {
     if (!isLoggedIn) {
@@ -76,38 +102,87 @@ export default function ClassesPage() {
     setSelectedClass(klass);
     setForm({
       amount: (klass.tuition ?? 0).toString(),
-      paymentMethod: paymentMethods[0],
+      currency: resolveCurrency(klass.currency ?? undefined),
+      paymentOption: "BankWithReceipt",
+      paymentMethod: "BankTransfer",
       paymentReference: "",
       note: "",
-      currency: resolveCurrency(klass.currency ?? undefined),
+      fullName: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : "",
+      phone: user?.phone ?? "",
+      emergencyContactName: "",
+      emergencyContactPhone: "",
+      occupation: "",
+      city: "",
+      address: "",
+      preferredDaysPerWeek: "",
+      preferredSchedule: "",
+      learningGoals: "",
+      notesForTeacher: "",
     });
+    setReceiptFile(null);
   };
 
   const handleClose = () => {
     setSelectedClass(null);
     setForm({
       amount: "",
-      paymentMethod: paymentMethods[0],
+      currency: currencyOptions[0],
+      paymentOption: "BankWithReceipt",
+      paymentMethod: "BankTransfer",
       paymentReference: "",
       note: "",
-      currency: currencyOptions[0],
+      fullName: "",
+      phone: "",
+      emergencyContactName: "",
+      emergencyContactPhone: "",
+      occupation: "",
+      city: "",
+      address: "",
+      preferredDaysPerWeek: "",
+      preferredSchedule: "",
+      learningGoals: "",
+      notesForTeacher: "",
     });
+    setReceiptFile(null);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedClass) return;
+    const basePayload = {
+      amount: Number(form.amount) || 0,
+      currency: form.currency,
+      paymentMethod:
+        form.paymentOption === "Telebirr" ? ("Telebirr" as PaymentMethod) : ("BankTransfer" as PaymentMethod),
+      paymentReference: form.paymentReference.trim(),
+      note: form.note?.trim() || undefined,
+      fullName: form.fullName.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+      emergencyContactName: form.emergencyContactName.trim() || undefined,
+      emergencyContactPhone: form.emergencyContactPhone.trim() || undefined,
+      occupation: form.occupation.trim() || undefined,
+      city: form.city.trim() || undefined,
+      address: form.address.trim() || undefined,
+      preferredDaysPerWeek: form.preferredDaysPerWeek
+        ? Number(form.preferredDaysPerWeek)
+        : undefined,
+      preferredSchedule: form.preferredSchedule.trim() || undefined,
+      learningGoals: form.learningGoals.trim() || undefined,
+      notesForTeacher: form.notesForTeacher.trim() || undefined,
+    };
     try {
-      await enroll({
-        classId: selectedClass._id,
-        payload: {
-          amount: Number(form.amount) || 0,
-          currency: form.currency,
-          paymentMethod: form.paymentMethod,
-          paymentReference: form.paymentReference.trim(),
-          note: form.note?.trim() || undefined,
-        },
-      }).unwrap();
+      if (form.paymentOption === "BankWithReceipt" && receiptFile) {
+        await enrollWithReceipt({
+          classId: selectedClass._id,
+          payload: basePayload,
+          receipt: receiptFile,
+        }).unwrap();
+      } else {
+        await enroll({
+          classId: selectedClass._id,
+          payload: basePayload,
+        }).unwrap();
+      }
       pushToast({
         title: t("classes.modal.successTitle", "Enrollment received"),
         description: t(
@@ -321,6 +396,67 @@ export default function ClassesPage() {
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
+              {/* Payment option selection */}
+              <div className="grid gap-3 md:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      paymentOption: "BankWithReceipt",
+                    }))
+                  }
+                  className={`rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                    form.paymentOption === "BankWithReceipt"
+                      ? "border-secondary bg-secondary/10 text-secondary"
+                      : "border-border bg-background/60 text-foreground/80"
+                  }`}
+                >
+                  {t(
+                    "classes.modal.option.bankWithReceipt",
+                    "Bank transfer + upload receipt (recommended)",
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      paymentOption: "Telebirr",
+                    }))
+                  }
+                  className={`rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                    form.paymentOption === "Telebirr"
+                      ? "border-secondary bg-secondary/10 text-secondary"
+                      : "border-border bg-background/60 text-foreground/80"
+                  }`}
+                >
+                  {t(
+                    "classes.modal.option.telebirr",
+                    "Telebirr transfer (future-ready)",
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      paymentOption: "BankNoReceipt",
+                    }))
+                  }
+                  className={`rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                    form.paymentOption === "BankNoReceipt"
+                      ? "border-secondary bg-secondary/10 text-secondary"
+                      : "border-border bg-background/60 text-foreground/80"
+                  }`}
+                >
+                  {t(
+                    "classes.modal.option.bankNoReceipt",
+                    "Bank transfer (reference only)",
+                  )}
+                </button>
+              </div>
+
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
                   {t("classes.modal.amount", "Amount")}
@@ -354,25 +490,21 @@ export default function ClassesPage() {
                 </label>
               </div>
 
-              <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                {t("classes.modal.paymentMethod", "Payment method")}
-                <select
-                  value={form.paymentMethod}
-                  onChange={(e) => {
-                    const nextMethod = e.target.value;
-                    if (isPaymentMethod(nextMethod)) {
-                      setForm((prev) => ({ ...prev, paymentMethod: nextMethod }));
-                    }
-                  }}
-                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                >
-                  {paymentMethods.map((method) => (
-                    <option key={method} value={method}>
-                      {method}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {/* When paymentOption is BankWithReceipt, allow receipt upload */}
+              {form.paymentOption === "BankWithReceipt" && (
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t("classes.modal.receipt", "Upload payment receipt")}
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setReceiptFile(file);
+                    }}
+                    className="mt-2 w-full text-xs text-foreground/80"
+                  />
+                </label>
+              )}
 
               <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("classes.modal.paymentReference", "Transaction reference")}
@@ -391,6 +523,171 @@ export default function ClassesPage() {
                 />
               </label>
 
+              {/* Student intake fields */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t("classes.modal.fullName", "Full name")}
+                  <input
+                    type="text"
+                    required
+                    value={form.fullName}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, fullName: e.target.value }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t("classes.modal.phone", "Phone number")}
+                  <input
+                    type="tel"
+                    required
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, phone: e.target.value }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t(
+                    "classes.modal.emergencyContactName",
+                    "Emergency contact name",
+                  )}
+                  <input
+                    type="text"
+                    value={form.emergencyContactName}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        emergencyContactName: e.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t(
+                    "classes.modal.emergencyContactPhone",
+                    "Emergency contact phone",
+                  )}
+                  <input
+                    type="tel"
+                    value={form.emergencyContactPhone}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        emergencyContactPhone: e.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t("classes.modal.occupation", "Occupation / role")}
+                  <input
+                    type="text"
+                    value={form.occupation}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        occupation: e.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t("classes.modal.city", "City")}
+                  <input
+                    type="text"
+                    value={form.city}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, city: e.target.value }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </label>
+              </div>
+
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t("classes.modal.address", "Address / location")}
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, address: e.target.value }))
+                  }
+                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                />
+              </label>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t(
+                    "classes.modal.preferredDaysPerWeek",
+                    "Preferred days per week",
+                  )}
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.preferredDaysPerWeek}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        preferredDaysPerWeek: e.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t(
+                    "classes.modal.preferredSchedule",
+                    "Preferred schedule (days & times)",
+                  )}
+                  <input
+                    type="text"
+                    value={form.preferredSchedule}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        preferredSchedule: e.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    placeholder={t(
+                      "classes.modal.preferredSchedulePlaceholder",
+                      "e.g. Mon/Wed/Fri evenings, or Sat/Sun mornings",
+                    )}
+                  />
+                </label>
+              </div>
+
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t(
+                  "classes.modal.learningGoals",
+                  "What are your learning goals?",
+                )}
+                <textarea
+                  rows={2}
+                  value={form.learningGoals}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      learningGoals: e.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                />
+              </label>
+
               <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("classes.modal.note", "Notes (optional)")}
                 <textarea
@@ -402,17 +699,17 @@ export default function ClassesPage() {
                   className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                   placeholder={t(
                     "classes.modal.notePlaceholder",
-                    "Include phone number or Telebirr sender name.",
+                    "Additional context for the admin/teacher.",
                   )}
                 />
               </label>
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isSubmittingWithReceipt}
                 className="w-full rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-[0_20px_30px_var(--color-primary-glow)] transition hover:brightness-95 disabled:opacity-60"
               >
-                {isSubmitting
+                {isSubmitting || isSubmittingWithReceipt
                   ? t("classes.modal.submitting", "Submitting...")
                   : t("classes.modal.submit", "Confirm enrollment")}
               </button>

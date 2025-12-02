@@ -37,6 +37,43 @@ export class ClassEnrollment {
   @Prop({ trim: true, maxlength: 400 })
   note?: string;
 
+  // Optional intake profile + payment receipt
+  @Prop({ trim: true, maxlength: 160 })
+  fullName?: string;
+
+  @Prop({ trim: true, maxlength: 40 })
+  phone?: string;
+
+  @Prop({ trim: true, maxlength: 120 })
+  emergencyContactName?: string;
+
+  @Prop({ trim: true, maxlength: 40 })
+  emergencyContactPhone?: string;
+
+  @Prop({ trim: true, maxlength: 120 })
+  occupation?: string;
+
+  @Prop({ trim: true, maxlength: 120 })
+  city?: string;
+
+  @Prop({ trim: true, maxlength: 240 })
+  address?: string;
+
+  @Prop({ min: 1 })
+  preferredDaysPerWeek?: number;
+
+  @Prop({ trim: true, maxlength: 240 })
+  preferredSchedule?: string;
+
+  @Prop({ trim: true, maxlength: 240 })
+  learningGoals?: string;
+
+  @Prop({ trim: true, maxlength: 400 })
+  notesForTeacher?: string;
+
+  @Prop({ trim: true, maxlength: 400 })
+  receiptUrl?: string;
+
   @Prop({ type: Types.ObjectId, ref: 'User' })
   approvedBy?: Types.ObjectId;
 

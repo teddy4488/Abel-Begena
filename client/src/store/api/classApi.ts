@@ -18,6 +18,18 @@ export type EnrollmentSnapshot = {
   enrolledAt?: string | null;
   classId?: string | null;
   classTitle?: string | null;
+  fullName?: string | null;
+  phone?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  occupation?: string | null;
+  city?: string | null;
+  address?: string | null;
+  preferredDaysPerWeek?: number | null;
+  preferredSchedule?: string | null;
+  learningGoals?: string | null;
+  notesForTeacher?: string | null;
+  receiptUrl?: string | null;
 };
 
 export type ClassSummary = {
@@ -77,6 +89,18 @@ type EnrollmentRequest = {
   paymentMethod: string;
   paymentReference: string;
   note?: string;
+  // optional intake profile
+  fullName?: string;
+  phone?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  occupation?: string;
+  city?: string;
+  address?: string;
+  preferredDaysPerWeek?: number;
+  preferredSchedule?: string;
+  learningGoals?: string;
+  notesForTeacher?: string;
 };
 
 export const classApi = createApi({
@@ -178,6 +202,26 @@ export const classApi = createApi({
       }),
       invalidatesTags: ["Classes", "ClassEnrollment"],
     }),
+    enrollInClassWithReceipt: builder.mutation<
+      { message: string; enrollment: EnrollmentSnapshot },
+      { classId: string; payload: EnrollmentRequest; receipt: File }
+    >({
+      query: ({ classId, payload, receipt }) => {
+        const formData = new FormData();
+        formData.append("receipt", receipt);
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
+        });
+        return {
+          url: `/classes/${classId}/enroll-with-receipt`,
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: ["Classes", "ClassEnrollment"],
+    }),
     getEnrollmentStatus: builder.query<EnrollmentSnapshot, string>({
       query: (classId) => `/classes/${classId}/enrollment`,
       providesTags: (_result, _error, classId) => [
@@ -223,6 +267,7 @@ export const {
   useUpdateScheduleItemMutation,
   useDeleteScheduleItemMutation,
   useEnrollInClassMutation,
+  useEnrollInClassWithReceiptMutation,
   useGetEnrollmentStatusQuery,
   useGetMyEnrollmentsQuery,
   useUpdateEnrollmentStatusMutation,

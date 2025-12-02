@@ -39,4 +39,66 @@ export class EnrollClassDto {
   @IsString()
   @MaxLength(400)
   note?: string;
+
+  // Optional intake profile for enrolled students
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  emergencyContactName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  emergencyContactPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  occupation?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  address?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  preferredDaysPerWeek?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  preferredSchedule?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  learningGoals?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(400)
+  notesForTeacher?: string;
+
+  // Optional URL of an uploaded payment receipt (set by the server)
+  @IsOptional()
+  @IsString()
+  @MaxLength(400)
+  receiptUrl?: string;
 }
