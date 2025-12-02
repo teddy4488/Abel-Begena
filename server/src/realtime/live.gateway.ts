@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 // Socket.IO's adapter API still exposes several `any`-typed collections (rooms, sockets, etc.),
 // so we temporarily disable the unsafe-access rules for this gateway to keep the implementation clean.
 import {

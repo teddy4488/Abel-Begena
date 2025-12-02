@@ -98,19 +98,13 @@ export function LiveRoom({
               {t("live.status.live", "Live")}
             </span>
             <span className="text-[11px] text-gray-300 md:text-xs">
-              {t(
-                "live.status.participants",
-                "{{count}} participants",
-                { count: participants.length },
-              )}
+              {t("live.status.participants", "Participants")}:{" "}
+              {participants.length}
             </span>
             {sessionEndedBy && (
               <span className="text-[11px] text-rose-300 md:text-xs">
-                {t(
-                  "live.status.endedBy",
-                  "Session ended by {{name}}",
-                  { name: sessionEndedBy },
-                )}
+                {t("live.status.endedBy", "Session ended by")}{" "}
+                {sessionEndedBy}
               </span>
             )}
           </div>
