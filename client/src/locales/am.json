@@ -625,13 +625,17 @@
   "live.header.kicker": "በቀጥታ ክፍል",
   "live.header.backDashboard": "ወደ ዳሽቦርድ ተመለስ",
   "live.status.live": "በቀጥታ",
-  "live.status.participants": "{{count}} ተሳታፊዎች",
-  "live.status.endedBy": "ክፍሉ በ{{name}} ተዘግቷል",
+  "live.status.participants": "ተሳታፊዎች",
+  "live.status.endedBy": "ክፍሉ ተዘግቷል በ",
   "live.controls.endForAll": "ለሁሉም ክፍሉን ጨርስ",
   "live.controls.leave": "ውጣ",
   "live.chat.kicker": "የክፍል ውይይት",
   "live.chat.subtitle": "ከኮርትዎ ጋር በአንድ ላይ ይቆዩ።",
   "live.chat.empty": "መልዕክት ገና የለም። ሰላም ብለው ይጀምሩ።",
   "live.chat.placeholder": "ለክፍልዎ መልዕክት ይፃፉ...",
-  "live.chat.send": "ላክ"
+  "live.chat.send": "ላክ",
+  "live.external.kicker": "ውጭ ስብሰባ",
+  "live.external.subtitle": "በZoom፣ Google Meet ወይም በሌላ መድረክ ይቀላቀሉ።",
+  "live.external.join": "ውጭ ስብሰባን ክፈት",
+  "live.external.teacherHint": "ይህንን አገናኝ የውጭ መድረክን መመርጠው ለመቀላቀል የሚመርጡ ተማሪዎች ጋር ያካፍሉ።"
 }

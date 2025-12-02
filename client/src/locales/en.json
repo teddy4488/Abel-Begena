@@ -625,13 +625,17 @@
   "live.header.kicker": "Live Class",
   "live.header.backDashboard": "Back to dashboard",
   "live.status.live": "Live",
-  "live.status.participants": "{{count}} participants",
-  "live.status.endedBy": "Session ended by {{name}}",
+  "live.status.participants": "Participants",
+  "live.status.endedBy": "Session ended by",
   "live.controls.endForAll": "End for everyone",
   "live.controls.leave": "Leave",
   "live.chat.kicker": "Classroom Chat",
   "live.chat.subtitle": "Stay in sync with your cohort.",
   "live.chat.empty": "No messages yet. Say selam to your classmates.",
   "live.chat.placeholder": "Type a message to your class...",
-  "live.chat.send": "Send"
+  "live.chat.send": "Send",
+  "live.external.kicker": "External meeting",
+  "live.external.subtitle": "Join via Zoom, Google Meet, or another platform.",
+  "live.external.join": "Open external meeting",
+  "live.external.teacherHint": "Share this link with students who prefer joining via the external platform."
 }

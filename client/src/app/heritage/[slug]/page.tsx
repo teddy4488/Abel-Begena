@@ -22,6 +22,10 @@ export default function HeritageArticlePage() {
   } = useGetPostBySlugQuery(slug, { skip: !slug });
 
   const handleShare = async () => {
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      return;
+    }
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -31,8 +35,15 @@ export default function HeritageArticlePage() {
       } catch {
         // User cancelled or error
       }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
+      return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -168,7 +179,11 @@ export default function HeritageArticlePage() {
               <Share2 className="h-4 w-4" />
             </button>
             <a
-              href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}&text=${encodeURIComponent(post.title)}`}
+              href={`https://twitter.com/intent/tweet?url=${
+                typeof window !== "undefined"
+                  ? encodeURIComponent(window.location.href)
+                  : ""
+              }&text=${encodeURIComponent(post.title)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
@@ -177,7 +192,11 @@ export default function HeritageArticlePage() {
               <Twitter className="h-4 w-4" />
             </a>
             <a
-              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+              href={`https://www.facebook.com/sharer/sharer.php?u=${
+                typeof window !== "undefined"
+                  ? encodeURIComponent(window.location.href)
+                  : ""
+              }`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
@@ -186,7 +205,20 @@ export default function HeritageArticlePage() {
               <Facebook className="h-4 w-4" />
             </a>
             <button
-              onClick={() => navigator.clipboard.writeText(window.location.href)}
+              onClick={async () => {
+                if (
+                  typeof window === "undefined" ||
+                  typeof navigator === "undefined" ||
+                  !navigator.clipboard?.writeText
+                ) {
+                  return;
+                }
+                try {
+                  await navigator.clipboard.writeText(window.location.href);
+                } catch {
+                  // ignore
+                }
+              }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
               aria-label="Copy link"
             >

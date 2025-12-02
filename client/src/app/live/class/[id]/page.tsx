@@ -102,9 +102,19 @@ export default function LiveClassPage() {
   };
 
   const handleShareLink = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      alert(t("live.share.copied", "Link copied to clipboard!"));
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      return;
+    }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(window.location.href)
+        .then(() => {
+          // eslint-disable-next-line no-alert
+          alert(t("live.share.copied", "Link copied to clipboard!"));
+        })
+        .catch(() => {
+          // ignore clipboard failures
+        });
     }
   };
 
@@ -191,6 +201,7 @@ export default function LiveClassPage() {
               "Guest"
             }
             role={resolvedRole}
+            externalLink={data.liveLink}
             onLeave={() => router.push("/dashboard")}
             isTeacherSession={isTeacher}
           />

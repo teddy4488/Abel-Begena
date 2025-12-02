@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MessageCircle, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
+import {
+  MessageCircle,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Video,
+  VideoOff,
+  ExternalLink,
+} from "lucide-react";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { VideoTile } from "./VideoTile";
 import { useI18n } from "@/components/providers/I18nProvider";
@@ -11,6 +19,7 @@ type LiveRoomProps = {
   userId: string;
   displayName: string;
   role: "Teacher" | "Student" | "Admin";
+  externalLink?: string | null;
   onLeave?: () => void;
   isTeacherSession?: boolean;
 };
@@ -20,6 +29,7 @@ export function LiveRoom({
   userId,
   displayName,
   role,
+  externalLink,
   onLeave,
   isTeacherSession,
 }: LiveRoomProps) {
@@ -157,6 +167,54 @@ export function LiveRoom({
           </div>
         </div>
       </div>
+
+      {externalLink ? (
+        <div className="hidden w-full max-w-xs flex-col rounded-3xl border border-border bg-surface/95 p-3 text-sm shadow-xl backdrop-blur md:flex md:h-full md:p-4 lg:max-w-sm">
+          <div className="mb-3 flex items-center justify-between gap-2 border-b border-border/70 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary/10 text-secondary md:h-8 md:w-8">
+                <ExternalLink className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary md:text-[11px]">
+                  {t("live.external.kicker", "External meeting")}
+                </p>
+                <p className="text-[11px] text-foreground/70 md:text-xs">
+                  {t(
+                    "live.external.subtitle",
+                    "Join via Zoom, Google Meet, or another platform.",
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs text-foreground/70 md:text-sm break-all">
+              {externalLink}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window === "undefined") return;
+                window.open(externalLink, "_blank", "noopener,noreferrer");
+              }}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-primary shadow-sm shadow-secondary/40 transition hover:bg-secondary/90 md:text-sm"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {t("live.external.join", "Open external meeting")}
+            </button>
+            {isTeacherSession && (
+              <p className="text-[11px] text-foreground/60 md:text-xs">
+                {t(
+                  "live.external.teacherHint",
+                  "Share this link with students who prefer joining via the external platform.",
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <aside className="flex w-full max-w-xs flex-col rounded-3xl border border-border bg-surface/95 p-3 text-sm shadow-xl backdrop-blur md:h-full md:p-4 lg:max-w-sm">
         <div className="mb-2 flex items-center justify-between gap-2 border-b border-border/70 pb-2 md:mb-3 md:pb-3">
