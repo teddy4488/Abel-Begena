@@ -39,7 +39,7 @@ export default function BranchesPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative h-[360px] overflow-hidden rounded-[32px] border border-border bg-surface shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="relative h-[360px] overflow-hidden rounded-4xl border border-border bg-surface shadow-[0_40px_80px_var(--color-primary-glow)]"
         >
           <div className="absolute inset-0 bg-linear-to-br from-background via-surface to-(--color-secondary-soft) opacity-70" />
           <div className="relative h-full">
@@ -69,7 +69,7 @@ export default function BranchesPage() {
           </div>
         </motion.div>
 
-        <FadeIn className="space-y-4 rounded-[32px] border border-border bg-surface p-6 shadow-[0_40px_80px_var(--color-primary-glow)]">
+        <FadeIn className="space-y-4 rounded-4xl border border-border bg-surface p-6 shadow-[0_40px_80px_var(--color-primary-glow)]">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
             {t("branches.public.listTitle", "Studios & heritage branches")}
           </p>
