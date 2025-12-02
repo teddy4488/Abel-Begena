@@ -242,6 +242,18 @@ export default function AdminEnrollmentsPage() {
                               {enrollment.paymentMethod}
                             </p>
                           )}
+                          {enrollment.receiptUrl && (
+                            <p className="text-xs">
+                              <a
+                                href={enrollment.receiptUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-secondary underline underline-offset-2"
+                              >
+                                Receipt
+                              </a>
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <span

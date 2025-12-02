@@ -249,6 +249,100 @@ export default function TeacherStudentsPage() {
                               {t("teacher.students.note", "Note")}: {student.note}
                             </p>
                           )}
+                          {student.fullName && (
+                            <p className="text-xs text-foreground/60">
+                              {t("teacher.students.fullName", "Intake name")}:{" "}
+                              {student.fullName}
+                            </p>
+                          )}
+                          {student.phone && (
+                            <p className="text-xs text-foreground/60">
+                              {t("teacher.students.phone", "Phone")}: {student.phone}
+                            </p>
+                          )}
+                          {student.emergencyContactName && (
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "teacher.students.emergencyContactName",
+                                "Emergency contact",
+                              )}
+                              : {student.emergencyContactName}
+                            </p>
+                          )}
+                          {student.emergencyContactPhone && (
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "teacher.students.emergencyContactPhone",
+                                "Emergency phone",
+                              )}
+                              : {student.emergencyContactPhone}
+                            </p>
+                          )}
+                          {student.occupation && (
+                            <p className="text-xs text-foreground/60">
+                              {t("teacher.students.occupation", "Occupation")}:{" "}
+                              {student.occupation}
+                            </p>
+                          )}
+                          {(student.city || student.address) && (
+                            <p className="text-xs text-foreground/60">
+                              {t("teacher.students.location", "Location")}:{" "}
+                              {[student.city, student.address]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </p>
+                          )}
+                          {(student.preferredDaysPerWeek ||
+                            student.preferredSchedule) && (
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "teacher.students.schedulePrefs",
+                                "Preferred schedule",
+                              )}
+                              :{" "}
+                              {[
+                                student.preferredDaysPerWeek
+                                  ? `${student.preferredDaysPerWeek} days/week`
+                                  : null,
+                                student.preferredSchedule,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          )}
+                          {student.learningGoals && (
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "teacher.students.learningGoals",
+                                "Learning goals",
+                              )}
+                              : {student.learningGoals}
+                            </p>
+                          )}
+                          {student.notesForTeacher && (
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "teacher.students.notesForTeacher",
+                                "Notes for teacher",
+                              )}
+                              : {student.notesForTeacher}
+                            </p>
+                          )}
+                          {student.receiptUrl && (
+                            <p className="text-xs text-foreground/60">
+                              <a
+                                href={student.receiptUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-secondary underline underline-offset-2"
+                              >
+                                {t(
+                                  "teacher.students.receipt",
+                                  "View payment receipt",
+                                )}
+                              </a>
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col items-start gap-2 text-xs md:items-end">
                           <span

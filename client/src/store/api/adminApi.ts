@@ -55,6 +55,18 @@ export type AdminEnrollment = {
   paymentReference?: string | null;
   note?: string | null;
   enrolledAt?: string | null;
+  fullName?: string | null;
+  phone?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  occupation?: string | null;
+  city?: string | null;
+  address?: string | null;
+  preferredDaysPerWeek?: number | null;
+  preferredSchedule?: string | null;
+  learningGoals?: string | null;
+  notesForTeacher?: string | null;
+  receiptUrl?: string | null;
 };
 
 export const adminApi = createApi({
