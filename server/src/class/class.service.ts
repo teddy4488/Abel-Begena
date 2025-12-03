@@ -946,8 +946,7 @@ export class ClassService {
       paymentReference: enrollment.paymentReference ?? null,
       currency: enrollment.currency ?? classEntity?.currency ?? 'ETB',
       note: enrollment.note ?? null,
-      fullName:
-        (enrollment as { fullName?: string | null }).fullName ?? null,
+      fullName: (enrollment as { fullName?: string | null }).fullName ?? null,
       phone: (enrollment as { phone?: string | null }).phone ?? null,
       emergencyContactName:
         (enrollment as { emergencyContactName?: string | null })
@@ -966,8 +965,7 @@ export class ClassService {
         (enrollment as { preferredSchedule?: string | null })
           .preferredSchedule ?? null,
       learningGoals:
-        (enrollment as { learningGoals?: string | null }).learningGoals ??
-        null,
+        (enrollment as { learningGoals?: string | null }).learningGoals ?? null,
       notesForTeacher:
         (enrollment as { notesForTeacher?: string | null }).notesForTeacher ??
         null,

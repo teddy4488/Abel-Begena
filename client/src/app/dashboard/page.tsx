@@ -107,7 +107,7 @@ export default function DashboardPage() {
       }
     };
     void fetchClasses();
-  }, [apiBase, isLoggedIn, pushToast, t]);
+  }, [apiBase, isLoggedIn, pushToast, t, token]);
 
   if (!isLoggedIn) {
     return null;

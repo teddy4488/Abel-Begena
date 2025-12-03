@@ -63,6 +63,19 @@ export type ClassRosterResponse = {
     paymentMethod?: string | null;
     paymentReference?: string | null;
     note?: string | null;
+    // optional intake profile fields mirrored from EnrollmentSnapshot/AdminEnrollment
+    fullName?: string | null;
+    phone?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
+    occupation?: string | null;
+    city?: string | null;
+    address?: string | null;
+    preferredDaysPerWeek?: number | null;
+    preferredSchedule?: string | null;
+    learningGoals?: string | null;
+    notesForTeacher?: string | null;
+    receiptUrl?: string | null;
   }>;
 };
 

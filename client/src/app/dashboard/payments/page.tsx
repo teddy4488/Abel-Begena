@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetMyOrdersQuery } from "@/store/api/storeApi";
@@ -18,12 +18,29 @@ import {
   Calendar,
 } from "lucide-react";
 
-type PaymentType = "all" | "enrollments" | "orders";
+type PaymentStatus = "completed" | "pending" | "processing" | "failed";
+type PaymentRecordType = "enrollment" | "order";
+type PaymentType = "all" | PaymentRecordType;
+
+type PaymentRecord = {
+  id: string;
+  type: PaymentRecordType;
+  title: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  paymentReference?: string | null;
+  status: PaymentStatus;
+  date: string;
+  receiptUrl?: string | null;
+  note?: string | null;
+};
 
 export default function PaymentHistoryPage() {
   const { t } = useI18n();
   const [filterType, setFilterType] = useState<PaymentType>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<PaymentStatus | "all">("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: orders = [], isLoading: ordersLoading } = useGetMyOrdersQuery();
   const { data: classes = [], isLoading: classesLoading } =
@@ -32,7 +49,7 @@ export default function PaymentHistoryPage() {
   const isLoading = ordersLoading || classesLoading;
 
   // Transform enrollments into payment items
-  const enrollmentPayments = classes
+  const enrollmentPayments: PaymentRecord[] = classes
     .filter((c) => c.myEnrollment && c.myEnrollment.amountPaid)
     .map((e) => ({
       id: `${e._id}-enrollment`,
@@ -54,7 +71,7 @@ export default function PaymentHistoryPage() {
     }));
 
   // Transform orders into payment items
-  const orderPayments = orders.map((o) => ({
+  const orderPayments: PaymentRecord[] = orders.map((o) => ({
     id: o._id,
     type: "order" as const,
     title: `${o.items.length} ${o.items.length === 1 ? t("store.item", "item") : t("store.items", "items")}`,
@@ -75,14 +92,25 @@ export default function PaymentHistoryPage() {
   }));
 
   // Combine and sort by date (newest first)
-  const allPayments = [...enrollmentPayments, ...orderPayments].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  const allPayments = useMemo(
+    () =>
+      [...enrollmentPayments, ...orderPayments].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ),
+    [enrollmentPayments, orderPayments]
   );
 
   // Apply filters
+  const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredPayments = allPayments.filter((p) => {
     if (filterType !== "all" && p.type !== filterType) return false;
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
+    if (normalizedSearch) {
+      const haystack = `${p.title} ${p.paymentMethod ?? ""} ${
+        p.paymentReference ?? ""
+      }`.toLowerCase();
+      if (!haystack.includes(normalizedSearch)) return false;
+    }
     return true;
   });
 
@@ -144,6 +172,69 @@ export default function PaymentHistoryPage() {
     .filter((p) => p.status === "pending")
     .reduce((sum, p) => sum + p.amount, 0);
 
+  const typeBreakdown = filteredPayments.reduce(
+    (acc, payment) => {
+      acc[payment.type] += 1;
+      return acc;
+    },
+    { enrollment: 0, order: 0 }
+  );
+
+  const latestPaymentDate = filteredPayments[0]?.date ?? null;
+  const averageTicket =
+    filteredPayments.length > 0
+      ? filteredPayments.reduce((sum, p) => sum + p.amount, 0) /
+        filteredPayments.length
+      : 0;
+
+  const escapeCsv = (value: string | number | null | undefined) => {
+    if (value === null || value === undefined) return '""';
+    return `"${String(value).replace(/"/g, '""')}"`;
+  };
+
+  const handleExportCsv = () => {
+    if (!filteredPayments.length) return;
+    const header = [
+      "id",
+      "type",
+      "title",
+      "amount",
+      "currency",
+      "paymentMethod",
+      "paymentReference",
+      "status",
+      "date",
+      "note",
+    ];
+    const rows = filteredPayments.map((p) =>
+      [
+        escapeCsv(p.id),
+        escapeCsv(p.type),
+        escapeCsv(p.title),
+        escapeCsv(p.amount.toString()),
+        escapeCsv(p.currency),
+        escapeCsv(p.paymentMethod),
+        escapeCsv(p.paymentReference ?? ""),
+        escapeCsv(p.status),
+        escapeCsv(formatDate(p.date)),
+        escapeCsv(p.note ?? ""),
+      ].join(",")
+    );
+    const csvContent = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `abel-begena-payments-${new Date().toISOString()}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-begena-cream via-begena-cream to-begena-lightBrown dark:from-begena-darkBrown dark:via-gray-900 dark:to-black p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -172,7 +263,7 @@ export default function PaymentHistoryPage() {
         </motion.div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -223,6 +314,31 @@ export default function PaymentHistoryPage() {
               {filteredPayments.length}
             </p>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+            className="p-4 md:p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-begena-brown/70 dark:text-begena-cream/70">
+                {t("payments.summary.avgTicket", "Avg. Ticket")}
+              </span>
+              <Calendar className="w-5 h-5 text-purple-600" />
+            </div>
+            <p className="text-2xl md:text-3xl font-bold text-begena-gold">
+              {formatAmount(averageTicket || 0, "ETB")}
+            </p>
+            <p className="text-xs text-begena-brown/60 dark:text-begena-cream/60 mt-1">
+              {latestPaymentDate
+                ? `${t(
+                    "payments.summary.lastPayment",
+                    "Last payment on",
+                  )} ${formatDate(latestPaymentDate)}`
+                : t("payments.summary.noPaymentsYet", "No payments yet")}
+            </p>
+          </motion.div>
         </div>
 
         {/* Filters */}
@@ -239,7 +355,7 @@ export default function PaymentHistoryPage() {
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {(["all", "enrollments", "orders"] as PaymentType[]).map((type) => (
+            {(["all", "enrollment", "order"] as PaymentType[]).map((type) => (
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
@@ -251,7 +367,7 @@ export default function PaymentHistoryPage() {
               >
                 {type === "all"
                   ? t("payments.filters.all", "All")
-                  : type === "enrollments"
+                  : type === "enrollment"
                   ? t("payments.filters.enrollments", "Enrollments")
                   : t("payments.filters.orders", "Orders")}
               </button>
@@ -264,7 +380,9 @@ export default function PaymentHistoryPage() {
             </span>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) =>
+                setFilterStatus(e.target.value as PaymentStatus | "all")
+              }
               className="px-3 py-2 rounded-lg bg-begena-cream dark:bg-begena-darkBrown border border-begena-gold/30 text-begena-brown dark:text-begena-cream text-sm focus:outline-none focus:ring-2 focus:ring-begena-gold"
             >
               <option value="all">{t("payments.filters.allStatuses", "All Statuses")}</option>
@@ -273,6 +391,78 @@ export default function PaymentHistoryPage() {
               <option value="processing">{t("payments.status.processing", "Processing")}</option>
               <option value="failed">{t("payments.status.failed", "Failed")}</option>
             </select>
+          </div>
+
+          <div className="flex w-full flex-wrap items-center gap-3">
+            <input
+              type="search"
+              placeholder={t(
+                "payments.filters.search",
+                "Search by class, method, or reference"
+              )}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 rounded-lg border border-begena-gold/30 bg-begena-cream dark:bg-begena-darkBrown px-3 py-2 text-sm text-begena-brown dark:text-begena-cream focus:outline-none focus:ring-2 focus:ring-begena-gold"
+            />
+            <button
+              type="button"
+              disabled={!filteredPayments.length}
+              onClick={handleExportCsv}
+              className="inline-flex items-center gap-2 rounded-lg bg-begena-gold/90 px-4 py-2 text-sm font-semibold text-begena-darkBrown transition hover:bg-begena-gold disabled:opacity-60"
+            >
+              <Download className="w-4 h-4" />
+              {t("payments.actions.exportCsv", "Export CSV")}
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          <div className="rounded-xl border border-begena-gold/30 bg-begena-cream/50 dark:bg-begena-darkBrown/40 p-4">
+            <p className="text-sm font-semibold text-begena-brown dark:text-begena-cream mb-2">
+              {t("payments.insights.breakdownTitle", "Breakdown by Type")}
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <div>
+                <p className="text-xs uppercase text-begena-brown/60 dark:text-begena-cream/60">
+                  {t("payments.filters.enrollments", "Enrollments")}
+                </p>
+                <p className="text-2xl font-bold text-begena-gold">
+                  {typeBreakdown.enrollment}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase text-begena-brown/60 dark:text-begena-cream/60">
+                  {t("payments.filters.orders", "Orders")}
+                </p>
+                <p className="text-2xl font-bold text-begena-gold">
+                  {typeBreakdown.order}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-begena-gold/30 bg-begena-cream/50 dark:bg-begena-darkBrown/40 p-4">
+            <p className="text-sm font-semibold text-begena-brown dark:text-begena-cream mb-2">
+              {t("payments.insights.pendingTitle", "Pending follow-ups")}
+            </p>
+            <p className="text-2xl font-bold text-begena-gold">
+              {
+                filteredPayments.filter(
+                  (payment) => payment.status === "pending" || payment.status === "processing"
+                ).length
+              }
+            </p>
+            <p className="text-xs text-begena-brown/60 dark:text-begena-cream/60 mt-1">
+              {t(
+                "payments.insights.pendingDescription",
+                "Need manual verification or webhook confirmation."
+              )}
+            </p>
           </div>
         </motion.div>
 

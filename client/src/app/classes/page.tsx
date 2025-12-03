@@ -28,9 +28,6 @@ type CurrencyCode = (typeof currencyOptions)[number];
 const isCurrencyCode = (code: string): code is CurrencyCode =>
   (currencyOptions as readonly string[]).includes(code);
 
-const isPaymentMethod = (method: string): method is PaymentMethod =>
-  (paymentMethods as readonly string[]).includes(method);
-
 const resolveCurrency = (code?: string | null): CurrencyCode =>
   code && isCurrencyCode(code) ? code : currencyOptions[0];
 

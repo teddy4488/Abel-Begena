@@ -7,6 +7,7 @@ import { useGetClassAccessQuery } from "@/store/api/classApi";
 import { X, Share2 } from "lucide-react";
 import { LiveRoom } from "@/components/live/LiveRoom";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export default function LiveClassPage() {
   const params = useParams();
@@ -17,6 +18,7 @@ export default function LiveClassPage() {
     skip: !isLoggedIn || !classId,
   });
   const { t } = useI18n();
+  const { pushToast } = useToast();
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -109,11 +111,20 @@ export default function LiveClassPage() {
       navigator.clipboard
         .writeText(window.location.href)
         .then(() => {
-          // eslint-disable-next-line no-alert
-          alert(t("live.share.copied", "Link copied to clipboard!"));
+          pushToast({
+            title: t("live.share.copied", "Link copied to clipboard!"),
+            variant: "success",
+          });
         })
         .catch(() => {
-          // ignore clipboard failures
+          pushToast({
+            title: t("live.share.copyError", "Unable to copy link"),
+            description: t(
+              "live.share.copyErrorDescription",
+              "Please copy the URL manually."
+            ),
+            variant: "error",
+          });
         });
     }
   };
