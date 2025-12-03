@@ -56,7 +56,7 @@ export default function BegenaVisual({
         viewBox="0 0 800 1000"
         className="w-full h-auto"
         xmlns="http://www.w3.org/2000/svg"
-        style={{ filter: 'drop-shadow(0 30px 60px rgba(0, 0, 0, 0.5))' }}
+        style={{ filter: "drop-shadow(0 30px 60px rgba(0, 0, 0, 0.55))" }}
       >
         <defs>
           {/* Wood Grain Pattern */}
@@ -175,20 +175,43 @@ export default function BegenaVisual({
             <stop offset="50%" stopColor="#D4AF37" />
             <stop offset="100%" stopColor="#B8941F" />
           </linearGradient>
+
+          {/* 3D soundbox gradient (top-lit) */}
+          <linearGradient id="soundbox3D" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#E6D9C1" />
+            <stop offset="35%" stopColor="#D4C4A8" />
+            <stop offset="75%" stopColor="#B59D79" />
+            <stop offset="100%" stopColor="#8C6F4A" />
+          </linearGradient>
+
+          {/* Floor shadow under instrument */}
+          <radialGradient id="floorShadow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(0,0,0,0.45)" />
+            <stop offset="60%" stopColor="rgba(0,0,0,0.35)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+          </radialGradient>
         </defs>
 
         {/* Main Begena Structure */}
         <motion.g
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
+          initial={{ opacity: 0, rotateX: 15, translateY: 40 }}
+          animate={{ opacity: 1, rotateX: 0, translateY: 0 }}
+          transition={{ duration: 1.1, ease: "easeOut" }}
         >
-          {/* Sound Box - Rectangular base at bottom
-              Size: 600px wide x 180px tall (more realistic size) */}
+          {/* Floor / table shadow */}
+          <ellipse
+            cx="400"
+            cy="930"
+            rx="260"
+            ry="70"
+            fill="url(#floorShadow)"
+            opacity="0.85"
+          />
+          {/* Sound Box - Rectangular base at bottom, with 3D lighting */}
           <motion.g
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
           >
             {/* Main soundbox frame */}
             <rect
@@ -197,12 +220,22 @@ export default function BegenaVisual({
               width="600"
               height="180"
               rx="15"
-              fill="url(#hideTexture)"
+              fill="url(#soundbox3D)"
               stroke="#4A3728"
               strokeWidth="10"
               filter="url(#deepShadow)"
             />
-            
+            {/* Subtle hide texture overlay */}
+            <rect
+              x="110"
+              y="808"
+              width="580"
+              height="160"
+              rx="12"
+              fill="url(#hideTexture)"
+              opacity="0.55"
+            />
+
             {/* Inner frame detail */}
             <rect
               x="125"
@@ -218,17 +251,40 @@ export default function BegenaVisual({
 
             {/* Bottom bar on soundbox (where strings attach)
                 Size: 360px wide x 14px tall (more realistic) */}
-            <rect
-              x="220"
-              y="960"
-              width="360"
-              height="14"
-              rx="7"
-              fill="#3A2518"
-              stroke="#2A1510"
-              strokeWidth="3"
-              filter="url(#deepShadow)"
-            />
+            <g>
+              {/* Dark base for depth */}
+              <rect
+                x="218"
+                y="962"
+                width="364"
+                height="16"
+                rx="7"
+                fill="#1C0F09"
+                opacity="0.95"
+                filter="url(#deepShadow)"
+              />
+              {/* Slightly raised bridge */}
+              <rect
+                x="222"
+                y="958"
+                width="356"
+                height="14"
+                rx="7"
+                fill="#3A2518"
+                stroke="#2A1510"
+                strokeWidth="2.5"
+              />
+              {/* Top highlight edge */}
+              <rect
+                x="224"
+                y="958"
+                width="352"
+                height="4"
+                rx="2"
+                fill="#6B5237"
+                opacity="0.85"
+              />
+            </g>
           </motion.g>
 
           {/* Left Vertical Arm - Straight line diverging outward
@@ -681,7 +737,7 @@ export default function BegenaVisual({
         </motion.g>
       </svg>
 
-      {/* Enhanced Key labels below */}
+      {/* Enhanced Key labels / touch controls below */}
       <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-6 md:mt-8 px-2">
         {playableStrings.map((stringNum) => {
           const keyLabel =
@@ -712,9 +768,23 @@ export default function BegenaVisual({
               ? "String 4 (Highest)"
               : `String ${stringNum}`;
 
+          const handleTap = () => {
+            onStringPress?.(stringNum);
+          };
+
           return (
             <motion.div
               key={stringNum}
+              role="button"
+              tabIndex={0}
+              aria-label={`Play ${soundOrderLabel} (${keyLabel})`}
+              onClick={handleTap}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleTap();
+                }
+              }}
               className={`text-center px-4 md:px-5 py-3 md:py-3.5 rounded-xl transition-all border-2 ${
                 isPressed
                   ? "bg-gradient-to-br from-begena-gold to-yellow-600 text-begena-darkBrown scale-110 border-begena-gold shadow-xl"
