@@ -29,6 +29,8 @@ export default function AdminStorePage() {
   const [form, setForm] = useState(productFormDefaults);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingUploads, setPendingUploads] = useState<Record<string, File | null>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [promoForms, setPromoForms] = useState<
     Record<string, { discountPrice: string; promoActive: boolean }>
   >({});
@@ -142,16 +144,71 @@ export default function AdminStorePage() {
       });
       return;
     }
-    try {
-      await uploadImage({ id: productId, file }).unwrap();
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
       pushToast({
-        title: "Image uploaded",
-        description: "The product gallery has been updated.",
-        variant: "success",
+        title: "File too large",
+        description: "Maximum file size is 10MB",
+        variant: "error",
       });
-      setPendingUploads((prev) => ({ ...prev, [productId]: null }));
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      pushToast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      setUploadingId(productId);
+      setUploadProgress((prev) => ({ ...prev, [productId]: 0 }));
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          const current = prev[productId] || 0;
+          if (current >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return { ...prev, [productId]: current + 10 };
+        });
+      }, 200);
+
+      await uploadImage({ id: productId, file }).unwrap();
+      
+      clearInterval(progressInterval);
+      setUploadProgress((prev) => ({ ...prev, [productId]: 100 }));
+      
+      setTimeout(() => {
+        pushToast({
+          title: "Image uploaded",
+          description: "The product gallery has been updated.",
+          variant: "success",
+        });
+        setPendingUploads((prev) => ({ ...prev, [productId]: null }));
+        setUploadProgress((prev) => {
+          const next = { ...prev };
+          delete next[productId];
+          return next;
+        });
+        setUploadingId(null);
+      }, 500);
     } catch (error) {
       console.error(error);
+      setUploadProgress((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+      setUploadingId(null);
       pushToast({
         title: "Upload failed",
         description: "Please try again with a different file.",
@@ -454,30 +511,108 @@ export default function AdminStorePage() {
                     {promoSavingId === product._id ? "Saving..." : "Save promotion"}
                   </button>
                 </div>
-                <div className="mt-3 rounded-2xl.border border-dashed border-border/70 p-3">
-                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
+                <div className="mt-3 rounded-2xl border border-dashed border-border/70 p-3">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/70 mb-2">
                     Upload image
                   </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) =>
-                        setPendingUploads((prev) => ({
-                          ...prev,
-                          [product._id]: e.target.files?.[0] ?? null,
-                        }))
-                      }
-                      className="text-xs text-foreground/70 file:mr-3 file:rounded-full file:border-0 file:bg-secondary/20 file:px-3 file:py-1 file:text-secondary"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleUpload(product._id)}
-                      className="rounded-full border border-border px-3 py-1 text-xs font-semibold"
-                    >
-                      Upload
-                    </button>
-                  </div>
+                  {pendingUploads[product._id] ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-foreground/70 truncate flex-1 mr-2">
+                          {pendingUploads[product._id]?.name}
+                        </span>
+                        <span className="text-foreground/50">
+                          {((pendingUploads[product._id]?.size || 0) / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </div>
+                      {uploadProgress[product._id] !== undefined && (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-foreground/60">Uploading...</span>
+                            <span className="font-semibold text-secondary">
+                              {uploadProgress[product._id]}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-background/80 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-secondary to-secondary/70 transition-all duration-300"
+                              style={{ width: `${uploadProgress[product._id]}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleUpload(product._id)}
+                          disabled={uploadingId === product._id}
+                          className="flex-1 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold hover:bg-background transition disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {uploadingId === product._id ? "Uploading..." : "Upload"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingUploads((prev) => ({ ...prev, [product._id]: null }));
+                            setUploadProgress((prev) => {
+                              const next = { ...prev };
+                              delete next[product._id];
+                              return next;
+                            });
+                          }}
+                          disabled={uploadingId === product._id}
+                          className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold hover:bg-background transition disabled:opacity-60"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="block">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setPendingUploads((prev) => ({
+                            ...prev,
+                            [product._id]: e.target.files?.[0] ?? null,
+                          }))
+                        }
+                        className="hidden"
+                      />
+                      <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-background/50 p-3 cursor-pointer hover:bg-background/80 hover:border-border transition">
+                        <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-medium text-foreground/70">
+                          Choose image (Max 10MB)
+                        </span>
+                      </div>
+                    </label>
+                  )}
+                  {product.images && product.images.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {product.images.map((img, idx) => (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={img}
+                            alt={`${product.name} ${idx + 1}`}
+                            className="w-16 h-16 object-cover rounded-lg border border-border"
+                          />
+                          <a
+                            href={img}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg"
+                          >
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

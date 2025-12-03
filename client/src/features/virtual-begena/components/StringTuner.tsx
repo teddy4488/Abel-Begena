@@ -212,7 +212,7 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
                             e.target.value as NoteName
                           )
                         }
-                        className="w-full px-2 md:px-3 py-2 rounded-lg bg-begena-cream dark:bg-begena-darkBrown border-2 border-begena-gold text-begena-brown dark:text-begena-cream font-semibold focus:outline-none focus:ring-2 focus:ring-begena-gold shadow-sm hover:shadow-md transition-shadow"
+                        className="w-full px-2 md:px-3 py-2 rounded-lg bg-begena-cream dark:bg-begena-darkBrown border-2 border-begena-gold/50 text-begena-brown dark:text-begena-cream font-semibold focus:outline-none focus:ring-2 focus:ring-begena-gold focus:border-begena-gold shadow-sm hover:shadow-md hover:border-begena-gold transition-all cursor-pointer"
                       >
                         {NOTE_NAMES.map((note) => (
                           <option key={note} value={note}>
@@ -268,7 +268,7 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
                         setQinitInfo(soundManager.getQinitInfo());
                       }, 50);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-begena-brown/20 dark:bg-begena-cream/20 hover:bg-begena-gold hover:text-begena-darkBrown transition-colors text-sm font-medium text-begena-brown dark:text-begena-cream"
+                    className="px-3 py-1.5 rounded-lg bg-begena-brown/20 dark:bg-begena-cream/20 hover:bg-begena-gold hover:text-begena-darkBrown hover:scale-105 active:scale-95 transition-all text-sm font-medium text-begena-brown dark:text-begena-cream border border-transparent hover:border-begena-gold/50 shadow-sm hover:shadow-md"
                   >
                     {preset.charAt(0).toUpperCase() + preset.slice(1)}
                   </button>

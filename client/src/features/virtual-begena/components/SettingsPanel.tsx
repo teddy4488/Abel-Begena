@@ -252,29 +252,46 @@ export default function SettingsPanel({
                   )}
                 </h3>
                 <div className="flex flex-col gap-2">
-                  {qinitPresets.map((preset) => (
-                    <button
-                      key={preset.value}
-                      onClick={() => handleQinitChange(preset.value)}
-                      className={`p-3 rounded-lg text-left transition-all ${
-                        settings.qinit === preset.value
-                          ? "bg-begena-gold text-begena-darkBrown"
-                          : "bg-begena-brown/10 dark:bg-begena-cream/10 text-begena-brown dark:text-begena-cream"
-                      }`}
-                    >
-                      <div className="font-semibold">{preset.label}</div>
-                      <div className="text-xs opacity-75 mt-1">
-                        {preset.description}
-                      </div>
-                      <div className="text-xs opacity-60 mt-1 font-mono">
-                        {translate(
-                          "virtualExperience.settingsPanel.mode.pattern",
-                          "Pattern",
-                        )}
-                        : {preset.pattern}
-                      </div>
-                    </button>
-                  ))}
+                  {qinitPresets.map((preset) => {
+                    const isSelected = settings.qinit === preset.value;
+                    return (
+                      <motion.button
+                        key={preset.value}
+                        onClick={() => handleQinitChange(preset.value)}
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className={`p-3 rounded-lg text-left transition-all border-2 ${
+                          isSelected
+                            ? "bg-gradient-to-br from-begena-gold via-yellow-500 to-begena-gold text-begena-darkBrown border-begena-gold shadow-lg shadow-begena-gold/30"
+                            : "bg-begena-brown/10 dark:bg-begena-cream/10 text-begena-brown dark:text-begena-cream border-transparent hover:border-begena-gold/40 hover:bg-begena-brown/15 dark:hover:bg-begena-cream/15"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold">{preset.label}</div>
+                          {isSelected && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="w-5 h-5 rounded-full bg-begena-darkBrown flex items-center justify-center"
+                            >
+                              <span className="text-begena-gold text-xs">✓</span>
+                            </motion.div>
+                          )}
+                        </div>
+                        <div className={`text-xs mt-1 ${isSelected ? "opacity-90" : "opacity-75"}`}>
+                          {preset.description}
+                        </div>
+                        <div className={`text-xs mt-1 font-mono ${isSelected ? "opacity-80" : "opacity-60"}`}>
+                          {translate(
+                            "virtualExperience.settingsPanel.mode.pattern",
+                            "Pattern",
+                          )}
+                          : {preset.pattern}
+                        </div>
+                      </motion.button>
+                    );
+                  })}
                 </div>
 
                 {/* Frequency Inspector */}
@@ -551,8 +568,8 @@ export default function SettingsPanel({
                 </h3>
 
                 {/* Show Hands Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-begena-brown/10 dark:bg-begena-cream/10">
-                  <span className="text-begena-brown dark:text-begena-cream">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-begena-brown/10 dark:bg-begena-cream/10 hover:bg-begena-brown/15 dark:hover:bg-begena-cream/15 transition-colors">
+                  <span className="text-begena-brown dark:text-begena-cream font-medium">
                     {translate(
                       "virtualExperience.settingsPanel.visual.hands",
                       "Show Hand Animation",
@@ -560,14 +577,17 @@ export default function SettingsPanel({
                   </span>
                   <button
                     onClick={onToggleHands}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      showHands ? "bg-begena-gold" : "bg-begena-brown/40"
-                    }`}
+                    className={`relative w-14 h-7 rounded-full transition-all duration-300 shadow-inner ${
+                      showHands 
+                        ? "bg-gradient-to-r from-begena-gold via-yellow-500 to-begena-gold" 
+                        : "bg-gradient-to-r from-begena-brown/60 via-begena-brown/40 to-begena-brown/60"
+                    } hover:scale-105 focus:outline-none focus:ring-2 focus:ring-begena-gold/50`}
+                    aria-label={showHands ? "Hide hand animation" : "Show hand animation"}
                   >
                     <motion.div
-                      className="w-5 h-5 bg-white rounded-full shadow-md"
+                      className="w-6 h-6 bg-white rounded-full shadow-lg absolute top-0.5"
                       animate={{
-                        x: showHands ? 26 : 2,
+                        x: showHands ? 28 : 2,
                       }}
                       transition={{
                         type: "spring",
@@ -579,14 +599,14 @@ export default function SettingsPanel({
                 </div>
 
                 {/* Dark Mode Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-begena-brown/10 dark:bg-begena-cream/10">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-begena-brown/10 dark:bg-begena-cream/10 hover:bg-begena-brown/15 dark:hover:bg-begena-cream/15 transition-colors">
                   <div className="flex items-center gap-2">
                     {darkMode ? (
-                      <Moon className="w-5 h-5 text-begena-brown dark:text-begena-cream" />
+                      <Moon className="w-5 h-5 text-begena-gold dark:text-begena-gold" />
                     ) : (
-                      <Sun className="w-5 h-5 text-begena-brown dark:text-begena-cream" />
+                      <Sun className="w-5 h-5 text-begena-gold dark:text-begena-gold" />
                     )}
-                    <span className="text-begena-brown dark:text-begena-cream">
+                    <span className="text-begena-brown dark:text-begena-cream font-medium">
                       {translate(
                         "virtualExperience.settingsPanel.visual.darkMode",
                         "Dark Mode",
@@ -595,21 +615,30 @@ export default function SettingsPanel({
                   </div>
                   <button
                     onClick={onToggleDarkMode}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      darkMode ? "bg-begena-gold" : "bg-begena-brown/40"
-                    }`}
+                    className={`relative w-14 h-7 rounded-full transition-all duration-300 shadow-inner ${
+                      darkMode 
+                        ? "bg-gradient-to-r from-begena-gold via-yellow-500 to-begena-gold" 
+                        : "bg-gradient-to-r from-begena-brown/60 via-begena-brown/40 to-begena-brown/60"
+                    } hover:scale-105 focus:outline-none focus:ring-2 focus:ring-begena-gold/50`}
+                    aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
                   >
                     <motion.div
-                      className="w-5 h-5 bg-white rounded-full shadow-md"
+                      className="w-6 h-6 bg-white rounded-full shadow-lg absolute top-0.5 flex items-center justify-center"
                       animate={{
-                        x: darkMode ? 26 : 2,
+                        x: darkMode ? 28 : 2,
                       }}
                       transition={{
                         type: "spring",
                         stiffness: 500,
                         damping: 30,
                       }}
-                    />
+                    >
+                      {darkMode ? (
+                        <Moon className="w-3 h-3 text-begena-darkBrown" />
+                      ) : (
+                        <Sun className="w-3 h-3 text-begena-gold" />
+                      )}
+                    </motion.div>
                   </button>
                 </div>
               </div>

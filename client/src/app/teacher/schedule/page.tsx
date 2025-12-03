@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppSelector } from "@/store/hooks";
 import {
   useCreateScheduleItemMutation,
@@ -10,8 +11,9 @@ import {
   useUpdateScheduleItemMutation,
   type ClassScheduleItem,
 } from "@/store/api/classApi";
-import { Clock, Pencil, Trash2 } from "lucide-react";
+import { Clock, Pencil, Trash2, Calendar, MapPin, FileText, AlertTriangle, Plus, X } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 const formatDateInputValue = (iso?: string | null) => {
   if (!iso) return "";
@@ -45,6 +47,7 @@ const getConflictSet = (schedule: ClassScheduleItem[] | undefined) => {
 export default function TeacherSchedulePage() {
   const { user } = useAppSelector((state) => state.auth);
   const { pushToast } = useToast();
+  const { t } = useI18n();
   const { data: classes, isLoading } = useGetClassesQuery();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [form, setForm] = useState({
@@ -103,16 +106,16 @@ export default function TeacherSchedulePage() {
     event.preventDefault();
     if (!hasSelection) {
       pushToast({
-        title: "Select a class",
-        description: "Choose a class before saving a schedule entry.",
+        title: t("teacher.schedule.selectClass", "Select a class"),
+        description: t("teacher.schedule.selectClassDesc", "Choose a class before saving a schedule entry."),
         variant: "error",
       });
       return;
     }
     if (!form.title.trim() || !form.startTime) {
       pushToast({
-        title: "Missing details",
-        description: "A title and start time are required.",
+        title: t("teacher.schedule.missingDetails", "Missing details"),
+        description: t("teacher.schedule.missingDetailsDesc", "A title and start time are required."),
         variant: "error",
       });
       return;
@@ -133,19 +136,25 @@ export default function TeacherSchedulePage() {
           sessionId: editingSessionId,
           payload,
         }).unwrap();
-        pushToast({ title: "Schedule updated", variant: "success" });
+        pushToast({
+          title: t("teacher.schedule.updated", "Schedule updated"),
+          variant: "success",
+        });
       } else {
         await createScheduleItem({
           classId: selectedClassId,
           payload,
         }).unwrap();
-        pushToast({ title: "Session scheduled", variant: "success" });
+        pushToast({
+          title: t("teacher.schedule.scheduled", "Session scheduled"),
+          variant: "success",
+        });
       }
       resetForm();
     } catch {
       pushToast({
-        title: "Unable to save schedule",
-        description: "Please try again.",
+        title: t("teacher.schedule.saveError", "Unable to save schedule"),
+        description: t("teacher.schedule.saveErrorDesc", "Please try again."),
         variant: "error",
       });
     }
@@ -164,15 +173,25 @@ export default function TeacherSchedulePage() {
 
   const handleDelete = async (sessionId: string) => {
     if (!selectedClassId) return;
+    if (
+      !confirm(
+        t("teacher.schedule.confirmDelete", "Are you sure you want to delete this session?")
+      )
+    ) {
+      return;
+    }
     try {
       await deleteScheduleItem({ classId: selectedClassId, sessionId }).unwrap();
-      pushToast({ title: "Session removed", variant: "success" });
+      pushToast({
+        title: t("teacher.schedule.removed", "Session removed"),
+        variant: "success",
+      });
       if (editingSessionId === sessionId) {
         resetForm();
       }
     } catch {
       pushToast({
-        title: "Unable to remove session",
+        title: t("teacher.schedule.removeError", "Unable to remove session"),
         variant: "error",
       });
     }
@@ -180,25 +199,53 @@ export default function TeacherSchedulePage() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
         <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-          Class Scheduling
+          {t("teacher.schedule.kicker", "Class Scheduling")}
         </p>
-        <h1 className="text-3xl font-serif text-primary">Schedule Classes</h1>
+        <h1 className="text-3xl font-serif text-primary">
+          {t("teacher.schedule.title", "Schedule Classes")}
+        </h1>
         <p className="mt-2 text-sm text-foreground/70">
-          Create lesson plans, detect conflicts, and keep every rehearsal on time.
+          {t(
+            "teacher.schedule.subtitle",
+            "Create lesson plans, detect conflicts, and keep every rehearsal on time.",
+          )}
         </p>
-      </div>
+      </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 lg:col-span-1">
-          <h2 className="text-xl font-serif text-primary">
-            {editingSessionId ? "Edit Session" : "New Session"}
-          </h2>
+        {/* Form Panel */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-lg lg:col-span-1"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-serif text-primary">
+              {editingSessionId
+                ? t("teacher.schedule.editSession", "Edit Session")
+                : t("teacher.schedule.newSession", "New Session")}
+            </h2>
+            {editingSessionId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-full p-1 hover:bg-background/50 transition"
+                aria-label={t("teacher.schedule.cancel", "Cancel")}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                Class
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary mb-2 block">
+                {t("teacher.schedule.class", "Class")}
               </label>
               <select
                 value={selectedClassId}
@@ -206,9 +253,9 @@ export default function TeacherSchedulePage() {
                   setSelectedClassId(e.target.value);
                   resetForm();
                 }}
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               >
-                <option value="">Choose a class...</option>
+                <option value="">{t("teacher.schedule.chooseClass", "Choose a class...")}</option>
                 {teacherClasses.map((klass) => (
                   <option key={klass._id} value={klass._id}>
                     {klass.title}
@@ -218,121 +265,132 @@ export default function TeacherSchedulePage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                Title
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary mb-2 block">
+                {t("teacher.schedule.titleLabel", "Title")}
               </label>
               <input
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g., Beginners rehearsal"
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                placeholder={t("teacher.schedule.titlePlaceholder", "e.g., Beginners rehearsal")}
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                  Starts
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary mb-2 block">
+                  {t("teacher.schedule.starts", "Starts")}
                 </label>
                 <input
                   type="datetime-local"
                   value={form.startTime}
                   onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
-                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                  Ends
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary mb-2 block">
+                  {t("teacher.schedule.ends", "Ends")}
                 </label>
                 <input
                   type="datetime-local"
                   value={form.endTime}
                   onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                Location / Link
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary mb-2 block">
+                {t("teacher.schedule.location", "Location / Link")}
               </label>
               <input
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-                placeholder="Studio, Zoom, etc."
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                placeholder={t("teacher.schedule.locationPlaceholder", "Studio, Zoom, etc.")}
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                Notes
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary mb-2 block">
+                {t("teacher.schedule.notes", "Notes")}
               </label>
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
                 rows={3}
-                placeholder="Reminders, expected materials, dress code..."
-                className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                placeholder={t("teacher.schedule.notesPlaceholder", "Reminders, expected materials, dress code...")}
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <button
+              <motion.button
                 type="submit"
                 disabled={isBusy}
-                className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60 shadow-lg hover:shadow-xl transition"
               >
                 {editingSessionId
                   ? isUpdating
-                    ? "Updating..."
-                    : "Update Session"
+                    ? t("teacher.schedule.updating", "Updating...")
+                    : t("teacher.schedule.updateSession", "Update Session")
                   : isCreating
-                    ? "Scheduling..."
-                    : "Save Session"}
-              </button>
-              {editingSessionId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
-                >
-                  Cancel
-                </button>
-              )}
+                    ? t("teacher.schedule.scheduling", "Scheduling...")
+                    : t("teacher.schedule.saveSession", "Save Session")}
+              </motion.button>
             </div>
           </form>
-        </div>
+        </motion.div>
 
-        <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 lg:col-span-2">
+        {/* Schedule List */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-lg lg:col-span-2"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                Schedule
+                {t("teacher.schedule.schedule", "Schedule")}
               </p>
               <h2 className="text-xl font-serif text-primary">
-                {hasSelection ? "Upcoming sessions" : "Select a class"}
+                {hasSelection
+                  ? t("teacher.schedule.upcomingSessions", "Upcoming sessions")
+                  : t("teacher.schedule.selectClass", "Select a class")}
               </h2>
             </div>
           </div>
 
           {!hasSelection && (
-            <div className="rounded-xl border border-border bg-background/50 p-8 text-center text-sm text-foreground/70">
-              Choose a class to view and manage its schedule.
+            <div className="rounded-xl border border-dashed border-border bg-background/50 p-12 text-center">
+              <Calendar className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
+              <p className="text-sm text-foreground/70">
+                {t("teacher.schedule.selectClassPrompt", "Choose a class to view and manage its schedule.")}
+              </p>
             </div>
           )}
 
           {hasSelection && scheduleLoading && (
-            <p className="text-sm text-foreground/70">Loading schedule...</p>
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-secondary mb-3"></div>
+                <p className="text-sm text-foreground/70">
+                  {t("teacher.schedule.loading", "Loading schedule...")}
+                </p>
+              </div>
+            </div>
           )}
 
           {hasSelection && scheduleError && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
-              Unable to load the schedule. Please try again later.
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">
+              {t("teacher.schedule.loadError", "Unable to load the schedule. Please try again later.")}
             </div>
           )}
 
@@ -341,107 +399,165 @@ export default function TeacherSchedulePage() {
             !scheduleError &&
             (schedule?.length ? (
               <div className="space-y-3">
-                {schedule.map((session) => {
-                  const start = session.startTime
-                    ? new Date(session.startTime).toLocaleString()
-                    : "TBD";
-                  const end = session.endTime
-                    ? new Date(session.endTime).toLocaleString()
-                    : null;
-                  const hasConflict = conflictingSessions.has(session._id);
-                  return (
-                    <div
-                      key={session._id}
-                      className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
-                        hasConflict ? "border-yellow-500/60" : "border-border"
-                      }`}
-                    >
-                      <div className="flex flex-1 items-start gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
-                          <Clock className="h-5 w-5 text-secondary" />
+                <AnimatePresence>
+                  {schedule.map((session, index) => {
+                    const start = session.startTime
+                      ? new Date(session.startTime)
+                      : null;
+                    const end = session.endTime ? new Date(session.endTime) : null;
+                    const hasConflict = conflictingSessions.has(session._id);
+                    return (
+                      <motion.div
+                        key={session._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`flex flex-col gap-3 rounded-xl border p-4 transition-all hover:shadow-md ${
+                          hasConflict
+                            ? "border-yellow-500/60 bg-yellow-500/5"
+                            : "border-border bg-background/50"
+                        }`}
+                      >
+                        <div className="flex flex-1 items-start gap-4">
+                          <div className={`flex h-12 w-12 items-center justify-center rounded-full ${
+                            hasConflict ? "bg-yellow-500/20" : "bg-secondary/10"
+                          }`}>
+                            {hasConflict ? (
+                              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                            ) : (
+                              <Clock className="h-5 w-5 text-secondary" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-semibold text-primary">{session.title}</p>
+                              {hasConflict && (
+                                <span className="rounded-full bg-yellow-500/20 px-2 py-1 text-xs font-semibold text-yellow-600">
+                                  {t("teacher.schedule.conflict", "Conflict")}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2 space-y-1 text-sm text-foreground/70">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>
+                                  {start
+                                    ? start.toLocaleString(undefined, {
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "TBD"}
+                                  {end
+                                    ? ` → ${end.toLocaleTimeString(undefined, {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}`
+                                    : ""}
+                                </span>
+                              </div>
+                              {session.location && (
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-4 h-4" />
+                                  <span>{session.location}</span>
+                                </div>
+                              )}
+                              {session.notes && (
+                                <div className="flex items-start gap-2">
+                                  <FileText className="w-4 h-4 mt-0.5" />
+                                  <span className="text-xs">{session.notes}</span>
+                                </div>
+                              )}
+                            </div>
+                            {hasConflict && (
+                              <p className="mt-2 text-xs font-semibold text-yellow-600">
+                                {t("teacher.schedule.conflictWarning", "Conflicts with another session. Consider adjusting times.")}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-primary">{session.title}</p>
-                          <p className="text-sm text-foreground/70">
-                            {start}
-                            {end ? ` → ${end}` : ""}
-                          </p>
-                          {session.location && (
-                            <p className="text-xs text-foreground/60">
-                              Location: {session.location}
-                            </p>
-                          )}
-                          {session.notes && (
-                            <p className="text-xs text-foreground/60">
-                              {session.notes}
-                            </p>
-                          )}
-                          {hasConflict && (
-                            <p className="mt-1 text-xs font-semibold text-yellow-600">
-                              Conflicts with another session. Consider adjusting times.
-                            </p>
-                          )}
+                        <div className="flex gap-2 ml-16">
+                          <motion.button
+                            type="button"
+                            onClick={() => handleEdit(session)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-background/80 transition"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            {t("teacher.schedule.edit", "Edit")}
+                          </motion.button>
+                          <motion.button
+                            type="button"
+                            onClick={() => handleDelete(session._id)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/20 transition"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {t("teacher.schedule.remove", "Remove")}
+                          </motion.button>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(session)}
-                          className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-semibold"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(session._id)}
-                          className="inline-flex items-center gap-1 rounded-full border border-red-500/40 px-3 py-1 text-xs font-semibold text-red-500"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             ) : (
-              <div className="rounded-xl border border-border bg-background/50 p-8 text-center text-sm text-foreground/70">
-                No sessions scheduled yet. Use the form on the left to add your first entry.
+              <div className="rounded-xl border border-dashed border-border bg-background/50 p-12 text-center">
+                <Calendar className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
+                <p className="text-sm text-foreground/70">
+                  {t("teacher.schedule.noSessions", "No sessions scheduled yet. Use the form on the left to add your first entry.")}
+                </p>
               </div>
             ))}
-        </div>
+        </motion.div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface p-6">
-        <h2 className="mb-4 text-xl font-serif text-primary">My Classes</h2>
+      {/* My Classes Quick Select */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+      >
+        <h2 className="mb-4 text-xl font-serif text-primary">
+          {t("teacher.schedule.myClasses", "My Classes")}
+        </h2>
         {isLoading ? (
-          <p className="text-sm text-foreground/70">Loading...</p>
+          <p className="text-sm text-foreground/70">
+            {t("teacher.schedule.loading", "Loading...")}
+          </p>
         ) : teacherClasses.length === 0 ? (
-          <p className="text-sm text-foreground/70">No classes assigned.</p>
+          <p className="text-sm text-foreground/70">
+            {t("teacher.schedule.noClasses", "No classes assigned.")}
+          </p>
         ) : (
-          <div className="space-y-2">
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
             {teacherClasses.map((klass) => (
-              <button
+              <motion.button
                 key={klass._id}
                 type="button"
                 onClick={() => {
                   setSelectedClassId(klass._id);
                   resetForm();
                 }}
-                className={`w-full rounded-xl border px-3 py-3 text-left text-sm font-semibold transition ${
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition ${
                   selectedClassId === klass._id
-                    ? "border-secondary bg-secondary/10 text-secondary"
-                    : "border-border bg-background/50 text-primary hover:border-secondary/60"
+                    ? "border-secondary bg-secondary/10 text-secondary shadow-md"
+                    : "border-border bg-background/50 text-primary hover:border-secondary/60 hover:shadow-sm"
                 }`}
               >
                 {klass.title}
-              </button>
+              </motion.button>
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
-

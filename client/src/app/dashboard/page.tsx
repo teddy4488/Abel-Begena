@@ -281,30 +281,55 @@ export default function DashboardPage() {
                   </p>
                   {classAccess.materials.length ? (
                     <ul className="space-y-2">
-                      {classAccess.materials.map((material) => (
-                        <li
-                          key={`${classAccess.class._id}-${material.url}`}
-                          className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm"
-                        >
-                          <span>{material.title}</span>
-                          <a
-                            href={material.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-secondary underline-offset-4 hover:underline"
+                      {classAccess.materials.map((material) => {
+                        const getFileIcon = (url: string) => {
+                          const ext = url.split('.').pop()?.toLowerCase();
+                          if (['pdf'].includes(ext || '')) return '📄';
+                          if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return '🖼️';
+                          if (['mp4', 'mov', 'avi'].includes(ext || '')) return '🎥';
+                          return '📎';
+                        };
+                        return (
+                          <motion.li
+                            key={`${classAccess.class._id}-${material.url}`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex items-center justify-between rounded-2xl border border-border bg-background/50 px-4 py-3 text-sm hover:bg-background/80 hover:shadow-md transition-all group"
                           >
-                            {t("dashboard.materials.view", "View")}
-                          </a>
-                        </li>
-                      ))}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <span className="text-lg flex-shrink-0">{getFileIcon(material.url)}</span>
+                              <span className="truncate font-medium text-primary">{material.title}</span>
+                              {material.uploadedAt && (
+                                <span className="hidden sm:inline text-xs text-foreground/50 flex-shrink-0">
+                                  {new Date(material.uploadedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            <a
+                              href={material.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              download
+                              className="flex items-center gap-1.5 text-secondary underline-offset-4 hover:underline font-medium group-hover:text-secondary/80 transition-colors flex-shrink-0"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              {t("dashboard.materials.download", "Download")}
+                            </a>
+                          </motion.li>
+                        );
+                      })}
                     </ul>
                   ) : (
-                    <p className="text-sm text-foreground/70">
-                      {t(
-                        "dashboard.materials.empty",
-                        "Materials will appear here once your teacher uploads them.",
-                      )}
-                    </p>
+                    <div className="rounded-xl border border-dashed border-border/50 bg-background/30 p-6 text-center">
+                      <p className="text-sm text-foreground/70">
+                        {t(
+                          "dashboard.materials.empty",
+                          "Materials will appear here once your teacher uploads them.",
+                        )}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
