@@ -15,6 +15,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Link from "next/link";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const paymentMethods = ["Chapa", "Telebirr", "Stripe", "BankTransfer", "Manual", "Other"] as const;
 
 type PaymentMethod = (typeof paymentMethods)[number];
