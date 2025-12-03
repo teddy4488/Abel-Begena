@@ -268,18 +268,41 @@ export class ClassService {
       throw new ForbiddenException('You are not enrolled in this class');
     }
 
-    const baseUrl =
-      this.configService.get<string>('MEETING_PROVIDER_BASE_URL') ?? '';
-    const sanitizedBase = baseUrl.endsWith('/')
-      ? baseUrl.slice(0, -1)
-      : baseUrl;
+    // Handle live link: if it's an external URL (http/https), return as-is
+    // Otherwise, construct built-in platform URL
+    let liveLink: string | null = null;
+    if (classEntity.liveRoomCode) {
+      if (
+        classEntity.liveRoomCode.startsWith('http://') ||
+        classEntity.liveRoomCode.startsWith('https://')
+      ) {
+        // External link (Zoom, Google Meet, etc.)
+        liveLink = classEntity.liveRoomCode;
+      } else if (classEntity.liveRoomCode === 'builtin') {
+        // Built-in platform - construct URL
+        const baseUrl =
+          this.configService.get<string>('MEETING_PROVIDER_BASE_URL') ?? '';
+        const sanitizedBase = baseUrl.endsWith('/')
+          ? baseUrl.slice(0, -1)
+          : baseUrl;
+        liveLink = sanitizedBase ? `${sanitizedBase}/${classEntity._id}` : null;
+      } else {
+        // Legacy: treat as room code
+        const baseUrl =
+          this.configService.get<string>('MEETING_PROVIDER_BASE_URL') ?? '';
+        const sanitizedBase = baseUrl.endsWith('/')
+          ? baseUrl.slice(0, -1)
+          : baseUrl;
+        liveLink = sanitizedBase
+          ? `${sanitizedBase}/${classEntity.liveRoomCode}`
+          : null;
+      }
+    }
 
     return {
       materials: classEntity.materials ?? [],
       isLive: classEntity.isLive ?? false,
-      liveLink: classEntity.liveRoomCode
-        ? `${sanitizedBase}/${classEntity.liveRoomCode}`
-        : null,
+      liveLink,
       class: {
         _id: classEntity._id,
         title: classEntity.title,
