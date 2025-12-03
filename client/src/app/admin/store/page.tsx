@@ -594,6 +594,7 @@ export default function AdminStorePage() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       {product.images.map((img, idx) => (
                         <div key={idx} className="relative group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={img}
                             alt={`${product.name} ${idx + 1}`}

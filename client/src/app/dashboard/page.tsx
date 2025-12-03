@@ -22,7 +22,7 @@ type ClassSummary = {
 
 type ClassAccess = {
   class: { _id: string; title: string };
-  materials: { title: string; url: string }[];
+  materials: { title: string; url: string; uploadedAt?: string | null }[];
   liveLink: string | null;
   isLive: boolean;
 };
@@ -297,10 +297,10 @@ export default function DashboardPage() {
                             className="flex items-center justify-between rounded-2xl border border-border bg-background/50 px-4 py-3 text-sm hover:bg-background/80 hover:shadow-md transition-all group"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <span className="text-lg flex-shrink-0">{getFileIcon(material.url)}</span>
+                              <span className="text-lg shrink-0">{getFileIcon(material.url)}</span>
                               <span className="truncate font-medium text-primary">{material.title}</span>
                               {material.uploadedAt && (
-                                <span className="hidden sm:inline text-xs text-foreground/50 flex-shrink-0">
+                                <span className="hidden sm:inline text-xs text-foreground/50 shrink-0">
                                   {new Date(material.uploadedAt).toLocaleDateString()}
                                 </span>
                               )}
@@ -310,7 +310,7 @@ export default function DashboardPage() {
                               target="_blank"
                               rel="noreferrer"
                               download
-                              className="flex items-center gap-1.5 text-secondary underline-offset-4 hover:underline font-medium group-hover:text-secondary/80 transition-colors flex-shrink-0"
+                              className="flex items-center gap-1.5 text-secondary underline-offset-4 hover:underline font-medium group-hover:text-secondary/80 transition-colors shrink-0" 
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

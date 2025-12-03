@@ -3,7 +3,7 @@ import { authorizedBaseQuery } from "./baseQuery";
 
 type ClassAccess = {
   class: { _id: string; title: string };
-  materials: { title: string; url: string; uploadedAt?: string }[];
+  materials: { title: string; url: string; uploadedAt?: string | null }[];
   liveLink: string | null;
   isLive: boolean;
 };

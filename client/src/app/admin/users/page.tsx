@@ -11,7 +11,7 @@ import type { AuthUser } from "@/store/slices/authSlice";
 import Image from "next/image";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { Search, UserCheck, UserX, Shield, User, Trash2, AlertCircle, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Search, UserCheck, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 export default function AdminUsersPage() {
   const { data: users, isLoading } = useGetAllUsersQuery();

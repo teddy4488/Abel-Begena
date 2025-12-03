@@ -219,7 +219,7 @@ export default function VirtualBegenaExperience() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-begena-cream via-begena-cream to-begena-lightBrown dark:from-begena-darkBrown dark:via-gray-900 dark:to-black p-4 md:p-6 lg:p-8 relative">
+    <div className="min-h-screen bg-linear-to-br from-begena-cream via-begena-cream to-begena-lightBrown dark:from-begena-darkBrown dark:via-gray-900 dark:to-black p-4 md:p-6 lg:p-8 relative">
       {/* Background decorative Orthodox crosses (very subtle) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-20 left-10 text-begena-gold/5 text-8xl font-serif">✝</div>
@@ -229,7 +229,7 @@ export default function VirtualBegenaExperience() {
       </div>
 
       {/* Header - Fixed position to avoid overlap */}
-      <div className="sticky top-0 z-50 bg-gradient-to-b from-begena-cream/95 to-begena-cream/90 dark:from-begena-darkBrown/95 dark:to-begena-darkBrown/90 backdrop-blur-lg border-b border-begena-gold/20 mb-4 md:mb-6">
+      <div className="sticky top-0 z-50 bg-linear-to-b from-begena-cream/95 to-begena-cream/90 dark:from-begena-darkBrown/95 dark:to-begena-darkBrown/90 backdrop-blur-lg border-b border-begena-gold/20 mb-4 md:mb-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4">
           <button
             onClick={() => router.push("/")}

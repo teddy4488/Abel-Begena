@@ -21,7 +21,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, Users, ShoppingBag, DollarSign, BookOpen, Clock } from "lucide-react";
+import { TrendingUp, Users, ShoppingBag, DollarSign, BookOpen } from "lucide-react";
 
 const COLORS = {
   active: "#10b981",

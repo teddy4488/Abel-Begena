@@ -10,7 +10,7 @@ import {
 } from "@/store/api/classApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { Video, ExternalLink, VideoIcon, Globe, Users, Radio } from "lucide-react";
+import { Video, ExternalLink, VideoIcon, Globe, Users } from "lucide-react";
 
 type LiveSessionType = "builtin" | "external" | null;
 

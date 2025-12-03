@@ -285,7 +285,9 @@ export class ClassService {
         const sanitizedBase = baseUrl.endsWith('/')
           ? baseUrl.slice(0, -1)
           : baseUrl;
-        liveLink = sanitizedBase ? `${sanitizedBase}/${classEntity._id}` : null;
+        liveLink = sanitizedBase
+          ? `${sanitizedBase}/${String(classEntity._id)}`
+          : null;
       } else {
         // Legacy: treat as room code
         const baseUrl =

@@ -10,7 +10,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetClassAccessQuery } from "@/store/api/classApi";
-import { Upload, FileText, Download, X, CheckCircle2, Loader2, File } from "lucide-react";
+import { Upload, FileText, Download, X, Loader2, File } from "lucide-react";
 
 type UploadDraft = {
   title: string;

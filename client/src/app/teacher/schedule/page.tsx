@@ -11,7 +11,7 @@ import {
   useUpdateScheduleItemMutation,
   type ClassScheduleItem,
 } from "@/store/api/classApi";
-import { Clock, Pencil, Trash2, Calendar, MapPin, FileText, AlertTriangle, Plus, X } from "lucide-react";
+import { Clock, Pencil, Trash2, Calendar, MapPin, FileText, AlertTriangle, X } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 
