@@ -181,11 +181,13 @@ export default function AdminClassesPage() {
       if (viewFilter === "unassigned" && klass.instructorId) return false;
       if (viewFilter === "live" && !klass.isLive) return false;
       if (query) {
-        const haystack = `${klass.title} ${
-          typeof klass.instructorId === "object"
-            ? `${klass.instructorId?.firstName ?? ""} ${klass.instructorId?.lastName ?? ""}`
-            : ""
-        }`.toLowerCase();
+        const instructor =
+          typeof klass.instructorId === "object" && klass.instructorId
+            ? `${(klass.instructorId as any).firstName ?? ""} ${
+                (klass.instructorId as any).lastName ?? ""
+              }`
+            : "";
+        const haystack = `${klass.title} ${instructor}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
       return true;
