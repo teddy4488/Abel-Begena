@@ -8,6 +8,8 @@ import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { getRoleLandingRoute } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Receipt } from "lucide-react";
 
 type ClassSummary = {
   _id: string;
@@ -117,6 +119,90 @@ export default function DashboardPage() {
     (klass) => klass.enrollment?.status === "pending",
   );
 
+  const recentMaterials = useMemo(() => {
+    return classes
+      .flatMap((klass) =>
+        klass.materials.map((material) => ({
+          ...material,
+          classId: klass.class._id,
+          classTitle: klass.class.title,
+        })),
+      )
+      .filter((material) => material.uploadedAt)
+      .sort(
+        (a, b) =>
+          new Date(b.uploadedAt ?? 0).getTime() -
+          new Date(a.uploadedAt ?? 0).getTime(),
+      )
+      .slice(0, 5);
+  }, [classes]);
+
+  const learningProgress = useMemo(() => {
+    return classes.map((klass) => {
+      let progress = 0;
+      if (klass.enrollment?.status === "active") {
+        progress += 40;
+      }
+      if ((klass.materials?.length ?? 0) > 0) {
+        progress += 30;
+      }
+      if (klass.isLive) {
+        progress += 30;
+      }
+      return {
+        id: klass.class._id,
+        title: klass.class.title,
+        status: klass.enrollment?.status ?? "pending",
+        materialsCount: klass.materials.length,
+        live: klass.isLive,
+        value: Math.min(progress, 100),
+      };
+    });
+  }, [classes]);
+
+  const staticHighlights = [
+    {
+      id: "highlight-materials",
+      title: t("dashboard.highlights.materials", "New materials arrive weekly"),
+      description: t(
+        "dashboard.highlights.materialsDesc",
+        "Teachers continue to upload PDFs, slides, and video recaps for every enrolled class.",
+      ),
+    },
+    {
+      id: "highlight-store",
+      title: t("dashboard.highlights.store", "Commissioned instruments"),
+      description: t(
+        "dashboard.highlights.storeDesc",
+        "Our luthiers are crafting limited-run Begena and Masinko sets—visit the store to reserve yours.",
+      ),
+    },
+  ];
+
+  const renderSkeletonCard = () => (
+    <div className="rounded-2xl border border-border/60 bg-background/40 p-4 sm:rounded-3xl sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2 w-full">
+          <Skeleton className="h-3 w-24 rounded-full" />
+          <Skeleton className="h-5 w-48 rounded-full" />
+          <Skeleton className="h-3 w-32 rounded-full" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-full sm:w-40" />
+      </div>
+      <div className="mt-6 space-y-2">
+        {[1, 2, 3].map((key) => (
+          <div
+            key={key}
+            className="flex items-center justify-between rounded-2xl border border-border/50 bg-background/30 px-4 py-3"
+          >
+            <Skeleton className="h-4 w-32 rounded-full" />
+            <Skeleton className="h-4 w-20 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderStatusChip = (status?: string | null) => {
     if (!status) return null;
     const palette: Record<string, string> = {
@@ -185,9 +271,18 @@ export default function DashboardPage() {
         )}
 
         {isLoading && (
-          <p className="text-sm text-foreground/70">
-            {t("dashboard.loading", "Loading your classes...")}
-          </p>
+          <div className="space-y-4">
+            {[1, 2].map((item) => (
+              <div
+                key={`skeleton-${item}`}
+                className="rounded-2xl border border-border/50 bg-background/30 p-4 sm:rounded-3xl sm:p-5"
+              >
+                <Skeleton className="h-3 w-28 rounded-full" />
+                <Skeleton className="mt-2 h-5 w-40 rounded-full" />
+                <Skeleton className="mt-4 h-32 w-full rounded-2xl" />
+              </div>
+            ))}
+          </div>
         )}
 
         {error && (
@@ -238,11 +333,15 @@ export default function DashboardPage() {
           )}
 
           <div className="grid gap-4 sm:gap-6">
-            {classes.map((classAccess) => (
-              <div
-                key={classAccess.class._id}
-                className="rounded-2xl border border-border bg-background/70 p-4 sm:rounded-3xl sm:p-5"
-              >
+            {isLoading && !classes.length
+              ? [1, 2, 3].map((item) => (
+                  <div key={`loading-card-${item}`}>{renderSkeletonCard()}</div>
+                ))
+              : classes.map((classAccess) => (
+                  <div
+                    key={classAccess.class._id}
+                    className="rounded-2xl border border-border bg-background/70 p-4 sm:rounded-3xl sm:p-5"
+                  >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-3">
@@ -332,12 +431,12 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-              </div>
-            ))}
+                  </div>
+                ))}
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <motion.div
             whileHover={{ y: -4 }}
             className="space-y-3 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
@@ -390,6 +489,218 @@ export default function DashboardPage() {
               </Link>
             </div>
           </motion.div>
+
+          <motion.div
+            whileHover={{ y: -4 }}
+            className="space-y-3 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+              {t("dashboard.payments.kicker", "Payment insights")}
+            </p>
+            <h3 className="text-2xl font-serif text-primary">
+              {t("dashboard.payments.title", "Receipts & history")}
+            </h3>
+            <p className="text-sm text-foreground/70">
+              {t(
+                "dashboard.payments.description",
+                "Review tuition receipts, store purchases, and export CSV records.",
+              )}
+            </p>
+            <Link
+              href="/dashboard/payments"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-secondary transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+            >
+              <Receipt className="h-4 w-4" />
+              {t("dashboard.payments.cta", "Payment history")}
+            </Link>
+          </motion.div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="space-y-4 rounded-[32px] border border-border bg-surface p-6 shadow-[0_20px_40px_rgba(45,10,18,0.08)]"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                  {t("dashboard.progress.kicker", "Learning progress")}
+                </p>
+                <h3 className="text-xl font-serif text-primary sm:text-2xl">
+                  {t("dashboard.progress.title", "Track your momentum")}
+                </h3>
+              </div>
+              <Link
+                href="/dashboard/enrollments"
+                className="text-xs font-semibold uppercase tracking-wide text-secondary hover:underline"
+              >
+                {t("dashboard.progress.viewAll", "View details")}
+              </Link>
+            </div>
+            {learningProgress.length ? (
+              <div className="space-y-4">
+                {learningProgress.slice(0, 4).map((klass) => (
+                  <div
+                    key={klass.id}
+                    className="rounded-2xl border border-border bg-background/70 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-primary">{klass.title}</p>
+                        <p className="text-xs text-foreground/60">
+                          {klass.materialsCount}{" "}
+                          {t("dashboard.progress.materials", "materials")} •{" "}
+                          {klass.live
+                            ? t("dashboard.progress.live", "Live session ready")
+                            : t("dashboard.progress.offline", "Live session offline")}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-xs font-semibold uppercase ${
+                          klass.status === "active"
+                            ? "text-emerald-600"
+                            : klass.status === "pending"
+                              ? "text-amber-600"
+                              : "text-foreground/60"
+                        }`}
+                      >
+                        {t(`classes.status.${klass.status}`, klass.status)}
+                      </span>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-border">
+                      <div
+                        className="h-2 rounded-full bg-secondary transition-all"
+                        style={{ width: `${klass.value}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-foreground/60">
+                      {klass.value}% {t("dashboard.progress.completed", "complete")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/60 bg-background/40 p-8 text-center text-sm text-foreground/70">
+                {t(
+                  "dashboard.progress.empty",
+                  "Enroll in a class to start tracking your progress toward mastery.",
+                )}
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="space-y-4 rounded-[32px] border border-border bg-surface p-6 shadow-[0_20px_40px_rgba(45,10,18,0.08)]"
+          >
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                {t("dashboard.highlights.kicker", "Monthly highlights")}
+              </p>
+              <h3 className="text-xl font-serif text-primary sm:text-2xl">
+                {t("dashboard.highlights.title", "Announcements & tips")}
+              </h3>
+            </div>
+            <div className="space-y-3">
+              {staticHighlights.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-border bg-background/70 p-4"
+                >
+                  <p className="font-semibold text-primary">{item.title}</p>
+                  <p className="mt-1 text-sm text-foreground/70">{item.description}</p>
+                </div>
+              ))}
+              {hasPendingEnrollment && (
+                <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">
+                    {t("dashboard.highlights.pending", "Enrollment pending review")}
+                  </p>
+                  <p className="mt-1">
+                    {t(
+                      "dashboard.highlights.pendingDesc",
+                      "Admin is reviewing your latest payment. Access unlocks automatically once confirmed.",
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="rounded-[32px] border border-border bg-surface/80 p-6 shadow-[0_20px_40px_rgba(45,10,18,0.08)]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                {t("dashboard.recentMaterials.kicker", "Quick materials")}
+              </p>
+              <h3 className="text-xl font-serif text-primary sm:text-2xl">
+                {t("dashboard.recentMaterials.title", "Recently uploaded")}
+              </h3>
+            </div>
+            <Link
+              href="/dashboard/enrollments"
+              className="inline-flex w-full items-center justify-center rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-widest transition hover:bg-secondary/10 sm:w-auto"
+            >
+              {t("dashboard.recentMaterials.history", "Enrollment history")}
+            </Link>
+          </div>
+          {recentMaterials.length ? (
+            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+              {recentMaterials.map((material) => (
+                <li
+                  key={`${material.classId}-${material.url}`}
+                  className="rounded-2xl border border-border bg-background/80 p-4 transition hover:border-secondary/40 hover:bg-background"
+                >
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {material.classTitle}
+                  </p>
+                  <p className="mt-2 truncate font-semibold text-primary">
+                    {material.title}
+                  </p>
+                  {material.uploadedAt && (
+                    <p className="text-xs text-foreground/60">
+                      {new Date(material.uploadedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                  <a
+                    href={material.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary underline-offset-4 hover:underline"
+                  >
+                    {t("dashboard.recentMaterials.download", "Download")}
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                      <path d="M7 10l5 5 5-5" />
+                      <path d="M12 15V3" />
+                    </svg>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-dashed border-border/50 bg-background/30 p-6 text-center">
+              <p className="text-sm text-foreground/70">
+                {t(
+                  "dashboard.recentMaterials.empty",
+                  "Once your teachers upload new PDFs or media, the latest five appear here for quick access.",
+                )}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>

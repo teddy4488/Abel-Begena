@@ -7,6 +7,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useGetClassesQuery } from "@/store/api/classApi";
 import { useGetManagePostsQuery } from "@/store/api/blogApi";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   BookOpen,
   FileText,
@@ -43,6 +44,15 @@ export default function TeacherDashboardPage() {
   const publishedPosts = myPosts.filter((p) => p.isPublished).length;
   const draftPosts = myPosts.filter((p) => !p.isPublished).length;
   const liveClasses = teacherClasses.filter((c) => c.isLive).length;
+
+  const recentPosts = useMemo(() => {
+    const sorted = [...myPosts].sort((a, b) => {
+      const dateA = a.updatedAt ?? a.createdAt ?? "";
+      const dateB = b.updatedAt ?? b.createdAt ?? "";
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+    return sorted.slice(0, 4);
+  }, [myPosts]);
 
   const quickActions = [
     {
@@ -262,55 +272,67 @@ export default function TeacherDashboardPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {teacherClasses.slice(0, 5).map((klass, index) => (
-              <motion.div
-                key={klass._id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + index * 0.05 }}
-              >
-                <Link
-                  href="/teacher/live"
-                  className="flex items-center justify-between rounded-xl border border-border bg-background/50 p-4 transition-all hover:border-secondary/50 hover:bg-background/80 hover:shadow-sm group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                      klass.isLive ? "bg-green-500/10" : "bg-background"
-                    }`}>
-                      {klass.isLive ? (
-                        <Radio className="h-5 w-5 text-green-600 animate-pulse" />
-                      ) : (
-                        <BookOpen className="h-5 w-5 text-foreground/40" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-primary group-hover:text-secondary transition-colors">
-                        {klass.title}
-                      </p>
-                      <p className="text-xs text-foreground/70">
-                        {klass.isLive
-                          ? t("teacher.dashboard.liveNow", "Live now")
-                          : t("teacher.dashboard.offline", "Offline")}
-                      </p>
-                    </div>
+            {classesLoading
+              ? [1, 2, 3].map((item) => (
+                  <div
+                    key={`class-skel-${item}`}
+                    className="rounded-xl border border-border/60 bg-background/40 p-4"
+                  >
+                    <Skeleton className="h-5 w-48 rounded-full" />
+                    <Skeleton className="mt-2 h-3 w-32 rounded-full" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    {klass.isLive && (
-                      <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs font-semibold text-green-600">
-                        {t("teacher.dashboard.live", "LIVE")}
-                      </span>
-                    )}
-                    <div
-                      className={`h-3 w-3 rounded-full ${
-                        klass.isLive
-                          ? "bg-green-500 animate-pulse shadow-lg shadow-green-500/50"
-                          : "bg-gray-400"
-                      }`}
-                    />
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+                ))
+              : teacherClasses.slice(0, 5).map((klass, index) => (
+                  <motion.div
+                    key={klass._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + index * 0.05 }}
+                  >
+                    <Link
+                      href="/teacher/live"
+                      className="flex items-center justify-between rounded-xl border border-border bg-background/50 p-4 transition-all hover:border-secondary/50 hover:bg-background/80 hover:shadow-sm group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                            klass.isLive ? "bg-green-500/10" : "bg-background"
+                          }`}
+                        >
+                          {klass.isLive ? (
+                            <Radio className="h-5 w-5 text-green-600 animate-pulse" />
+                          ) : (
+                            <BookOpen className="h-5 w-5 text-foreground/40" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-primary group-hover:text-secondary transition-colors">
+                            {klass.title}
+                          </p>
+                          <p className="text-xs text-foreground/70">
+                            {klass.isLive
+                              ? t("teacher.dashboard.liveNow", "Live now")
+                              : t("teacher.dashboard.offline", "Offline")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {klass.isLive && (
+                          <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs font-semibold text-green-600">
+                            {t("teacher.dashboard.live", "LIVE")}
+                          </span>
+                        )}
+                        <div
+                          className={`h-3 w-3 rounded-full ${
+                            klass.isLive
+                              ? "bg-green-500 animate-pulse shadow-lg shadow-green-500/50"
+                              : "bg-gray-400"
+                          }`}
+                        />
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
           </div>
         </motion.div>
       )}
@@ -334,6 +356,93 @@ export default function TeacherDashboardPage() {
           </p>
         </motion.div>
       )}
+
+      {/* Recent Posts */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+              {t("teacher.dashboard.posts", "My Posts")}
+            </p>
+            <h2 className="text-2xl font-serif text-primary">
+              {t("teacher.dashboard.recentPosts", "Recent drafts & articles")}
+            </h2>
+          </div>
+          <Link
+            href="/teacher/posts"
+            className="rounded-full border border-secondary px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:bg-secondary/10"
+          >
+            {t("teacher.dashboard.managePosts", "Manage posts")}
+          </Link>
+        </div>
+        {postsLoading ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[1, 2, 3, 4].map((item) => (
+              <div
+                key={`post-skel-${item}`}
+                className="rounded-xl border border-border/50 bg-background/40 p-4"
+              >
+                <Skeleton className="h-4 w-40 rounded-full" />
+                <Skeleton className="mt-2 h-3 w-24 rounded-full" />
+                <Skeleton className="mt-4 h-8 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        ) : recentPosts.length ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {recentPosts.map((post) => (
+              <div
+                key={post._id}
+                className="rounded-xl border border-border bg-background/70 p-4 transition hover:border-secondary/40 hover:bg-background"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-primary truncate">
+                    {post.title || t("teacher.dashboard.untitled", "Untitled post")}
+                  </p>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                      post.isPublished
+                        ? "bg-green-500/10 text-green-600"
+                        : "bg-amber-500/10 text-amber-600"
+                    }`}
+                  >
+                    {post.isPublished
+                      ? t("teacher.dashboard.status.published", "Published")
+                      : t("teacher.dashboard.status.draft", "Draft")}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-foreground/60">
+                  {(post.updatedAt || post.createdAt) &&
+                    new Date(post.updatedAt ?? post.createdAt ?? "").toLocaleDateString()}
+                </p>
+                <p className="mt-3 line-clamp-2 text-sm text-foreground/70">
+                  {post.excerpt || post.body || t("teacher.dashboard.noExcerpt", "No excerpt provided.")}
+                </p>
+                <Link
+                  href="/teacher/posts"
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-secondary hover:underline"
+                >
+                  {t("teacher.dashboard.editPost", "Edit post")} →
+                </Link>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-border bg-background/40 p-10 text-center">
+            <p className="text-sm text-foreground/70">
+              {t(
+                "teacher.dashboard.noPosts",
+                "No posts yet. Share class recaps, reflections, or announcements to engage students.",
+              )}
+            </p>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

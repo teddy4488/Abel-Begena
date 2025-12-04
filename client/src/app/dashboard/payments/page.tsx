@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetMyOrdersQuery } from "@/store/api/storeApi";
 import { useGetClassesQuery } from "@/store/api/classApi";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   Receipt,
   Download,
@@ -276,9 +277,13 @@ export default function PaymentHistoryPage() {
               </span>
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-begena-gold">
-              {formatAmount(totalPaid, "ETB")}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-32 rounded-lg" />
+            ) : (
+              <p className="text-2xl md:text-3xl font-bold text-begena-gold">
+                {formatAmount(totalPaid, "ETB")}
+              </p>
+            )}
           </motion.div>
 
           <motion.div
@@ -293,9 +298,13 @@ export default function PaymentHistoryPage() {
               </span>
               <Clock className="w-5 h-5 text-yellow-600" />
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-begena-gold">
-              {formatAmount(pendingAmount, "ETB")}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-28 rounded-lg" />
+            ) : (
+              <p className="text-2xl md:text-3xl font-bold text-begena-gold">
+                {formatAmount(pendingAmount, "ETB")}
+              </p>
+            )}
           </motion.div>
 
           <motion.div
@@ -310,9 +319,13 @@ export default function PaymentHistoryPage() {
               </span>
               <Receipt className="w-5 h-5 text-blue-600" />
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-begena-gold">
-              {filteredPayments.length}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20 rounded-lg" />
+            ) : (
+              <p className="text-2xl md:text-3xl font-bold text-begena-gold">
+                {filteredPayments.length}
+              </p>
+            )}
           </motion.div>
 
           <motion.div
@@ -327,17 +340,25 @@ export default function PaymentHistoryPage() {
               </span>
               <Calendar className="w-5 h-5 text-purple-600" />
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-begena-gold">
-              {formatAmount(averageTicket || 0, "ETB")}
-            </p>
-            <p className="text-xs text-begena-brown/60 dark:text-begena-cream/60 mt-1">
-              {latestPaymentDate
-                ? `${t(
-                    "payments.summary.lastPayment",
-                    "Last payment on",
-                  )} ${formatDate(latestPaymentDate)}`
-                : t("payments.summary.noPaymentsYet", "No payments yet")}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            ) : (
+              <p className="text-2xl md:text-3xl font-bold text-begena-gold">
+                {formatAmount(averageTicket || 0, "ETB")}
+              </p>
+            )}
+            {isLoading ? (
+              <Skeleton className="mt-2 h-4 w-40 rounded-full" />
+            ) : (
+              <p className="text-xs text-begena-brown/60 dark:text-begena-cream/60 mt-1">
+                {latestPaymentDate
+                  ? `${t(
+                      "payments.summary.lastPayment",
+                      "Last payment on",
+                    )} ${formatDate(latestPaymentDate)}`
+                  : t("payments.summary.noPaymentsYet", "No payments yet")}
+              </p>
+            )}
           </motion.div>
         </div>
 
@@ -431,17 +452,25 @@ export default function PaymentHistoryPage() {
                 <p className="text-xs uppercase text-begena-brown/60 dark:text-begena-cream/60">
                   {t("payments.filters.enrollments", "Enrollments")}
                 </p>
-                <p className="text-2xl font-bold text-begena-gold">
-                  {typeBreakdown.enrollment}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="mt-1 h-6 w-10 rounded-lg" />
+                ) : (
+                  <p className="text-2xl font-bold text-begena-gold">
+                    {typeBreakdown.enrollment}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-xs uppercase text-begena-brown/60 dark:text-begena-cream/60">
                   {t("payments.filters.orders", "Orders")}
                 </p>
-                <p className="text-2xl font-bold text-begena-gold">
-                  {typeBreakdown.order}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="mt-1 h-6 w-10 rounded-lg" />
+                ) : (
+                  <p className="text-2xl font-bold text-begena-gold">
+                    {typeBreakdown.order}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -450,13 +479,18 @@ export default function PaymentHistoryPage() {
             <p className="text-sm font-semibold text-begena-brown dark:text-begena-cream mb-2">
               {t("payments.insights.pendingTitle", "Pending follow-ups")}
             </p>
-            <p className="text-2xl font-bold text-begena-gold">
-              {
-                filteredPayments.filter(
-                  (payment) => payment.status === "pending" || payment.status === "processing"
-                ).length
-              }
-            </p>
+            {isLoading ? (
+              <Skeleton className="mt-1 h-6 w-10 rounded-lg" />
+            ) : (
+              <p className="text-2xl font-bold text-begena-gold">
+                {
+                  filteredPayments.filter(
+                    (payment) =>
+                      payment.status === "pending" || payment.status === "processing",
+                  ).length
+                }
+              </p>
+            )}
             <p className="text-xs text-begena-brown/60 dark:text-begena-cream/60 mt-1">
               {t(
                 "payments.insights.pendingDescription",

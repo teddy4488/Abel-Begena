@@ -68,20 +68,26 @@ export default function AdminOrdersPage() {
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
 
   const filtered = useMemo(() => {
-    return (orders ?? []).filter((order) => {
-      const matchesSearch =
-        !search ||
-        order._id.toLowerCase().includes(search.toLowerCase()) ||
-        order.items.some((item) =>
-          item.product?.name?.toLowerCase().includes(search.toLowerCase()),
-        );
-      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-      const matchesPayment =
-        paymentFilter === "all" ||
-        (paymentFilter === "paid" && order.isPaid) ||
-        (paymentFilter === "unpaid" && !order.isPaid);
-      return matchesSearch && matchesStatus && matchesPayment;
-    });
+    return (orders ?? [])
+      .map((order) => ({
+        ...order,
+        completedAt:
+          order.status === "Delivered" ? order.updatedAt ?? order.createdAt : null,
+      }))
+      .filter((order) => {
+        const matchesSearch =
+          !search ||
+          order._id.toLowerCase().includes(search.toLowerCase()) ||
+          order.items.some((item) =>
+            item.product?.name?.toLowerCase().includes(search.toLowerCase()),
+          );
+        const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+        const matchesPayment =
+          paymentFilter === "all" ||
+          (paymentFilter === "paid" && order.isPaid) ||
+          (paymentFilter === "unpaid" && !order.isPaid);
+        return matchesSearch && matchesStatus && matchesPayment;
+      });
   }, [orders, search, statusFilter, paymentFilter]);
 
   const handleStatusChange = async (
@@ -140,7 +146,13 @@ export default function AdminOrdersPage() {
     const paid = orders?.filter((o) => o.isPaid).length ?? 0;
     const pending = orders?.filter((o) => o.status === "Pending").length ?? 0;
     const delivered = orders?.filter((o) => o.status === "Delivered").length ?? 0;
-    return { total, paid, pending, delivered };
+    const revenue = orders?.reduce(
+      (sum, order) => sum + (order.isPaid ? order.totalAmount : 0),
+      0,
+    ) ?? 0;
+    const avgTicket = total > 0 ? revenue / total : 0;
+    const fulfillmentRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+    return { total, paid, pending, delivered, revenue, avgTicket, fulfillmentRate };
   }, [orders]);
 
   return (
@@ -231,6 +243,31 @@ export default function AdminOrdersPage() {
             <Truck className="w-8 h-8 text-emerald-600/40" />
           </div>
         </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/60">
+                {t("admin.orders.stats.revenue", "Paid Revenue")}
+              </p>
+              <p className="text-2xl font-bold text-primary mt-1">
+                {stats.revenue.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+              </p>
+              <p className="text-xs text-foreground/60">
+                {t("admin.orders.stats.avgTicket", "Avg ticket")}:{" "}
+                {stats.avgTicket.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })}
+              </p>
+            </div>
+            <Package className="w-8 h-8 text-secondary/40" />
+          </div>
+        </motion.div>
       </div>
 
       {/* Filters */}
@@ -285,6 +322,16 @@ export default function AdminOrdersPage() {
           )}
           <span className="hidden sm:inline">{t("button.reload", "Refresh")}</span>
         </button>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/60">
+          <span>{t("admin.orders.filters.showing", "Showing")}:</span>
+          <span className="font-semibold text-primary">
+            {filtered.length} / {stats.total}
+          </span>
+          <span>•</span>
+          <span>
+            {stats.fulfillmentRate}% {t("admin.orders.stats.fulfillment", "fulfilled")}
+          </span>
+        </div>
       </motion.div>
 
       {/* Loading State */}

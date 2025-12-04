@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   useGetBranchesAdminQuery,
   useCreateBranchMutation,
@@ -184,6 +184,23 @@ export default function AdminBranchesPage() {
     [branches],
   );
 
+  const stats = useMemo(() => {
+    const total = mapBranches.length;
+    const active = mapBranches.filter((b) => b.isActive).length;
+    const avgRadius =
+      total > 0
+        ? Math.round(
+            mapBranches.reduce((sum, branch) => sum + (branch.radiusMeters ?? 0), 0) /
+              total,
+          )
+        : 0;
+    const coverageKm = mapBranches.reduce(
+      (sum, branch) => sum + ((branch.radiusMeters ?? 0) / 1000) * 2,
+      0,
+    );
+    return { total, active, avgRadius, coverageKm };
+  }, [mapBranches]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -241,6 +258,39 @@ export default function AdminBranchesPage() {
         </button>
       </header>
 
+      <div className="grid gap-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+              {t("branches.admin.stats.total", "Total branches")}
+            </p>
+            <p className="mt-1 text-2xl font-serif text-primary">{stats.total}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+              {t("branches.admin.stats.active", "Active")}
+            </p>
+            <p className="mt-1 text-2xl font-serif text-primary">{stats.active}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+              {t("branches.admin.stats.coverage", "Coverage perimeters")}
+            </p>
+            <p className="mt-1 text-2xl font-serif text-primary">
+              {stats.coverageKm.toFixed(1)} km
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+              {t("branches.admin.stats.radius", "Avg radius")}
+            </p>
+            <p className="mt-1 text-2xl font-serif text-primary">
+              {stats.avgRadius} m
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <motion.section
           initial={{ opacity: 0, y: 12 }}
@@ -279,6 +329,36 @@ export default function AdminBranchesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4 rounded-3xl border border-border bg-surface p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
         >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+              {t("branches.admin.form.radius", "Radius (m)")}
+            </label>
+            <input
+              type="range"
+              min={100}
+              max={3000}
+              value={form.radiusMeters}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  radiusMeters: Number(e.target.value) || 0,
+                }))
+              }
+              className="flex-1"
+            />
+            <span className="text-xs text-foreground/60 font-semibold">
+              {form.radiusMeters} m
+            </span>
+            {form.latitude != null && form.longitude != null && (
+              <button
+                type="button"
+                onClick={() => handleReset()}
+                className="rounded-full border border-border px-3 py-1 text-xs hover:border-secondary hover:text-secondary"
+              >
+                {t("branches.admin.form.recenter", "Recenter map")}
+              </button>
+            )}
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-primary">

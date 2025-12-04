@@ -39,6 +39,9 @@ export default function AdminClassesPage() {
   const { pushToast } = useToast();
   const { t } = useI18n();
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewFilter, setViewFilter] = useState<"all" | "unassigned" | "live">("all");
+
   const teachers =
     users?.filter((user) => user.role === "Teacher" || user.role === "Admin") ?? [];
 
@@ -171,6 +174,30 @@ export default function AdminClassesPage() {
     () => [...(classes ?? [])].sort((a, b) => a.title.localeCompare(b.title)),
     [classes],
   );
+
+  const filteredClasses = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return sortedClasses.filter((klass) => {
+      if (viewFilter === "unassigned" && klass.instructorId) return false;
+      if (viewFilter === "live" && !klass.isLive) return false;
+      if (query) {
+        const haystack = `${klass.title} ${
+          typeof klass.instructorId === "object"
+            ? `${klass.instructorId?.firstName ?? ""} ${klass.instructorId?.lastName ?? ""}`
+            : ""
+        }`.toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
+  }, [sortedClasses, searchTerm, viewFilter]);
+
+  const stats = useMemo(() => {
+    const total = sortedClasses.length;
+    const live = sortedClasses.filter((klass) => klass.isLive).length;
+    const unassigned = sortedClasses.filter((klass) => !klass.instructorId).length;
+    return { total, live, unassigned };
+  }, [sortedClasses]);
 
   return (
     <section className="space-y-4 sm:space-y-6">
@@ -378,13 +405,62 @@ export default function AdminClassesPage() {
           <h2 className="text-lg font-serif text-primary sm:text-xl">
             {t("admin.classes.classesList", "Classes")}
           </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.total", "Total")}
+              </p>
+              <p className="text-2xl font-serif text-primary">{stats.total}</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.live", "Live")}
+              </p>
+              <p className="text-2xl font-serif text-primary">{stats.live}</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.unassigned", "Unassigned")}
+              </p>
+              <p className="text-2xl font-serif text-primary">{stats.unassigned}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2 text-xs font-semibold">
+              {(["all", "unassigned", "live"] as const).map((filterKey) => (
+                <button
+                  key={filterKey}
+                  type="button"
+                  onClick={() => setViewFilter(filterKey)}
+                  className={`rounded-full px-3 py-1 tracking-wide transition ${
+                    viewFilter === filterKey
+                      ? "bg-secondary text-secondary-foreground"
+                      : "bg-background/60 text-foreground/70 hover:bg-background"
+                  }`}
+                >
+                  {filterKey === "all"
+                    ? t("admin.classes.filters.all", "All")
+                    : filterKey === "unassigned"
+                      ? t("admin.classes.filters.unassigned", "Unassigned")
+                      : t("admin.classes.filters.live", "Live")}
+                </button>
+              ))}
+            </div>
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t("admin.classes.searchPlaceholder", "Search by title or instructor")}
+              className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:max-w-xs"
+            />
+          </div>
           {isLoading ? (
             <div className="mt-4 flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-secondary" />
             </div>
-          ) : sortedClasses.length ? (
+          ) : filteredClasses.length ? (
             <div className="mt-4 space-y-3">
-              {sortedClasses.map((klass, index) => (
+              {filteredClasses.map((klass, index) => (
               <motion.div
                 key={klass._id}
                 initial={{ opacity: 0, y: 20 }}
@@ -470,7 +546,15 @@ export default function AdminClassesPage() {
             </div>
           ) : (
             <div className="mt-6 rounded-3xl border border-border bg-background/70 p-6 text-center text-sm text-foreground/70">
-              No classes created yet. Use the form to create your first cohort.
+              {searchTerm || viewFilter !== "all"
+                ? t(
+                    "admin.classes.emptyFiltered",
+                    "No classes match these filters. Adjust search or reset filters.",
+                  )
+                : t(
+                    "admin.classes.empty",
+                    "No classes created yet. Use the form to create your first cohort.",
+                  )}
             </div>
           )}
         </motion.div>

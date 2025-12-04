@@ -89,6 +89,48 @@ export default function TeacherSchedulePage() {
     [schedule],
   );
 
+  const [viewRange, setViewRange] = useState<"all" | "week" | "month">("all");
+
+  const now = useMemo(() => new Date(), []);
+
+  const upcomingThisWeek = useMemo(() => {
+    if (!schedule) return 0;
+    const weekFromNow = new Date();
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+    return schedule.filter((session) => {
+      if (!session.startTime) return false;
+      const start = new Date(session.startTime);
+      return start >= now && start <= weekFromNow;
+    }).length;
+  }, [now, schedule]);
+
+  const filteredSchedule = useMemo(() => {
+    if (!schedule) return [];
+    if (viewRange === "all") return schedule;
+
+    const target = new Date();
+    if (viewRange === "week") {
+      const weekFromNow = new Date();
+      weekFromNow.setDate(weekFromNow.getDate() + 7);
+      return schedule.filter((session) => {
+        if (!session.startTime) return false;
+        const start = new Date(session.startTime);
+        return start >= target && start <= weekFromNow;
+      });
+    }
+
+    // month
+    const currentMonth = target.getMonth();
+    const currentYear = target.getFullYear();
+    return schedule.filter((session) => {
+      if (!session.startTime) return false;
+      const start = new Date(session.startTime);
+      return (
+        start.getMonth() === currentMonth && start.getFullYear() === currentYear
+      );
+    });
+  }, [schedule, viewRange]);
+
   const isBusy = isCreating || isUpdating || isDeleting;
 
   const resetForm = () => {
@@ -366,6 +408,28 @@ export default function TeacherSchedulePage() {
                   : t("teacher.schedule.selectClass", "Select a class")}
               </h2>
             </div>
+            {hasSelection && (
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background/60 p-1 text-xs">
+                {(["all", "week", "month"] as const).map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    onClick={() => setViewRange(range)}
+                    className={`rounded-full px-3 py-1 font-semibold uppercase tracking-wide transition ${
+                      viewRange === range
+                        ? "bg-secondary text-secondary-foreground shadow-sm"
+                        : "text-foreground/70 hover:text-secondary"
+                    }`}
+                  >
+                    {range === "all"
+                      ? t("teacher.schedule.filters.all", "All")
+                      : range === "week"
+                        ? t("teacher.schedule.filters.week", "Next 7 days")
+                        : t("teacher.schedule.filters.month", "This month")}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {!hasSelection && (
@@ -398,9 +462,37 @@ export default function TeacherSchedulePage() {
             !scheduleLoading &&
             !scheduleError &&
             (schedule?.length ? (
-              <div className="space-y-3">
+              <>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-secondary/70">
+                      {t("teacher.schedule.stats.total", "Total sessions")}
+                    </p>
+                    <p className="mt-1 text-2xl font-serif text-primary">
+                      {schedule.length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-secondary/70">
+                      {t("teacher.schedule.stats.week", "Next 7 days")}
+                    </p>
+                    <p className="mt-1 text-2xl font-serif text-primary">
+                      {upcomingThisWeek}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-secondary/70">
+                      {t("teacher.schedule.stats.conflicts", "Conflicts")}
+                    </p>
+                    <p className="mt-1 text-2xl font-serif text-primary">
+                      {conflictingSessions.size}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-3">
                 <AnimatePresence>
-                  {schedule.map((session, index) => {
+                    {filteredSchedule.length ? (
+                      filteredSchedule.map((session, index) => {
                     const start = session.startTime
                       ? new Date(session.startTime)
                       : null;
@@ -502,9 +594,24 @@ export default function TeacherSchedulePage() {
                         </div>
                       </motion.div>
                     );
-                  })}
+                      })
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-xl border border-dashed border-border bg-background/40 p-10 text-center"
+                      >
+                        <p className="text-sm text-foreground/70">
+                          {t(
+                            "teacher.schedule.filters.empty",
+                            "No sessions match this view. Try switching filters.",
+                          )}
+                        </p>
+                      </motion.div>
+                    )}
                 </AnimatePresence>
-              </div>
+                </div>
+              </>
             ) : (
               <div className="rounded-xl border border-dashed border-border bg-background/50 p-12 text-center">
                 <Calendar className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
