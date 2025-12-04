@@ -23,6 +23,13 @@ type ChatPayload = {
   senderId?: string;
 };
 
+type ChatEntry = {
+  message: string;
+  senderName: string;
+  senderId: string;
+  sentAt: string;
+};
+
 type JoinPayload = {
   classId: string;
   userId: string;
@@ -47,13 +54,17 @@ interface ServerToClientEvents {
     senderId: string;
     sentAt: string;
   }) => void;
+  'chat-history': (data: ChatEntry[]) => void;
   'session-ended': (data: { endedBy: string }) => void;
 }
 
 interface ClientToServerEvents {
   'join-room': (payload: JoinPayload) => void;
   signal: (payload: SignalPayload) => void;
-  'chat-message': (payload: ChatPayload) => void;
+  'chat-message': (
+    payload: ChatPayload,
+    callback?: (response: { ok: boolean; error?: string }) => void,
+  ) => void;
   'end-session': () => void;
 }
 
@@ -90,6 +101,8 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: LiveNamespace;
 
   private readonly logger = new Logger(LiveGateway.name);
+  private readonly chatHistory = new Map<string, ChatEntry[]>();
+  private readonly CHAT_HISTORY_LIMIT = 200;
 
   constructor(private readonly classService: ClassService) {}
 
@@ -103,6 +116,10 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.to(client.data.classId).emit('peer-left', {
         socketId: client.id,
       });
+      const room = this.server.adapter.rooms.get(client.data.classId);
+      if (!room || room.size === 0) {
+        this.chatHistory.delete(client.data.classId);
+      }
     }
   }
 
@@ -165,6 +182,10 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await client.join(payload.classId);
 
     client.emit('existing-peers', existingPeers);
+    const history = this.chatHistory.get(payload.classId);
+    if (history?.length) {
+      client.emit('chat-history', [...history]);
+    }
     client.to(payload.classId).emit('peer-joined', {
       socketId: client.id,
       displayName: payload.displayName,
@@ -222,14 +243,29 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat-message')
   handleChat(client: LiveSocket, payload: ChatPayload) {
     if (!client.data.classId) {
-      return;
+      return { ok: false, error: 'NOT_IN_ROOM' };
     }
-    this.server.in(client.data.classId).emit('chat-message', {
-      message: payload.message,
+    const message = payload.message?.trim();
+    if (!message) {
+      return { ok: false, error: 'EMPTY_MESSAGE' };
+    }
+
+    const entry: ChatEntry = {
+      message,
       senderName: payload.senderName ?? client.data.displayName ?? 'Unknown',
       senderId: payload.senderId ?? client.data.userId ?? client.id,
       sentAt: new Date().toISOString(),
-    });
+    };
+
+    const existing = this.chatHistory.get(client.data.classId) ?? [];
+    existing.push(entry);
+    if (existing.length > this.CHAT_HISTORY_LIMIT) {
+      existing.splice(0, existing.length - this.CHAT_HISTORY_LIMIT);
+    }
+    this.chatHistory.set(client.data.classId, existing);
+
+    this.server.in(client.data.classId).emit('chat-message', entry);
+    return { ok: true };
   }
 
   @SubscribeMessage('end-session')
@@ -263,6 +299,7 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.in(client.data.classId).emit('session-ended', {
       endedBy: client.data.displayName ?? 'Host',
     });
+    this.chatHistory.delete(client.data.classId);
   }
 
   private extractInstructorId(klass: ClassDocument | null): string | null {

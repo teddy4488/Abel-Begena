@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Edit, Loader2, Trash2 } from "lucide-react";
 import {
   useAssignClassInstructorMutation,
   useCreateManagedClassMutation,
@@ -10,6 +12,7 @@ import {
 } from "@/store/api/adminApi";
 import { useGetAllUsersQuery } from "@/store/api/userApi";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 const emptyForm = {
   title: "",
@@ -242,66 +245,66 @@ export default function AdminClassesPage() {
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
               {t("admin.classes.form.description", "Description")}
             </label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
               placeholder={t("admin.classes.form.descriptionPlaceholder", "Class description")}
-              rows={3}
+            rows={3}
               className="w-full rounded-2xl border border-border bg-background/70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-            />
+          />
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
               {t("admin.classes.form.instructor", "Instructor")}
             </label>
-            <select
-              value={form.instructorId}
-              onChange={(e) => setForm((prev) => ({ ...prev, instructorId: e.target.value }))}
+          <select
+            value={form.instructorId}
+            onChange={(e) => setForm((prev) => ({ ...prev, instructorId: e.target.value }))}
               className="w-full rounded-2xl border border-border bg-background/70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-            >
+          >
               <option value="">{t("admin.classes.form.assignInstructor", "Assign instructor")}</option>
-              {teachers.map((teacher) => (
-                <option key={teacher._id ?? teacher.id} value={teacher._id ?? teacher.id}>
-                  {teacher.firstName} {teacher.lastName}
-                </option>
-              ))}
-            </select>
+            {teachers.map((teacher) => (
+              <option key={teacher._id ?? teacher.id} value={teacher._id ?? teacher.id}>
+                {teacher.firstName} {teacher.lastName}
+              </option>
+            ))}
+          </select>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("admin.classes.form.startDate", "Start Date")}
               </label>
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
+            <input
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
                 className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-              />
+            />
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("admin.classes.form.endDate", "End Date")}
               </label>
-              <input
-                type="date"
-                value={form.endDate}
-                onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
+            <input
+              type="date"
+              value={form.endDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
                 className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-              />
+            />
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("admin.classes.form.deadline", "Enrollment Deadline")}
               </label>
-              <input
-                type="date"
-                value={form.enrollmentDeadline}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, enrollmentDeadline: e.target.value }))
-                }
+            <input
+              type="date"
+              value={form.enrollmentDeadline}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, enrollmentDeadline: e.target.value }))
+              }
                 className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-              />
+            />
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -346,16 +349,16 @@ export default function AdminClassesPage() {
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("admin.classes.form.currency", "Currency")}
               </label>
-              <select
-                value={form.currency}
-                onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))}
+            <select
+              value={form.currency}
+              onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))}
                 className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-              >
-                <option value="ETB">ETB</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-              </select>
-            </div>
+            >
+              <option value="ETB">ETB</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
           </div>
           <motion.button
             type="submit"
@@ -462,7 +465,7 @@ export default function AdminClassesPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </motion.div>
               ))}
             </div>
           ) : (
@@ -470,7 +473,7 @@ export default function AdminClassesPage() {
               No classes created yet. Use the form to create your first cohort.
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

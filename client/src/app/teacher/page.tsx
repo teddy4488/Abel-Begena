@@ -14,7 +14,6 @@ import {
   Users,
   Calendar,
   Edit,
-  Plus,
   Radio,
   Loader2,
 } from "lucide-react";

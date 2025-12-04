@@ -58,9 +58,9 @@ export function LiveRoom({
     role: normalizedRole,
   });
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!chatInput.trim()) return;
-    sendMessage(chatInput);
+    await sendMessage(chatInput);
     setChatInput("");
   };
 
@@ -268,7 +268,7 @@ export function LiveRoom({
           className="mt-2 flex items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 md:mt-3 md:p-2.5"
           onSubmit={(e) => {
             e.preventDefault();
-            handleSend();
+            void handleSend();
           }}
         >
           <input

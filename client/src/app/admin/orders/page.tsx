@@ -17,7 +17,6 @@ import {
   XCircle,
   Loader2,
   Search,
-  Filter,
   RefreshCcw,
 } from "lucide-react";
 
@@ -348,8 +347,6 @@ export default function AdminOrdersPage() {
             <tbody className="divide-y divide-border/70">
               <AnimatePresence>
                 {filtered.map((order, index) => {
-                  const statusInfo = statusConfig[order.status] || statusConfig.Pending;
-                  const StatusIcon = statusInfo.icon;
                   return (
                     <motion.tr
                       key={order._id}

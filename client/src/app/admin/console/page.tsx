@@ -16,7 +16,6 @@ import {
   BookOpen,
   ShoppingBag,
   Clock,
-  TrendingUp,
   AlertCircle,
   CheckCircle2,
   Loader2,

@@ -10,7 +10,7 @@ import {
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { ShoppingCart, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ShoppingCart, Loader2, ArrowLeft } from "lucide-react";
 
 export default function ProductDetailPage() {
   const params = useParams();

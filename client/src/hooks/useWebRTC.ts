@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimplePeer, { Instance as PeerInstance, SignalData } from "simple-peer";
 import { io, Socket } from "socket.io-client";
 
@@ -33,8 +33,45 @@ interface UseWebRTCOptions {
 }
 
 const LIVE_API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
-  "http://localhost:4000";
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "http://localhost:4000";
+
+type IceServerConfig = Pick<RTCIceServer, "urls" | "username" | "credential">;
+
+const DEFAULT_ICE_SERVERS: IceServerConfig[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:global.stun.twilio.com:3478" },
+];
+
+const parseCustomIceServers = (): IceServerConfig[] => {
+  const rawJson = process.env.NEXT_PUBLIC_TURN_SERVERS;
+  if (rawJson) {
+    try {
+      const parsed = JSON.parse(rawJson) as IceServerConfig[];
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch (error) {
+      console.warn("[useWebRTC] Failed to parse NEXT_PUBLIC_TURN_SERVERS:", error);
+    }
+  }
+
+  const urls = process.env.NEXT_PUBLIC_TURN_URLS;
+  if (urls) {
+    const username = process.env.NEXT_PUBLIC_TURN_USERNAME;
+    const credential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
+    return [
+      {
+        urls: urls.split(",").map((url) => url.trim()),
+        username: username || undefined,
+        credential: credential || undefined,
+      },
+    ];
+  }
+
+  return [];
+};
 
 export function useWebRTC({
   classId,
@@ -58,6 +95,10 @@ export function useWebRTC({
   const participantDirectory = useRef<
     Record<string, { socketId: string; displayName?: string; userId?: string }>
   >({});
+  const iceServers = useMemo(
+    () => [...DEFAULT_ICE_SERVERS, ...parseCustomIceServers()],
+    [],
+  );
 
   const syncMicState = useCallback(() => {
     const audioTracks = localStreamRef.current?.getAudioTracks() ?? [];
@@ -127,17 +168,12 @@ export function useWebRTC({
         return existing;
       }
 
-      const peerConfig = {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:global.stun.twilio.com:3478" },
-        ],
-      };
-
       const peer = new SimplePeer({
         initiator,
         trickle: true,
-        config: peerConfig,
+        config: {
+          iceServers,
+        },
         stream: localStreamRef.current ?? undefined,
       });
 
@@ -179,18 +215,26 @@ export function useWebRTC({
 
       return peer;
     },
-    [removePeer],
+    [iceServers, removePeer],
   );
 
   const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim() || !socketRef.current || !userId) return;
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || !socketRef.current || !userId) return;
 
-      socketRef.current.emit("chat-message", {
-        message: text.trim(),
-        senderName: displayName,
-        senderId: userId,
-      });
+      try {
+        const ack = await socketRef.current.emitWithAck("chat-message", {
+          message: trimmed,
+          senderName: displayName,
+          senderId: userId,
+        });
+        if (ack?.ok === false) {
+          console.warn("[useWebRTC] chat send failed:", ack?.error);
+        }
+      } catch (error) {
+        console.error("[useWebRTC] chat send error:", error);
+      }
     },
     [displayName, userId],
   );
@@ -319,6 +363,10 @@ export function useWebRTC({
         peer?.signal(signal);
       },
     );
+
+    socket.on("chat-history", (history: ChatMessage[]) => {
+      setMessages(history);
+    });
 
     socket.on("chat-message", (msg: ChatMessage) => {
       setMessages((prev) => [...prev, msg]);

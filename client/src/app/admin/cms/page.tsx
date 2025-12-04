@@ -151,8 +151,9 @@ export default function AdminCmsPage() {
               <button
                 type="button"
                 onClick={reset}
-                className="text-xs uppercase tracking-[0.3em] text-secondary hover:underline"
+                className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-secondary hover:underline"
               >
+                <X className="h-3 w-3" />
                 {t("button.reset", "Reset")}
               </button>
             )}
@@ -197,61 +198,93 @@ export default function AdminCmsPage() {
             className="rounded-2xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary"
           />
         </div>
-        <button
-          type="submit"
-          className="w-full rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-        >
-          {editingKey ? "Save block" : "Create block"}
-        </button>
-      </form>
-      <div className="rounded-3xl border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
-              <th className="px-4 py-3">Key</th>
-              <th className="px-4 py-3">Label</th>
-              <th className="px-4 py-3">Preview</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/70">
-            {(blocks ?? []).map((block) => (
-              <tr key={block.key}>
-                <td className="px-4 py-3 font-mono text-xs">{block.key}</td>
-                <td className="px-4 py-3">{block.label}</td>
-                <td className="px-4 py-3 text-foreground/70">
-                  {block.content?.en?.slice(0, 60) ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-right text-xs">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(block)}
-                    className="mr-3 rounded-full border border-border px-3 py-1 uppercase tracking-[0.3em]"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void deleteBlock(block.key)}
-                    className="rounded-full border border-border px-3 py-1 uppercase tracking-[0.3em] text-red-500"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!blocks?.length && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-4 py-6 text-center text-sm text-foreground/70"
-                >
-                  No content blocks yet.
-                </td>
-              </tr>
+          <motion.button
+            type="submit"
+            whileTap={{ scale: 0.97 }}
+            disabled={isCreating || isUpdating}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:brightness-95 disabled:opacity-50"
+          >
+            {(isCreating || isUpdating) ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("button.saving", "Saving...")}
+              </>
+            ) : editingKey ? (
+              <>
+                <Save className="h-4 w-4" />
+                {t("admin.cms.saveBlock", "Save block")}
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                {t("admin.cms.createBlock", "Create block")}
+              </>
             )}
-          </tbody>
-        </table>
+          </motion.button>
+        </motion.form>
+        <div className="rounded-3xl border border-border bg-surface">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-foreground/70">
+              <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+              {t("admin.cms.loading", "Loading content blocks...")}
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
+                  <th className="px-4 py-3">Key</th>
+                  <th className="px-4 py-3">Label</th>
+                  <th className="px-4 py-3">Preview</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/70">
+                {(blocks ?? []).map((block) => (
+                  <tr key={block.key}>
+                    <td className="px-4 py-3 font-mono text-xs">{block.key}</td>
+                    <td className="px-4 py-3">{block.label}</td>
+                    <td className="px-4 py-3 text-foreground/70">
+                      {block.content?.en?.slice(0, 60) ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(block)}
+                        className="mr-3 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 uppercase tracking-[0.3em] transition hover:bg-secondary/10"
+                      >
+                        <Edit className="h-3 w-3" />
+                        {t("button.edit", "Edit")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={() => handleDelete(block.key)}
+                        className="inline-flex items-center gap-2 rounded-full border border-red-500/40 px-3 py-1 uppercase tracking-[0.3em] text-red-500 transition hover:bg-red-500/10 disabled:opacity-60"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                        {t("button.delete", "Delete")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!blocks?.length && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-4 py-6 text-center text-sm text-foreground/70"
+                    >
+                      {t("admin.cms.empty", "No content blocks yet.")}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </section>
   );

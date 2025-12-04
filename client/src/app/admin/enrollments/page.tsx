@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { CheckCircle, Clock, Filter, Loader2, RefreshCcw, Search } from "lucide-react";
 import Link from "next/link";
 import {
@@ -291,21 +292,18 @@ export default function AdminEnrollmentsPage() {
                       </tr>
                     );
                   })}
-                </tbody>
-              </table>
-
-                {!filtered.length && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center">
-                      <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 p-6 text-center text-sm text-foreground/70">
-                        {t(
-                          "admin.enrollments.noMatches",
-                          "No enrollments match your filters.",
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                  {!filtered.length && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center">
+                        <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 p-6 text-center text-sm text-foreground/70">
+                          {t(
+                            "admin.enrollments.noMatches",
+                            "No enrollments match your filters.",
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

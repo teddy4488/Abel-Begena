@@ -44,13 +44,17 @@ export default function ProfilePage() {
     if (!data) {
       return;
     }
-    setForm({
-      firstName: data.firstName ?? "",
-      lastName: data.lastName ?? "",
-      phone: data.phone ?? "",
-      languagePreference: data.languagePreference ?? "en",
-      bio: data.bio ?? "",
-    });
+    // Use setTimeout to avoid synchronous setState in effect
+    const timeoutId = setTimeout(() => {
+      setForm({
+        firstName: data.firstName ?? "",
+        lastName: data.lastName ?? "",
+        phone: data.phone ?? "",
+        languagePreference: data.languagePreference ?? "en",
+        bio: data.bio ?? "",
+      });
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [data]);
 
   useEffect(() => {
@@ -71,7 +75,7 @@ export default function ProfilePage() {
     event.preventDefault();
     try {
       await updateProfile(form).unwrap();
-    } catch (error) {
+    } catch {
       pushToast({
         title: t("profile.toast.error", "Update failed"),
         description: t("profile.toast.errorDesc", "Failed to update profile. Please try again."),
@@ -113,7 +117,7 @@ export default function ProfilePage() {
         description: t("profile.toast.avatarSuccessDesc", "Your avatar has been updated."),
         variant: "success",
       });
-    } catch (error) {
+    } catch {
       pushToast({
         title: t("profile.toast.error", "Upload failed"),
         description: t("profile.toast.uploadError", "Failed to upload avatar. Please try again."),
