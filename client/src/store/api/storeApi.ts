@@ -37,6 +37,7 @@ export type Order = {
   paymentMethod: string;
   isPaid: boolean;
   createdAt: string;
+  updatedAt?: string;
   items: CartItemResponse[];
 };
 

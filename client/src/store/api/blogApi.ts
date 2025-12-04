@@ -14,6 +14,9 @@ export type BlogPost = {
   title: string;
   slug: string;
   content: string;
+  // Optional legacy/alternate fields used in some UI components
+  body?: string;
+  excerpt?: string;
   coverImage: string;
   isPublished: boolean;
   publishedAt?: string;
