@@ -38,7 +38,7 @@ const galleryImages = [
 const sacredVideos = [
   {
     id: 1,
-    url: "https://www.youtube.com/embed/VIDEO_ID_BEGENA_1",
+    url: "https://youtu.be/X_D2HypWF94",
     title: "Begena Meditative Hymn",
     titleAm: "የበገና ማሰላሰል",
     description: "Ancient melodies for spiritual reflection",
@@ -46,7 +46,7 @@ const sacredVideos = [
   },
   {
     id: 2,
-    url: "https://www.youtube.com/embed/VIDEO_ID_BEGENA_2",
+    url: "https://youtu.be/X_D2HypWF94",
     title: "Saint Yared Hymn on Begena",
     titleAm: "የቅዱስ ያሬድ መዝሙሮች",
     description: "The foundation of Ethiopian sacred music",
@@ -54,7 +54,7 @@ const sacredVideos = [
   },
   {
     id: 3,
-    url: "https://www.youtube.com/embed/VIDEO_ID_MEZMUR_1",
+    url: "https://youtu.be/X_D2HypWF94",
     title: "Orthodox Mezmur – Harp",
     titleAm: "የማሲንቆ ወግ",
     description: "The one-stringed fiddle of Ethiopia",
@@ -62,7 +62,7 @@ const sacredVideos = [
   },
   {
     id: 4,
-    url: "https://www.youtube.com/embed/VIDEO_ID_MEZMUR_2",
+    url: "https://youtu.be/X_D2HypWF94",
     title: "Liturgical Chant (Zema)",
     titleAm: "የሥርዓት ዝማሬዎች",
     description: "Tewahedo church worship music",
@@ -70,7 +70,7 @@ const sacredVideos = [
   },
   {
     id: 5,
-    url: "https://www.youtube.com/embed/VIDEO_ID_MEZMUR_3",
+    url: "https://youtu.be/X_D2HypWF94",
     title: "Kirar & Begena Hymn",
     titleAm: "የኪራር ዜማዎች",
     description: "The lyre of the Ethiopian highlands",

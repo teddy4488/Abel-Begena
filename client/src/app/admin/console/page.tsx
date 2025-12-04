@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   useGetAnalyticsOverviewQuery,
   useGetManagedClassesQuery,
@@ -9,6 +10,18 @@ import {
 import { useGetAllUsersQuery } from "@/store/api/userApi";
 import { useGetProductsQuery } from "@/store/api/storeApi";
 import { useI18n } from "@/components/providers/I18nProvider";
+import {
+  DollarSign,
+  Users,
+  BookOpen,
+  ShoppingBag,
+  Clock,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  ArrowRight,
+} from "lucide-react";
 
 function formatCurrency(total?: number | null) {
   if (typeof total !== "number") {
@@ -41,10 +54,10 @@ function formatAmount(amount?: number | null, currency?: string | null) {
 
 export default function AdminConsolePage() {
   const { t } = useI18n();
-  const { data: analytics } = useGetAnalyticsOverviewQuery();
-  const { data: users } = useGetAllUsersQuery();
-  const { data: classes } = useGetManagedClassesQuery();
-  const { data: products } = useGetProductsQuery();
+  const { data: analytics, isLoading: analyticsLoading } = useGetAnalyticsOverviewQuery();
+  const { data: users, isLoading: usersLoading } = useGetAllUsersQuery();
+  const { data: classes, isLoading: classesLoading } = useGetManagedClassesQuery();
+  const { data: products, isLoading: productsLoading } = useGetProductsQuery();
   const {
     data: pendingEnrollments = [],
     isLoading: pendingLoading,
@@ -54,162 +67,314 @@ export default function AdminConsolePage() {
     {
       label: t("admin.console.revenue", "Total Revenue"),
       value: formatCurrency(analytics?.revenue.total),
+      icon: DollarSign,
+      color: "text-green-600",
+      bgColor: "bg-green-500/10",
+      href: "/admin/analytics",
     },
     {
       label: t("admin.console.users", "Registered Users"),
-      value: users?.length ?? "—",
+      value: usersLoading ? "..." : users?.length ?? "—",
+      icon: Users,
+      color: "text-blue-600",
+      bgColor: "bg-blue-500/10",
+      href: "/admin/users",
     },
     {
       label: t("admin.console.liveClasses", "Live Classes"),
-      value: analytics?.classes.live ?? "—",
+      value: analyticsLoading ? "..." : analytics?.classes.live ?? "—",
+      icon: BookOpen,
+      color: "text-purple-600",
+      bgColor: "bg-purple-500/10",
+      href: "/admin/classes",
     },
     {
       label: t("admin.console.products", "Products"),
-      value: products?.length ?? "—",
+      value: productsLoading ? "..." : products?.length ?? "—",
+      icon: ShoppingBag,
+      color: "text-orange-600",
+      bgColor: "bg-orange-500/10",
+      href: "/admin/store",
     },
     {
       label: t("admin.console.pendingEnrollments", "Pending Enrollments"),
-      value: pendingEnrollments.length,
+      value: pendingLoading ? "..." : pendingEnrollments.length,
       subtitle: t("admin.console.pendingSubtitle", "Awaiting review"),
+      icon: Clock,
+      color: "text-amber-600",
+      bgColor: "bg-amber-500/10",
+      href: "/admin/enrollments",
+      urgent: pendingEnrollments.length > 0,
     },
   ];
 
   return (
     <section className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-5">
-        {summaryCards.map((card) => (
-          <div
-            key={card.label}
-            className="rounded-3xl border border-border bg-(--color-background-soft) p-4"
-          >
-            <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
-              {card.label}
-            </p>
-            <p className="text-2xl font-semibold text-primary">{card.value}</p>
-            {card.subtitle && (
-              <p className="text-[11px] uppercase tracking-[0.3em] text-foreground/50">
-                {card.subtitle}
-              </p>
-            )}
-          </div>
-        ))}
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+          {t("admin.console.kicker", "Admin Console")}
+        </p>
+        <h1 className="text-3xl md:text-4xl font-serif text-primary">
+          {t("admin.console.title", "Platform Overview")}
+        </h1>
+        <p className="mt-2 text-sm text-foreground/70">
+          {t(
+            "admin.console.subtitle",
+            "Monitor and manage all aspects of the platform.",
+          )}
+        </p>
+      </motion.div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {summaryCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Link
+                href={card.href}
+                className="group relative flex flex-col rounded-3xl border border-border bg-surface p-5 shadow-lg transition-all hover:border-secondary/50 hover:shadow-xl"
+              >
+                {card.urgent && (
+                  <div className="absolute -right-2 -top-2 h-4 w-4 rounded-full bg-amber-500 animate-pulse" />
+                )}
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.bgColor} ${card.color} transition-transform group-hover:scale-110`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  {card.href && (
+                    <ArrowRight className="h-4 w-4 text-foreground/30 group-hover:text-secondary transition-colors" />
+                  )}
+                </div>
+                <p className="text-xs uppercase tracking-[0.4em] text-secondary/70 mb-1">
+                  {card.label}
+                </p>
+                <p className="text-2xl font-bold text-primary">
+                  {typeof card.value === "string" && card.value === "..." ? (
+                    <Loader2 className="inline-block h-5 w-5 animate-spin" />
+                  ) : (
+                    card.value
+                  )}
+                </p>
+                {card.subtitle && (
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.3em] text-foreground/50">
+                    {card.subtitle}
+                  </p>
+                )}
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
+
+      {/* Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-surface p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-serif text-primary">
-              {t("admin.console.latestClasses", "Latest Classes")}
-            </h2>
-            <span className="text-xs uppercase tracking-[0.3em] text-secondary/60">
+        {/* Latest Classes */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-3xl border border-border bg-surface p-6 shadow-lg"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-serif text-primary">
+                {t("admin.console.latestClasses", "Latest Classes")}
+              </h2>
+              <p className="text-xs text-foreground/60 mt-1">
+                {t("admin.console.latestClassesDesc", "Recently created classes")}
+              </p>
+            </div>
+            <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-semibold text-secondary">
               {classes?.length ?? 0}
             </span>
           </div>
-          <ul className="mt-4 space-y-3 text-sm">
-            {(classes ?? []).slice(0, 5).map((klass) => (
-              <li
-                key={klass._id}
-                className="flex items-center justify-between rounded-2xl border border-border/80 px-3 py-2"
-              >
-                <span className="font-medium">{klass.title}</span>
-                <span className="text-xs uppercase tracking-[0.3em] text-secondary/70">
-                  {klass.isLive
-                    ? t("admin.console.status.live", "Live")
-                    : t("admin.console.status.draft", "Draft")}
-                </span>
-              </li>
-            ))}
-            {!classes?.length && (
-              <li className="text-sm text-foreground/60">
-                {t("admin.console.noClasses", "No classes yet.")}
-              </li>
-            )}
-          </ul>
-        </div>
-        <div className="rounded-3xl border border-border bg-surface p-6">
-          <h2 className="text-xl font-serif text-primary">
-            {t("admin.console.orderStatus", "Order Status")}
-          </h2>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-            {analytics ? (
-              Object.entries(analytics.orders.statusBreakdown).map(
-                ([status, count]) => (
-                  <div
+          {classesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+            </div>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {(classes ?? []).slice(0, 5).map((klass, index) => (
+                <motion.li
+                  key={klass._id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + index * 0.05 }}
+                  className="flex items-center justify-between rounded-2xl border border-border/80 bg-background/50 px-4 py-3 transition hover:bg-background/80 hover:shadow-sm"
+                >
+                  <span className="font-medium text-primary truncate flex-1">
+                    {klass.title}
+                  </span>
+                  <span className={`ml-2 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-wide ${
+                    klass.isLive
+                      ? "bg-green-500/20 text-green-600"
+                      : "bg-foreground/10 text-foreground/60"
+                  }`}>
+                    {klass.isLive
+                      ? t("admin.console.status.live", "Live")
+                      : t("admin.console.status.draft", "Draft")}
+                  </span>
+                </motion.li>
+              ))}
+              {!classes?.length && (
+                <li className="text-center py-8 text-sm text-foreground/60">
+                  {t("admin.console.noClasses", "No classes yet.")}
+                </li>
+              )}
+            </ul>
+          )}
+        </motion.div>
+
+        {/* Order Status */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4 }}
+          className="rounded-3xl border border-border bg-surface p-6 shadow-lg"
+        >
+          <div className="mb-4">
+            <h2 className="text-xl font-serif text-primary">
+              {t("admin.console.orderStatus", "Order Status")}
+            </h2>
+            <p className="text-xs text-foreground/60 mt-1">
+              {t("admin.console.orderStatusDesc", "Store order breakdown")}
+            </p>
+          </div>
+          {analyticsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+            </div>
+          ) : analytics ? (
+            <div className="grid grid-cols-3 gap-3">
+              {Object.entries(analytics.orders.statusBreakdown).map(
+                ([status, count], index) => (
+                  <motion.div
                     key={status}
-                    className="rounded-2xl border border-border/70 p-3 text-center"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5 + index * 0.05 }}
+                    className="rounded-2xl border border-border/70 bg-background/50 p-4 text-center transition hover:bg-background/80 hover:shadow-sm"
                   >
-                    <p className="text-xs uppercase tracking-[0.4em] text-secondary/60">
+                    <p className="text-xs uppercase tracking-[0.4em] text-secondary/60 mb-2">
                       {status}
                     </p>
-                    <p className="text-xl font-semibold text-primary">{count}</p>
-                  </div>
+                    <p className="text-2xl font-bold text-primary">{count}</p>
+                  </motion.div>
                 ),
-              )
-            ) : (
-              <p className="text-sm text-foreground/60">
-                {t("admin.console.loading", "Analytics loading...")}
-              </p>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-foreground/60 text-center py-8">
+              {t("admin.console.loading", "Analytics loading...")}
+            </p>
+          )}
+        </motion.div>
       </div>
-      <div className="rounded-3xl border border-border bg-surface p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-serif text-primary">
-            {t("admin.console.pendingListTitle", "Pending Tuition")}
-          </h2>
+
+      {/* Pending Enrollments */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="rounded-3xl border border-border bg-surface p-6 shadow-lg"
+      >
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-serif text-primary">
+              {t("admin.console.pendingListTitle", "Pending Tuition")}
+            </h2>
+            <p className="text-xs text-foreground/60 mt-1">
+              {t("admin.console.pendingListDesc", "Enrollments awaiting approval")}
+            </p>
+          </div>
           <Link
             href="/admin/enrollments"
-            className="rounded-full border border-secondary px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary transition hover:bg-(--color-secondary-soft)"
+            className="inline-flex items-center gap-2 rounded-full border border-secondary bg-secondary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:bg-secondary/20"
           >
             {t("admin.console.pendingCta", "Manage enrollments")}
+            <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         {pendingLoading ? (
-          <p className="mt-4 text-sm text-foreground/70">
-            {t("admin.console.pendingLoading", "Loading pending enrollments...")}
-          </p>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+          </div>
         ) : pendingEnrollments.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/80 p-6 text-center text-sm text-foreground/70">
-            {t("admin.console.pendingEmpty", "All caught up on approvals.")}
+          <div className="rounded-2xl border border-dashed border-border/70 bg-background/80 p-8 text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-green-500/40 mb-3" />
+            <p className="text-sm text-foreground/70">
+              {t("admin.console.pendingEmpty", "All caught up on approvals.")}
+            </p>
           </div>
         ) : (
-          <ul className="mt-4 space-y-3 text-sm">
-            {pendingEnrollments.slice(0, 5).map((enrollment) => (
-              <li
+          <ul className="space-y-3">
+            {pendingEnrollments.slice(0, 5).map((enrollment, index) => (
+              <motion.li
                 key={`${enrollment.classId}-${enrollment.student.id}-${enrollment.paymentReference ?? ""}`}
-                className="rounded-2xl border border-border/70 px-4 py-3"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 + index * 0.05 }}
+                className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-4 transition hover:bg-amber-500/10 hover:shadow-sm"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-primary">
-                      {[
-                        enrollment.student.firstName,
-                        enrollment.student.lastName,
-                      ]
-                        .filter(Boolean)
-                        .join(" ") || enrollment.student.email}
-                    </p>
-                    <p className="text-xs text-foreground/60">
-                      {enrollment.classTitle}
-                    </p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20">
+                      <AlertCircle className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-primary">
+                        {[
+                          enrollment.student.firstName,
+                          enrollment.student.lastName,
+                        ]
+                          .filter(Boolean)
+                          .join(" ") || enrollment.student.email}
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        {enrollment.classTitle}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right text-xs text-foreground/60">
+                  <div className="text-right">
                     {formatAmount(enrollment.amountPaid, enrollment.currency) && (
-                      <p className="font-semibold text-foreground">
+                      <p className="font-semibold text-primary text-sm">
                         {formatAmount(enrollment.amountPaid, enrollment.currency)}
                       </p>
                     )}
                     {enrollment.paymentReference && (
-                      <p>{enrollment.paymentReference}</p>
+                      <p className="text-xs text-foreground/60 font-mono">
+                        {enrollment.paymentReference}
+                      </p>
                     )}
                   </div>
                 </div>
-              </li>
+              </motion.li>
             ))}
+            {pendingEnrollments.length > 5 && (
+              <li className="text-center pt-2">
+                <Link
+                  href="/admin/enrollments"
+                  className="text-xs font-semibold text-secondary hover:underline"
+                >
+                  {t("admin.console.viewAll", "View all")} {pendingEnrollments.length}{" "}
+                  {t("admin.console.pendingEnrollments", "pending enrollments")} →
+                </Link>
+              </li>
+            )}
           </ul>
         )}
-      </div>
+      </motion.div>
     </section>
   );
 }
-

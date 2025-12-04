@@ -36,6 +36,7 @@ export type ClassSummary = {
   _id: string;
   title: string;
   isLive?: boolean;
+  liveRoomCode?: string | null;
   createdAt?: string;
   instructorId?: string | null;
   description?: string | null;

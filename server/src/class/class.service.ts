@@ -906,6 +906,7 @@ export class ClassService {
         _id: klass._id.toString(),
         title: klass.title,
         isLive: klass.isLive ?? false,
+        liveRoomCode: klass.liveRoomCode ?? null,
         createdAt,
         instructorId: includeInstructor ? instructorId : null,
         tuition: klass.tuition ?? 0,
