@@ -10,7 +10,7 @@ import {
 } from "@/store/api/classApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { Video, ExternalLink, VideoIcon, Globe, Users } from "lucide-react";
+import { Video, ExternalLink, VideoIcon, Globe, Users, Sparkles } from "lucide-react";
 
 type LiveSessionType = "builtin" | "external" | null;
 
@@ -282,23 +282,51 @@ export default function TeacherLiveClassesPage() {
                       <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
                         {t("teacher.live.externalLink", "External Meeting Link")}
                       </label>
-                      <input
-                        type="url"
-                        placeholder="https://meet.google.com/... or https://zoom.us/j/..."
-                        value={liveLinks[klass._id] || ""}
-                        onChange={(e) => {
-                          setLiveLinks((prev) => ({
-                            ...prev,
-                            [klass._id]: e.target.value,
-                          }));
-                        }}
-                        onBlur={(e) => handleLiveLinkBlur(klass._id, e.target.value)}
-                        className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                      />
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <input
+                          type="url"
+                          placeholder="https://meet.jit.si/YourRoom or https://zoom.us/j/..."
+                          value={liveLinks[klass._id] || ""}
+                          onChange={(e) => {
+                            setLiveLinks((prev) => ({
+                              ...prev,
+                              [klass._id]: e.target.value,
+                            }));
+                          }}
+                          onBlur={(e) => handleLiveLinkBlur(klass._id, e.target.value)}
+                          className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const jitsiUrl = `https://meet.jit.si/abelbegena-${klass._id}`;
+                            setLiveLinks((prev) => ({
+                              ...prev,
+                              [klass._id]: jitsiUrl,
+                            }));
+                            void handleLiveLinkBlur(klass._id, jitsiUrl);
+                            pushToast({
+                              title: t(
+                                "teacher.live.jitsiGenerated",
+                                "Jitsi room link generated",
+                              ),
+                              description: t(
+                                "teacher.live.jitsiGeneratedDesc",
+                                "We created a reusable Jitsi room for this class.",
+                              ),
+                              variant: "success",
+                            });
+                          }}
+                          className="mt-1 inline-flex items-center justify-center gap-1 rounded-full border border-secondary/40 bg-secondary/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-secondary transition hover:bg-secondary/20 sm:mt-0"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          {t("teacher.live.useJitsi", "Use Jitsi")}
+                        </button>
+                      </div>
                       <p className="mt-1 text-xs text-foreground/60">
                         {t(
                           "teacher.live.externalHint",
-                          "Paste Zoom, Google Meet, or other meeting platform link",
+                          "Paste or generate a Zoom, Google Meet, or Jitsi link students can open.",
                         )}
                       </p>
                     </motion.div>

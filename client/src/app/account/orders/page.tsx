@@ -97,7 +97,11 @@ export default function OrdersPage() {
               {t("orders.page.error")}
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.location.reload();
+                }
+              }}
               className="mt-4 rounded-full border border-red-500/50 px-6 py-2 text-sm text-red-500 transition hover:bg-red-500/10"
             >
               {t("button.retry")}

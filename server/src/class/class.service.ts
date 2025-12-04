@@ -280,11 +280,11 @@ export class ClassService {
         liveLink = classEntity.liveRoomCode;
       } else if (classEntity.liveRoomCode === 'builtin') {
         // Built-in platform - construct URL
-        const baseUrl =
-          this.configService.get<string>('MEETING_PROVIDER_BASE_URL') ?? '';
-        const sanitizedBase = baseUrl.endsWith('/')
-          ? baseUrl.slice(0, -1)
-          : baseUrl;
+    const baseUrl =
+      this.configService.get<string>('MEETING_PROVIDER_BASE_URL') ?? '';
+    const sanitizedBase = baseUrl.endsWith('/')
+      ? baseUrl.slice(0, -1)
+      : baseUrl;
         liveLink = sanitizedBase
           ? `${sanitizedBase}/${String(classEntity._id)}`
           : null;
