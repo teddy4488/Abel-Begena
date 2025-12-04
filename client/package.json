@@ -37,7 +37,7 @@
     "@types/react-dom": "^19",
     "@types/simple-peer": "^9.11.9",
     "babel-plugin-react-compiler": "1.0.0",
-    "baseline-browser-mapping": "^2.8.32",
+    "baseline-browser-mapping": "^2.9.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "rimraf": "^6.1.2",

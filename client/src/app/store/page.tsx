@@ -104,29 +104,29 @@ export default function StorePage() {
   };
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto max-w-6xl space-y-10">
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto max-w-6xl space-y-6 sm:space-y-10">
         <motion.header
           style={{ y: heroTranslate, opacity: heroOpacity }}
-          className="space-y-4 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_100px_rgba(34,6,9,0.25)]"
+          className="space-y-3 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
         >
           <p className="text-xs uppercase tracking-[0.3em] text-secondary">
             {t("store.page.kicker")}
           </p>
-          <h1 className="text-3xl font-serif text-primary md:text-4xl">
+          <h1 className="text-2xl font-serif text-primary sm:text-3xl md:text-4xl">
             {t("store.page.title")}
           </h1>
-          <p className="text-sm text-foreground/80">
+          <p className="text-xs text-foreground/80 sm:text-sm">
             {t("store.page.subtitle")}
           </p>
-          <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-secondary/70">
+          <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.3em] text-secondary/70 sm:gap-3 sm:text-xs">
             <span>{t("store.page.features.archive")}</span>
             <span>{t("store.page.features.delivery")}</span>
             <span>{t("store.page.features.blessed")}</span>
           </div>
         </motion.header>
 
-        <div className="sticky top-24 z-30 rounded-3xl border border-border bg-background/80 p-5 shadow-lg backdrop-blur">
+        <div className="sticky top-20 z-30 rounded-2xl border border-border bg-background/80 p-3 shadow-lg backdrop-blur sm:top-24 sm:rounded-3xl sm:p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <input
               type="text"
@@ -181,13 +181,13 @@ export default function StorePage() {
               product.promoActive && typeof product.discountPrice === "number";
             const displayPrice = resolvePrice(product);
             return (
-              <motion.div
+                <motion.div
                 key={product._id}
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="group flex flex-col rounded-3xl border border-border bg-surface p-5 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+                className="group flex flex-col rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-5"
               >
                 <Link
                   href={`/store/${product._id}`}

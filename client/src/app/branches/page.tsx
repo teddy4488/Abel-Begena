@@ -17,16 +17,16 @@ export default function BranchesPage() {
   const { data: branches, isLoading, isError, refetch } = useGetBranchesQuery();
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-10 px-6 py-16 md:px-10 lg:px-16">
-      <header className="space-y-4">
+    <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 sm:gap-8 md:px-10 md:py-12 md:gap-10 lg:px-16 lg:py-16">
+      <header className="space-y-3 sm:space-y-4">
         <FadeIn>
           <p className="text-xs uppercase tracking-[0.35em] text-secondary">
             {t("branches.public.kicker", "Branches")}
           </p>
-          <h1 className="mt-1 text-3xl font-serif text-primary md:text-4xl">
+          <h1 className="mt-1 text-2xl font-serif text-primary sm:text-3xl md:text-4xl">
             {t("branches.public.title", "Find the Abel Begena branches")}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-foreground/70">
+          <p className="mt-2 max-w-2xl text-xs text-foreground/70 sm:text-sm">
             {t(
               "branches.public.subtitle",
               "Explore our Addis Ababa studios and heritage branches. Each marker shows the approximate catchment area so you can see which location is closest to you.",
@@ -35,11 +35,11 @@ export default function BranchesPage() {
         </FadeIn>
       </header>
 
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative h-[360px] overflow-hidden rounded-4xl border border-border bg-surface shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="relative h-[280px] overflow-hidden rounded-2xl border border-border bg-surface shadow-lg sm:h-[320px] sm:rounded-3xl md:h-[360px] md:rounded-4xl md:shadow-[0_40px_80px_var(--color-primary-glow)]"
         >
           <div className="absolute inset-0 bg-linear-to-br from-background via-surface to-(--color-secondary-soft) opacity-70" />
           <div className="relative h-full">
@@ -69,7 +69,7 @@ export default function BranchesPage() {
           </div>
         </motion.div>
 
-        <FadeIn className="space-y-4 rounded-4xl border border-border bg-surface p-6 shadow-[0_40px_80px_var(--color-primary-glow)]">
+        <FadeIn className="space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-6 md:rounded-4xl md:shadow-[0_40px_80px_var(--color-primary-glow)]">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
             {t("branches.public.listTitle", "Studios & heritage branches")}
           </p>

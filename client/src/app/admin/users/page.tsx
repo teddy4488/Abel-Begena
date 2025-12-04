@@ -246,9 +246,9 @@ export default function AdminUsersPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-surface p-4"
+        className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-4"
       >
-        <div className="flex-1 min-w-[200px]">
+        <div className="flex-1 min-w-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
             <input
@@ -262,7 +262,7 @@ export default function AdminUsersPage() {
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
-          className="rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+          className="w-full rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
         >
           <option value="all">{t("admin.users.filter.allRoles", "All Roles")}</option>
           <option value="User">{t("admin.users.filter.user", "User")}</option>
@@ -272,7 +272,7 @@ export default function AdminUsersPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+          className="w-full rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
         >
           <option value="all">{t("admin.users.filter.allStatus", "All Status")}</option>
           <option value="active">{t("admin.users.filter.active", "Active")}</option>
@@ -280,12 +280,12 @@ export default function AdminUsersPage() {
         </select>
       </motion.div>
 
-      {/* Users Table */}
+      {/* Users Table - Desktop */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="overflow-x-auto rounded-3xl border border-border bg-surface shadow-lg"
+        className="hidden lg:block overflow-x-auto rounded-3xl border border-border bg-surface shadow-lg"
       >
         <table className="w-full text-left text-sm">
           <thead className="bg-background/50">
@@ -427,6 +427,138 @@ export default function AdminUsersPage() {
             )}
           </tbody>
         </table>
+      </motion.div>
+
+      {/* Users Cards - Mobile */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="lg:hidden space-y-4"
+      >
+        <AnimatePresence>
+          {filtered.map((user, index) => {
+            const isActive = (user as { isActive?: boolean }).isActive ?? true;
+            return (
+              <motion.div
+                key={user._id ?? user.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ delay: index * 0.05 }}
+                className="rounded-2xl border border-border bg-surface p-4 shadow-lg"
+              >
+                <div className="flex items-start gap-3 mb-4">
+                  {user.avatarUrl ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={user.email}
+                      width={48}
+                      height={48}
+                      className="h-12 w-12 rounded-full object-cover border-2 border-border"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 text-secondary border-2 border-border">
+                      {(user.firstName?.[0] ?? user.email[0] ?? "").toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-primary truncate">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="text-xs text-foreground/60 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
+                      {t("admin.users.table.role", "Role")}
+                    </p>
+                    <select
+                      value={user.role ?? "User"}
+                      onChange={(e) => handleRoleChange(user, e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
+                    >
+                      {["User", "Teacher", "Admin"].map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {user.role === "Teacher" && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
+                        {t("admin.users.table.teacherStatus", "Teacher Status")}
+                      </p>
+                      <select
+                        value={(user as { teacherStatus?: string }).teacherStatus ?? "pending"}
+                        onChange={(e) => handleTeacherStatus(user, e.target.value)}
+                        className="w-full rounded-xl border border-border bg-background/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
+                      >
+                        <option value="pending">{t("admin.users.pending", "Pending")}</option>
+                        <option value="approved">{t("admin.users.approved", "Approved")}</option>
+                        <option value="rejected">{t("admin.users.rejected", "Rejected")}</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
+                      {t("admin.users.table.activity", "Activity")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleActiveToggle(user)}
+                      className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                        isActive
+                          ? "bg-green-500/10 text-green-600"
+                          : "bg-rose-500/10 text-rose-600"
+                      }`}
+                    >
+                      {isActive ? (
+                        <>
+                          <CheckCircle2 className="w-3 h-3" />
+                          {t("admin.users.active", "Active")}
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-3 h-3" />
+                          {t("admin.users.suspended", "Suspended")}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(user._id ?? user.id ?? "", user.email)}
+                    disabled={deletingId === (user._id ?? user.id ?? "")}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deletingId === (user._id ?? user.id ?? "") ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        {t("admin.users.deleting", "Deleting...")}
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-3 h-3" />
+                        {t("admin.users.delete", "Delete")}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+        {!filtered.length && (
+          <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+            <UserX className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-foreground/60">
+              {t("admin.users.noUsers", "No users found matching your filters.")}
+            </p>
+          </div>
+        )}
       </motion.div>
     </section>
   );

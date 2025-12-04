@@ -158,21 +158,25 @@ export default function TeacherLiveClassesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
+    <div className="space-y-4 sm:space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 sm:mb-6"
+      >
         <p className="text-xs uppercase tracking-[0.3em] text-secondary">
           {t("teacher.live.kicker", "Live Sessions")}
         </p>
-        <h1 className="text-3xl font-serif text-primary">
+        <h1 className="text-2xl font-serif text-primary sm:text-3xl">
           {t("teacher.live.title", "Manage Live Classes")}
         </h1>
-        <p className="mt-2 text-sm text-foreground/70">
+        <p className="mt-2 text-xs text-foreground/70 sm:text-sm">
           {t(
             "teacher.live.subtitle",
             "Start and stop live class sessions. Choose between built-in platform or external links (Zoom, Google Meet, etc.). Only enrolled students can access live rooms.",
           )}
         </p>
-      </div>
+      </motion.div>
 
       {isLoading ? (
         <p className="text-sm text-foreground/70">

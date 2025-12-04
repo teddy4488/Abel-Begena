@@ -49,9 +49,9 @@ export default function HeritageArticlePage() {
 
   if (isLoading) {
     return (
-      <article className="min-h-screen bg-background text-foreground">
-        <Skeleton className="h-[420px] w-full rounded-none" />
-        <div className="mx-auto max-w-3xl space-y-6 px-6 py-12">
+      <article className="min-h-screen bg-background text-foreground transition-colors">
+        <Skeleton className="h-[240px] w-full rounded-none sm:h-[320px] md:h-[420px]" />
+        <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6 sm:py-12">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-10 w-3/4" />
           <Skeleton className="h-4 w-48" />
@@ -69,15 +69,15 @@ export default function HeritageArticlePage() {
 
   if (error || !post) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-16 text-foreground transition-colors">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <p className="text-6xl">📜</p>
-          <p className="mt-4 text-lg font-semibold text-primary">
-            This article could not be found.
+          <p className="text-4xl sm:text-6xl">📜</p>
+          <p className="mt-4 text-base font-semibold text-primary sm:text-lg">
+            {t("heritage.single.notFound", "This article could not be found.")}
           </p>
           <button
             type="button"
@@ -85,7 +85,7 @@ export default function HeritageArticlePage() {
             className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_20px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5"
           >
             <ArrowLeft className="h-4 w-4" />
-            {t("heritage.single.back")}
+            {t("heritage.single.back", "Back to Heritage")}
           </button>
         </motion.div>
       </div>

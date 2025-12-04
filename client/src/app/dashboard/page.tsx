@@ -134,42 +134,42 @@ export default function DashboardPage() {
   };
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto max-w-6xl space-y-12">
-        <header className="space-y-3 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_100px_rgba(34,6,9,0.25)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto max-w-6xl space-y-8 md:space-y-12">
+        <header className="space-y-3 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1">
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
                 {t("dashboard.kicker", "My Conservatory")}
               </p>
-              <h1 className="text-3xl font-serif text-primary md:text-4xl">
+              <h1 className="text-2xl font-serif text-primary sm:text-3xl md:text-4xl">
                 {t("dashboard.title", "Student Dashboard")}
               </h1>
-              <p className="text-foreground/75">
+              <p className="mt-1 text-sm text-foreground/75 sm:text-base">
                 {t(
                   "dashboard.description",
                   "Access your live rooms, download materials, and keep shopping for handcrafted instruments.",
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/80 px-4 py-2">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/80 px-3 py-2 sm:rounded-2xl sm:px-4">
               {user?.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={user.avatarUrl}
                   alt={user.email}
-                  className="h-12 w-12 rounded-full object-cover"
+                  className="h-10 w-10 rounded-full object-cover sm:h-12 sm:w-12"
                 />
               ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10 text-sm text-secondary sm:h-12 sm:w-12 sm:text-base">
                   {(user?.firstName?.[0] ?? user?.email?.[0] ?? "").toUpperCase()}
                 </div>
               )}
-              <div>
-                <p className="text-sm font-semibold text-primary">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-primary sm:text-sm">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="text-xs text-foreground/70">{user?.email}</p>
+                <p className="truncate text-[10px] text-foreground/70 sm:text-xs">{user?.email}</p>
               </div>
             </div>
           </div>
@@ -196,33 +196,33 @@ export default function DashboardPage() {
           </p>
         )}
 
-        <div className="space-y-6 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-6 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-[32px] sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
                 {t("dashboard.section.learning", "My learning")}
               </p>
-              <h2 className="text-2xl font-serif text-primary">
+              <h2 className="text-xl font-serif text-primary sm:text-2xl">
                 {t("dashboard.section.active", "Active cohorts")}
               </h2>
             </div>
             <Link
               href="/store"
-              className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-widest"
+              className="w-full rounded-full border border-border px-4 py-2 text-center text-xs font-semibold uppercase tracking-widest transition hover:bg-secondary/10 sm:w-auto"
             >
               {t("dashboard.cta.store", "Visit Store")}
             </Link>
           </div>
 
           {!isLoading && !classes.length && !error && (
-            <div className="rounded-3xl border border-border bg-background/70 p-6 text-center">
-              <p className="text-lg font-semibold text-primary">
+            <div className="rounded-2xl border border-border bg-background/70 p-4 text-center sm:rounded-3xl sm:p-6">
+              <p className="text-base font-semibold text-primary sm:text-lg">
                 {t(
                   "dashboard.empty.title",
                   "You are not enrolled in any classes yet.",
                 )}
               </p>
-              <p className="mt-2 text-sm text-foreground/70">
+              <p className="mt-2 text-xs text-foreground/70 sm:text-sm">
                 {t(
                   "dashboard.empty.description",
                   "Browse our offerings to begin your musical journey.",
@@ -230,20 +230,20 @@ export default function DashboardPage() {
               </p>
               <Link
                 href="/classes"
-                className="mt-4 inline-flex items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:bg-(--color-secondary-soft)"
+                className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:bg-(--color-secondary-soft) sm:w-auto"
               >
                 {t("dashboard.empty.cta", "Browse classes")}
               </Link>
             </div>
           )}
 
-          <div className="grid gap-6">
+          <div className="grid gap-4 sm:gap-6">
             {classes.map((classAccess) => (
               <div
                 key={classAccess.class._id}
-                className="rounded-3xl border border-border bg-background/70 p-5"
+                className="rounded-2xl border border-border bg-background/70 p-4 sm:rounded-3xl sm:p-5"
               >
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-3">
                       {renderStatusChip(classAccess.enrollment?.status ?? null)}
@@ -253,7 +253,7 @@ export default function DashboardPage() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-2xl font-serif text-primary">
+                    <h3 className="text-xl font-serif text-primary sm:text-2xl">
                       {classAccess.class.title}
                     </h3>
                     {classAccess.enrollment?.paymentReference && (
@@ -269,7 +269,7 @@ export default function DashboardPage() {
                   {classAccess.isLive && classAccess.liveLink ? (
                     <Link
                       href={`/live/class/${classAccess.class._id}`}
-                      className="inline-flex items-center justify-center rounded-full bg-secondary px-6 py-3 text-sm font-semibold text-primary shadow-lg shadow-secondary/40 transition hover:-translate-y-0.5"
+                      className="w-full inline-flex items-center justify-center rounded-full bg-secondary px-6 py-3 text-sm font-semibold text-primary shadow-lg shadow-secondary/40 transition hover:-translate-y-0.5 sm:w-auto"
                     >
                       {t("dashboard.card.join", "Join Live Class")}
                     </Link>

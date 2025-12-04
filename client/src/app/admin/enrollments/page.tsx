@@ -95,9 +95,9 @@ export default function AdminEnrollmentsPage() {
   };
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-col gap-3 rounded-[32px] border border-border bg-surface/95 p-6 shadow-[0_25px_60px_rgba(34,6,9,0.16)] lg:flex-row lg:items-center lg:justify-between">
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:gap-6">
+        <header className="flex flex-col gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-lg sm:rounded-[32px] sm:p-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("admin.enrollments.kicker", "Payment review")}
@@ -126,19 +126,19 @@ export default function AdminEnrollmentsPage() {
           </button>
         </header>
 
-        <div className="rounded-[32px] border border-border bg-surface/90 p-5 shadow-[0_20px_40px_rgba(34,6,9,0.12)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 items-center gap-3">
-              <div className="flex flex-1 items-center rounded-full border border-border bg-background px-4 py-2">
+        <div className="rounded-2xl border border-border bg-surface/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-center rounded-full border border-border bg-background px-3 py-2 sm:px-4">
                 <Search className="h-4 w-4 text-secondary" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t("admin.enrollments.search", "Search student or class")}
-                  className="ml-2 flex-1 bg-transparent text-sm outline-none"
+                  className="ml-2 flex-1 bg-transparent text-xs outline-none sm:text-sm"
                 />
               </div>
-              <div className="flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground/70">
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold uppercase tracking-widest text-foreground/70 sm:px-4">
                 <Filter className="h-4 w-4" />
                 <select
                   value={statusFilter}
@@ -154,7 +154,7 @@ export default function AdminEnrollmentsPage() {
             </div>
             <Link
               href="/classes"
-              className="inline-flex items-center justify-center rounded-full border border-secondary px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary transition hover:bg-(--color-secondary-soft)"
+              className="w-full inline-flex items-center justify-center rounded-full border border-secondary px-4 py-2 text-xs font-semibold uppercase tracking-widest text-secondary transition hover:bg-(--color-secondary-soft) sm:w-auto"
             >
               {t("admin.enrollments.viewCatalog", "View classes")}
             </Link>
@@ -174,8 +174,10 @@ export default function AdminEnrollmentsPage() {
           )}
 
           {!isLoading && !isError && (
-            <div className="mt-6 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+            <>
+              {/* Desktop Table */}
+              <div className="mt-6 hidden lg:block overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
                     <th className="px-4 py-3">{t("admin.enrollments.student", "Student")}</th>
@@ -292,8 +294,139 @@ export default function AdminEnrollmentsPage() {
                 </tbody>
               </table>
 
+                {!filtered.length && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center">
+                      <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 p-6 text-center text-sm text-foreground/70">
+                        {t(
+                          "admin.enrollments.noMatches",
+                          "No enrollments match your filters.",
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="mt-6 lg:hidden space-y-4">
+              {filtered.map((enrollment) => {
+                const amountLabel = formatAmount(
+                  enrollment.amountPaid,
+                  enrollment.currency,
+                );
+                const status = enrollment.status ?? "pending";
+                return (
+                  <motion.div
+                    key={`${enrollment.classId}-${enrollment.student.id}-${enrollment.paymentReference ?? ""}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl border border-border bg-surface p-4 shadow-lg"
+                  >
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
+                          {t("admin.enrollments.student", "Student")}
+                        </p>
+                        <p className="font-semibold text-primary">
+                          {[
+                            enrollment.student.firstName,
+                            enrollment.student.lastName,
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || enrollment.student.email}
+                        </p>
+                        <p className="text-xs text-foreground/60 mt-1">
+                          {enrollment.student.email}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
+                          {t("admin.enrollments.class", "Class")}
+                        </p>
+                        <p className="font-semibold text-foreground">
+                          {enrollment.classTitle}
+                        </p>
+                        {enrollment.instructor && (
+                          <p className="text-xs text-foreground/60 mt-1">
+                            {t("admin.enrollments.instructor", "Instructor")}:{" "}
+                            {enrollment.instructor}
+                          </p>
+                        )}
+                        {enrollment.enrolledAt && (
+                          <p className="text-xs text-foreground/60 mt-1">
+                            {t("admin.enrollments.enrolledAt", "Enrolled:")}{" "}
+                            {new Date(enrollment.enrolledAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
+                          {t("admin.enrollments.payment", "Payment")}
+                        </p>
+                        {amountLabel ? (
+                          <p className="font-semibold text-foreground">{amountLabel}</p>
+                        ) : (
+                          <p className="text-xs text-foreground/60 italic">
+                            {t("admin.enrollments.noPayment", "Awaiting amount")}
+                          </p>
+                        )}
+                        {enrollment.paymentReference && (
+                          <p className="text-xs text-foreground/60 mt-1 font-mono">
+                            {enrollment.paymentReference}
+                          </p>
+                        )}
+                        {enrollment.paymentMethod && (
+                          <p className="text-xs text-foreground/60 mt-1 capitalize">
+                            {enrollment.paymentMethod}
+                          </p>
+                        )}
+                        {enrollment.receiptUrl && (
+                          <a
+                            href={enrollment.receiptUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-secondary underline underline-offset-2 mt-1 inline-block"
+                          >
+                            {t("admin.enrollments.viewReceipt", "View Receipt")}
+                          </a>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-secondary/70 mb-2">
+                          {t("admin.enrollments.status", "Status")}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {statusOptions.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              disabled={isUpdating || option === status}
+                              onClick={() => handleStatusChange(enrollment, option)}
+                              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                                option === status
+                                  ? "border-border bg-border/40 text-foreground/70"
+                                  : "border-border text-foreground hover:bg-(--color-secondary-soft)"
+                              } disabled:opacity-50`}
+                            >
+                              {option === "active" ? (
+                                <CheckCircle className="h-3 w-3" />
+                              ) : (
+                                <Clock className="h-3 w-3" />
+                              )}
+                              {t(`classes.status.${option}`, option)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
               {!filtered.length && (
-                <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 p-6 text-center text-sm text-foreground/70">
+                <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 p-6 text-center text-sm text-foreground/70">
                   {t(
                     "admin.enrollments.noMatches",
                     "No enrollments match your filters.",
@@ -301,6 +434,7 @@ export default function AdminEnrollmentsPage() {
                 </div>
               )}
             </div>
+            </>
           )}
         </div>
       </div>

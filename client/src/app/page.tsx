@@ -182,8 +182,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors">
-      <main className="mx-auto flex max-w-6xl flex-col gap-20 px-6 py-16 md:px-10 lg:px-16">
-        <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface px-6 py-14 shadow-[0_60px_120px_var(--color-primary-glow)] transition-colors md:px-12 lg:px-16">
+      <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
+        <section className="relative overflow-hidden rounded-2xl border border-border bg-surface px-4 py-8 shadow-lg transition-colors sm:rounded-[32px] sm:px-6 sm:py-12 md:px-12 md:py-14 lg:px-16">
           <div className="absolute inset-0 bg-linear-to-tr from-background via-surface to-(--color-secondary-soft) opacity-80" />
           <div className="relative grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">

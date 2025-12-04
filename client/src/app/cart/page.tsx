@@ -58,12 +58,12 @@ export default function CartPage() {
   };
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto max-w-4xl space-y-8">
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto max-w-4xl space-y-6 sm:space-y-8">
         <motion.header
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-2 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="space-y-2 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
@@ -154,10 +154,10 @@ export default function CartPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -100 }}
                   transition={{ delay: index * 0.1 }}
-                  className="group flex flex-col gap-4 rounded-3xl border border-border bg-surface p-6 shadow-[0_15px_40px_var(--color-primary-glow)] transition hover:border-secondary/30 sm:flex-row sm:items-center"
+                  className="group flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4 shadow-lg transition hover:border-secondary/30 sm:rounded-3xl sm:flex-row sm:items-center sm:p-6"
                 >
                   {/* Product Image */}
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-border bg-background/80">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-background/80 sm:h-24 sm:w-24 sm:rounded-2xl">
                     {item.product?.images?.[0] ? (
                       <Image
                         src={item.product.images[0]}

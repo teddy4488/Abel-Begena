@@ -157,15 +157,15 @@ export default function TeacherMaterialsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="mb-4 sm:mb-6">
         <p className="text-xs uppercase tracking-[0.3em] text-secondary">
           {t("teacher.materials.kicker", "Class Materials")}
         </p>
-        <h1 className="text-3xl font-serif text-primary">
+        <h1 className="text-2xl font-serif text-primary sm:text-3xl">
           {t("teacher.materials.title", "Upload Materials")}
         </h1>
-        <p className="mt-2 text-sm text-foreground/70">
+        <p className="mt-2 text-xs text-foreground/70 sm:text-sm">
           {t(
             "teacher.materials.subtitle",
             "Upload PDFs, slides, videos, and other class materials for your students.",
@@ -173,17 +173,17 @@ export default function TeacherMaterialsPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Upload Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:p-6"
         >
-          <h2 className="mb-4 text-xl font-serif text-primary">
+          <h2 className="mb-4 text-lg font-serif text-primary sm:text-xl">
             {t("teacher.materials.uploadTitle", "Upload New Material")}
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("teacher.materials.selectClass", "Select Class")}

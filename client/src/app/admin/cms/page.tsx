@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   useCreateBlockMutation,
   useDeleteBlockMutation,
@@ -8,6 +9,9 @@ import {
   useUpdateBlockMutation,
   type CmsBlock,
 } from "@/store/api/cmsApi";
+import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
+import { FileText, Edit, Trash2, Loader2, Save, X } from "lucide-react";
 
 const emptyBlock = {
   key: "",
@@ -18,12 +22,14 @@ const emptyBlock = {
 };
 
 export default function AdminCmsPage() {
-  const { data: blocks } = useGetAllBlocksQuery();
-  const [createBlock] = useCreateBlockMutation();
-  const [updateBlock] = useUpdateBlockMutation();
-  const [deleteBlock] = useDeleteBlockMutation();
+  const { data: blocks, isLoading } = useGetAllBlocksQuery();
+  const [createBlock, { isLoading: isCreating }] = useCreateBlockMutation();
+  const [updateBlock, { isLoading: isUpdating }] = useUpdateBlockMutation();
+  const [deleteBlock, { isLoading: isDeleting }] = useDeleteBlockMutation();
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBlock);
+  const { pushToast } = useToast();
+  const { t } = useI18n();
 
   const startEdit = (block: CmsBlock) => {
     setEditingKey(block.key);
@@ -43,47 +49,114 @@ export default function AdminCmsPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (editingKey) {
-      await updateBlock({
-        key: editingKey,
-        data: { label: form.label, description: form.description, en: form.en, am: form.am },
-      });
-    } else {
-      await createBlock({
-        key: form.key,
-        label: form.label,
-        description: form.description,
-        content: { en: form.en, am: form.am },
+    try {
+      if (editingKey) {
+        await updateBlock({
+          key: editingKey,
+          data: { label: form.label, description: form.description, en: form.en, am: form.am },
+        }).unwrap();
+        pushToast({
+          title: t("admin.cms.toast.updated", "Block updated"),
+          variant: "success",
+        });
+      } else {
+        await createBlock({
+          key: form.key,
+          label: form.label,
+          description: form.description,
+          content: { en: form.en, am: form.am },
+        }).unwrap();
+        pushToast({
+          title: t("admin.cms.toast.created", "Block created"),
+          variant: "success",
+        });
+      }
+      reset();
+    } catch (error) {
+      console.error(error);
+      pushToast({
+        title: t("admin.cms.toast.error", "Unable to save block"),
+        variant: "error",
       });
     }
-    reset();
+  };
+
+  const handleDelete = async (key: string) => {
+    if (
+      !confirm(
+        t(
+          "admin.cms.confirmDelete",
+          "Are you sure you want to delete this content block? This action cannot be undone.",
+        ),
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteBlock(key).unwrap();
+      pushToast({
+        title: t("admin.cms.toast.deleted", "Block deleted"),
+        variant: "success",
+      });
+    } catch (error) {
+      console.error(error);
+      pushToast({
+        title: t("admin.cms.toast.deleteError", "Unable to delete block"),
+        variant: "error",
+      });
+    }
   };
 
   return (
-    <section className="space-y-6">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-3xl border border-border bg-surface p-6"
+    <section className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 sm:mb-6"
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
-              CMS
-            </p>
-            <h2 className="text-xl font-serif text-primary">
-              {editingKey ? "Update copy block" : "Create copy block"}
-            </h2>
-          </div>
-          {editingKey && (
-            <button
-              type="button"
-              onClick={reset}
-              className="text-xs uppercase tracking-[0.3em] text-secondary"
-            >
-              Reset
-            </button>
+        <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+          {t("admin.cms.kicker", "Content Management")}
+        </p>
+        <h1 className="text-2xl font-serif text-primary sm:text-3xl md:text-4xl">
+          {t("admin.cms.title", "CMS Blocks")}
+        </h1>
+        <p className="mt-2 text-xs text-foreground/70 sm:text-sm">
+          {t(
+            "admin.cms.subtitle",
+            "Manage reusable content blocks for the website. These blocks can be used across pages.",
           )}
-        </div>
+        </p>
+      </motion.div>
+
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+        <motion.form
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onSubmit={handleSubmit}
+          className="space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
+                {t("admin.cms.cms", "CMS")}
+              </p>
+              <h2 className="text-lg font-serif text-primary sm:text-xl">
+                {editingKey
+                  ? t("admin.cms.updateBlock", "Update copy block")
+                  : t("admin.cms.createBlock", "Create copy block")}
+              </h2>
+            </div>
+            {editingKey && (
+              <button
+                type="button"
+                onClick={reset}
+                className="text-xs uppercase tracking-[0.3em] text-secondary hover:underline"
+              >
+                {t("button.reset", "Reset")}
+              </button>
+            )}
+          </div>
         {!editingKey && (
           <input
             required

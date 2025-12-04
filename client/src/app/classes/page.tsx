@@ -368,12 +368,12 @@ export default function ClassesPage() {
       </div>
 
       {selectedClass && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-0 py-0 backdrop-blur sm:items-center sm:px-4 sm:py-8">
           <div className="absolute inset-0" onClick={handleClose} />
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative z-10 w-full max-w-lg rounded-3xl border border-border bg-surface/95 p-6 shadow-2xl"
+            className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-3xl border border-border bg-surface/95 p-4 shadow-2xl sm:max-w-lg sm:rounded-3xl sm:p-6"
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
@@ -395,7 +395,7 @@ export default function ClassesPage() {
 
             <form className="space-y-4" onSubmit={handleSubmit}>
               {/* Payment option selection */}
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                 <button
                   type="button"
                   onClick={() =>

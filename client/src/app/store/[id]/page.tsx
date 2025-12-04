@@ -2,11 +2,15 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import {
   useAddToCartMutation,
   useGetProductByIdQuery,
 } from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
+import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
+import { ShoppingCart, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -16,7 +20,8 @@ export default function ProductDetailPage() {
   const { data, isLoading, error } = useGetProductByIdQuery(productId);
   const [addToCart, { isLoading: isAdding }] = useAddToCartMutation();
   const [quantity, setQuantity] = useState(1);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const { pushToast } = useToast();
+  const { t } = useI18n();
 
   const attributes = useMemo(() => {
     if (!data?.attributes) return [] as [string, unknown][];
@@ -31,35 +36,51 @@ export default function ProductDetailPage() {
 
     try {
       await addToCart({ productId, quantity }).unwrap();
-      setFeedback("Added to cart");
-      setTimeout(() => setFeedback(null), 2500);
+      pushToast({
+        title: t("store.toast.added", "Added to cart"),
+        description: t("store.toast.addedDesc", "Product added successfully"),
+        variant: "success",
+      });
     } catch {
-      setFeedback("Unable to add to cart. Please try again.");
-      setTimeout(() => setFeedback(null), 3000);
+      pushToast({
+        title: t("store.toast.error", "Error"),
+        description: t("store.toast.errorDesc", "Unable to add to cart. Please try again."),
+        variant: "error",
+      });
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-        <p>Loading product...</p>
-      </div>
+      <section className="flex min-h-screen items-center justify-center bg-background px-4 py-16 text-foreground">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-secondary mb-4" />
+          <p className="text-sm text-foreground/70">{t("store.loading", "Loading product...")}</p>
+        </div>
+      </section>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-primary">Product not found</p>
+      <section className="flex min-h-screen items-center justify-center bg-background px-4 py-16 text-foreground">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <p className="text-lg font-semibold text-primary mb-2">
+            {t("store.notFound", "Product not found")}
+          </p>
           <button
             onClick={() => router.push("/store")}
-            className="mt-4 rounded-full bg-primary px-6 py-2 text-primary-foreground"
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:brightness-95"
           >
-            Back to Store
+            <ArrowLeft className="h-4 w-4" />
+            {t("store.backToStore", "Back to Store")}
           </button>
-        </div>
-      </div>
+        </motion.div>
+      </section>
     );
   }
 
@@ -68,10 +89,10 @@ export default function ProductDetailPage() {
   const displayPrice = onPromo ? data.discountPrice! : data.price;
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto flex max-w-5xl flex-col gap-10 lg:flex-row">
-        <div className="flex-1 space-y-4">
-          <div className="aspect-square overflow-hidden rounded-3xl border border-border bg-background/80">
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 sm:gap-8 lg:flex-row lg:gap-10">
+        <div className="flex-1 space-y-3 sm:space-y-4">
+          <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-background/80 sm:rounded-3xl">
             {data.images?.length ? (
               <div
                 className="h-full w-full bg-cover bg-center"
@@ -96,16 +117,16 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        <div className="flex-1 space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-[0_25px_60px_rgba(45,10,18,0.08)]">
+        <div className="flex-1 space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:space-y-6 sm:p-6 md:p-8">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
               {data.instrumentType}
             </p>
-            <h1 className="text-3xl font-serif text-primary">{data.name}</h1>
-            <p className="text-sm text-foreground/70">{data.shortDescription}</p>
+            <h1 className="text-2xl font-serif text-primary sm:text-3xl">{data.name}</h1>
+            <p className="text-xs text-foreground/70 sm:text-sm">{data.shortDescription}</p>
           </div>
 
-          <div className="text-3xl font-semibold text-secondary">
+          <div className="text-2xl font-semibold text-secondary sm:text-3xl">
             {onPromo && (
               <span className="mr-3 text-lg text-foreground/50 line-through">
                 {data.price.toLocaleString("en-US", {
@@ -122,44 +143,53 @@ export default function ProductDetailPage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-foreground/70">Quantity</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <span className="text-xs font-semibold uppercase tracking-wide text-secondary sm:text-sm">
+              {t("store.quantity", "Quantity")}
+            </span>
             <div className="flex items-center rounded-full border border-border">
               <button
                 onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                className="px-4 py-2 text-lg"
+                className="px-3 py-2 text-base transition hover:bg-secondary/10 sm:px-4 sm:text-lg"
+                aria-label={t("store.decreaseQuantity", "Decrease quantity")}
               >
                 -
               </button>
-              <span className="w-12 text-center text-lg font-semibold">
+              <span className="w-12 text-center text-base font-semibold sm:text-lg">
                 {quantity}
               </span>
               <button
                 onClick={() => setQuantity((prev) => prev + 1)}
-                className="px-4 py-2 text-lg"
+                className="px-3 py-2 text-base transition hover:bg-secondary/10 sm:px-4 sm:text-lg"
+                aria-label={t("store.increaseQuantity", "Increase quantity")}
               >
                 +
               </button>
             </div>
           </div>
 
-          <button
+          <motion.button
             onClick={handleAddToCart}
             disabled={isAdding}
-            className="w-full rounded-full bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            whileTap={{ scale: 0.97 }}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 sm:py-4 sm:text-base"
           >
-            {isAdding ? "Adding..." : "Add to Cart"}
-          </button>
-
-          {feedback && (
-            <div className="rounded-2xl border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-secondary">
-              {feedback}
-            </div>
-          )}
+            {isAdding ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("store.adding", "Adding...")}
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="h-4 w-4" />
+                {t("store.addToCart", "Add to Cart")}
+              </>
+            )}
+          </motion.button>
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
-              Instrument Details
+            <p className="text-xs font-semibold uppercase tracking-wide text-secondary sm:text-sm">
+              {t("store.details", "Instrument Details")}
             </p>
             {attributes.length ? (
               <dl className="space-y-2 text-sm text-foreground/80">
@@ -176,8 +206,8 @@ export default function ProductDetailPage() {
                 ))}
               </dl>
             ) : (
-              <p className="text-sm text-foreground/60">
-                No additional attributes provided.
+              <p className="text-xs text-foreground/60 sm:text-sm">
+                {t("store.noAttributes", "No additional attributes provided.")}
               </p>
             )}
           </div>

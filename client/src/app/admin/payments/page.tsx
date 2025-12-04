@@ -257,9 +257,9 @@ export default function AdminPaymentsPage() {
   };
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-col gap-3 rounded-[32px] border border-border bg-surface/95 p-6 shadow-[0_25px_60px_rgba(34,6,9,0.16)] lg:flex-row lg:items-center lg:justify-between">
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:gap-6">
+        <header className="flex flex-col gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-lg sm:rounded-[32px] sm:p-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("admin.payments.kicker", "Treasury overview")}
@@ -285,7 +285,7 @@ export default function AdminPaymentsPage() {
           </button>
         </header>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
           <div className="rounded-3xl border border-border bg-surface p-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary/70">
               {t("admin.payments.summary.totalCollected", "Total collected")}
@@ -317,10 +317,10 @@ export default function AdminPaymentsPage() {
           </div>
         </div>
 
-        <div className="rounded-[32px] border border-border bg-surface/90 p-5 shadow-[0_20px_40px_rgba(34,6,9,0.12)]">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center">
-              <div className="flex flex-1 items-center rounded-full border border-border bg-background px-4 py-2">
+        <div className="rounded-2xl border border-border bg-surface/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-center rounded-full border border-border bg-background px-3 py-2 sm:px-4">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -328,10 +328,10 @@ export default function AdminPaymentsPage() {
                     "admin.payments.searchPlaceholder",
                     "Search by student, class, reference, or method",
                   )}
-                  className="flex-1 bg-transparent text-sm outline-none"
+                  className="flex-1 bg-transparent text-xs outline-none sm:text-sm"
                 />
               </div>
-              <div className="flex flex-wrap gap-2 md:ml-4">
+              <div className="flex flex-wrap gap-2 sm:ml-4">
                 <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground/70">
                   <Filter className="h-4 w-4" />
                   <select

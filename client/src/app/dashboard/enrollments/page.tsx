@@ -54,9 +54,9 @@ export default function MyEnrollmentsPage() {
   }
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
-        <header className="space-y-3 rounded-[32px] border border-border bg-surface/90 p-8 text-center shadow-[0_30px_80px_rgba(34,6,9,0.18)]">
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
+        <header className="space-y-3 rounded-2xl border border-border bg-surface/90 p-4 text-center shadow-lg sm:rounded-[32px] sm:p-6 md:p-8">
           <p className="text-xs uppercase tracking-[0.35em] text-secondary">
             {t("enrollments.kicker", "Tuition & Access")}
           </p>
@@ -71,7 +71,7 @@ export default function MyEnrollmentsPage() {
           </p>
         </header>
 
-        <div className="rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(34,6,9,0.12)]">
+        <div className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-[32px] sm:p-6">
           {isLoading && (
             <p className="text-sm text-foreground/70">
               {t("enrollments.loading", "Loading enrollment history...")}

@@ -58,11 +58,11 @@ export default function HeritagePage() {
   };
 
   return (
-    <section className="min-h-screen bg-background px-4 py-16 text-foreground md:px-10 lg:px-16">
-      <div className="mx-auto max-w-5xl space-y-10">
+    <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
+      <div className="mx-auto max-w-5xl space-y-6 sm:space-y-10">
         <motion.header
           style={{ opacity: heroOpacity, scale: heroScale }}
-          className="space-y-4 rounded-[32px] border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-8 shadow-[0_40px_100px_rgba(16,0,0,0.25)]"
+          className="space-y-3 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
         >
           <p className="text-xs uppercase tracking-[0.35em] text-secondary">
             {t("heritage.page.kicker")}
@@ -75,8 +75,8 @@ export default function HeritagePage() {
           </p>
         </motion.header>
 
-        <div className="sticky top-24 z-30 rounded-3xl border border-border bg-background/80 p-5 shadow-lg backdrop-blur">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="sticky top-20 z-30 rounded-2xl border border-border bg-background/80 p-3 shadow-lg backdrop-blur sm:top-24 sm:rounded-3xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center">
             <input
               type="text"
               value={searchTerm}
