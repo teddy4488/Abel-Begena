@@ -183,7 +183,7 @@ export default function AdminOrdersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -199,7 +199,7 @@ export default function AdminOrdersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -215,7 +215,7 @@ export default function AdminOrdersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -231,7 +231,7 @@ export default function AdminOrdersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -247,7 +247,7 @@ export default function AdminOrdersPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
-          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -275,7 +275,7 @@ export default function AdminOrdersPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-4"
+        className="flex flex-col gap-3 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 sm:flex-row sm:items-center sm:gap-4"
       >
         <div className="flex-1 min-w-0">
           <div className="relative">
@@ -284,14 +284,14 @@ export default function AdminOrdersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("admin.orders.searchPlaceholder", "Search by order ID or product...")}
-              className="w-full rounded-xl border border-border bg-background/70 pl-10 pr-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 pl-10 pr-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
           </div>
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
+          className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
         >
           <option value="all">{t("admin.orders.filter.allStatuses", "All Statuses")}</option>
           {Object.keys(statusConfig).map((status) => (
@@ -303,7 +303,7 @@ export default function AdminOrdersPage() {
         <select
           value={paymentFilter}
           onChange={(e) => setPaymentFilter(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
+          className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
         >
           <option value="all">{t("admin.orders.filter.allPayments", "All Payments")}</option>
           <option value="paid">{t("admin.orders.filter.paid", "Paid")}</option>
@@ -313,7 +313,7 @@ export default function AdminOrdersPage() {
           type="button"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-semibold transition hover:bg-background/90 disabled:opacity-50 sm:w-auto"
+          className="inline-flex items-center justify-center gap-2 rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm font-semibold transition hover:bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]90 disabled:opacity-50 sm:w-auto"
         >
           {isFetching ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -336,7 +336,7 @@ export default function AdminOrdersPage() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="flex items-center justify-center min-h-[400px] rounded-3xl border border-border bg-surface p-6">
+        <div className="flex items-center justify-center min-h-[400px] rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6">
           <div className="text-center">
             <Loader2 className="inline-block h-8 w-8 animate-spin text-secondary mb-4" />
             <p className="text-sm text-foreground/70">
@@ -363,7 +363,7 @@ export default function AdminOrdersPage() {
 
       {/* Empty State */}
       {!isLoading && !isError && filtered.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-background/80 p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border/70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 p-12 text-center">
           <ShoppingBag className="mx-auto h-12 w-12 text-foreground/30 mb-4" />
           <p className="text-sm text-foreground/70">
             {t("admin.orders.empty", "No orders found matching your filters.")}
@@ -377,10 +377,10 @@ export default function AdminOrdersPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="hidden lg:block overflow-x-auto rounded-3xl border border-border bg-surface shadow-lg"
+          className="hidden lg:block overflow-x-auto rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] shadow-lg"
         >
           <table className="w-full text-left text-sm">
-            <thead className="bg-background/50">
+            <thead className="bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50">
               <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
                 <th className="px-6 py-4">{t("admin.orders.table.order", "Order")}</th>
                 <th className="px-6 py-4">{t("admin.orders.table.customer", "Customer")}</th>
@@ -401,7 +401,7 @@ export default function AdminOrdersPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
                       transition={{ delay: index * 0.05 }}
-                      className="hover:bg-background/30 transition-colors"
+                      className="hover:bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]30 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <p className="font-semibold text-primary">
@@ -440,7 +440,7 @@ export default function AdminOrdersPage() {
                             handleStatusChange(order._id, e.target.value, order.isPaid)
                           }
                           disabled={isUpdating}
-                          className="rounded-xl border border-border bg-background/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer disabled:opacity-50"
+                          className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer disabled:opacity-50"
                         >
                           {Object.keys(statusConfig).map((status) => (
                             <option key={status} value={status}>
@@ -508,7 +508,7 @@ export default function AdminOrdersPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.05 }}
-                  className="rounded-2xl border border-border bg-surface p-4 shadow-lg"
+                  className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div>
@@ -564,7 +564,7 @@ export default function AdminOrdersPage() {
                             handleStatusChange(order._id, e.target.value, order.isPaid)
                           }
                           disabled={isUpdating}
-                          className="w-full rounded-xl border border-border bg-background/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer disabled:opacity-50"
+                          className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer disabled:opacity-50"
                         >
                           {Object.keys(statusConfig).map((status) => (
                             <option key={status} value={status}>

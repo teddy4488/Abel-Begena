@@ -204,7 +204,7 @@ export default function AdminBranchesPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-foreground/70">
+        <div className="inline-flex items-center gap-2 rounded-full  px-4 py-2 text-sm text-foreground/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("branches.admin.loading", "Loading branches...")}
         </div>
@@ -251,7 +251,7 @@ export default function AdminBranchesPage() {
         <button
           type="button"
           onClick={handleReset}
-          className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground hover:border-secondary hover:text-secondary"
+          className="inline-flex items-center gap-2 rounded-full  px-4 py-2 text-xs font-semibold text-foreground hover:border-secondary hover:text-secondary"
         >
           <Plus className="h-4 w-4" />
           {t("branches.admin.newBranch", "New branch")}
@@ -260,19 +260,19 @@ export default function AdminBranchesPage() {
 
       <div className="grid gap-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-border bg-background/70 p-4">
+          <div className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 p-4">
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
               {t("branches.admin.stats.total", "Total branches")}
             </p>
             <p className="mt-1 text-2xl font-serif text-primary">{stats.total}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-background/70 p-4">
+          <div className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 p-4">
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
               {t("branches.admin.stats.active", "Active")}
             </p>
             <p className="mt-1 text-2xl font-serif text-primary">{stats.active}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-background/70 p-4">
+          <div className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 p-4">
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
               {t("branches.admin.stats.coverage", "Coverage perimeters")}
             </p>
@@ -280,7 +280,7 @@ export default function AdminBranchesPage() {
               {stats.coverageKm.toFixed(1)} km
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-background/70 p-4">
+          <div className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 p-4">
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
               {t("branches.admin.stats.radius", "Avg radius")}
             </p>
@@ -295,7 +295,7 @@ export default function AdminBranchesPage() {
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl border border-border bg-surface p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
+          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export default function AdminBranchesPage() {
             </p>
           </div>
 
-          <div className="relative h-[360px] overflow-hidden rounded-2xl border border-border bg-background/80">
+          <div className="relative h-[360px] overflow-hidden rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80">
             <BranchMap
               branches={mapBranches}
               selectedBranchId={form.id ?? null}
@@ -327,7 +327,7 @@ export default function AdminBranchesPage() {
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4 rounded-3xl border border-border bg-surface p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
+          className="space-y-4 rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -353,7 +353,7 @@ export default function AdminBranchesPage() {
               <button
                 type="button"
                 onClick={() => handleReset()}
-                className="rounded-full border border-border px-3 py-1 text-xs hover:border-secondary hover:text-secondary"
+                className="rounded-full  px-3 py-1 text-xs hover:border-secondary hover:text-secondary"
               >
                 {t("branches.admin.form.recenter", "Recenter map")}
               </button>
@@ -387,7 +387,7 @@ export default function AdminBranchesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-1 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                   required
                 />
               </div>
@@ -401,7 +401,7 @@ export default function AdminBranchesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, slug: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm lowercase outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-1 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm lowercase outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                   required
                 />
               </div>
@@ -417,7 +417,7 @@ export default function AdminBranchesPage() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, description: e.target.value }))
                 }
-                className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="mt-1 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
@@ -432,7 +432,7 @@ export default function AdminBranchesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, address: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-1 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
               <div>
@@ -445,7 +445,7 @@ export default function AdminBranchesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, city: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-1 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
             </div>
@@ -461,7 +461,7 @@ export default function AdminBranchesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, region: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-1 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
               <div>
@@ -479,7 +479,7 @@ export default function AdminBranchesPage() {
                       radiusMeters: Number(e.target.value) || 0,
                     }))
                   }
-                  className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-1 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
             </div>
@@ -548,7 +548,7 @@ export default function AdminBranchesPage() {
                 {mapBranches.map((branch) => (
                   <div
                     key={branch._id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background/80 px-3 py-2 text-xs"
+                    className="flex items-center justify-between gap-3 rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-xs"
                   >
                     <button
                       type="button"

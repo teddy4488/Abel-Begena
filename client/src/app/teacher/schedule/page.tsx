@@ -269,7 +269,7 @@ export default function TeacherSchedulePage() {
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-lg lg:col-span-1"
+          className="space-y-4 rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg lg:col-span-1 dark:bg-[var(--color-surface-elevated)]"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-serif text-primary">
@@ -299,7 +299,7 @@ export default function TeacherSchedulePage() {
                   setSelectedClassId(e.target.value);
                   resetForm();
                 }}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               >
                 <option value="">{t("teacher.schedule.chooseClass", "Choose a class...")}</option>
                 {teacherClasses.map((klass) => (
@@ -319,7 +319,7 @@ export default function TeacherSchedulePage() {
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder={t("teacher.schedule.titlePlaceholder", "e.g., Beginners rehearsal")}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
@@ -332,7 +332,7 @@ export default function TeacherSchedulePage() {
                   type="datetime-local"
                   value={form.startTime}
                   onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
-                  className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
               <div>
@@ -343,7 +343,7 @@ export default function TeacherSchedulePage() {
                   type="datetime-local"
                   value={form.endTime}
                   onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                  className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
             </div>
@@ -357,7 +357,7 @@ export default function TeacherSchedulePage() {
                 value={form.location}
                 onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
                 placeholder={t("teacher.schedule.locationPlaceholder", "Studio, Zoom, etc.")}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
@@ -370,7 +370,7 @@ export default function TeacherSchedulePage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
                 rows={3}
                 placeholder={t("teacher.schedule.notesPlaceholder", "Reminders, expected materials, dress code...")}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
@@ -399,7 +399,7 @@ export default function TeacherSchedulePage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-lg lg:col-span-2"
+          className="space-y-4 rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg lg:col-span-2 dark:bg-[var(--color-surface-elevated)]"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -413,7 +413,7 @@ export default function TeacherSchedulePage() {
               </h2>
             </div>
             {hasSelection && (
-              <div className="flex items-center gap-2 rounded-full border border-border bg-background/60 p-1 text-xs">
+              <div className="flex items-center gap-2 rounded-full bg-[var(--color-card-bg)] p-1 text-xs dark:bg-[var(--color-card-bg)]">
                 {(["all", "week", "month"] as const).map((range) => (
                   <button
                     key={range}
@@ -468,7 +468,7 @@ export default function TeacherSchedulePage() {
             (schedule?.length ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                  <div className="rounded-2xl bg-[var(--color-card-bg)] p-4 dark:bg-[var(--color-card-bg)]">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-secondary/70">
                       {t("teacher.schedule.stats.total", "Total sessions")}
                     </p>
@@ -476,7 +476,7 @@ export default function TeacherSchedulePage() {
                       {schedule.length}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                  <div className="rounded-2xl bg-[var(--color-card-bg)] p-4 dark:bg-[var(--color-card-bg)]">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-secondary/70">
                       {t("teacher.schedule.stats.week", "Next 7 days")}
                     </p>
@@ -484,7 +484,7 @@ export default function TeacherSchedulePage() {
                       {upcomingThisWeek}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                  <div className="rounded-2xl bg-[var(--color-card-bg)] p-4 dark:bg-[var(--color-card-bg)]">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-secondary/70">
                       {t("teacher.schedule.stats.conflicts", "Conflicts")}
                     </p>
@@ -580,7 +580,7 @@ export default function TeacherSchedulePage() {
                             onClick={() => handleEdit(session)}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-background/80 transition"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-card-bg)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--color-card-hover)] transition dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                             {t("teacher.schedule.edit", "Edit")}
@@ -632,7 +632,7 @@ export default function TeacherSchedulePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+        className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
       >
         <h2 className="mb-4 text-xl font-serif text-primary">
           {t("teacher.schedule.myClasses", "My Classes")}

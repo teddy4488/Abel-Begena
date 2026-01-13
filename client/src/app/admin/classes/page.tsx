@@ -228,7 +228,7 @@ export default function AdminClassesPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-6"
+          className="space-y-3 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl sm:p-6"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -264,7 +264,7 @@ export default function AdminClassesPage() {
               placeholder={t("admin.classes.form.titlePlaceholder", "Class title")}
               className={`w-full rounded-2xl border px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
                 fieldErrors.title ? "border-red-400" : "border-border"
-              } bg-background/70`}
+              } bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70`}
             />
             {fieldErrors.title && (
               <p className="mt-1 text-xs text-red-500">{fieldErrors.title}</p>
@@ -279,7 +279,7 @@ export default function AdminClassesPage() {
             onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
               placeholder={t("admin.classes.form.descriptionPlaceholder", "Class description")}
             rows={3}
-              className="w-full rounded-2xl border border-border bg-background/70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
           </div>
           <div>
@@ -289,7 +289,7 @@ export default function AdminClassesPage() {
           <select
             value={form.instructorId}
             onChange={(e) => setForm((prev) => ({ ...prev, instructorId: e.target.value }))}
-              className="w-full rounded-2xl border border-border bg-background/70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           >
               <option value="">{t("admin.classes.form.assignInstructor", "Assign instructor")}</option>
             {teachers.map((teacher) => (
@@ -308,7 +308,7 @@ export default function AdminClassesPage() {
               type="date"
               value={form.startDate}
               onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
-                className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
             </div>
             <div>
@@ -319,7 +319,7 @@ export default function AdminClassesPage() {
               type="date"
               value={form.endDate}
               onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
-                className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
             </div>
             <div>
@@ -332,7 +332,7 @@ export default function AdminClassesPage() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, enrollmentDeadline: e.target.value }))
               }
-                className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
             </div>
           </div>
@@ -347,7 +347,7 @@ export default function AdminClassesPage() {
                 value={form.capacity}
                 onChange={(e) => setForm((prev) => ({ ...prev, capacity: e.target.value }))}
                 placeholder={t("admin.classes.form.capacityPlaceholder", "Max students")}
-                className={`w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
+                className={`w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
                   fieldErrors.capacity ? "border-red-400" : ""
                 }`}
               />
@@ -366,7 +366,7 @@ export default function AdminClassesPage() {
                 value={form.tuition}
                 onChange={(e) => setForm((prev) => ({ ...prev, tuition: e.target.value }))}
                 placeholder={t("admin.classes.form.tuitionPlaceholder", "Amount")}
-                className={`w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
+                className={`w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
                   fieldErrors.tuition ? "border-red-400" : ""
                 }`}
               />
@@ -381,7 +381,7 @@ export default function AdminClassesPage() {
             <select
               value={form.currency}
               onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))}
-                className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             >
               <option value="ETB">ETB</option>
               <option value="USD">USD</option>
@@ -402,25 +402,25 @@ export default function AdminClassesPage() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-6"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl sm:p-6"
         >
           <h2 className="text-lg font-serif text-primary sm:text-xl">
             {t("admin.classes.classesList", "Classes")}
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+            <div className="rounded-2xl /70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 p-3">
               <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
                 {t("admin.classes.stats.total", "Total")}
               </p>
               <p className="text-2xl font-serif text-primary">{stats.total}</p>
             </div>
-            <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+            <div className="rounded-2xl /70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 p-3">
               <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
                 {t("admin.classes.stats.live", "Live")}
               </p>
               <p className="text-2xl font-serif text-primary">{stats.live}</p>
             </div>
-            <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+            <div className="rounded-2xl /70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 p-3">
               <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
                 {t("admin.classes.stats.unassigned", "Unassigned")}
               </p>
@@ -437,7 +437,7 @@ export default function AdminClassesPage() {
                   className={`rounded-full px-3 py-1 tracking-wide transition ${
                     viewFilter === filterKey
                       ? "bg-secondary text-secondary-foreground"
-                      : "bg-background/60 text-foreground/70 hover:bg-background"
+                      : "bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 text-foreground/70 hover:bg-background"
                   }`}
                 >
                   {filterKey === "all"
@@ -453,7 +453,7 @@ export default function AdminClassesPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t("admin.classes.searchPlaceholder", "Search by title or instructor")}
-              className="w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:max-w-xs"
+              className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:max-w-xs"
             />
           </div>
           {isLoading ? (
@@ -468,7 +468,7 @@ export default function AdminClassesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="rounded-2xl border border-border/70 bg-background/50 p-4 transition hover:bg-background/80 hover:shadow-sm"
+                className="rounded-2xl /70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-4 transition hover:bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 hover:shadow-sm"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1 min-w-0">
@@ -483,7 +483,7 @@ export default function AdminClassesPage() {
                     <button
                       type="button"
                       onClick={() => startEdit(klass)}
-                      className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 transition hover:bg-secondary/10"
+                      className="inline-flex items-center gap-1 rounded-full  bg-background px-3 py-1.5 transition hover:bg-secondary/10"
                     >
                       <Edit className="h-3 w-3" />
                       {t("button.edit", "Edit")}
@@ -531,7 +531,7 @@ export default function AdminClassesPage() {
                 <select
                   value={klass.instructorId?._id ?? ""}
                   onChange={(e) => handleAssign(klass._id, e.target.value)}
-                  className="mt-3 w-full rounded-2xl border border-border bg-background/70 px-3 py-2 text-xs"
+                  className="mt-3 w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-xs"
                 >
                   <option value="">Assign/Change instructor</option>
                   {teachers.map((teacher) => (
@@ -547,7 +547,7 @@ export default function AdminClassesPage() {
               ))}
             </div>
           ) : (
-            <div className="mt-6 rounded-3xl border border-border bg-background/70 p-6 text-center text-sm text-foreground/70">
+            <div className="mt-6 rounded-3xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 p-6 text-center text-sm text-foreground/70">
               {searchTerm || viewFilter !== "all"
                 ? t(
                     "admin.classes.emptyFiltered",

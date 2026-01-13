@@ -140,7 +140,7 @@ export default function AdminUsersPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] rounded-3xl border border-border bg-surface p-6">
+      <div className="flex items-center justify-center min-h-[400px] rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6">
         <div className="text-center">
           <Loader2 className="inline-block h-8 w-8 animate-spin text-secondary mb-4" />
           <p className="text-sm text-foreground/70">
@@ -179,7 +179,7 @@ export default function AdminUsersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-3xl border border-border bg-surface p-4 shadow-lg"
+          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -195,7 +195,7 @@ export default function AdminUsersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-3xl border border-border bg-surface p-4 shadow-lg"
+          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -211,7 +211,7 @@ export default function AdminUsersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-3xl border border-border bg-surface p-4 shadow-lg"
+          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -227,7 +227,7 @@ export default function AdminUsersPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-3xl border border-border bg-surface p-4 shadow-lg"
+          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -246,7 +246,7 @@ export default function AdminUsersPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-4"
+        className="flex flex-col gap-3 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 sm:flex-row sm:items-center sm:gap-4"
       >
         <div className="flex-1 min-w-0">
           <div className="relative">
@@ -255,14 +255,14 @@ export default function AdminUsersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("admin.users.searchPlaceholder", "Search email or name...")}
-              className="w-full rounded-xl border border-border bg-background/70 pl-10 pr-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 pl-10 pr-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
           </div>
         </div>
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
+          className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
         >
           <option value="all">{t("admin.users.filter.allRoles", "All Roles")}</option>
           <option value="User">{t("admin.users.filter.user", "User")}</option>
@@ -272,7 +272,7 @@ export default function AdminUsersPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background/70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
+          className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 sm:w-auto"
         >
           <option value="all">{t("admin.users.filter.allStatus", "All Status")}</option>
           <option value="active">{t("admin.users.filter.active", "Active")}</option>
@@ -285,10 +285,10 @@ export default function AdminUsersPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="hidden lg:block overflow-x-auto rounded-3xl border border-border bg-surface shadow-lg"
+        className="hidden lg:block overflow-x-auto rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] shadow-lg"
       >
         <table className="w-full text-left text-sm">
-          <thead className="bg-background/50">
+          <thead className="bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50">
             <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
               <th className="px-6 py-4">{t("admin.users.table.user", "User")}</th>
               <th className="px-6 py-4">{t("admin.users.table.role", "Role")}</th>
@@ -308,7 +308,7 @@ export default function AdminUsersPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ delay: index * 0.05 }}
-                    className="hover:bg-background/30 transition-colors"
+                    className="hover:bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]30 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -337,7 +337,7 @@ export default function AdminUsersPage() {
                       <select
                         value={user.role ?? "User"}
                         onChange={(e) => handleRoleChange(user, e.target.value)}
-                        className="rounded-xl border border-border bg-background/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
+                        className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
                       >
                         {["User", "Teacher", "Admin"].map((role) => (
                           <option key={role} value={role}>
@@ -351,7 +351,7 @@ export default function AdminUsersPage() {
                         <select
                           value={user.teacherStatus ?? "pending"}
                           onChange={(e) => handleTeacherStatus(user, e.target.value)}
-                          className="rounded-xl border border-border bg-background/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
+                          className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
                         >
                           {["pending", "approved", "suspended"].map((status) => (
                             <option key={status} value={status}>
@@ -446,7 +446,7 @@ export default function AdminUsersPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ delay: index * 0.05 }}
-                className="rounded-2xl border border-border bg-surface p-4 shadow-lg"
+                className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg"
               >
                 <div className="flex items-start gap-3 mb-4">
                   {user.avatarUrl ? (
@@ -477,7 +477,7 @@ export default function AdminUsersPage() {
                     <select
                       value={user.role ?? "User"}
                       onChange={(e) => handleRoleChange(user, e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
+                      className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
                     >
                       {["User", "Teacher", "Admin"].map((role) => (
                         <option key={role} value={role}>
@@ -494,7 +494,7 @@ export default function AdminUsersPage() {
                       <select
                         value={(user as { teacherStatus?: string }).teacherStatus ?? "pending"}
                         onChange={(e) => handleTeacherStatus(user, e.target.value)}
-                        className="w-full rounded-xl border border-border bg-background/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
+                        className="w-full rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer"
                       >
                         <option value="pending">{t("admin.users.pending", "Pending")}</option>
                         <option value="approved">{t("admin.users.approved", "Approved")}</option>
@@ -552,7 +552,7 @@ export default function AdminUsersPage() {
           })}
         </AnimatePresence>
         {!filtered.length && (
-          <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+          <div className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-12 text-center">
             <UserX className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-foreground/60">
               {t("admin.users.noUsers", "No users found matching your filters.")}

@@ -35,8 +35,8 @@ export default function VirtualBegenaPreview() {
   ];
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface py-14 px-6 shadow-[0_60px_120px_var(--color-primary-glow)] md:px-12 lg:px-16">
-      <div className="absolute inset-0 bg-linear-to-br from-background via-surface/80 to-(--color-secondary-soft) opacity-80" />
+    <section className="relative overflow-hidden rounded-[32px] bg-[var(--color-surface-elevated)] py-14 px-6 shadow-[0_60px_120px_var(--color-primary-glow)] md:px-12 lg:px-16 dark:bg-[var(--color-surface-elevated)]">
+      <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-background)] via-[var(--color-surface)]/80 to-[var(--color-secondary-soft)] opacity-60 dark:opacity-40" />
       <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
         <div className="space-y-6">
           <FadeIn>
@@ -58,7 +58,7 @@ export default function VirtualBegenaPreview() {
                 <FadeIn
                   key={point.title}
                   delay={0.1 * index}
-                  className="flex gap-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.08)]"
+                  className="flex gap-4 rounded-2xl bg-[var(--color-card-bg)] p-4 shadow-[0_10px_30px_var(--color-primary-glow)] transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
                     <Icon className="h-5 w-5" />
@@ -84,7 +84,7 @@ export default function VirtualBegenaPreview() {
             </Link>
             <Link
               href="#classes"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-semibold text-foreground transition hover:border-secondary"
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--color-secondary-soft)] px-6 py-3 text-sm font-semibold text-secondary transition hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
             >
               {t("virtual.cta.learn")}
             </Link>
@@ -93,7 +93,7 @@ export default function VirtualBegenaPreview() {
 
         <div className="relative">
           <motion.div
-            className="overflow-hidden rounded-[28px] border border-border bg-linear-to-br from-begena-brown/20 to-begena-darkBrown/30 p-6 shadow-[0_35px_80px_rgba(0,0,0,0.45)]"
+            className="overflow-hidden rounded-[28px] bg-gradient-to-br from-[var(--color-card-bg)] to-[var(--color-background-subtle)] p-6 shadow-[0_35px_80px_var(--color-primary-glow)] dark:from-[var(--color-card-bg)] dark:to-[var(--color-background-subtle)]"
             animate={{ y: ["0%", "-3%", "0%"] }}
             transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
           >
@@ -107,7 +107,7 @@ export default function VirtualBegenaPreview() {
                 <motion.div
                   key={src}
                   whileHover={{ scale: 1.03 }}
-                  className="relative h-36 overflow-hidden rounded-2xl border border-border/60"
+                  className="relative h-36 overflow-hidden rounded-2xl bg-[var(--color-background-subtle)] dark:bg-[var(--color-background-subtle)]"
                 >
                   <Image
                     src={src}
@@ -121,14 +121,14 @@ export default function VirtualBegenaPreview() {
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3 text-center text-sm uppercase tracking-[0.3em] text-secondary/80">
-              <div className="rounded-2xl border border-secondary/30 bg-secondary/10 px-4 py-3">
-                <p className="text-foreground/60 text-[11px]">
+              <div className="rounded-2xl bg-[var(--color-secondary-soft)] px-4 py-3 dark:bg-[var(--color-secondary-soft)]">
+                <p className="text-[var(--color-foreground-muted)] text-[11px]">
                   {t("virtual.stats.presets")}
                 </p>
                 <p className="mt-1 text-2xl font-serif text-primary">4</p>
               </div>
-              <div className="rounded-2xl border border-secondary/30 bg-secondary/10 px-4 py-3">
-                <p className="text-foreground/60 text-[11px]">
+              <div className="rounded-2xl bg-[var(--color-secondary-soft)] px-4 py-3 dark:bg-[var(--color-secondary-soft)]">
+                <p className="text-[var(--color-foreground-muted)] text-[11px]">
                   {t("virtual.stats.export")}
                 </p>
                 <p className="mt-1 text-2xl font-serif text-primary">WAV</p>

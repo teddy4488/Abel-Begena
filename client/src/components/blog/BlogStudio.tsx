@@ -127,7 +127,7 @@ export function BlogStudio({
   };
 
   return (
-    <div className="space-y-6 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]">
+    <div className="space-y-6 rounded-[32px]  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -162,7 +162,7 @@ export function BlogStudio({
               setActivePostId(null);
               setForm({ ...emptyForm });
             }}
-            className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-widest text-foreground/70"
+            className="rounded-full  px-3 py-1 text-xs uppercase tracking-widest text-foreground/70"
           >
             New Post
           </button>
@@ -176,7 +176,7 @@ export function BlogStudio({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search drafts"
-            className="w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
           <div className="space-y-2">
             {filteredPosts.map((post) => (
@@ -219,7 +219,7 @@ export function BlogStudio({
             placeholder="Title"
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-            className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
           <div className="grid gap-4 md:grid-cols-2">
             <input
@@ -227,7 +227,7 @@ export function BlogStudio({
               placeholder="Slug (optional)"
               value={form.slug}
               onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
-              className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
             <input
               type="text"
@@ -236,7 +236,7 @@ export function BlogStudio({
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, coverImage: e.target.value }))
               }
-              className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
           </div>
           {isAdmin && (
@@ -254,7 +254,7 @@ export function BlogStudio({
                       isPublished: e.target.value === "published",
                     }))
                   }
-                  className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 >
                   <option value="draft">Draft</option>
                   <option value="pending">Pending</option>
@@ -273,7 +273,7 @@ export function BlogStudio({
             onChange={(e) =>
               setForm((prev) => ({ ...prev, content: e.target.value }))
             }
-            className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
           <div className="grid gap-4 md:grid-cols-2">
             <motion.button
@@ -289,14 +289,14 @@ export function BlogStudio({
                 whileTap={{ scale: 0.97 }}
                 disabled={isDeleting}
                 onClick={handleDelete}
-                className="rounded-full border border-border px-4 py-3 text-sm font-semibold text-red-500 disabled:opacity-60"
+                className="rounded-full  px-4 py-3 text-sm font-semibold text-red-500 disabled:opacity-60"
               >
                 Delete Post
               </motion.button>
             )}
           </div>
 
-          <div className="space-y-2 rounded-2xl border border-border bg-background/60 p-4">
+          <div className="space-y-2 rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 p-4">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
               Live preview
             </p>

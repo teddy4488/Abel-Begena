@@ -295,7 +295,7 @@ export default function AdminStorePage() {
     <section className="space-y-6">
       <form
         onSubmit={handleSubmit}
-        className="grid gap-4 rounded-3xl border border-border bg-surface p-6 lg:grid-cols-5"
+        className="grid gap-4 rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 lg:grid-cols-5"
       >
         <div className="lg:col-span-2">
           <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
@@ -312,7 +312,7 @@ export default function AdminStorePage() {
               placeholder="Name"
               className={`w-full rounded-2xl border px-4 py-2 text-sm ${
                 errors.name ? "border-red-400" : "border-border"
-              } bg-background/70`}
+              } bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70`}
             />
             {errors.name && (
               <p className="mt-1 text-xs text-red-500">{errors.name}</p>
@@ -322,7 +322,7 @@ export default function AdminStorePage() {
             <select
               value={form.instrumentType}
               onChange={(e) => setForm((prev) => ({ ...prev, instrumentType: e.target.value }))}
-              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm"
+              className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm"
             >
               {["Begena", "Kirar", "Masinko", "Washint", "Kebero", "Other"].map(
                 (type) => (
@@ -334,7 +334,7 @@ export default function AdminStorePage() {
               value={form.images}
               onChange={(e) => setForm((prev) => ({ ...prev, images: e.target.value }))}
               placeholder="Image URLs (comma separated)"
-              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm"
+              className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm"
             />
           </div>
           <textarea
@@ -342,7 +342,7 @@ export default function AdminStorePage() {
             onChange={(e) => setForm((prev) => ({ ...prev, shortDescription: e.target.value }))}
             placeholder="Short description"
             rows={2}
-            className="w-full rounded-2xl border border-border bg-background/70 px-4 py-2 text-sm"
+            className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-4 py-2 text-sm"
           />
           <div className="grid gap-3 md:grid-cols-3">
             <div>
@@ -355,7 +355,7 @@ export default function AdminStorePage() {
                 placeholder="Price"
                 className={`w-full rounded-2xl border px-3 py-2 text-sm ${
                   errors.price ? "border-red-400" : "border-border"
-                } bg-background/70`}
+                } bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70`}
               />
               {errors.price && (
                 <p className="mt-1 text-xs text-red-500">{errors.price}</p>
@@ -371,7 +371,7 @@ export default function AdminStorePage() {
                 placeholder="Stock"
                 className={`w-full rounded-2xl border px-3 py-2 text-sm ${
                   errors.stock ? "border-red-400" : "border-border"
-                } bg-background/70`}
+                } bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70`}
               />
               {errors.stock && (
                 <p className="mt-1 text-xs text-red-500">{errors.stock}</p>
@@ -388,7 +388,7 @@ export default function AdminStorePage() {
                 disabled={!form.promoActive}
                 className={`w-full rounded-2xl border px-3 py-2 text-sm ${
                   errors.discountPrice ? "border-red-400" : "border-border"
-                } bg-background/70 disabled:opacity-60`}
+                } bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 disabled:opacity-60`}
               />
               {errors.discountPrice && (
                 <p className="mt-1 text-xs text-red-500">{errors.discountPrice}</p>
@@ -428,7 +428,7 @@ export default function AdminStorePage() {
         </div>
       </form>
 
-      <div className="rounded-3xl border border-border bg-surface p-6">
+      <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6">
         <h2 className="text-xl font-serif text-primary">Inventory</h2>
         {isLoading ? (
           <p className="text-sm text-foreground/60">Loading products...</p>
@@ -437,7 +437,7 @@ export default function AdminStorePage() {
             {sortedProducts.map((product) => (
               <div
                 key={product._id}
-                className="rounded-2xl border border-border/70 p-4"
+                className="rounded-2xl /70 p-4"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -490,7 +490,7 @@ export default function AdminStorePage() {
                         handlePromoInputChange(product._id, "discountPrice", e.target.value)
                       }
                       placeholder="Discount price"
-                      className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm"
+                      className="rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 px-3 py-2 text-sm"
                     />
                     <label className="flex items-center gap-2 text-xs uppercase tracking-[0.3em]">
                       <input
@@ -506,7 +506,7 @@ export default function AdminStorePage() {
                   <button
                     type="button"
                     onClick={() => handleSavePromo(product._id, product.price)}
-                    className="w-full rounded-full border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+                    className="w-full rounded-full  px-3 py-2 text-xs font-semibold uppercase tracking-wide"
                     disabled={promoSavingId === product._id}
                   >
                     {promoSavingId === product._id ? "Saving..." : "Save promotion"}
@@ -534,7 +534,7 @@ export default function AdminStorePage() {
                               {uploadProgress[product._id]}%
                             </span>
                           </div>
-                          <div className="h-1.5 rounded-full bg-background/80 overflow-hidden">
+                          <div className="h-1.5 rounded-full bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-secondary to-secondary/70 transition-all duration-300"
                               style={{ width: `${uploadProgress[product._id]}%` }}
@@ -547,7 +547,7 @@ export default function AdminStorePage() {
                           type="button"
                           onClick={() => handleUpload(product._id)}
                           disabled={uploadingId === product._id}
-                          className="flex-1 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold hover:bg-background transition disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="flex-1 rounded-full  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-1.5 text-xs font-semibold hover:bg-background transition disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           {uploadingId === product._id ? "Uploading..." : "Upload"}
                         </button>
@@ -562,7 +562,7 @@ export default function AdminStorePage() {
                             });
                           }}
                           disabled={uploadingId === product._id}
-                          className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold hover:bg-background transition disabled:opacity-60"
+                          className="rounded-full  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-1.5 text-xs font-semibold hover:bg-background transition disabled:opacity-60"
                         >
                           Cancel
                         </button>
@@ -581,7 +581,7 @@ export default function AdminStorePage() {
                         }
                         className="hidden"
                       />
-                      <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-background/50 p-3 cursor-pointer hover:bg-background/80 hover:border-border transition">
+                      <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-3 cursor-pointer hover:bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 hover:border-border transition">
                         <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
@@ -599,7 +599,7 @@ export default function AdminStorePage() {
                           <img
                             src={img}
                             alt={`${product.name} ${idx + 1}`}
-                            className="w-16 h-16 object-cover rounded-lg border border-border"
+                            className="w-16 h-16 object-cover rounded-lg "
                           />
                           <a
                             href={img}
@@ -620,7 +620,7 @@ export default function AdminStorePage() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-3xl border border-border bg-background/70 p-6 text-center text-sm text-foreground/70">
+          <div className="mt-6 rounded-3xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]70 p-6 text-center text-sm text-foreground/70">
             No products yet. Add your first instrument above.
           </div>
         )}

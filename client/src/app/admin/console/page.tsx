@@ -142,7 +142,7 @@ export default function AdminConsolePage() {
             >
               <Link
                 href={card.href}
-                className="group relative flex flex-col rounded-3xl border border-border bg-surface p-5 shadow-lg transition-all hover:border-secondary/50 hover:shadow-xl"
+                className="group relative flex flex-col rounded-3xl bg-[var(--color-surface-elevated)] p-5 shadow-lg transition-all hover:bg-[var(--color-card-hover)] hover:shadow-xl dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
               >
                 {card.urgent && (
                   <div className="absolute -right-2 -top-2 h-4 w-4 rounded-full bg-amber-500 animate-pulse" />
@@ -183,7 +183,7 @@ export default function AdminConsolePage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-3xl border border-border bg-surface p-6 shadow-lg"
+          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
         >
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -210,7 +210,7 @@ export default function AdminConsolePage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.05 }}
-                  className="flex items-center justify-between rounded-2xl border border-border/80 bg-background/50 px-4 py-3 transition hover:bg-background/80 hover:shadow-sm"
+                  className="flex items-center justify-between rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 transition hover:bg-[var(--color-card-hover)] hover:shadow-sm dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                 >
                   <span className="font-medium text-primary truncate flex-1">
                     {klass.title}
@@ -240,7 +240,7 @@ export default function AdminConsolePage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-3xl border border-border bg-surface p-6 shadow-lg"
+          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
         >
           <div className="mb-4">
             <h2 className="text-xl font-serif text-primary">
@@ -263,7 +263,7 @@ export default function AdminConsolePage() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 + index * 0.05 }}
-                    className="rounded-2xl border border-border/70 bg-background/50 p-4 text-center transition hover:bg-background/80 hover:shadow-sm"
+                    className="rounded-2xl bg-[var(--color-card-bg)] p-4 text-center transition hover:bg-[var(--color-card-hover)] hover:shadow-sm dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                   >
                     <p className="text-xs uppercase tracking-[0.4em] text-secondary/60 mb-2">
                       {status}
@@ -286,7 +286,7 @@ export default function AdminConsolePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="rounded-3xl border border-border bg-surface p-6 shadow-lg"
+        className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
       >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -299,7 +299,7 @@ export default function AdminConsolePage() {
           </div>
           <Link
             href="/admin/enrollments"
-            className="inline-flex items-center gap-2 rounded-full border border-secondary bg-secondary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:bg-secondary/20"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--color-secondary-soft)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
           >
             {t("admin.console.pendingCta", "Manage enrollments")}
             <ArrowRight className="h-3 w-3" />
@@ -310,7 +310,7 @@ export default function AdminConsolePage() {
             <Loader2 className="h-6 w-6 animate-spin text-secondary" />
           </div>
         ) : pendingEnrollments.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/70 bg-background/80 p-8 text-center">
+          <div className="rounded-2xl bg-[var(--color-card-bg)] p-8 text-center dark:bg-[var(--color-card-bg)]">
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-500/40 mb-3" />
             <p className="text-sm text-foreground/70">
               {t("admin.console.pendingEmpty", "All caught up on approvals.")}
@@ -324,7 +324,7 @@ export default function AdminConsolePage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 + index * 0.05 }}
-                className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-4 transition hover:bg-amber-500/10 hover:shadow-sm"
+                className="rounded-2xl bg-amber-500/5 px-4 py-4 transition hover:bg-amber-500/10 hover:shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">

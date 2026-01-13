@@ -185,8 +185,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors">
       <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
-        <section className="relative overflow-hidden rounded-2xl border border-border bg-surface px-4 py-8 shadow-lg transition-colors sm:rounded-[32px] sm:px-6 sm:py-12 md:px-12 md:py-14 lg:px-16">
-          <div className="absolute inset-0 bg-linear-to-tr from-background via-surface to-(--color-secondary-soft) opacity-80" />
+        <section className="relative overflow-hidden rounded-2xl bg-[var(--color-surface-elevated)] px-4 py-8 shadow-[0_8px_32px_var(--color-primary-glow)] transition-colors sm:rounded-[32px] sm:px-6 sm:py-12 md:px-12 md:py-14 lg:px-16 dark:bg-[var(--color-surface-elevated)]">
+          <div className="absolute inset-0 bg-gradient-to-tr from-[var(--color-background)] via-[var(--color-surface)] to-[var(--color-secondary-soft)] opacity-60 dark:opacity-40" />
           <div className="relative grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">
               <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -237,7 +237,7 @@ export default function Home() {
                 transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
               />
               <motion.div
-                className="relative overflow-hidden rounded-[28px] border border-border bg-(--color-background-soft) p-4 shadow-[0_25px_60px_var(--color-primary-glow)] transition-colors dark:bg-surface"
+                className="relative overflow-hidden rounded-[28px] bg-[var(--color-surface-elevated)] p-4 shadow-[0_25px_60px_var(--color-primary-glow)] transition-colors dark:bg-[var(--color-surface-elevated)]"
                 style={{ rotateX, rotateY, x: translateX, y: translateY }}
                 animate={{ y: ["-4%", "4%", "-4%"] }}
                 transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}
@@ -256,9 +256,9 @@ export default function Home() {
         </section>
 
         {/* Sacred Videos Carousel Section */}
-        <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface shadow-[0_60px_120px_var(--color-primary-glow)]">
+        <section className="relative overflow-hidden rounded-[32px] bg-[var(--color-surface-elevated)] shadow-[0_60px_120px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]">
           {/* Background gradient overlay */}
-          <div className="absolute inset-0 bg-linear-to-br from-background via-surface to-(--color-secondary-soft) opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-background)] via-[var(--color-surface)] to-[var(--color-secondary-soft)] opacity-70 dark:opacity-50" />
           
           {/* Animated background particles */}
           <motion.div
@@ -293,10 +293,10 @@ export default function Home() {
                     animate={{ opacity: 1, scale: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.95, x: -50 }}
                     transition={{ duration: 0.5, ease: "easeInOut" }}
-                    className="relative overflow-hidden rounded-[24px] border border-border bg-background/50 shadow-[0_25px_60px_var(--color-primary-glow)]"
+                    className="relative overflow-hidden rounded-[24px] bg-[var(--color-card-bg)] shadow-[0_25px_60px_var(--color-primary-glow)] dark:bg-[var(--color-card-bg)]"
                   >
                     {/* Video iframe with aspect ratio */}
-                    <div className="relative aspect-video w-full overflow-hidden">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-[24px] bg-[var(--color-background-subtle)] dark:bg-[var(--color-background-subtle)]">
                       <iframe
                         src={sacredVideos[currentVideoIndex].url}
                         title={locale === "am" ? sacredVideos[currentVideoIndex].titleAm : sacredVideos[currentVideoIndex].title}
@@ -304,8 +304,6 @@ export default function Home() {
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                       />
-                      {/* Glowing border effect */}
-                      <div className="pointer-events-none absolute inset-0 rounded-[24px] border-2 border-secondary/20" />
                     </div>
 
                     {/* Video info overlay */}
@@ -328,14 +326,14 @@ export default function Home() {
                 {/* Navigation Arrows */}
                 <button
                   onClick={prevVideo}
-                  className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full border border-secondary/50 bg-surface/90 text-secondary shadow-[0_8px_30px_var(--color-primary-glow)] backdrop-blur-md transition-all hover:-translate-x-1/2 hover:-translate-y-1/2 hover:scale-110 hover:bg-secondary hover:text-primary-foreground md:-translate-x-6 md:hover:-translate-x-6"
+                  className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] text-secondary shadow-[0_8px_30px_var(--color-primary-glow)] backdrop-blur-md transition-all hover:-translate-x-1/2 hover:-translate-y-1/2 hover:scale-110 hover:bg-secondary hover:text-primary-foreground md:-translate-x-6 md:hover:-translate-x-6 dark:bg-[var(--color-surface-elevated)]"
                   aria-label={t("video.section.prev")}
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
                 <button
                   onClick={nextVideo}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full border border-secondary/50 bg-surface/90 text-secondary shadow-[0_8px_30px_var(--color-primary-glow)] backdrop-blur-md transition-all hover:-translate-y-1/2 hover:translate-x-1/2 hover:scale-110 hover:bg-secondary hover:text-primary-foreground md:translate-x-6 md:hover:translate-x-6"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] text-secondary shadow-[0_8px_30px_var(--color-primary-glow)] backdrop-blur-md transition-all hover:-translate-y-1/2 hover:translate-x-1/2 hover:scale-110 hover:bg-secondary hover:text-primary-foreground md:translate-x-6 md:hover:translate-x-6 dark:bg-[var(--color-surface-elevated)]"
                   aria-label={t("video.section.next")}
                 >
                   <ChevronRight className="h-6 w-6" />
@@ -377,9 +375,9 @@ export default function Home() {
               <FadeIn
                 key={card.id}
                 delay={0.1 * index}
-                className="group flex flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_25px_60px_var(--color-primary-glow)]"
+                className="group flex flex-col overflow-hidden rounded-3xl bg-[var(--color-surface-elevated)] shadow-[0_25px_60px_var(--color-primary-glow)] transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
               >
-                <div id={card.id} className="relative h-52 w-full overflow-hidden">
+                <div id={card.id} className="relative h-52 w-full overflow-hidden bg-[var(--color-background-subtle)] dark:bg-[var(--color-background-subtle)]">
                   <Image
                     src={card.image}
                     alt={card.title}
@@ -399,7 +397,7 @@ export default function Home() {
                   <p className="text-sm text-foreground/80">{card.copy}</p>
                   <Link
                     href={card.ctaHref}
-                    className="mt-auto inline-flex items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+                    className="mt-auto inline-flex items-center justify-center rounded-full bg-[var(--color-secondary-soft)] px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[var(--color-secondary-soft)] hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
                   >
                     {card.ctaLabel}
                   </Link>
@@ -409,7 +407,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]">
+        <section className="space-y-6 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]">
           <FadeIn className="flex flex-col gap-2">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("classHighlights.kicker")}
@@ -417,12 +415,12 @@ export default function Home() {
             <h2 className="text-3xl font-serif text-primary">
               {t("classHighlights.title")}
             </h2>
-            <p className="text-sm text-foreground/70">
+            <p className="text-sm text-[var(--color-foreground-muted)]">
               {t("classHighlights.description")}
             </p>
           </FadeIn>
           {isLoadingClasses ? (
-            <p className="text-sm text-foreground/70">
+            <p className="text-sm text-[var(--color-foreground-muted)]">
               {t("classHighlights.loading")}
             </p>
           ) : (
@@ -430,7 +428,7 @@ export default function Home() {
               {(classHighlights ?? []).map((klass) => (
                 <FadeIn
                   key={klass._id}
-                  className="rounded-3xl border border-border bg-background/70 p-5"
+                  className="rounded-3xl bg-[var(--color-card-bg)] p-5 transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                 >
                   <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
                     {formatClassDate(klass.createdAt)}
@@ -464,7 +462,7 @@ export default function Home() {
 
         <section
           id="featured-store"
-          className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="space-y-6 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
@@ -477,7 +475,7 @@ export default function Home() {
             </div>
             <Link
               href="/store"
-              className="rounded-full border border-secondary px-6 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+              className="rounded-full bg-[var(--color-secondary-soft)] px-6 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
             >
               {t("store.viewAll")}
             </Link>
@@ -491,9 +489,9 @@ export default function Home() {
               {featuredProducts.map((product) => (
                 <FadeIn
                   key={product._id}
-                  className="flex flex-col rounded-3xl border border-border bg-background/70 p-5"
+                  className="flex flex-col rounded-3xl bg-[var(--color-card-bg)] p-5 transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                 >
-                  <div className="relative mb-4 h-48 overflow-hidden rounded-2xl border border-border">
+                  <div className="relative mb-4 h-48 overflow-hidden rounded-2xl bg-[var(--color-background-subtle)] dark:bg-[var(--color-background-subtle)]">
                     {product.images?.[0] ? (
                       <Image
                         src={product.images[0]}
@@ -513,7 +511,7 @@ export default function Home() {
                   <h3 className="text-xl font-serif text-primary">
                     {product.name}
                   </h3>
-                  <p className="mt-2 text-sm text-foreground/70">
+                  <p className="mt-2 text-sm text-[var(--color-foreground-muted)]">
                     {product.shortDescription}
                   </p>
                   <p className="mt-4 text-lg font-semibold text-primary">
@@ -541,7 +539,7 @@ export default function Home() {
 
         <section
           id="sacred-market"
-          className="grid gap-10 rounded-[32px] border border-border bg-surface p-8 shadow-[0_60px_120px_var(--color-primary-glow)] lg:grid-cols-2"
+          className="grid gap-10 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_60px_120px_var(--color-primary-glow)] lg:grid-cols-2 dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="space-y-5">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -565,7 +563,7 @@ export default function Home() {
               </Link>
               <Link
                 href="#contact"
-                className="rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+                className="rounded-full bg-[var(--color-secondary-soft)] px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
               >
                 {t("sacred.cta.quote")}
               </Link>
@@ -575,7 +573,7 @@ export default function Home() {
             {galleryImages.slice(0, 4).map((image) => (
               <FadeIn
                 key={image.src}
-                className="relative h-48 overflow-hidden rounded-2xl border border-border"
+                className="relative h-48 overflow-hidden rounded-2xl bg-[var(--color-background-subtle)] dark:bg-[var(--color-background-subtle)]"
               >
                 <Image
                   src={image.src}
@@ -593,7 +591,7 @@ export default function Home() {
 
         <section
           id="about"
-          className="grid gap-10 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)] lg:grid-cols-2"
+          className="grid gap-10 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] lg:grid-cols-2 dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="space-y-5">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -604,25 +602,25 @@ export default function Home() {
             </h2>
             <p className="text-sm text-foreground/80">{t("about.copy")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm">
+              <div className="rounded-2xl bg-[var(--color-card-bg)] p-4 text-sm transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]">
                 <p className="text-2xl font-semibold text-primary">
                   {t("about.statOne.value")}
                 </p>
-                <p className="text-foreground/70">
+                <p className="text-[var(--color-foreground-muted)]">
                   {t("about.statOne.label")}
                 </p>
               </div>
-              <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm">
+              <div className="rounded-2xl bg-[var(--color-card-bg)] p-4 text-sm transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]">
                 <p className="text-2xl font-semibold text-primary">
                   {t("about.statTwo.value")}
                 </p>
-                <p className="text-foreground/70">
+                <p className="text-[var(--color-foreground-muted)]">
                   {t("about.statTwo.label")}
                 </p>
               </div>
             </div>
           </FadeIn>
-          <FadeIn className="relative h-80 overflow-hidden rounded-3xl border border-border">
+          <FadeIn className="relative h-80 overflow-hidden rounded-3xl bg-[var(--color-background-subtle)] dark:bg-[var(--color-background-subtle)]">
             <Image
               src="/assets/begena25.jpg"
               alt="About Abel Begena"
@@ -635,7 +633,7 @@ export default function Home() {
         {/* FAQ Section */}
         <section
           id="faq"
-          className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="space-y-6 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="text-center">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -644,7 +642,7 @@ export default function Home() {
             <h2 className="mt-2 text-3xl font-serif text-primary">
               {t("faq.title")}
             </h2>
-            <p className="mt-2 text-sm text-foreground/70">
+            <p className="mt-2 text-sm text-[var(--color-foreground-muted)]">
               {t("faq.subtitle")}
             </p>
           </FadeIn>
@@ -658,12 +656,12 @@ export default function Home() {
                 }))
             ).map((faq, idx) => (
               <FadeIn key={faq._id ?? idx} delay={0.05 * (idx + 1)}>
-                <details className="group rounded-2xl border border-border bg-background/70 transition-all hover:border-secondary/50">
+                <details className="group rounded-2xl bg-[var(--color-card-bg)] transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-4 text-sm font-semibold text-primary">
                     {faq.question}
                     <ChevronDown className="h-5 w-5 text-secondary transition-transform group-open:rotate-180" />
                   </summary>
-                  <div className="px-6 pb-4 text-sm text-foreground/80">
+                  <div className="px-6 pb-4 text-sm text-[var(--color-foreground-muted)]">
                     {faq.answer}
                   </div>
                 </details>
@@ -673,7 +671,7 @@ export default function Home() {
         </section>
 
         {/* Newsletter Section */}
-        <section className="relative overflow-hidden rounded-[32px] border border-border bg-linear-to-br from-primary/10 via-surface to-secondary/10 p-8 shadow-[0_40px_80px_var(--color-primary-glow)]">
+        <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[var(--color-primary)]/10 via-[var(--color-surface-elevated)] to-[var(--color-secondary)]/10 p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:from-[var(--color-primary)]/5 dark:via-[var(--color-surface-elevated)] dark:to-[var(--color-secondary)]/5">
           <div className="absolute inset-0 opacity-30">
             <motion.div
               className="absolute inset-0"
@@ -694,16 +692,16 @@ export default function Home() {
             <h2 className="mt-2 text-3xl font-serif text-primary">
               {t("newsletter.title")}
             </h2>
-            <p className="mt-2 text-sm text-foreground/70">
+            <p className="mt-2 text-sm text-[var(--color-foreground-muted)]">
               {t("newsletter.subtitle")}
             </p>
             <form className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
               <div className="relative flex-1 sm:max-w-sm">
-                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground/40" />
+                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--color-foreground-muted)]" />
                 <input
                   type="email"
                   placeholder={t("newsletter.placeholder")}
-                  className="w-full rounded-full border border-border bg-background/80 py-3 pl-12 pr-4 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-full bg-[var(--color-card-bg)] py-3 pl-12 pr-4 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
                 />
               </div>
               <button
@@ -713,7 +711,7 @@ export default function Home() {
                 {t("newsletter.cta")}
               </button>
             </form>
-            <p className="mt-4 text-xs text-foreground/50">
+            <p className="mt-4 text-xs text-[var(--color-foreground-muted)] opacity-70">
               {t("newsletter.privacy")}
             </p>
           </FadeIn>
@@ -721,7 +719,7 @@ export default function Home() {
 
         <section
           id="contact"
-          className="grid gap-10 rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)] lg:grid-cols-2"
+          className="grid gap-10 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] lg:grid-cols-2 dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="space-y-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -754,7 +752,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setIsMapModalOpen(true)}
-              className="inline-flex items-center justify-center rounded-full border border-secondary px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary-soft)] px-6 py-3 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
             >
               {t("contact.viewMap")}
             </button>
@@ -767,17 +765,17 @@ export default function Home() {
               <input
                 type="text"
                 placeholder={t("contact.form.name")}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
               />
               <input
                 type="email"
                 placeholder={t("contact.form.email")}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
               />
               <textarea
                 placeholder={t("contact.form.message")}
                 rows={5}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
               />
             </div>
             <Link

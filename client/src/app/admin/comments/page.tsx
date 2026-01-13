@@ -82,20 +82,20 @@ export default function AdminCommentsPage() {
         <button
           type="button"
           onClick={() => refetch()}
-          className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold uppercase tracking-[0.25em]"
+          className="inline-flex items-center gap-2 rounded-full  px-3 py-2 text-xs font-semibold uppercase tracking-[0.25em]"
         >
           <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           {t("admin.comments.refresh", "Refresh")}
         </button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface p-4 shadow-lg">
+      <div className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("admin.comments.search", "Search comments")}
-            className="flex-1 min-w-[220px] rounded-2xl border border-border bg-background/80 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            className="flex-1 min-w-[220px] rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
           {(isLoading || isFetching) && <Loader2 className="h-4 w-4 animate-spin text-secondary" />}
         </div>

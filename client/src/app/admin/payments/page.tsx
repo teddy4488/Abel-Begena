@@ -259,7 +259,7 @@ export default function AdminPaymentsPage() {
   return (
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:gap-6">
-        <header className="flex flex-col gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-lg sm:rounded-[32px] sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col gap-3 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)]/95 p-4 shadow-lg sm:rounded-[32px] sm:p-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("admin.payments.kicker", "Treasury overview")}
@@ -278,7 +278,7 @@ export default function AdminPaymentsPage() {
             type="button"
             onClick={handleExportCsv}
             disabled={!filteredRecords.length}
-            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-widest transition hover:bg-(--color-secondary-soft) disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full  px-4 py-2 text-xs font-semibold uppercase tracking-widest transition hover:bg-(--color-secondary-soft) disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
             {t("admin.payments.exportCsv", "Export CSV")}
@@ -286,7 +286,7 @@ export default function AdminPaymentsPage() {
         </header>
 
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
-          <div className="rounded-3xl border border-border bg-surface p-4">
+          <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary/70">
               {t("admin.payments.summary.totalCollected", "Total collected")}
             </p>
@@ -294,7 +294,7 @@ export default function AdminPaymentsPage() {
               {formatAmount(totalCompleted, "ETB")}
             </p>
           </div>
-          <div className="rounded-3xl border border-border bg-surface p-4">
+          <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary/70">
               {t("admin.payments.summary.pending", "Pending / processing")}
             </p>
@@ -302,7 +302,7 @@ export default function AdminPaymentsPage() {
               {formatAmount(totalPending, "ETB")}
             </p>
           </div>
-          <div className="rounded-3xl border border-border bg-surface p-4">
+          <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary/70">
               {t("admin.payments.summary.counts", "Entries by type")}
             </p>
@@ -317,10 +317,10 @@ export default function AdminPaymentsPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-surface/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+        <div className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)]/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="flex flex-1 items-center rounded-full border border-border bg-background px-3 py-2 sm:px-4">
+              <div className="flex flex-1 items-center rounded-full  bg-background px-3 py-2 sm:px-4">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -332,7 +332,7 @@ export default function AdminPaymentsPage() {
                 />
               </div>
               <div className="flex flex-wrap gap-2 sm:ml-4">
-                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground/70">
+                <div className="inline-flex items-center gap-2 rounded-full  bg-background px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground/70">
                   <Filter className="h-4 w-4" />
                   <select
                     value={filterType}
@@ -354,7 +354,7 @@ export default function AdminPaymentsPage() {
                     </option>
                   </select>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground/70">
+                <div className="inline-flex items-center gap-2 rounded-full  bg-background px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground/70">
                   <Filter className="h-4 w-4" />
                   <select
                     value={filterStatus}
@@ -395,7 +395,7 @@ export default function AdminPaymentsPage() {
                 {t("payments.loading", "Loading payments...")}
               </p>
             ) : !filteredRecords.length ? (
-              <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 p-6 text-center text-sm text-foreground/70">
+              <div className="rounded-2xl border border-dashed border-border/70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 p-6 text-center text-sm text-foreground/70">
                 {t(
                   "admin.payments.empty",
                   "No payments match your filters. Adjust the filters or try again later.",
@@ -435,7 +435,7 @@ export default function AdminPaymentsPage() {
                   {filteredRecords.map((record) => (
                     <tr key={record.id}>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70">
+                        <span className="inline-flex items-center gap-1 rounded-full /70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70">
                           {record.type === "enrollment" ? (
                             <BookOpen className="h-3 w-3" />
                           ) : (

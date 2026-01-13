@@ -178,7 +178,7 @@ export default function TeacherMaterialsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:p-6"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:p-6"
         >
           <h2 className="mb-4 text-lg font-serif text-primary sm:text-xl">
             {t("teacher.materials.uploadTitle", "Upload New Material")}
@@ -191,7 +191,7 @@ export default function TeacherMaterialsPage() {
               <select
                 value={selectedClassId ?? ""}
                 onChange={(e) => setSelectedClassId(e.target.value || null)}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               >
                 <option value="">{t("teacher.materials.chooseClass", "Choose a class...")}</option>
                 {teacherClasses.map((klass) => (
@@ -212,7 +212,7 @@ export default function TeacherMaterialsPage() {
                 onChange={(e) =>
                   setUploadDraft((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
             <div>
@@ -227,7 +227,7 @@ export default function TeacherMaterialsPage() {
                 className={`relative rounded-2xl border-2 border-dashed transition-all ${
                   dragActive
                     ? "border-secondary bg-secondary/10"
-                    : "border-border bg-background/50 hover:border-secondary/50"
+                    : "border-border bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 hover:border-secondary/50"
                 }`}
               >
                 <input
@@ -255,7 +255,7 @@ export default function TeacherMaterialsPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 flex items-center justify-between rounded-xl border border-border bg-background/80 p-3"
+                  className="mt-3 flex items-center justify-between rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 p-3"
                 >
                   <div className="flex items-center gap-3">
                     <FileText className="w-5 h-5 text-secondary" />
@@ -281,7 +281,7 @@ export default function TeacherMaterialsPage() {
                     </span>
                     <span className="text-xs font-semibold text-secondary">{uploadProgress}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-background/80 overflow-hidden">
+                  <div className="h-2 rounded-full bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 overflow-hidden">
                     <motion.div
                       className="h-full bg-gradient-to-r from-secondary to-secondary/70"
                       initial={{ width: 0 }}
@@ -319,7 +319,7 @@ export default function TeacherMaterialsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg"
         >
           <h2 className="mb-4 text-xl font-serif text-primary">
             {selectedClassId
@@ -329,7 +329,7 @@ export default function TeacherMaterialsPage() {
           {selectedClassId && classAccess ? (
             <div className="space-y-3">
               {classAccess.materials.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-background/50 p-8 text-center">
+                <div className="rounded-xl border border-dashed border-border bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-8 text-center">
                   <FileText className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
                   <p className="text-sm text-foreground/70">
                     {t("teacher.materials.noMaterials", "No materials uploaded yet.")}
@@ -346,7 +346,7 @@ export default function TeacherMaterialsPage() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ delay: idx * 0.05 }}
-                        className="rounded-xl border border-border bg-background/50 p-4 hover:bg-background/80 transition-all hover:shadow-md"
+                        className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-4 hover:bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 transition-all hover:shadow-md"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -366,7 +366,7 @@ export default function TeacherMaterialsPage() {
                             href={material.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold uppercase tracking-wide transition hover:bg-secondary/10 hover:border-secondary flex-shrink-0"
+                            className="flex items-center gap-2 rounded-full  bg-background px-3 py-2 text-xs font-semibold uppercase tracking-wide transition hover:bg-secondary/10 hover:border-secondary flex-shrink-0"
                           >
                             <Download className="w-3 h-3" />
                             {t("teacher.materials.download", "Download")}
@@ -379,7 +379,7 @@ export default function TeacherMaterialsPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-border bg-background/50 p-8 text-center">
+            <div className="rounded-xl border border-dashed border-border bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-8 text-center">
               <FileText className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
               <p className="text-sm text-foreground/70">
                 {t("teacher.materials.chooseClassPrompt", "Choose a class from the dropdown to view or upload materials.")}

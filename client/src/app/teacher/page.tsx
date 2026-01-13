@@ -126,7 +126,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-3xl border border-border bg-surface p-6 shadow-lg hover:shadow-xl transition-shadow"
+          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg hover:shadow-xl transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
@@ -152,7 +152,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-3xl border border-border bg-surface p-6 shadow-lg hover:shadow-xl transition-shadow"
+          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg hover:shadow-xl transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
@@ -181,7 +181,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-3xl border border-border bg-surface p-6 shadow-lg hover:shadow-xl transition-shadow"
+          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg hover:shadow-xl transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
@@ -210,7 +210,7 @@ export default function TeacherDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+        className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
       >
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -234,7 +234,7 @@ export default function TeacherDashboardPage() {
               >
                 <Link
                   href={action.href}
-                  className="group flex flex-col rounded-xl border border-border bg-background/50 p-5 transition-all hover:border-secondary/50 hover:bg-background/80 hover:shadow-md"
+                  className="group flex flex-col rounded-xl bg-[var(--color-card-bg)] p-5 transition-all hover:bg-[var(--color-card-hover)] hover:shadow-md dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                 >
                   <div className={`mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl ${action.bgColor} ${action.color} transition-transform group-hover:scale-110`}>
                     <Icon className="h-6 w-6" />
@@ -258,7 +258,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+          className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
         >
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -271,7 +271,7 @@ export default function TeacherDashboardPage() {
             </div>
             <Link
               href="/teacher/live"
-              className="rounded-full border border-secondary px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:bg-secondary/10"
+              className="rounded-full bg-[var(--color-secondary-soft)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
             >
               {t("teacher.dashboard.manageAll", "Manage All")}
             </Link>
@@ -281,7 +281,7 @@ export default function TeacherDashboardPage() {
               ? [1, 2, 3].map((item) => (
                   <div
                     key={`class-skel-${item}`}
-                    className="rounded-xl border border-border/60 bg-background/40 p-4"
+                    className="rounded-xl bg-[var(--color-card-bg)] p-4 dark:bg-[var(--color-card-bg)]"
                   >
                     <Skeleton className="h-5 w-48 rounded-full" />
                     <Skeleton className="mt-2 h-3 w-32 rounded-full" />
@@ -296,7 +296,7 @@ export default function TeacherDashboardPage() {
                   >
                     <Link
                       href="/teacher/live"
-                      className="flex items-center justify-between rounded-xl border border-border bg-background/50 p-4 transition-all hover:border-secondary/50 hover:bg-background/80 hover:shadow-sm group"
+                      className="flex items-center justify-between rounded-xl bg-[var(--color-card-bg)] p-4 transition-all hover:bg-[var(--color-card-hover)] hover:shadow-sm group dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -347,7 +347,7 @@ export default function TeacherDashboardPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="rounded-2xl border border-dashed border-border bg-background/50 p-12 text-center"
+          className="rounded-2xl bg-[var(--color-card-bg)] p-12 text-center dark:bg-[var(--color-card-bg)]"
         >
           <BookOpen className="mx-auto h-12 w-12 text-foreground/30 mb-4" />
           <p className="text-sm font-semibold text-primary mb-2">
@@ -367,7 +367,7 @@ export default function TeacherDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="rounded-2xl border border-border bg-surface p-6 shadow-lg"
+        className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -390,7 +390,7 @@ export default function TeacherDashboardPage() {
             {[1, 2, 3, 4].map((item) => (
               <div
                 key={`post-skel-${item}`}
-                className="rounded-xl border border-border/50 bg-background/40 p-4"
+                className="rounded-xl bg-[var(--color-card-bg)] p-4 dark:bg-[var(--color-card-bg)]"
               >
                 <Skeleton className="h-4 w-40 rounded-full" />
                 <Skeleton className="mt-2 h-3 w-24 rounded-full" />
@@ -403,7 +403,7 @@ export default function TeacherDashboardPage() {
             {recentPosts.map((post) => (
               <div
                 key={post._id}
-                className="rounded-xl border border-border bg-background/70 p-4 transition hover:border-secondary/40 hover:bg-background"
+                className="rounded-xl bg-[var(--color-card-bg)] p-4 transition hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-primary truncate">
@@ -438,7 +438,7 @@ export default function TeacherDashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-border bg-background/40 p-10 text-center">
+          <div className="rounded-xl bg-[var(--color-card-bg)] p-10 text-center dark:bg-[var(--color-card-bg)]">
             <p className="text-sm text-foreground/70">
               {t(
                 "teacher.dashboard.noPosts",

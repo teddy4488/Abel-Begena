@@ -89,7 +89,7 @@ export function AdminSidebar() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+        <div className="flex items-center gap-3 rounded-2xl bg-[var(--color-card-bg)] px-3 py-2 dark:bg-[var(--color-card-bg)]">
           {user?.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -134,7 +134,8 @@ export function AdminSidebar() {
           );
         })}
       </nav>
-      <div className="mt-auto space-y-2 border-t border-border/50 pt-4">
+      <div className="mt-auto space-y-2">
+        <div className="h-px bg-[var(--color-divider)] mb-4" />
         <div className="flex items-center gap-2">
           <ThemeSwitcher />
           <LanguageToggle />
@@ -160,7 +161,7 @@ export function AdminSidebar() {
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-foreground shadow-lg lg:hidden"
+        className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-foreground shadow-lg lg:hidden dark:bg-[var(--color-surface-elevated)]"
         aria-label="Open sidebar"
       >
         <Menu className="h-5 w-5" />
@@ -177,7 +178,7 @@ export function AdminSidebar() {
       {/* Mobile sidebar */}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col overflow-y-auto border-r border-border bg-(--color-background-soft) p-6 text-sm transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col overflow-y-auto bg-[var(--color-background-soft)] p-6 text-sm transition-transform duration-300 lg:hidden shadow-xl dark:bg-[var(--color-background-soft)]",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -193,7 +194,7 @@ export function AdminSidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden h-screen w-72 flex-col overflow-y-auto border-r border-border bg-(--color-background-soft) p-6 text-sm lg:flex">
+      <aside className="hidden h-screen w-72 flex-col overflow-y-auto bg-[var(--color-background-soft)] p-6 text-sm lg:flex shadow-[2px_0_8px_var(--color-primary-glow)] dark:bg-[var(--color-background-soft)]">
         {sidebarContent}
       </aside>
     </>

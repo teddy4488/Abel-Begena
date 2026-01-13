@@ -213,7 +213,7 @@ export default function Navbar() {
         className={
           isMobile
             ? "pl-4 text-sm font-normal"
-            : "absolute left-0 mt-3 min-w-[230px] rounded-xl border border-border bg-surface text-foreground shadow-xl"
+            : "absolute left-0 mt-3 min-w-[230px] rounded-xl bg-[var(--color-surface-elevated)] text-foreground shadow-xl dark:bg-[var(--color-surface-elevated)]"
         }
         onMouseEnter={!isMobile ? openServices : undefined}
         onMouseLeave={!isMobile ? closeServices : undefined}
@@ -245,7 +245,7 @@ export default function Navbar() {
     const items = userMenuMap[resolvedRole as Exclude<RoleKey, "guest">];
     return (
       <div
-        className="absolute right-0 mt-3 w-56 rounded-xl border border-border bg-surface p-2 text-sm shadow-xl"
+        className="absolute right-0 mt-3 w-56 rounded-xl bg-[var(--color-surface-elevated)] p-2 text-sm shadow-xl dark:bg-[var(--color-surface-elevated)]"
         onMouseEnter={openUserMenu}
         onMouseLeave={closeUserMenu}
       >
@@ -274,11 +274,11 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-(--color-background-soft) text-foreground backdrop-blur-xl">
+    <header className="sticky top-0 z-50 bg-[var(--color-background-soft)] text-foreground backdrop-blur-xl shadow-[0_2px_8px_var(--color-primary-glow)] dark:bg-[var(--color-background-soft)] dark:shadow-[0_2px_8px_var(--color-primary-glow)]">
       <div className="mx-auto flex max-w-8xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-xl bg-linear-to-r from-secondary/30 via-primary/20 to-secondary/30 px-4 py-2 shadow-[0_4px_20px_var(--color-primary-glow)] backdrop-blur-sm border border-secondary/30"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[var(--color-secondary-soft)] via-[var(--color-primary)]/20 to-[var(--color-secondary-soft)] px-4 py-2 shadow-[0_4px_20px_var(--color-primary-glow)] backdrop-blur-sm dark:from-[var(--color-secondary-soft)] dark:via-[var(--color-primary)]/20 dark:to-[var(--color-secondary-soft)]"
         >
           <Image
             src="/assets/logo.png"
@@ -329,7 +329,7 @@ export default function Navbar() {
           {isLoggedIn && (
             <Link
               href="/cart"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-secondary-soft)] transition hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
               aria-label="Shopping Cart"
             >
               <ShoppingCart className="h-5 w-5 text-foreground" />
@@ -346,7 +346,7 @@ export default function Navbar() {
                 href="/login"
                 className={clsx(
                   navButtonClass,
-                  "border-border text-foreground hover:bg-(--color-secondary-soft)",
+                  "bg-[var(--color-secondary-soft)] text-secondary hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80",
                 )}
                 data-active={isActiveLink("/login") ? "true" : undefined}
               >
@@ -356,7 +356,7 @@ export default function Navbar() {
                 href="/register"
                 className={clsx(
                   navButtonClass,
-                  "border-transparent bg-primary text-primary-foreground shadow-sm hover:brightness-95",
+                  "bg-primary text-primary-foreground shadow-sm hover:brightness-95",
                 )}
                 data-active={isActiveLink("/register") ? "true" : undefined}
               >
@@ -373,7 +373,7 @@ export default function Navbar() {
                 type="button"
                 className={clsx(
                   navButtonClass,
-                  "gap-3 border-secondary text-secondary hover:bg-(--color-secondary-soft)",
+                  "gap-3 bg-[var(--color-secondary-soft)] text-secondary hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80",
                 )}
                 onClick={() => setUserMenuOpen((prev) => !prev)}
               >
@@ -402,7 +402,7 @@ export default function Navbar() {
         </div>
 
         <button
-          className="inline-flex items-center justify-center rounded-lg border border-border p-2 text-foreground lg:hidden"
+          className="inline-flex items-center justify-center rounded-lg bg-[var(--color-secondary-soft)] p-2 text-foreground transition hover:opacity-80 lg:hidden dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-label="Toggle navigation menu"
         >
@@ -411,7 +411,7 @@ export default function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="space-y-2 border-t border-border bg-surface px-5 py-4 text-base font-medium uppercase text-foreground lg:hidden">
+        <div className="space-y-2 bg-[var(--color-surface-elevated)] px-5 py-4 text-base font-medium uppercase text-foreground shadow-[0_-2px_8px_var(--color-primary-glow)] lg:hidden dark:bg-[var(--color-surface-elevated)]">
           {navSettings.links.map((link) => (
             <Link
               key={link.labelKey}
@@ -442,7 +442,7 @@ export default function Navbar() {
                 <Link
                   href="/cart"
                   onClick={() => setMobileOpen(false)}
-                  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-secondary-soft)] transition hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
                   aria-label="Shopping Cart"
                 >
                   <ShoppingCart className="h-5 w-5 text-foreground" />
@@ -460,7 +460,7 @@ export default function Navbar() {
                   href="/login"
                   className={clsx(
                     navButtonClass,
-                    "w-full border-secondary text-center text-secondary",
+                    "w-full bg-[var(--color-secondary-soft)] text-center text-secondary hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80",
                   )}
                   data-active={isActiveLink("/login") ? "true" : undefined}
                   onClick={() => setMobileOpen(false)}
@@ -471,7 +471,7 @@ export default function Navbar() {
                   href="/register"
                   className={clsx(
                     navButtonClass,
-                    "w-full border-transparent bg-primary text-center text-primary-foreground",
+                    "w-full bg-primary text-center text-primary-foreground hover:brightness-95",
                   )}
                   data-active={isActiveLink("/register") ? "true" : undefined}
                   onClick={() => setMobileOpen(false)}
@@ -484,7 +484,7 @@ export default function Navbar() {
                 <summary
                   className={clsx(
                     navButtonClass,
-                    "flex cursor-pointer items-center justify-between border-secondary text-secondary",
+                    "flex cursor-pointer items-center justify-between bg-[var(--color-secondary-soft)] text-secondary hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80",
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -508,7 +508,7 @@ export default function Navbar() {
                   </span>
                   <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
                 </summary>
-                <div className="mt-2 space-y-1 rounded-2xl border border-border bg-background/80 p-3 text-sm normal-case">
+                <div className="mt-2 space-y-1 rounded-2xl bg-[var(--color-card-bg)] p-3 text-sm normal-case dark:bg-[var(--color-card-bg)]">
                   {userMenuMap[
                     resolvedRole as Exclude<RoleKey, "guest">
                   ].map((item) => (
