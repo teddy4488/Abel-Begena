@@ -24,6 +24,7 @@ const emptyForm = {
   coverImage: "",
   content: "",
   isPublished: false,
+  status: "draft" as "draft" | "pending" | "published",
 };
 
 export function BlogStudio({
@@ -70,23 +71,32 @@ export function BlogStudio({
         coverImage: post.coverImage,
         content: post.content,
         isPublished: post.isPublished,
+        status: post.status ?? (post.isPublished ? "published" : "draft"),
       });
     }
   }, [activePostId, posts]);
 
   const handleSubmit = async () => {
     try {
+      const payload = isAdmin
+        ? form
+        : { ...form, isPublished: false, status: "pending" as const };
+
       if (activePostId) {
         await updatePost({
           id: activePostId,
-          data: isAdmin ? form : { ...form, isPublished: false },
+          data: payload,
         }).unwrap();
         pushToast({ title: "Post updated", variant: "success" });
       } else {
-        await createPost(
-          isAdmin ? form : { ...form, isPublished: false, status: "pending" },
-        ).unwrap();
-        pushToast({ title: "Post published", variant: "success" });
+        await createPost(payload).unwrap();
+        pushToast({
+          title: isAdmin ? "Post published" : "Post submitted",
+          description: isAdmin
+            ? undefined
+            : "An admin will review and publish this post.",
+          variant: "success",
+        });
       }
       setForm({ ...emptyForm });
       setActivePostId(null);
@@ -126,19 +136,26 @@ export function BlogStudio({
           <h3 className="text-2xl font-serif text-primary">Compose a story</h3>
         </div>
         <div className="flex items-center gap-3 text-xs">
-          <label className="flex items-center gap-2 font-semibold text-foreground/70">
-            <input
-              type="checkbox"
-              checked={form.isPublished}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  isPublished: e.target.checked,
-                }))
-              }
-            />
-            Publish immediately
-          </label>
+          {isAdmin ? (
+            <label className="flex items-center gap-2 font-semibold text-foreground/70">
+              <input
+                type="checkbox"
+                checked={form.isPublished || form.status === "published"}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    isPublished: e.target.checked,
+                    status: e.target.checked ? "published" : "draft",
+                  }))
+                }
+              />
+              Publish immediately
+            </label>
+          ) : (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary">
+              Status: Pending approval
+            </p>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -222,6 +239,33 @@ export function BlogStudio({
               className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
           </div>
+          {isAdmin && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary mb-1 block">
+                  Status
+                </label>
+                <select
+                  value={form.status}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      status: e.target.value as "draft" | "pending" | "published",
+                      isPublished: e.target.value === "published",
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="pending">Pending</option>
+                  <option value="published">Published</option>
+                </select>
+              </div>
+              <div className="flex items-end text-xs text-foreground/70">
+                <p>Admins can publish; teachers submit for approval.</p>
+              </div>
+            </div>
+          )}
           <textarea
             rows={8}
             placeholder="Write in Markdown..."

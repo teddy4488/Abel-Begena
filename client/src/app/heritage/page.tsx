@@ -137,7 +137,7 @@ export default function HeritagePage() {
                     {post.author?.firstName || post.author?.email || t("heritage.page.editorial")}
                   </span>
                   <span>•</span>
-                  <span>{post.isPublished ? t("heritage.page.published") : t("heritage.page.draft")}</span>
+                  <span>{t("heritage.page.published", "Published")}</span>
                 </div>
                 <Link
                   href={`/heritage/${post.slug}`}

@@ -193,10 +193,14 @@ export default function TeacherSchedulePage() {
         });
       }
       resetForm();
-    } catch {
+    } catch (err: any) {
+      const serverMessage =
+        err?.data?.message ??
+        err?.error ??
+        t("teacher.schedule.saveErrorDesc", "Please try again.");
       pushToast({
         title: t("teacher.schedule.saveError", "Unable to save schedule"),
-        description: t("teacher.schedule.saveErrorDesc", "Please try again."),
+        description: serverMessage,
         variant: "error",
       });
     }

@@ -110,6 +110,41 @@ export const blogApi = createApi({
       }),
       invalidatesTags: ["Comments"],
     }),
+    getManageComments: builder.query<
+      Array<{
+        _id: string;
+        content: string;
+        status: string;
+        postId?: { title?: string; slug?: string; status?: string; isPublished?: boolean };
+        authorId?: { firstName?: string; lastName?: string; email?: string; avatarUrl?: string };
+        createdAt?: string;
+      }>,
+      { search?: string } | void
+    >({
+      query: (params) => ({
+        url: "/blog/comments/manage",
+        params: params?.search ? { search: params.search } : undefined,
+      }),
+      providesTags: ["Comments"],
+    }),
+    updateCommentStatus: builder.mutation<
+      { _id: string; status: string },
+      { id: string; status: "pending" | "approved" | "rejected"; note?: string }
+    >({
+      query: ({ id, status, note }) => ({
+        url: `/blog/comments/${id}/status`,
+        method: "PATCH",
+        body: { status, ...(note ? { note } : {}) },
+      }),
+      invalidatesTags: ["Comments"],
+    }),
+    deleteComment: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/blog/comments/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Comments"],
+    }),
   }),
 });
 
@@ -122,5 +157,8 @@ export const {
   useDeletePostMutation,
   useGetCommentsQuery,
   useCreateCommentMutation,
+  useGetManageCommentsQuery,
+  useUpdateCommentStatusMutation,
+  useDeleteCommentMutation,
 } = blogApi;
 

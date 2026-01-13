@@ -41,8 +41,9 @@ export default function TeacherDashboardPage() {
     [posts, user?._id, user?.id],
   );
 
-  const publishedPosts = myPosts.filter((p) => p.isPublished).length;
-  const draftPosts = myPosts.filter((p) => !p.isPublished).length;
+  const publishedPosts = myPosts.filter((p) => p.status === "published" || p.isPublished).length;
+  const pendingPosts = myPosts.filter((p) => p.status === "pending" && !p.isPublished).length;
+  const draftPosts = myPosts.filter((p) => (p.status ?? "draft") === "draft" && !p.isPublished).length;
   const liveClasses = teacherClasses.filter((c) => c.isLive).length;
 
   const recentPosts = useMemo(() => {
@@ -166,9 +167,12 @@ export default function TeacherDashboardPage() {
               publishedPosts
             )}
           </p>
-          {draftPosts > 0 && (
+          {(draftPosts > 0 || pendingPosts > 0) && (
             <p className="mt-2 text-xs text-foreground/60">
-              {draftPosts} {t("teacher.dashboard.drafts", "drafts")}
+              {publishedPosts}{" "}
+              {t("teacher.dashboard.published", "published")} • {pendingPosts}{" "}
+              {t("teacher.dashboard.pending", "pending")} • {draftPosts}{" "}
+              {t("teacher.dashboard.drafts", "drafts")}
             </p>
           )}
         </motion.div>
@@ -181,7 +185,7 @@ export default function TeacherDashboardPage() {
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
-              {t("teacher.dashboard.drafts", "Drafts")}
+              {t("teacher.dashboard.drafts", "Drafts & Pending")}
             </p>
             <Edit className="w-5 h-5 text-secondary/40" />
           </div>
@@ -189,12 +193,13 @@ export default function TeacherDashboardPage() {
             {postsLoading ? (
               <Loader2 className="inline-block h-6 w-6 animate-spin" />
             ) : (
-              draftPosts
+              draftPosts + pendingPosts
             )}
           </p>
-          {publishedPosts > 0 && (
-            <p className="mt-2 text-xs text-foreground/60">
-              {publishedPosts} {t("teacher.dashboard.published", "published")}
+          {pendingPosts > 0 && (
+            <p className="mt-2 text-xs text-amber-600">
+              {pendingPosts}{" "}
+              {t("teacher.dashboard.pendingReview", "awaiting admin review")}
             </p>
           )}
         </motion.div>

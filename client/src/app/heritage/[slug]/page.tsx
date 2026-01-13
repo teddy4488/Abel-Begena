@@ -10,6 +10,7 @@ import { useGetPostBySlugQuery, useGetCommentsQuery, useCreateCommentMutation } 
 import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useState } from "react";
 
 export default function HeritageArticlePage() {
   const params = useParams();
