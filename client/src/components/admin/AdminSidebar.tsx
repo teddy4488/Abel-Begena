@@ -12,6 +12,7 @@ import {
   MapPin,
   Package2,
   Receipt,
+  CalendarDays,
   HelpCircle,
   MessageSquare,
   LogOut,
@@ -34,6 +35,7 @@ const links = [
   { href: "/admin/branches", labelKey: "admin.sidebar.branches", icon: MapPin },
   { href: "/admin/store", labelKey: "admin.sidebar.store", icon: Package2 },
   { href: "/admin/orders", labelKey: "admin.sidebar.orders", icon: Receipt },
+  { href: "/admin/attendance", labelKey: "admin.sidebar.attendance", icon: CalendarDays },
   { href: "/admin/faq", labelKey: "admin.sidebar.faq", icon: HelpCircle },
   { href: "/admin/comments", labelKey: "admin.sidebar.comments", icon: MessageSquare },
 ];

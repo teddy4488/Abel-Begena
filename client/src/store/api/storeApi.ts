@@ -1,10 +1,12 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
 
+export type InstrumentType = "Begena" | "Kirar" | "Masinko" | "Washint" | "Kebero" | "Other";
+
 export type Product = {
   _id: string;
   name: string;
-  instrumentType: string;
+  instrumentType: InstrumentType;
   shortDescription?: string;
   price: number;
   stock: number;

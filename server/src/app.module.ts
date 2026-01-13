@@ -13,6 +13,7 @@ import { FaqModule } from './faq/faq.module';
 import { AdminModule } from './admin/admin.module';
 import { BranchModule } from './branch/branch.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     AdminModule,
     BranchModule,
     RealtimeModule,
+    AttendanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
