@@ -74,7 +74,7 @@ export default function AdminAnalyticsPage() {
 
   if (isLoading || !data) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6">
+      <div className="flex items-center justify-center min-h-[400px] rounded-3xl  surface-elevated p-6">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-secondary mb-4"></div>
           <p className="text-sm text-foreground/70">
@@ -180,7 +180,7 @@ export default function AdminAnalyticsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg sm:rounded-3xl sm:p-5"
+          className="rounded-2xl  surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-5"
         >
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-5 h-5 text-secondary" />
@@ -194,7 +194,7 @@ export default function AdminAnalyticsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-5 shadow-lg"
+          className="rounded-3xl  surface-elevated p-5 shadow-lg"
         >
           <div className="flex items-center gap-2 mb-4">
             <Users className="w-5 h-5 text-secondary" />
@@ -212,7 +212,7 @@ export default function AdminAnalyticsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg"
+          className="rounded-3xl  surface-elevated p-6 shadow-lg"
         >
           <div className="flex items-center gap-2 mb-4">
             <ShoppingBag className="w-5 h-5 text-secondary" />
@@ -249,7 +249,7 @@ export default function AdminAnalyticsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg"
+          className="rounded-3xl  surface-elevated p-6 shadow-lg"
         >
           <div className="flex items-center gap-2 mb-4">
             <BookOpen className="w-5 h-5 text-secondary" />
@@ -301,7 +301,7 @@ export default function AdminAnalyticsPage() {
         transition={{ delay: 0.6 }}
         className="grid gap-4 md:grid-cols-3"
       >
-        <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg">
+        <div className="rounded-3xl  surface-elevated p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
@@ -312,7 +312,7 @@ export default function AdminAnalyticsPage() {
             {enrollmentStatusData.find((e) => e.name === t("classes.status.active", "Active"))?.value || 0}
           </p>
         </div>
-        <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg">
+        <div className="rounded-3xl  surface-elevated p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
@@ -323,7 +323,7 @@ export default function AdminAnalyticsPage() {
             {enrollmentStatusData.find((e) => e.name === t("classes.status.pending", "Pending"))?.value || 0}
           </p>
         </div>
-        <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg">
+        <div className="rounded-3xl  surface-elevated p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-3 h-3 rounded-full bg-red-500"></div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
@@ -356,7 +356,7 @@ function AnalyticsStat({
   const trendNegative = trend !== undefined && trend < 0;
 
   return (
-    <div className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg hover:shadow-xl transition-shadow">
+    <div className="rounded-3xl  surface-elevated p-4 shadow-lg hover:shadow-xl transition-shadow">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {icon && <div style={{ color }}>{icon}</div>}

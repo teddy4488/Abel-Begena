@@ -183,7 +183,7 @@ export default function TeacherLiveClassesPage() {
           {t("teacher.live.loading", "Loading classes...")}
         </p>
       ) : teacherClasses.length === 0 ? (
-        <div className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-8 text-center">
+        <div className="rounded-2xl  surface-elevated p-8 text-center">
           <Video className="mx-auto h-12 w-12 text-foreground/30" />
           <p className="mt-4 text-sm text-foreground/70">
             {t("teacher.live.noClasses", "No classes assigned yet.")}
@@ -209,7 +209,7 @@ export default function TeacherLiveClassesPage() {
                 key={klass._id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg hover:shadow-xl transition-shadow"
+                className="space-y-4 rounded-2xl  surface-elevated p-6 shadow-lg hover:shadow-xl transition-shadow"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -246,7 +246,7 @@ export default function TeacherLiveClassesPage() {
                         className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
                           currentSessionType === "builtin"
                             ? "border-begena-gold bg-begena-gold/20 text-begena-darkBrown shadow-md"
-                            : "border-border bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 text-foreground/70 hover:border-begena-gold/50"
+                            : "border-border card-elevated50 text-foreground/70 hover:border-begena-gold/50"
                         }`}
                       >
                         <VideoIcon className={`w-4 h-4 ${currentSessionType === "builtin" ? "text-begena-gold" : ""}`} />
@@ -261,7 +261,7 @@ export default function TeacherLiveClassesPage() {
                         className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
                           currentSessionType === "external"
                             ? "border-begena-gold bg-begena-gold/20 text-begena-darkBrown shadow-md"
-                            : "border-border bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 text-foreground/70 hover:border-begena-gold/50"
+                            : "border-border card-elevated50 text-foreground/70 hover:border-begena-gold/50"
                         }`}
                       >
                         <Globe className={`w-4 h-4 ${currentSessionType === "external" ? "text-begena-gold" : ""}`} />
@@ -294,7 +294,7 @@ export default function TeacherLiveClassesPage() {
                             }));
                           }}
                           onBlur={(e) => handleLiveLinkBlur(klass._id, e.target.value)}
-                          className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                          className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                         />
                         <button
                           type="button"
@@ -353,7 +353,7 @@ export default function TeacherLiveClassesPage() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         onClick={() => handleJoinClass(klass._id, currentSessionType || "builtin")}
-                        className="flex items-center gap-2 rounded-full  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm font-semibold transition hover:bg-secondary/10 shadow-md"
+                        className="flex items-center gap-2 rounded-full  card-elevated80 px-4 py-3 text-sm font-semibold transition hover:bg-secondary/10 shadow-md"
                       >
                         {currentSessionType === "external" ? (
                           <>
@@ -371,7 +371,7 @@ export default function TeacherLiveClassesPage() {
                   </div>
 
                   {/* Status Card */}
-                  <div className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-3">
+                  <div className="rounded-xl  card-elevated50 p-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs uppercase tracking-wide text-secondary">
                         {t("teacher.live.status", "Status")}

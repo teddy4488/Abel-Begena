@@ -164,7 +164,7 @@ export default function AdminFaqPage() {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg"
+          className="space-y-4 rounded-2xl  surface-elevated p-6 shadow-lg"
         >
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-serif text-primary">
@@ -176,7 +176,7 @@ export default function AdminFaqPage() {
               <button
                 type="button"
                 onClick={reset}
-                className="rounded-full p-1 text-foreground/70 hover:bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60"
+                className="rounded-full p-1 text-foreground/70 hover:card-elevated60"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -192,7 +192,7 @@ export default function AdminFaqPage() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, question: e.target.value }))
                 }
-                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 placeholder={t("admin.faq.questionPlaceholder", "How do I enroll?")}
               />
             </div>
@@ -206,7 +206,7 @@ export default function AdminFaqPage() {
                   setForm((prev) => ({ ...prev, answer: e.target.value }))
                 }
                 rows={4}
-                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 placeholder={t("admin.faq.answerPlaceholder", "Provide the detailed answer...")}
               />
             </div>
@@ -225,7 +225,7 @@ export default function AdminFaqPage() {
                       order: Number(e.target.value ?? 0),
                     }))
                   }
-                  className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
               <div className="flex items-end gap-3">
@@ -280,7 +280,7 @@ export default function AdminFaqPage() {
         <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
-          className="space-y-3 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6 shadow-lg"
+          className="space-y-3 rounded-2xl  surface-elevated p-6 shadow-lg"
         >
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-serif text-primary">

@@ -111,7 +111,7 @@ export default function TeacherStudentsPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-6">
+      <div className="rounded-2xl  surface-elevated p-6">
         <div className="mb-6">
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
             {t("teacher.students.filter", "Filter by Class")}
@@ -119,7 +119,7 @@ export default function TeacherStudentsPage() {
           <select
             value={selectedClassId}
             onChange={(e) => setSelectedClassId(e.target.value)}
-            className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           >
             <option value="">Choose a class...</option>
             {teacherClasses.map((klass) => (
@@ -137,7 +137,7 @@ export default function TeacherStudentsPage() {
         )}
 
         {!classesLoading && !teacherClasses.length && (
-          <div className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-8 text-center">
+          <div className="rounded-xl  card-elevated50 p-8 text-center">
             <p className="text-sm text-foreground/70">
               {t(
                 "teacher.students.noClasses",
@@ -148,7 +148,7 @@ export default function TeacherStudentsPage() {
         )}
 
         {!classesLoading && teacherClasses.length > 0 && !hasSelection && (
-          <div className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-8 text-center">
+          <div className="rounded-xl  card-elevated50 p-8 text-center">
             <p className="text-sm text-foreground/70">
               {t(
                 "teacher.students.selectPrompt",
@@ -180,7 +180,7 @@ export default function TeacherStudentsPage() {
 
             {!rosterLoading && !rosterError && (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl /70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl /70 card-elevated60 px-4 py-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-secondary">
                       {roster?.title ?? "Class"}
@@ -192,7 +192,7 @@ export default function TeacherStudentsPage() {
                 </div>
 
                 {students.length === 0 ? (
-                  <div className="rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-8 text-center text-sm text-foreground/70">
+                  <div className="rounded-xl  card-elevated50 p-8 text-center text-sm text-foreground/70">
                     {t(
                       "teacher.students.empty",
                       "No students enrolled yet. Share the enrollment link or coordinate with Admin to invite learners.",
@@ -203,7 +203,7 @@ export default function TeacherStudentsPage() {
                     {students.map((student) => (
                       <div
                         key={student._id}
-                        className="flex flex-col gap-3 rounded-xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 p-4 md:flex-row md:items-center md:justify-between"
+                        className="flex flex-col gap-3 rounded-xl  card-elevated50 p-4 md:flex-row md:items-center md:justify-between"
                       >
                         <div className="space-y-1">
                           <p className="font-semibold text-primary">
@@ -359,7 +359,7 @@ export default function TeacherStudentsPage() {
                               )
                             }
                             disabled={isUpdatingStatus}
-                            className="rounded-full  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide outline-none transition focus:border-secondary"
+                            className="rounded-full  card-elevated80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide outline-none transition focus:border-secondary"
                           >
                             {statusOptions.map((option) => (
                               <option key={option} value={option}>

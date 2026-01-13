@@ -142,7 +142,7 @@ export default function AdminConsolePage() {
             >
               <Link
                 href={card.href}
-                className="group relative flex flex-col rounded-3xl bg-[var(--color-surface-elevated)] p-5 shadow-lg transition-all hover:bg-[var(--color-card-hover)] hover:shadow-xl dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
+                className="group relative flex flex-col rounded-3xl card-elevated p-5 transition-all hover:shadow-[0_12px_40px_var(--color-primary-glow)]"
               >
                 {card.urgent && (
                   <div className="absolute -right-2 -top-2 h-4 w-4 rounded-full bg-amber-500 animate-pulse" />
@@ -183,7 +183,7 @@ export default function AdminConsolePage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
+          className="rounded-3xl surface-elevated p-6"
         >
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -210,7 +210,7 @@ export default function AdminConsolePage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.05 }}
-                  className="flex items-center justify-between rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 transition hover:bg-[var(--color-card-hover)] hover:shadow-sm dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
+                  className="flex items-center justify-between rounded-2xl card-elevated px-4 py-3 transition-all hover:shadow-md"
                 >
                   <span className="font-medium text-primary truncate flex-1">
                     {klass.title}
@@ -240,7 +240,7 @@ export default function AdminConsolePage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
+          className="rounded-3xl surface-elevated p-6"
         >
           <div className="mb-4">
             <h2 className="text-xl font-serif text-primary">
@@ -263,7 +263,7 @@ export default function AdminConsolePage() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 + index * 0.05 }}
-                    className="rounded-2xl bg-[var(--color-card-bg)] p-4 text-center transition hover:bg-[var(--color-card-hover)] hover:shadow-sm dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
+                    className="rounded-2xl card-elevated p-4 text-center transition-all hover:shadow-md"
                   >
                     <p className="text-xs uppercase tracking-[0.4em] text-secondary/60 mb-2">
                       {status}

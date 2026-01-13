@@ -100,7 +100,7 @@ export default function TeacherMaterialsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-8 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+          className="rounded-3xl  surface-elevated p-8 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -112,7 +112,7 @@ export default function TeacherMaterialsPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Week 1: Introduction to Begena"
-                className="w-full rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+                className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
                 required
               />
             </div>
@@ -132,7 +132,7 @@ export default function TeacherMaterialsPage() {
                 />
                 <label
                   htmlFor="file-input"
-                  className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]50 px-6 py-8 text-center transition hover:border-secondary hover:bg-secondary/5"
+                  className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-border card-elevated50 px-6 py-8 text-center transition hover:border-secondary hover:bg-secondary/5"
                 >
                   <Upload className="h-6 w-6 text-secondary" />
                   <div className="flex-1 text-left">
@@ -166,7 +166,7 @@ export default function TeacherMaterialsPage() {
                   <span className="text-foreground/70">Uploading...</span>
                   <span className="font-medium">{uploadProgress}%</span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80">
+                <div className="h-2 w-full overflow-hidden rounded-full card-elevated80">
                   <motion.div
                     className="h-full bg-secondary"
                     initial={{ width: 0 }}

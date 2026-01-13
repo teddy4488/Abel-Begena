@@ -98,7 +98,7 @@ export default function AdminEnrollmentsPage() {
   return (
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:gap-6">
-        <header className="flex flex-col gap-3 rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)]/95 p-4 shadow-lg sm:rounded-[32px] sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col gap-3 rounded-2xl  surface-elevated/95 p-4 shadow-lg sm:rounded-[32px] sm:p-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("admin.enrollments.kicker", "Payment review")}
@@ -127,7 +127,7 @@ export default function AdminEnrollmentsPage() {
           </button>
         </header>
 
-        <div className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)]/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+        <div className="rounded-2xl  surface-elevated/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
           <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
               <div className="flex flex-1 items-center rounded-full  bg-background px-3 py-2 sm:px-4">
@@ -295,7 +295,7 @@ export default function AdminEnrollmentsPage() {
                   {!filtered.length && (
                     <tr>
                       <td colSpan={5} className="px-4 py-6 text-center">
-                        <div className="rounded-2xl border border-dashed border-border/70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 p-6 text-center text-sm text-foreground/70">
+                        <div className="rounded-2xl border border-dashed border-border/70 card-elevated60 p-6 text-center text-sm text-foreground/70">
                           {t(
                             "admin.enrollments.noMatches",
                             "No enrollments match your filters.",
@@ -321,7 +321,7 @@ export default function AdminEnrollmentsPage() {
                     key={`${enrollment.classId}-${enrollment.student.id}-${enrollment.paymentReference ?? ""}`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg"
+                    className="rounded-2xl  surface-elevated p-4 shadow-lg"
                   >
                     <div className="space-y-4">
                       <div>
@@ -424,7 +424,7 @@ export default function AdminEnrollmentsPage() {
                 );
               })}
               {!filtered.length && (
-                <div className="rounded-2xl border border-dashed border-border/70 bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]60 p-6 text-center text-sm text-foreground/70">
+                <div className="rounded-2xl border border-dashed border-border/70 card-elevated60 p-6 text-center text-sm text-foreground/70">
                   {t(
                     "admin.enrollments.noMatches",
                     "No enrollments match your filters.",

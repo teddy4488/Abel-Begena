@@ -126,7 +126,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg hover:shadow-xl transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
+          className="rounded-3xl card-elevated p-6 transition-all hover:shadow-[0_12px_40px_var(--color-primary-glow)]"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
@@ -152,7 +152,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg hover:shadow-xl transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
+          className="rounded-3xl card-elevated p-6 transition-all hover:shadow-[0_12px_40px_var(--color-primary-glow)]"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
@@ -181,7 +181,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-3xl bg-[var(--color-surface-elevated)] p-6 shadow-lg hover:shadow-xl transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
+          className="rounded-3xl card-elevated p-6 transition-all hover:shadow-[0_12px_40px_var(--color-primary-glow)]"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
@@ -210,7 +210,7 @@ export default function TeacherDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
+        className="rounded-2xl surface-elevated p-6"
       >
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -234,7 +234,7 @@ export default function TeacherDashboardPage() {
               >
                 <Link
                   href={action.href}
-                  className="group flex flex-col rounded-xl bg-[var(--color-card-bg)] p-5 transition-all hover:bg-[var(--color-card-hover)] hover:shadow-md dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
+                  className="group flex flex-col rounded-xl card-elevated p-5 transition-all hover:shadow-md"
                 >
                   <div className={`mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl ${action.bgColor} ${action.color} transition-transform group-hover:scale-110`}>
                     <Icon className="h-6 w-6" />
@@ -258,7 +258,7 @@ export default function TeacherDashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
+          className="rounded-2xl surface-elevated p-6"
         >
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -296,7 +296,7 @@ export default function TeacherDashboardPage() {
                   >
                     <Link
                       href="/teacher/live"
-                      className="flex items-center justify-between rounded-xl bg-[var(--color-card-bg)] p-4 transition-all hover:bg-[var(--color-card-hover)] hover:shadow-sm group dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
+                      className="flex items-center justify-between rounded-xl card-elevated p-4 transition-all hover:shadow-md group"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -367,7 +367,7 @@ export default function TeacherDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
+        className="rounded-2xl surface-elevated p-6"
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -403,7 +403,7 @@ export default function TeacherDashboardPage() {
             {recentPosts.map((post) => (
               <div
                 key={post._id}
-                className="rounded-xl bg-[var(--color-card-bg)] p-4 transition hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-card-bg)] dark:hover:bg-[var(--color-card-hover)]"
+                className="rounded-xl card-elevated p-4 transition-all hover:shadow-md"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-primary truncate">

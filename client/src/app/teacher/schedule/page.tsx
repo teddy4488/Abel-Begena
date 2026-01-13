@@ -269,7 +269,7 @@ export default function TeacherSchedulePage() {
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="space-y-4 rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg lg:col-span-1 dark:bg-[var(--color-surface-elevated)]"
+          className="space-y-4 rounded-2xl surface-elevated p-6 lg:col-span-1"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-serif text-primary">
@@ -299,7 +299,7 @@ export default function TeacherSchedulePage() {
                   setSelectedClassId(e.target.value);
                   resetForm();
                 }}
-                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               >
                 <option value="">{t("teacher.schedule.chooseClass", "Choose a class...")}</option>
                 {teacherClasses.map((klass) => (
@@ -319,7 +319,7 @@ export default function TeacherSchedulePage() {
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder={t("teacher.schedule.titlePlaceholder", "e.g., Beginners rehearsal")}
-                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
@@ -332,7 +332,7 @@ export default function TeacherSchedulePage() {
                   type="datetime-local"
                   value={form.startTime}
                   onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
-                  className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
               <div>
@@ -343,7 +343,7 @@ export default function TeacherSchedulePage() {
                   type="datetime-local"
                   value={form.endTime}
                   onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                  className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </div>
             </div>
@@ -357,7 +357,7 @@ export default function TeacherSchedulePage() {
                 value={form.location}
                 onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
                 placeholder={t("teacher.schedule.locationPlaceholder", "Studio, Zoom, etc.")}
-                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
@@ -370,7 +370,7 @@ export default function TeacherSchedulePage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
                 rows={3}
                 placeholder={t("teacher.schedule.notesPlaceholder", "Reminders, expected materials, dress code...")}
-                className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
 
@@ -632,7 +632,7 @@ export default function TeacherSchedulePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]"
+        className="rounded-2xl surface-elevated p-6"
       >
         <h2 className="mb-4 text-xl font-serif text-primary">
           {t("teacher.schedule.myClasses", "My Classes")}

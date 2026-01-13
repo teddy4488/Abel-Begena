@@ -20,7 +20,14 @@
   --color-primary-glow: rgba(217, 119, 6, 0.35);
   --color-divider: rgba(217, 119, 6, 0.08);
   --color-card-bg: rgba(255, 255, 255, 0.9);
-  --color-card-hover: rgba(255, 255, 255, 0.95);
+  --color-card-hover: rgba(255, 255, 255, 0.98);
+  --color-card-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(253, 251, 247, 0.9) 100%);
+  --color-surface-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+  --color-shadow-sm: 0 2px 8px rgba(217, 119, 6, 0.08);
+  --color-shadow-md: 0 4px 16px rgba(217, 119, 6, 0.12);
+  --color-shadow-lg: 0 8px 32px rgba(217, 119, 6, 0.16);
+  --color-shadow-xl: 0 16px 48px rgba(217, 119, 6, 0.2);
+  --color-glow: 0 0 20px rgba(197, 160, 89, 0.3);
   --grain-color-1: rgba(217, 119, 6, 0.08);
   --grain-color-2: rgba(197, 160, 89, 0.1);
 }
@@ -45,7 +52,14 @@
   --color-primary-glow: rgba(197, 160, 89, 0.45);
   --color-divider: rgba(247, 217, 161, 0.08);
   --color-card-bg: rgba(31, 41, 55, 0.9);
-  --color-card-hover: rgba(55, 65, 81, 0.95);
+  --color-card-hover: rgba(55, 65, 81, 0.98);
+  --color-card-gradient: linear-gradient(135deg, rgba(31, 41, 55, 0.95) 0%, rgba(37, 47, 61, 0.9) 100%);
+  --color-surface-gradient: linear-gradient(135deg, rgba(31, 41, 55, 0.98) 0%, rgba(31, 41, 55, 0.95) 100%);
+  --color-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --color-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --color-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --color-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.35);
+  --color-glow: 0 0 20px rgba(197, 160, 89, 0.4);
   --grain-color-1: rgba(255, 255, 255, 0.04);
   --grain-color-2: rgba(197, 160, 89, 0.05);
 }
@@ -182,4 +196,115 @@ body::before {
   transform-origin: left center;
   transform: scaleX(1);
   opacity: 1;
+}
+
+/* Enhanced card styling with gradients */
+.card-elevated {
+  background: var(--color-card-gradient);
+  box-shadow: var(--color-shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-elevated::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(197, 160, 89, 0.3) 50%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-elevated:hover::before {
+  opacity: 1;
+}
+
+.card-elevated:hover {
+  box-shadow: var(--color-shadow-lg);
+  transform: translateY(-2px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.surface-elevated {
+  background: var(--color-surface-gradient);
+  box-shadow: var(--color-shadow-sm);
+  position: relative;
+}
+
+.surface-elevated::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(197, 160, 89, 0.1) 0%,
+    rgba(217, 119, 6, 0.05) 50%,
+    rgba(197, 160, 89, 0.1) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.dark .surface-elevated::after {
+  background: linear-gradient(
+    135deg,
+    rgba(247, 217, 161, 0.08) 0%,
+    rgba(197, 160, 89, 0.05) 50%,
+    rgba(247, 217, 161, 0.08) 100%
+  );
+}
+
+/* Enhanced input fields */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+  background: var(--color-card-gradient);
+  box-shadow: var(--color-shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+textarea:focus,
+select:focus {
+  box-shadow: var(--color-shadow-md), var(--color-glow);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+/* Smooth transitions for all interactive elements */
+.card-elevated,
+.surface-elevated {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced hover states */
+.card-elevated:hover {
+  background: var(--color-card-hover);
+}
+
+.surface-elevated:hover {
+  box-shadow: var(--color-shadow-md);
 }

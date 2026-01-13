@@ -284,7 +284,7 @@ export default function AdminAttendancePage() {
             className="space-y-6"
           >
             {/* Student list section */}
-            <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]">
+            <div className="rounded-2xl surface-elevated p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -313,7 +313,7 @@ export default function AdminAttendancePage() {
                     return (
                       <div
                         key={p._id}
-                        className="flex items-center justify-between rounded-xl bg-[var(--color-card-bg)] px-4 py-3 dark:bg-[var(--color-card-bg)]"
+                        className="flex items-center justify-between rounded-xl card-elevated px-4 py-3 transition-all hover:shadow-md"
                       >
                         <div className="flex flex-col">
                           <span className="font-semibold text-primary">{name}</span>
@@ -337,7 +337,7 @@ export default function AdminAttendancePage() {
             </div>
 
             {/* Student attendance form */}
-            <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]">
+            <div className="rounded-2xl surface-elevated p-6">
               <div className="mb-4">
                 <p className="text-xs uppercase tracking-[0.3em] text-secondary">
                   {t("attendance.students.record", "Record Attendance")}
@@ -366,7 +366,7 @@ export default function AdminAttendancePage() {
                         onChange={(e) => setStudentCode(e.target.value.replace(/\s+/g, ""))}
                         autoFocus
                         placeholder={t("attendance.students.codePlaceholder", "Enter number")}
-                        className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] pl-10 pr-4 py-3 text-lg font-mono tracking-[0.25em] outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                        className="w-full rounded-2xl card-elevated pl-10 pr-4 py-3 text-lg font-mono tracking-[0.25em] outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                       />
                     </div>
                     {activeStudent && (
@@ -393,7 +393,7 @@ export default function AdminAttendancePage() {
                       <select
                         value={selectedLessonId}
                         onChange={(e) => setSelectedLessonId(e.target.value)}
-                        className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                        className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                       >
                         <option value="">
                           {t("attendance.students.chooseLesson", "Choose a lesson")}
@@ -413,7 +413,7 @@ export default function AdminAttendancePage() {
                         <select
                           value={revisedLessonId}
                           onChange={(e) => setRevisedLessonId(e.target.value)}
-                          className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                          className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                         >
                           <option value="">
                             {t(
@@ -437,7 +437,7 @@ export default function AdminAttendancePage() {
                           onChange={(e) =>
                             setStatus(e.target.value as "present" | "late" | "excused")
                           }
-                          className="w-full rounded-2xl bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                          className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                         >
                           <option value="present">
                             {t("attendance.status.present", "Present")}
@@ -476,7 +476,7 @@ export default function AdminAttendancePage() {
             className="space-y-6"
           >
             {/* Teacher list section */}
-            <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-lg dark:bg-[var(--color-surface-elevated)]">
+            <div className="rounded-2xl surface-elevated p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -507,7 +507,7 @@ export default function AdminAttendancePage() {
                     return (
                       <div
                         key={p._id}
-                        className="flex items-center justify-between rounded-xl bg-[var(--color-card-bg)] px-4 py-3 dark:bg-[var(--color-card-bg)]"
+                        className="flex items-center justify-between rounded-xl card-elevated px-4 py-3 transition-all hover:shadow-md"
                       >
                         <div className="flex flex-col">
                           <span className="font-semibold text-primary">{name}</span>
@@ -562,7 +562,7 @@ export default function AdminAttendancePage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl dark:bg-[var(--color-surface-elevated)]"
+            className="w-full max-w-md rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-serif text-primary">

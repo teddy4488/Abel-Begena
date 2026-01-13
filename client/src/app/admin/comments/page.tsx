@@ -89,13 +89,13 @@ export default function AdminCommentsPage() {
         </button>
       </div>
 
-      <div className="rounded-2xl  bg-[var(--color-surface-elevated)] dark:bg-[var(--color-surface-elevated)] p-4 shadow-lg">
+      <div className="rounded-2xl  surface-elevated p-4 shadow-lg">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("admin.comments.search", "Search comments")}
-            className="flex-1 min-w-[220px] rounded-2xl  bg-[var(--color-card-bg)] dark:bg-[var(--color-card-bg)]80 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            className="flex-1 min-w-[220px] rounded-2xl  card-elevated80 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
           {(isLoading || isFetching) && <Loader2 className="h-4 w-4 animate-spin text-secondary" />}
         </div>
