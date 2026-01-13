@@ -6,6 +6,7 @@ import {
   useGetManageProductsQuery,
   useUpdateProductMutation,
   useUploadProductImageMutation,
+  type InstrumentType,
 } from "@/store/api/storeApi";
 import { useToast } from "@/components/providers/ToastProvider";
 
@@ -90,7 +91,7 @@ export default function AdminStorePage() {
     try {
       await createProduct({
         name: form.name,
-        instrumentType: form.instrumentType as typeof form.instrumentType,
+        instrumentType: form.instrumentType as InstrumentType,
         shortDescription: form.shortDescription,
         price: Number(form.price),
         stock: Number(form.stock),
