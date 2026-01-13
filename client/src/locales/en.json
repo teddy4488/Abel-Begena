@@ -302,6 +302,8 @@
   "admin.sidebar.orders": "Orders",
   "admin.sidebar.content": "Content",
   "admin.sidebar.faq": "FAQ",
+  "admin.sidebar.attendance": "Attendance",
+  "admin.sidebar.comments": "Comments",
   "teacher.sidebar.brand": "Abel Begena",
   "teacher.sidebar.title": "Teacher Studio",
   "teacher.sidebar.role": "Instructor",

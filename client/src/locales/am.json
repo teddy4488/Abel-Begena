@@ -310,6 +310,8 @@
   "teacher.sidebar.students": "ተማሪዎች",
   "teacher.sidebar.schedule": "የጊዜ ሰሌዳ",
   "admin.sidebar.faq": "የመመሪያ ይዘት",
+  "admin.sidebar.attendance": "የተመዘገበበት",
+  "admin.sidebar.comments": "ማስታወሻዎች",
   "teacher.sidebar.liveClasses": "በቀጥታ ክፍሎች",
   "video.section.kicker": "ቅዱስ ዜማዎች",
   "video.section.title": "የአምልኮ ድምጽን ያዳምጡ",
