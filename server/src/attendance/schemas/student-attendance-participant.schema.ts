@@ -25,7 +25,7 @@ export class StudentAttendanceParticipant {
   instrumentType: InstrumentType;
 
   @Prop({ type: Types.ObjectId, ref: 'Class', required: false })
-  classId?: typeof Class;
+  classId?: Types.ObjectId;
 
   @Prop({ enum: [3, 6, 9], required: true })
   programDurationMonths: ProgramDuration;

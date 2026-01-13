@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { InstrumentType } from '../../product/schemas/product.schema';
-import { ProgramDuration } from './student-attendance-participant.schema';
 
 export type StudentAttendanceDocument = StudentAttendance & Document;
 
@@ -24,7 +23,7 @@ export class StudentAttendance {
   instrumentType: InstrumentType;
 
   @Prop({ enum: [3, 6, 9], required: true })
-  programDurationMonths: ProgramDuration;
+  programDurationMonths: 3 | 6 | 9;
 
   @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson', required: true })
   lessonId: Types.ObjectId;
