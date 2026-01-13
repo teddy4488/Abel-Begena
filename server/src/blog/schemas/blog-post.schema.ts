@@ -23,6 +23,13 @@ export class BlogPost {
   @Prop({ default: false })
   isPublished: boolean;
 
+  @Prop({
+    type: String,
+    enum: ['draft', 'pending', 'published'],
+    default: 'draft',
+  })
+  status: 'draft' | 'pending' | 'published';
+
   @Prop()
   publishedAt?: Date;
 }
@@ -30,11 +37,15 @@ export class BlogPost {
 export const BlogPostSchema = SchemaFactory.createForClass(BlogPost);
 
 BlogPostSchema.pre<BlogPostDocument>('save', function handlePublished(next) {
-  if (this.isModified('isPublished')) {
-    if (this.isPublished && !this.publishedAt) {
+  // Keep publishedAt consistent with publishing state
+  if (this.isModified('status') || this.isModified('isPublished')) {
+    const shouldPublish =
+      this.status === 'published' || this.isPublished === true;
+    this.isPublished = shouldPublish;
+    if (shouldPublish && !this.publishedAt) {
       this.publishedAt = new Date();
     }
-    if (!this.isPublished) {
+    if (!shouldPublish) {
       this.publishedAt = undefined;
     }
   }

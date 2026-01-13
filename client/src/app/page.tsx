@@ -9,6 +9,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useGetProductsQuery } from "@/store/api/storeApi";
 import { useGetPublicClassesQuery } from "@/store/api/classApi";
 import { useGetBranchesQuery } from "@/store/api/branchApi";
+import { useGetFaqQuery } from "@/store/api/faqApi";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
 import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
@@ -87,6 +88,7 @@ export default function Home() {
   const { data: classHighlights, isLoading: isLoadingClasses } =
     useGetPublicClassesQuery();
   const { data: branches } = useGetBranchesQuery();
+  const { data: faqItems } = useGetFaqQuery();
   const featuredProducts = (products ?? []).slice(0, 3);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -647,15 +649,22 @@ export default function Home() {
             </p>
           </FadeIn>
           <div className="mx-auto max-w-3xl space-y-4">
-            {[1, 2, 3, 4, 5].map((num) => (
-              <FadeIn key={num} delay={0.1 * num}>
+            {(faqItems && faqItems.length > 0
+              ? faqItems
+              : [1, 2, 3, 4, 5].map((num) => ({
+                  _id: `local-${num}`,
+                  question: t(`faq.q${num}`),
+                  answer: t(`faq.a${num}`),
+                }))
+            ).map((faq, idx) => (
+              <FadeIn key={faq._id ?? idx} delay={0.05 * (idx + 1)}>
                 <details className="group rounded-2xl border border-border bg-background/70 transition-all hover:border-secondary/50">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-4 text-sm font-semibold text-primary">
-                    {t(`faq.q${num}`)}
+                    {faq.question}
                     <ChevronDown className="h-5 w-5 text-secondary transition-transform group-open:rotate-180" />
                   </summary>
                   <div className="px-6 pb-4 text-sm text-foreground/80">
-                    {t(`faq.a${num}`)}
+                    {faq.answer}
                   </div>
                 </details>
               </FadeIn>

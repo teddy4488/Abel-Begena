@@ -12,7 +12,6 @@ import {
 import enMessages from "@/locales/en.json";
 import amMessages from "@/locales/am.json";
 import { useAppSelector } from "@/store/hooks";
-import { useGetContentQuery } from "@/store/api/cmsApi";
 
 type Locale = "en" | "am";
 type Dictionary = Record<string, string>;
@@ -71,24 +70,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const { data: cmsContent } = useGetContentQuery({ lang: locale });
-
-  const cmsDictionary = useMemo(() => {
-    if (!cmsContent) {
-      return {};
-    }
-    return cmsContent.reduce((acc, block) => {
-      acc[`cms.${block.key}`] = block.value;
-      return acc;
-    }, {} as Dictionary);
-  }, [cmsContent]);
-
   const dictionary = useMemo(
-    () => ({
-      ...staticMessages[locale],
-      ...cmsDictionary,
-    }),
-    [cmsDictionary, locale],
+    () => staticMessages[locale],
+    [locale],
   );
 
   const translate = useCallback(

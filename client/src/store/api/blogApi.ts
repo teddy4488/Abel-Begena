@@ -19,6 +19,7 @@ export type BlogPost = {
   excerpt?: string;
   coverImage: string;
   isPublished: boolean;
+  status?: "draft" | "pending" | "published";
   publishedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -28,7 +29,7 @@ export type BlogPost = {
 export const blogApi = createApi({
   reducerPath: "blogApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["Blog"],
+  tagTypes: ["Blog", "Comments"],
   endpoints: (builder) => ({
     getPublishedPosts: builder.query<BlogPost[], { search?: string } | void>({
       query: (params) => ({
@@ -53,6 +54,7 @@ export const blogApi = createApi({
       Pick<BlogPost, "title" | "content" | "coverImage"> & {
         slug?: string;
         isPublished?: boolean;
+        status?: "draft" | "pending" | "published";
       }
     >({
       query: (body) => ({
@@ -80,6 +82,34 @@ export const blogApi = createApi({
       }),
       invalidatesTags: ["Blog"],
     }),
+    getComments: builder.query<
+      Array<{
+        _id: string;
+        content: string;
+        status: string;
+        authorId?: { firstName?: string; lastName?: string; email?: string; avatarUrl?: string };
+        createdAt?: string;
+      }>,
+      { slug: string; postId: string }
+    >({
+      query: ({ slug, postId }) => ({
+        url: `/blog/${slug}/comments`,
+        params: { postId },
+      }),
+      providesTags: ["Comments"],
+    }),
+    createComment: builder.mutation<
+      { _id: string },
+      { slug: string; postId: string; content: string }
+    >({
+      query: ({ slug, postId, content }) => ({
+        url: `/blog/${slug}/comments`,
+        method: "POST",
+        params: { postId },
+        body: { content },
+      }),
+      invalidatesTags: ["Comments"],
+    }),
   }),
 });
 
@@ -90,5 +120,7 @@ export const {
   useCreatePostMutation,
   useUpdatePostMutation,
   useDeletePostMutation,
+  useGetCommentsQuery,
+  useCreateCommentMutation,
 } = blogApi;
 

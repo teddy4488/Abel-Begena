@@ -9,7 +9,7 @@ import { ClassModule } from './class/class.module';
 import { ProductModule } from './product/product.module';
 import { OrderModule } from './order/order.module';
 import { BlogModule } from './blog/blog.module';
-import { CmsModule } from './cms/cms.module';
+import { FaqModule } from './faq/faq.module';
 import { AdminModule } from './admin/admin.module';
 import { BranchModule } from './branch/branch.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -35,7 +35,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     ProductModule,
     OrderModule,
     BlogModule,
-    CmsModule,
+    FaqModule,
     AdminModule,
     BranchModule,
     RealtimeModule,

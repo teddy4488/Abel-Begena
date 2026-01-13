@@ -6,7 +6,7 @@ import { classApi } from "./api/classApi";
 import { storeApi } from "./api/storeApi";
 import { userApi } from "./api/userApi";
 import { blogApi } from "./api/blogApi";
-import { cmsApi } from "./api/cmsApi";
+import { faqApi } from "./api/faqApi";
 import { adminApi } from "./api/adminApi";
 import { branchApi } from "./api/branchApi";
 import authReducer from "./slices/authSlice";
@@ -19,7 +19,7 @@ export const store = configureStore({
     [storeApi.reducerPath]: storeApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
     [blogApi.reducerPath]: blogApi.reducer,
-    [cmsApi.reducerPath]: cmsApi.reducer,
+    [faqApi.reducerPath]: faqApi.reducer,
     [adminApi.reducerPath]: adminApi.reducer,
     [branchApi.reducerPath]: branchApi.reducer,
   },
@@ -30,7 +30,7 @@ export const store = configureStore({
       storeApi.middleware,
       userApi.middleware,
       blogApi.middleware,
-      cmsApi.middleware,
+      faqApi.middleware,
       adminApi.middleware,
       branchApi.middleware,
     ),

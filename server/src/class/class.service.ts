@@ -774,16 +774,38 @@ export class ClassService {
       throw new NotFoundException('Class not found');
     }
 
+    const start = new Date(dto.startTime);
+    const end = dto.endTime ? new Date(dto.endTime) : undefined;
+
+    if (Number.isNaN(start.getTime())) {
+      throw new BadRequestException('Invalid start time');
+    }
+
+    if (end && Number.isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid end time');
+    }
+
+    if (end && end <= start) {
+      throw new BadRequestException('End time must be after start time');
+    }
+
     const newSession: ClassSession = {
       _id: new Types.ObjectId(),
       title: dto.title,
-      startTime: new Date(dto.startTime),
-      endTime: dto.endTime ? new Date(dto.endTime) : undefined,
+      startTime: start,
+      endTime: end,
       location: dto.location,
       notes: dto.notes,
     };
 
     classEntity.schedule = classEntity.schedule ?? [];
+
+    if (this.hasScheduleConflict(classEntity.schedule, newSession)) {
+      throw new BadRequestException(
+        'This session overlaps with an existing schedule entry',
+      );
+    }
+
     (classEntity.schedule as unknown as ClassSession[]).push(newSession);
     classEntity.markModified('schedule');
     await classEntity.save();
@@ -820,28 +842,58 @@ export class ClassService {
     const targetSession: ClassSession =
       existingSession as unknown as ClassSession;
 
+    const nextSession: ClassSession = { ...targetSession };
+
     if (dto.title) {
-      targetSession.title = dto.title;
+      nextSession.title = dto.title;
     }
 
     if (dto.startTime) {
-      targetSession.startTime = new Date(dto.startTime);
+      const start = new Date(dto.startTime);
+      if (Number.isNaN(start.getTime())) {
+        throw new BadRequestException('Invalid start time');
+      }
+      nextSession.startTime = start;
     }
 
     if (typeof dto.endTime !== 'undefined') {
-      targetSession.endTime = dto.endTime ? new Date(dto.endTime) : undefined;
+      const end = dto.endTime ? new Date(dto.endTime) : undefined;
+      if (end && Number.isNaN(end.getTime())) {
+        throw new BadRequestException('Invalid end time');
+      }
+      nextSession.endTime = end;
     }
 
     if (typeof dto.location !== 'undefined') {
-      targetSession.location = dto.location;
+      nextSession.location = dto.location;
     }
 
     if (typeof dto.notes !== 'undefined') {
-      targetSession.notes = dto.notes;
+      nextSession.notes = dto.notes;
+    }
+
+    if (
+      nextSession.endTime &&
+      nextSession.startTime &&
+      nextSession.endTime <= nextSession.startTime
+    ) {
+      throw new BadRequestException('End time must be after start time');
+    }
+
+    if (
+      this.hasScheduleConflict(
+        classEntity.schedule,
+        nextSession,
+        nextSession._id?.toString(),
+      )
+    ) {
+      throw new BadRequestException(
+        'This session overlaps with an existing schedule entry',
+      );
     }
 
     (classEntity.schedule as unknown as ClassSession[])[targetIndex] =
-      targetSession;
+      nextSession;
     classEntity.markModified('schedule');
     await classEntity.save();
 
@@ -1007,5 +1059,36 @@ export class ClassService {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Class not found');
     }
+  }
+
+  private hasScheduleConflict(
+    schedule: ClassSession[] = [],
+    candidate: ClassSession,
+    ignoreId?: string,
+  ) {
+    const candidateStart = candidate.startTime?.getTime?.();
+    const candidateEnd =
+      candidate.endTime?.getTime?.() ??
+      (candidateStart ? candidateStart + 60 * 60 * 1000 : undefined);
+
+    if (!candidateStart || !candidateEnd) {
+      return false;
+    }
+
+    return schedule.some((session) => {
+      const sessionId = session._id?.toString?.();
+      if (ignoreId && sessionId === ignoreId) {
+        return false;
+      }
+      const start = session.startTime?.getTime?.();
+      const end =
+        session.endTime?.getTime?.() ??
+        (start ? start + 60 * 60 * 1000 : undefined);
+      if (!start || !end) {
+        return false;
+      }
+      // overlap check: start < otherEnd && end > otherStart
+      return candidateStart < end && candidateEnd > start;
+    });
   }
 }

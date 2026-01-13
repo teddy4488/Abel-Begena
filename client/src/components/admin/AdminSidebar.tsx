@@ -12,7 +12,7 @@ import {
   MapPin,
   Package2,
   Receipt,
-  Type,
+  HelpCircle,
   LogOut,
   Menu,
   X,
@@ -33,7 +33,7 @@ const links = [
   { href: "/admin/branches", labelKey: "admin.sidebar.branches", icon: MapPin },
   { href: "/admin/store", labelKey: "admin.sidebar.store", icon: Package2 },
   { href: "/admin/orders", labelKey: "admin.sidebar.orders", icon: Receipt },
-  { href: "/admin/cms", labelKey: "admin.sidebar.content", icon: Type },
+  { href: "/admin/faq", labelKey: "admin.sidebar.faq", icon: HelpCircle },
 ];
 
 export function AdminSidebar() {

@@ -43,17 +43,31 @@ export class BlogService {
     actor: Actor,
   ): Promise<BlogPostResponse> {
     const slug = await this.generateUniqueSlug(dto.slug ?? dto.title);
+    const isAdmin = actor.role === 'Admin';
+    const status: 'draft' | 'pending' | 'published' =
+      isAdmin && dto.isPublished
+        ? 'published'
+        : isAdmin && dto.status
+          ? dto.status
+          : actor.role === 'Teacher'
+            ? 'pending'
+            : 'draft';
     const post = await this.blogModel.create({
       ...dto,
       slug,
       author: new Types.ObjectId(actor.sub),
-      isPublished: dto.isPublished ?? false,
+      isPublished: status === 'published',
+      status,
+      ...(status === 'published' ? { publishedAt: new Date() } : {}),
     });
     return this.populateAndFormat(post);
   }
 
   async findPublished(search?: string): Promise<BlogPostResponse[]> {
-    const query: FilterQuery<BlogPostDocument> = { isPublished: true };
+    const query: FilterQuery<BlogPostDocument> = {
+      isPublished: true,
+      status: 'published',
+    };
     if (search) {
       const regex = new RegExp(search, 'i');
       query.$or = [{ title: regex }, { content: regex }];
@@ -69,7 +83,7 @@ export class BlogService {
 
   async findPublishedBySlug(slug: string): Promise<BlogPostResponse> {
     const post = await this.blogModel
-      .findOne({ slug, isPublished: true })
+      .findOne({ slug, isPublished: true, status: 'published' })
       .populate('author', 'firstName lastName role email')
       .lean()
       .exec();
@@ -145,8 +159,28 @@ export class BlogService {
       post.slug = await this.generateUniqueSlug(dto.slug, post._id);
     }
 
-    if (typeof dto.isPublished === 'boolean') {
-      post.isPublished = dto.isPublished;
+    // Only admins can publish/approve
+    if (actor.role === 'Admin') {
+      if (typeof dto.isPublished === 'boolean') {
+        post.isPublished = dto.isPublished;
+      }
+      if (dto.status) {
+        post.status = dto.status;
+      }
+      if (
+        (dto.isPublished === true || dto.status === 'published') &&
+        !post.publishedAt
+      ) {
+        post.publishedAt = new Date();
+      }
+      if (dto.isPublished === false || dto.status === 'draft') {
+        post.publishedAt = undefined;
+      }
+    } else {
+      // Teachers cannot publish directly
+      post.isPublished = false;
+      post.status = 'pending';
+      post.publishedAt = undefined;
     }
 
     await post.save();

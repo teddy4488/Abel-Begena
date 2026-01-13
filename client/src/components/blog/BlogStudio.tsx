@@ -9,6 +9,7 @@ import {
   useGetManagePostsQuery,
   useUpdatePostMutation,
 } from "@/store/api/blogApi";
+import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { motion } from "framer-motion";
 
@@ -34,6 +35,8 @@ export function BlogStudio({
   const [updatePost, { isLoading: isUpdating }] = useUpdatePostMutation();
   const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation();
   const { pushToast } = useToast();
+  const { user } = useAppSelector((state) => state.auth);
+  const isAdmin = user?.role === "Admin";
   const [search, setSearch] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -74,10 +77,15 @@ export function BlogStudio({
   const handleSubmit = async () => {
     try {
       if (activePostId) {
-        await updatePost({ id: activePostId, data: form }).unwrap();
+        await updatePost({
+          id: activePostId,
+          data: isAdmin ? form : { ...form, isPublished: false },
+        }).unwrap();
         pushToast({ title: "Post updated", variant: "success" });
       } else {
-        await createPost(form).unwrap();
+        await createPost(
+          isAdmin ? form : { ...form, isPublished: false, status: "pending" },
+        ).unwrap();
         pushToast({ title: "Post published", variant: "success" });
       }
       setForm({ ...emptyForm });
@@ -165,7 +173,20 @@ export function BlogStudio({
                     : "border-border text-foreground/70 hover:border-secondary/40"
                 }`}
               >
-                {post.title}
+                <div className="flex items-center justify-between gap-2">
+                  <span>{post.title}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                      post.status === "published"
+                        ? "bg-green-500/10 text-green-600"
+                        : post.status === "pending"
+                          ? "bg-amber-500/10 text-amber-600"
+                          : "bg-slate-500/10 text-slate-600"
+                    }`}
+                  >
+                    {post.status ?? (post.isPublished ? "published" : "draft")}
+                  </span>
+                </div>
               </button>
             ))}
             {!filteredPosts.length && (
@@ -217,7 +238,7 @@ export function BlogStudio({
               onClick={handleSubmit}
               className="rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 disabled:opacity-60"
             >
-              {activePostId ? "Update Post" : "Publish Entry"}
+              {activePostId ? "Update Post" : isAdmin ? "Publish Entry" : "Save for Review"}
             </motion.button>
             {activePostId && (
               <motion.button

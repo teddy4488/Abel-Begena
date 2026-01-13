@@ -6,7 +6,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import { ArrowLeft, Share2, Facebook, Twitter, Link as LinkIcon } from "lucide-react";
-import { useGetPostBySlugQuery } from "@/store/api/blogApi";
+import { useGetPostBySlugQuery, useGetCommentsQuery, useCreateCommentMutation } from "@/store/api/blogApi";
+import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -15,11 +16,22 @@ export default function HeritageArticlePage() {
   const slug = params?.slug as string;
   const router = useRouter();
   const { t } = useI18n();
+  const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const {
     data: post,
     isLoading,
     error,
   } = useGetPostBySlugQuery(slug, { skip: !slug });
+  const {
+    data: comments = [],
+    isLoading: commentsLoading,
+    refetch: refetchComments,
+  } = useGetCommentsQuery(
+    post?._id ? { slug, postId: post._id } : { slug, postId: "" },
+    { skip: !post?._id },
+  );
+  const [createComment, { isLoading: isSubmitting }] = useCreateCommentMutation();
+  const [commentText, setCommentText] = useState("");
 
   const handleShare = async () => {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
@@ -317,6 +329,88 @@ export default function HeritageArticlePage() {
           >
             {post.content}
           </ReactMarkdown>
+        </div>
+
+        {/* Comments */}
+        <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-primary">
+              {t("heritage.comments.title", "Comments")}
+            </p>
+            {commentsLoading && (
+              <span className="text-xs text-foreground/60">
+                {t("heritage.comments.loading", "Loading...")}
+              </span>
+            )}
+          </div>
+
+          {isLoggedIn ? (
+            <form
+              className="space-y-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!commentText.trim() || !post?._id) return;
+                try {
+                  await createComment({
+                    slug,
+                    postId: post._id,
+                    content: commentText.trim(),
+                  }).unwrap();
+                  setCommentText("");
+                  await refetchComments();
+                } catch {
+                  // ignore; API errors are surfaced server-side
+                }
+              }}
+            >
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                rows={3}
+                placeholder={t("heritage.comments.placeholder", "Share your thoughts...")}
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !commentText.trim()}
+                  className="rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-60"
+                >
+                  {isSubmitting
+                    ? t("heritage.comments.submitting", "Submitting...")
+                    : t("heritage.comments.submit", "Post comment")}
+                </button>
+              </div>
+              <p className="text-[11px] text-foreground/60">
+                {t("heritage.comments.moderation", "Comments are reviewed before publishing.")}
+              </p>
+            </form>
+          ) : (
+            <p className="text-sm text-foreground/70">
+              {t("heritage.comments.login", "Log in to join the conversation.")}
+            </p>
+          )}
+
+          <div className="divide-y divide-border/70">
+            {comments.map((c) => (
+              <div key={c._id} className="py-3">
+                <p className="text-sm font-semibold text-primary">
+                  {c.authorId?.firstName || c.authorId?.email || t("heritage.comments.user", "User")}
+                </p>
+                <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                  {c.content}
+                </p>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/50">
+                  {new Date(c.createdAt ?? Date.now()).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
+            {!comments.length && (
+              <p className="py-2 text-sm text-foreground/60">
+                {t("heritage.comments.empty", "No comments yet. Be the first to comment.")}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Back to heritage link */}

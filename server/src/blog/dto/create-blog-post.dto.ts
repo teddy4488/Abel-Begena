@@ -29,4 +29,8 @@ export class CreateBlogPostDto {
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
+
+  @IsOptional()
+  @IsString()
+  status?: 'draft' | 'pending' | 'published';
 }
