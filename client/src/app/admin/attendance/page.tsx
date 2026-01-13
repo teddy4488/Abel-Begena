@@ -71,8 +71,11 @@ export default function AdminAttendancePage() {
 
   const currentTeacherStatus = useMemo(() => {
     const openMap = new Map<string, boolean>();
-    todayAttendance.forEach((rec: any) => {
-      const pid = rec.participantId?._id ?? rec.participantId;
+    todayAttendance.forEach((rec) => {
+      const pid =
+        typeof rec.participantId === "object" && rec.participantId !== null
+          ? rec.participantId._id
+          : rec.participantId;
       if (!pid) return;
       if (!rec.checkOutAt) {
         openMap.set(String(pid), true);

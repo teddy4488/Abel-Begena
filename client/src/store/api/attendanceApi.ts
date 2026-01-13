@@ -103,7 +103,14 @@ export const attendanceApi = createApi({
       invalidatesTags: ["TeacherToday"],
     }),
     getTodayTeacherAttendance: builder.query<
-      any[],
+      Array<{
+        _id: string;
+        participantId: { _id: string } | string;
+        checkInAt: string;
+        checkOutAt?: string;
+        durationMinutes?: number;
+        recordedBy?: { _id: string; firstName?: string; lastName?: string; email?: string };
+      }>,
       void
     >({
       query: () => "/attendance/teachers/today",

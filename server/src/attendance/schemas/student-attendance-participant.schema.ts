@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { InstrumentType } from '../../product/schemas/product.schema';
-import { Class } from '../../class/schemas/class.schema';
 
 export type StudentAttendanceParticipantDocument =
   StudentAttendanceParticipant & Document;
