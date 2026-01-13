@@ -7,6 +7,8 @@ export type FaqItem = {
   answer: string;
   order?: number;
   isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export const faqApi = createApi({
