@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClassService } from './class.service';
@@ -7,6 +7,7 @@ import { Class, ClassSchema } from './schemas/class.schema';
 import { UploadModule } from '../upload/upload.module';
 import { ClassOwnerGuard } from '../auth/guards/class-owner.guard';
 import { AuthModule } from '../auth/auth.module';
+import { PaymentModule } from '../payment/payment.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from '../auth/auth.module';
     MongooseModule.forFeature([{ name: Class.name, schema: ClassSchema }]),
     UploadModule,
     AuthModule,
+    forwardRef(() => PaymentModule),
   ],
   providers: [ClassService, ClassOwnerGuard],
   controllers: [ClassController],

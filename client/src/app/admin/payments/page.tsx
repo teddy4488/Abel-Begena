@@ -5,6 +5,12 @@ import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetAllEnrollmentsQuery } from "@/store/api/adminApi";
 import { useGetAllOrdersQuery } from "@/store/api/storeApi";
 import {
+  useGetPendingPaymentRequestsQuery,
+  useUpdatePaymentStatusMutation,
+  type PaymentRequest,
+} from "@/store/api/paymentApi";
+import { useToast } from "@/components/providers/ToastProvider";
+import {
   AlertCircle,
   BookOpen,
   CheckCircle2,
@@ -12,6 +18,10 @@ import {
   Download,
   Filter,
   ShoppingBag,
+  X,
+  Check,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 
 type AdminPaymentStatus = "completed" | "pending" | "processing" | "failed";
@@ -32,9 +42,16 @@ type AdminPaymentRecord = {
 
 export default function AdminPaymentsPage() {
   const { t } = useI18n();
+  const { pushToast } = useToast();
   const { data: enrollments = [], isLoading: enrollmentsLoading } =
     useGetAllEnrollmentsQuery();
   const { data: orders = [], isLoading: ordersLoading } = useGetAllOrdersQuery();
+  const { data: pendingRequests = [], isLoading: pendingRequestsLoading } =
+    useGetPendingPaymentRequestsQuery();
+  const [updatePaymentStatus, { isLoading: isUpdating }] =
+    useUpdatePaymentStatusMutation();
+  const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
 
   const [filterType, setFilterType] = useState<AdminPaymentType | "all">("all");
   const [filterStatus, setFilterStatus] = useState<AdminPaymentStatus | "all">(
@@ -42,7 +59,82 @@ export default function AdminPaymentsPage() {
   );
   const [search, setSearch] = useState("");
 
-  const isLoading = enrollmentsLoading || ordersLoading;
+  const isLoading = enrollmentsLoading || ordersLoading || pendingRequestsLoading;
+
+  const handleApprovePayment = async (request: PaymentRequest) => {
+    try {
+      await updatePaymentStatus({
+        id: request._id,
+        body: { status: "approved", reason: reviewNote || undefined },
+      }).unwrap();
+      pushToast({
+        title: t("admin.payments.review.approved", "Payment approved"),
+        description: t(
+          "admin.payments.review.approvedDesc",
+          "The payment has been approved and enrollment activated.",
+        ),
+        variant: "success",
+      });
+      setSelectedRequest(null);
+      setReviewNote("");
+    } catch (error) {
+      pushToast({
+        title: t("admin.payments.review.error", "Error"),
+        description: t(
+          "admin.payments.review.errorDesc",
+          "Failed to update payment status.",
+        ),
+        variant: "error",
+      });
+    }
+  };
+
+  const handleRejectPayment = async (request: PaymentRequest) => {
+    if (!reviewNote.trim()) {
+      pushToast({
+        title: t("admin.payments.review.reasonRequired", "Reason required"),
+        description: t(
+          "admin.payments.review.reasonRequiredDesc",
+          "Please provide a reason for rejection.",
+        ),
+        variant: "error",
+      });
+      return;
+    }
+    try {
+      await updatePaymentStatus({
+        id: request._id,
+        body: { status: "rejected", reason: reviewNote },
+      }).unwrap();
+      pushToast({
+        title: t("admin.payments.review.rejected", "Payment rejected"),
+        description: t(
+          "admin.payments.review.rejectedDesc",
+          "The payment has been rejected.",
+        ),
+        variant: "success",
+      });
+      setSelectedRequest(null);
+      setReviewNote("");
+    } catch (error) {
+      pushToast({
+        title: t("admin.payments.review.error", "Error"),
+        description: t(
+          "admin.payments.review.errorDesc",
+          "Failed to update payment status.",
+        ),
+        variant: "error",
+      });
+    }
+  };
+
+  const getUserDisplayName = (userId: PaymentRequest["userId"]) => {
+    if (typeof userId === "object" && userId !== null) {
+      const parts = [userId.firstName, userId.lastName].filter(Boolean);
+      return parts.length > 0 ? parts.join(" ") : userId.email || "Unknown";
+    }
+    return "Unknown";
+  };
 
   const enrollmentRecords: AdminPaymentRecord[] = useMemo(
     () =>
@@ -285,6 +377,97 @@ export default function AdminPaymentsPage() {
           </button>
         </header>
 
+        {/* Pending Payment Requests Section */}
+        {pendingRequests.length > 0 && (
+          <div className="rounded-2xl surface-elevated/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-serif text-primary">
+                  {t("admin.payments.pendingRequests.title", "Pending Payment Reviews")}
+                </h2>
+                <p className="mt-1 text-sm text-foreground/70">
+                  {t(
+                    "admin.payments.pendingRequests.subtitle",
+                    "Review and approve payment requests with uploaded receipts.",
+                  )}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                <Clock className="h-3 w-3" />
+                {pendingRequests.length}
+              </span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {pendingRequests.map((request) => (
+                <div
+                  key={request._id}
+                  className="rounded-2xl border border-border bg-surface/50 p-4 transition hover:border-secondary/50"
+                >
+                  <div className="mb-3 flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-xs uppercase tracking-wide text-secondary/70">
+                        {request.type === "enrollment"
+                          ? t("payments.filters.enrollments", "Enrollment")
+                          : request.type === "order"
+                          ? t("payments.filters.orders", "Order")
+                          : t("payments.type.tuition", "Tuition")}
+                      </p>
+                      <p className="mt-1 font-semibold text-primary">
+                        {getUserDisplayName(request.userId)}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-600">
+                      <Clock className="h-3 w-3" />
+                      {t("payments.status.pending", "Pending")}
+                    </span>
+                  </div>
+                  <div className="mb-3 space-y-1 text-sm">
+                    <p className="text-foreground/80">
+                      <span className="font-semibold">
+                        {formatAmount(request.amount, request.currency)}
+                      </span>
+                    </p>
+                    {request.reference && (
+                      <p className="text-xs text-foreground/60">
+                        {t("admin.payments.reference", "Reference")}: {request.reference}
+                      </p>
+                    )}
+                    {request.method && (
+                      <p className="text-xs text-foreground/60">
+                        {t("admin.payments.method", "Method")}: {request.method}
+                      </p>
+                    )}
+                  </div>
+                  {request.receiptUrl && (
+                    <a
+                      href={request.receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mb-3 inline-flex items-center gap-1 text-xs text-secondary transition hover:text-primary"
+                    >
+                      <FileText className="h-3 w-3" />
+                      {t("admin.payments.viewReceipt", "View Receipt")}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setReviewNote("");
+                      }}
+                      className="flex-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:brightness-95"
+                    >
+                      {t("admin.payments.review", "Review")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
           <div className="rounded-3xl  surface-elevated p-4">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary/70">
@@ -484,6 +667,160 @@ export default function AdminPaymentsPage() {
           </div>
         </div>
       </div>
+
+      {/* Review Modal */}
+      {selectedRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur">
+          <div className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 p-6 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-serif text-primary">
+                  {t("admin.payments.review.title", "Review Payment Request")}
+                </h3>
+                <p className="mt-1 text-sm text-foreground/70">
+                  {t(
+                    "admin.payments.review.subtitle",
+                    "Review the payment details and receipt before approving or rejecting.",
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRequest(null);
+                  setReviewNote("");
+                }}
+                className="rounded-full p-2 text-foreground/70 transition hover:bg-secondary/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 space-y-3 rounded-2xl border border-border bg-background/50 p-4">
+              <div className="grid gap-2 text-sm md:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-secondary/70">
+                    {t("admin.payments.review.user", "User")}
+                  </p>
+                  <p className="mt-1 font-semibold text-primary">
+                    {getUserDisplayName(selectedRequest.userId)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-secondary/70">
+                    {t("admin.payments.review.type", "Type")}
+                  </p>
+                  <p className="mt-1 font-semibold text-primary">
+                    {selectedRequest.type === "enrollment"
+                      ? t("payments.filters.enrollments", "Enrollment")
+                      : selectedRequest.type === "order"
+                      ? t("payments.filters.orders", "Order")
+                      : t("payments.type.tuition", "Tuition")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-secondary/70">
+                    {t("admin.payments.review.amount", "Amount")}
+                  </p>
+                  <p className="mt-1 font-semibold text-primary">
+                    {formatAmount(selectedRequest.amount, selectedRequest.currency)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-secondary/70">
+                    {t("admin.payments.review.method", "Payment Method")}
+                  </p>
+                  <p className="mt-1 text-foreground/80">{selectedRequest.method}</p>
+                </div>
+                {selectedRequest.reference && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("admin.payments.review.reference", "Reference")}
+                    </p>
+                    <p className="mt-1 text-foreground/80">{selectedRequest.reference}</p>
+                  </div>
+                )}
+                {selectedRequest.createdAt && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("admin.payments.review.submitted", "Submitted")}
+                    </p>
+                    <p className="mt-1 text-foreground/80">
+                      {formatDate(selectedRequest.createdAt)}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {selectedRequest.receiptUrl && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs uppercase tracking-wide text-secondary/70">
+                    {t("admin.payments.review.receipt", "Payment Receipt")}
+                  </p>
+                  <a
+                    href={selectedRequest.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold transition hover:border-secondary"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {t("admin.payments.viewReceipt", "View Receipt")}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t("admin.payments.review.note", "Review Note (Optional)")}
+              </label>
+              <textarea
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                rows={3}
+                placeholder={t(
+                  "admin.payments.review.notePlaceholder",
+                  "Add any notes about this review...",
+                )}
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => handleRejectPayment(selectedRequest)}
+                disabled={isUpdating}
+                className="flex-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-50"
+              >
+                {isUpdating ? (
+                  <Clock className="mx-auto h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <X className="mr-2 inline h-4 w-4" />
+                    {t("admin.payments.reject", "Reject")}
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApprovePayment(selectedRequest)}
+                disabled={isUpdating}
+                className="flex-1 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
+              >
+                {isUpdating ? (
+                  <Clock className="mx-auto h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="mr-2 inline h-4 w-4" />
+                    {t("admin.payments.approve", "Approve")}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

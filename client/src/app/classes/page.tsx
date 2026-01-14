@@ -181,14 +181,26 @@ export default function ClassesPage() {
           payload: basePayload,
         }).unwrap();
       }
-      pushToast({
-        title: t("classes.modal.successTitle", "Enrollment received"),
-        description: t(
-          "classes.modal.successDescription",
-          "You can now access this class from your dashboard.",
-        ),
-        variant: "success",
-      });
+      const isPaidClass = (selectedClass.tuition ?? 0) > 0;
+      if ((form.paymentOption === "BankWithReceipt" && receiptFile) || isPaidClass) {
+        pushToast({
+          title: t("classes.modal.successTitlePending", "Enrollment submitted"),
+          description: t(
+            "classes.modal.successDescriptionPending",
+            "Your enrollment request with receipt has been submitted. An admin will review your payment and activate your enrollment soon.",
+          ),
+          variant: "success",
+        });
+      } else {
+        pushToast({
+          title: t("classes.modal.successTitle", "Enrollment received"),
+          description: t(
+            "classes.modal.successDescription",
+            "You can now access this class from your dashboard.",
+          ),
+          variant: "success",
+        });
+      }
       handleClose();
     } catch (error) {
       console.error(error);

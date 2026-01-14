@@ -21,6 +21,7 @@ import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateScheduleItemDto } from './dto/create-schedule-item.dto';
 import { UpdateScheduleItemDto } from './dto/update-schedule-item.dto';
 import { EnrollClassDto, ClassPaymentMethod } from './dto/enroll-class.dto';
+import { PaymentService } from '../payment/payment.service';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
 
 type AuthenticatedUser = {
@@ -35,6 +36,7 @@ export class ClassService {
     private readonly classModel: Model<ClassDocument>,
     private readonly configService: ConfigService,
     private readonly uploadService: UploadService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   async findForUser(user: AuthenticatedUser) {
@@ -338,7 +340,12 @@ export class ClassService {
     return classEntity;
   }
 
-  async enrollStudent(classId: string, studentId: string, dto: EnrollClassDto) {
+  async enrollStudent(
+    classId: string,
+    studentId: string,
+    dto: EnrollClassDto,
+    options?: { statusOverride?: 'active' | 'pending' },
+  ) {
     this.ensureValidClassId(classId);
     const classEntity = await this.classModel.findById(classId).exec();
 
@@ -388,10 +395,39 @@ export class ClassService {
     const currency =
       dto.currency?.toUpperCase() ?? classEntity.currency ?? 'ETB';
 
+    const requiresVerification =
+      typeof classEntity.tuition === 'number' && classEntity.tuition > 0;
+
+    const enrollmentStatus: 'active' | 'pending' =
+      options?.statusOverride ?? (requiresVerification ? 'pending' : 'active');
+
+    // For paid classes, always create a pending payment request (even if no receipt is uploaded)
+    // so admins can verify and activate the enrollment.
+    if (
+      requiresVerification &&
+      enrollmentStatus === 'pending' &&
+      // enrollStudentWithReceipt already creates the payment request
+      !dto.receiptUrl
+    ) {
+      await this.paymentService.create(
+        {
+          type: 'enrollment',
+          targetId: classId,
+          amount: dto.amount,
+          currency,
+          method: dto.paymentMethod ?? ClassPaymentMethod.BANK,
+          reference: dto.paymentReference,
+          receiptUrl: undefined,
+          reviewNote: dto.note,
+        },
+        studentId,
+      );
+    }
+
     const enrollmentPayload: ClassEnrollment = {
       student: studentObjectId,
       enrolledAt: new Date(),
-      status: 'active' as const,
+      status: enrollmentStatus,
       amountPaid: dto.amount,
       currency,
       paymentMethod: dto.paymentMethod ?? ClassPaymentMethod.MANUAL,
@@ -448,7 +484,26 @@ export class ClassService {
       ...dto,
       receiptUrl,
     };
-    return this.enrollStudent(classId, studentId, enrichedDto);
+
+    // Create a pending payment request for admin verification
+    await this.paymentService.create(
+      {
+        type: 'enrollment',
+        targetId: classId,
+        amount: enrichedDto.amount,
+        currency: enrichedDto.currency ?? 'ETB',
+        method: enrichedDto.paymentMethod ?? ClassPaymentMethod.BANK,
+        reference: enrichedDto.paymentReference,
+        receiptUrl,
+        reviewNote: enrichedDto.note,
+      },
+      studentId,
+    );
+
+    // Store enrollment as pending until payment is approved by admin
+    return this.enrollStudent(classId, studentId, enrichedDto, {
+      statusOverride: 'pending',
+    });
   }
 
   async updateLiveState(id: string, dto: UpdateLiveStateDto) {

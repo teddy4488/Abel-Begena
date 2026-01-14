@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { BranchModule } from './branch/branch.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     BranchModule,
     RealtimeModule,
     AttendanceModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

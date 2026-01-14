@@ -1,0 +1,151 @@
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import {
+  PaymentRequest,
+  PaymentRequestDocument,
+  PaymentRequestStatus,
+} from './schemas/payment-request.schema';
+import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
+import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
+import { ClassService } from '../class/class.service';
+import {
+  Order,
+  OrderDocument,
+  OrderStatus,
+} from '../order/schemas/order.schema';
+
+@Injectable()
+export class PaymentService {
+  constructor(
+    @InjectModel(PaymentRequest.name)
+    private readonly paymentModel: Model<PaymentRequestDocument>,
+    @InjectModel(Order.name)
+    private readonly orderModel: Model<OrderDocument>,
+    @Inject(forwardRef(() => ClassService))
+    private readonly classService: ClassService,
+  ) {}
+
+  async create(dto: Omit<CreatePaymentRequestDto, 'userId'>, userId: string) {
+    // Idempotency: avoid creating duplicates for the same user/type/target while still pending
+    const normalizedTargetId = dto.targetId ? new Types.ObjectId(dto.targetId) : undefined;
+    const existing = await this.paymentModel
+      .findOne({
+        userId: new Types.ObjectId(userId),
+        type: dto.type,
+        ...(normalizedTargetId ? { targetId: normalizedTargetId } : {}),
+        status: 'pending' as PaymentRequestStatus,
+      })
+      .lean()
+      .exec();
+
+    if (existing) {
+      return existing;
+    }
+
+    const created = await this.paymentModel.create({
+      userId: new Types.ObjectId(userId),
+      type: dto.type,
+      targetId: normalizedTargetId,
+      amount: dto.amount,
+      currency: dto.currency ?? 'ETB',
+      method: dto.method,
+      reference: dto.reference,
+      receiptUrl: dto.receiptUrl,
+      status: 'pending' as PaymentRequestStatus,
+      reviewNote: dto.reviewNote,
+    });
+    return created.toObject();
+  }
+
+  async listForUser(userId: string) {
+    return this.paymentModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+  }
+
+  async listPending(type?: string) {
+    const filter: any = { status: 'pending' as PaymentRequestStatus };
+    if (type) {
+      filter.type = type;
+    }
+    return this.paymentModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .populate('userId', 'firstName lastName email')
+      .lean()
+      .exec();
+  }
+
+  async updateStatus(dto: UpdatePaymentStatusDto, adminUserId: string) {
+    const payment = await this.paymentModel.findById(dto.id).exec();
+    if (!payment) {
+      throw new NotFoundException('Payment request not found');
+    }
+    if (payment.status !== 'pending') {
+      throw new BadRequestException('Only pending requests can be updated');
+    }
+
+    payment.status = dto.status;
+    payment.reviewedBy = new Types.ObjectId(adminUserId);
+    payment.reviewedAt = new Date();
+    payment.reviewNote = dto.reason;
+
+    await payment.save();
+
+    // If approved and type is enrollment, activate the enrollment
+    if (
+      dto.status === 'approved' &&
+      payment.type === 'enrollment' &&
+      payment.targetId
+    ) {
+      try {
+        await this.classService.updateEnrollmentStatus(
+          payment.targetId.toString(),
+          payment.userId.toString(),
+          { status: 'active', note: dto.reason },
+          adminUserId,
+        );
+      } catch (error) {
+        // Log error but don't fail the payment update
+        // The enrollment might not exist or might already be active
+        // eslint-disable-next-line no-console
+        console.error(
+          'Failed to activate enrollment after payment approval:',
+          error,
+        );
+      }
+    }
+
+    // If approved and type is order, mark order as paid
+    if (
+      dto.status === 'approved' &&
+      payment.type === 'order' &&
+      payment.targetId
+    ) {
+      try {
+        await this.orderModel.findByIdAndUpdate(payment.targetId, {
+          isPaid: true,
+          status: OrderStatus.PROCESSING,
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          'Failed to mark order as paid after payment approval:',
+          error,
+        );
+      }
+    }
+
+    return payment.toObject();
+  }
+}
+
