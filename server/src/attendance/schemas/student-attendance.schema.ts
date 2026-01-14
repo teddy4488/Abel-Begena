@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { InstrumentType } from '../../product/schemas/product.schema';
 
 export type StudentAttendanceDocument = StudentAttendance & Document;
 
@@ -16,21 +15,27 @@ export class StudentAttendance {
   })
   participantId: Types.ObjectId;
 
-  @Prop({ required: true, trim: true })
+  // Store attendance number for quick lookup and audit trail
+  @Prop({ required: true, trim: true, index: true })
   attendanceNumber: string;
 
-  @Prop({ type: String, enum: Object.values(InstrumentType), required: true })
-  instrumentType: InstrumentType;
+  // Store student name for quick display (denormalized for performance)
+  @Prop({ required: true, trim: true })
+  studentName: string;
 
-  @Prop({ enum: [3, 6, 9], required: true })
-  programDurationMonths: 3 | 6 | 9;
+  // Date and time of the attendance session
+  @Prop({ type: Date, required: true, index: true })
+  sessionDate: Date;
 
+  // Lesson for this session
   @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson', required: true })
   lessonId: Types.ObjectId;
 
+  // Optional revised lesson
   @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson' })
   revisedLessonId?: Types.ObjectId;
 
+  // Attendance status
   @Prop({
     type: String,
     enum: ['present', 'late', 'excused'],
@@ -38,6 +43,7 @@ export class StudentAttendance {
   })
   status: AttendanceStatus;
 
+  // Admin who recorded this attendance
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   recordedBy: Types.ObjectId;
 }
@@ -45,3 +51,7 @@ export class StudentAttendance {
 export const StudentAttendanceSchema =
   SchemaFactory.createForClass(StudentAttendance);
 
+// Indexes for efficient queries
+StudentAttendanceSchema.index({ participantId: 1, sessionDate: -1 });
+StudentAttendanceSchema.index({ attendanceNumber: 1, sessionDate: -1 });
+StudentAttendanceSchema.index({ sessionDate: -1 });

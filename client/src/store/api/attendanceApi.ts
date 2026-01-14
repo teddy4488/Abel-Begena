@@ -2,32 +2,45 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
 import type { InstrumentType } from "./storeApi";
 
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+export type LearningType = 'physical' | 'online';
+export type AttendanceStatus = 'present' | 'late' | 'excused';
+
+export type TeachingTimeRange = {
+  day: DayOfWeek;
+  startTime: string; // HH:mm format
+  endTime: string;   // HH:mm format
+};
+
 export type TeacherParticipant = {
   _id: string;
-  userId: {
-    _id: string;
-    firstName?: string;
-    lastName?: string;
-    email: string;
-    role?: string;
-  };
-  displayName?: string;
+  fullName: string;
+  instruments: InstrumentType[];
+  teachingDays: DayOfWeek[];
+  timeRanges: TeachingTimeRange[];
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type StudentParticipant = {
   _id: string;
-  userId: {
-    _id: string;
-    firstName?: string;
-    lastName?: string;
-    email: string;
-    role?: string;
-  };
+  fullName: string;
   attendanceNumber: string;
+  branchId: {
+    _id: string;
+    name: string;
+    slug: string;
+  } | string;
+  learningType: LearningType;
   instrumentType: InstrumentType;
   programDurationMonths: 3 | 6 | 9;
+  preferredLearningDays: DayOfWeek[];
+  registrationStartDate: string;
+  learningDaysPerWeek: number;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type InstrumentLesson = {
@@ -37,6 +50,52 @@ export type InstrumentLesson = {
   code?: string;
   order: number;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type TeacherAttendanceRecord = {
+  _id: string;
+  participantId: {
+    _id: string;
+    fullName: string;
+    instruments: InstrumentType[];
+    teachingDays: DayOfWeek[];
+  } | string;
+  checkInAt: string;
+  checkOutAt?: string;
+  durationMinutes?: number;
+  recordedBy?: {
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+};
+
+export type RegisterTeacherParticipantBody = {
+  fullName: string;
+  instruments: InstrumentType[];
+  teachingDays: DayOfWeek[];
+  timeRanges: TeachingTimeRange[];
+};
+
+export type RegisterStudentParticipantBody = {
+  fullName: string;
+  branchId: string;
+  learningType: LearningType;
+  instrumentType: InstrumentType;
+  programDurationMonths: 3 | 6 | 9;
+  preferredLearningDays: DayOfWeek[];
+  registrationStartDate: string;
+  attendanceNumber?: string;
+};
+
+export type RecordStudentAttendanceBody = {
+  participantId: string;
+  lessonId: string;
+  revisedLessonId?: string;
+  status?: AttendanceStatus;
 };
 
 export const attendanceApi = createApi({
@@ -52,9 +111,12 @@ export const attendanceApi = createApi({
       query: () => "/attendance/students/participants",
       providesTags: ["StudentParticipants"],
     }),
+    getStudentByAttendanceNumber: builder.query<StudentParticipant, string>({
+      query: (attendanceNumber) => `/attendance/students/lookup/${attendanceNumber}`,
+    }),
     registerTeacherParticipant: builder.mutation<
       TeacherParticipant,
-      { userId: string; displayName?: string }
+      RegisterTeacherParticipantBody
     >({
       query: (body) => ({
         url: "/attendance/teachers/register",
@@ -65,13 +127,7 @@ export const attendanceApi = createApi({
     }),
     registerStudentParticipant: builder.mutation<
       StudentParticipant,
-      {
-        userId: string;
-        instrumentType: InstrumentType;
-        programDurationMonths: 3 | 6 | 9;
-        classId?: string;
-        attendanceNumber?: string;
-      }
+      RegisterStudentParticipantBody
     >({
       query: (body) => ({
         url: "/attendance/students/register",
@@ -81,7 +137,7 @@ export const attendanceApi = createApi({
       invalidatesTags: ["StudentParticipants"],
     }),
     teacherCheckIn: builder.mutation<
-      unknown,
+      TeacherAttendanceRecord,
       { participantId: string }
     >({
       query: (body) => ({
@@ -92,7 +148,7 @@ export const attendanceApi = createApi({
       invalidatesTags: ["TeacherToday"],
     }),
     teacherCheckOut: builder.mutation<
-      unknown,
+      TeacherAttendanceRecord,
       { participantId: string }
     >({
       query: (body) => ({
@@ -102,41 +158,62 @@ export const attendanceApi = createApi({
       }),
       invalidatesTags: ["TeacherToday"],
     }),
-    getTodayTeacherAttendance: builder.query<
-      Array<{
-        _id: string;
-        participantId: { _id: string } | string;
-        checkInAt: string;
-        checkOutAt?: string;
-        durationMinutes?: number;
-        recordedBy?: { _id: string; firstName?: string; lastName?: string; email?: string };
-      }>,
-      void
-    >({
+    getTodayTeacherAttendance: builder.query<TeacherAttendanceRecord[], void>({
       query: () => "/attendance/teachers/today",
       providesTags: ["TeacherToday"],
     }),
     recordStudentAttendance: builder.mutation<
       unknown,
-      {
-        attendanceNumber: string;
-        lessonId: string;
-        revisedLessonId?: string;
-        status: "present" | "late" | "excused";
-      }
+      RecordStudentAttendanceBody
     >({
       query: (body) => ({
         url: "/attendance/students/record",
         method: "POST",
         body,
       }),
+      invalidatesTags: ["StudentParticipants"],
     }),
     getInstrumentLessons: builder.query<
       InstrumentLesson[],
-      void
+      string | undefined
     >({
-      query: () => "/attendance/lessons",
+      query: (instrumentType) => ({
+        url: "/attendance/lessons",
+        params: instrumentType ? { instrumentType } : {},
+      }),
       providesTags: ["Lessons"],
+    }),
+    createLesson: builder.mutation<
+      InstrumentLesson,
+      { instrumentType: InstrumentType; title: string; code?: string; order?: number }
+    >({
+      query: (body) => ({
+        url: "/attendance/lessons",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Lessons"],
+    }),
+    updateLesson: builder.mutation<
+      InstrumentLesson,
+      { id: string; title?: string; code?: string; order?: number; isActive?: boolean }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/attendance/lessons/${id}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: ["Lessons"],
+    }),
+    deleteLesson: builder.mutation<
+      { success: boolean },
+      string
+    >({
+      query: (id) => ({
+        url: `/attendance/lessons/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Lessons"],
     }),
   }),
 });
@@ -144,6 +221,7 @@ export const attendanceApi = createApi({
 export const {
   useGetTeacherParticipantsQuery,
   useGetStudentParticipantsQuery,
+  useGetStudentByAttendanceNumberQuery,
   useRegisterTeacherParticipantMutation,
   useRegisterStudentParticipantMutation,
   useTeacherCheckInMutation,
@@ -151,5 +229,7 @@ export const {
   useGetTodayTeacherAttendanceQuery,
   useRecordStudentAttendanceMutation,
   useGetInstrumentLessonsQuery,
+  useCreateLessonMutation,
+  useUpdateLessonMutation,
+  useDeleteLessonMutation,
 } = attendanceApi;
-

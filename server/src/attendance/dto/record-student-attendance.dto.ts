@@ -1,9 +1,10 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString, IsMongoId } from 'class-validator';
+import { IsMongoId, IsOptional, IsEnum } from 'class-validator';
+
+export type AttendanceStatus = 'present' | 'late' | 'excused';
 
 export class RecordStudentAttendanceDto {
-  @IsString()
-  @IsNotEmpty()
-  attendanceNumber: string;
+  @IsMongoId()
+  participantId: string;
 
   @IsMongoId()
   lessonId: string;
@@ -12,8 +13,7 @@ export class RecordStudentAttendanceDto {
   @IsMongoId()
   revisedLessonId?: string;
 
-  @IsString()
-  @IsIn(['present', 'late', 'excused'])
-  status: 'present' | 'late' | 'excused';
+  @IsOptional()
+  @IsEnum(['present', 'late', 'excused'])
+  status?: AttendanceStatus;
 }
-

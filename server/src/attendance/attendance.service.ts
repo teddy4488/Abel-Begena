@@ -47,40 +47,74 @@ export class AttendanceService {
 
   // Helpers
   private generateAttendanceNumber(): string {
-    // 5-digit numeric code; in a real system could be more sophisticated
+    // Generate 5-digit numeric code
     return Math.floor(10000 + Math.random() * 90000).toString();
+  }
+
+  private calculateLearningDaysPerWeek(programDurationMonths: 3 | 6 | 9): number {
+    // 3 months = 5 days/week, 6 months = 3 days/week, 9 months = 2 days/week
+    return programDurationMonths === 3 ? 5 
+      : programDurationMonths === 6 ? 3 
+      : 2;
   }
 
   // Participants
   async registerTeacherParticipant(dto: RegisterTeacherParticipantDto) {
-    const userId = new Types.ObjectId(dto.userId);
-    const existing = await this.teacherParticipantModel
-      .findOne({ userId })
-      .lean()
-      .exec();
-    if (existing) {
-      throw new BadRequestException('Teacher participant already exists');
+    // Validate that each teaching day has a corresponding time range
+    const teachingDaysSet = new Set(dto.teachingDays);
+    const timeRangeDaysSet = new Set(dto.timeRanges.map(tr => tr.day));
+    
+    if (teachingDaysSet.size !== timeRangeDaysSet.size ||
+        ![...teachingDaysSet].every(day => timeRangeDaysSet.has(day))) {
+      throw new BadRequestException(
+        'Each teaching day must have a corresponding time range',
+      );
     }
+
+    // Validate time ranges (endTime should be after startTime)
+    for (const range of dto.timeRanges) {
+      const [startHour, startMin] = range.startTime.split(':').map(Number);
+      const [endHour, endMin] = range.endTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      
+      if (endMinutes <= startMinutes) {
+        throw new BadRequestException(
+          `End time must be after start time for ${range.day}`,
+        );
+      }
+    }
+
     const created = await this.teacherParticipantModel.create({
-      userId,
-      displayName: dto.displayName,
+      fullName: dto.fullName.trim(),
+      instruments: dto.instruments,
+      teachingDays: dto.teachingDays,
+      timeRanges: dto.timeRanges,
       isActive: true,
     });
     return created.toObject();
   }
 
   async registerStudentParticipant(dto: RegisterStudentParticipantDto) {
-    const userId = new Types.ObjectId(dto.userId);
-    const existing = await this.studentParticipantModel
-      .findOne({ userId })
-      .lean()
-      .exec();
-    if (existing) {
-      throw new BadRequestException('Student participant already exists');
+    // Validate learning days count matches program duration
+    const expectedDays = this.calculateLearningDaysPerWeek(dto.programDurationMonths);
+    if (dto.preferredLearningDays.length !== expectedDays) {
+      throw new BadRequestException(
+        `Program duration of ${dto.programDurationMonths} months requires exactly ${expectedDays} learning days per week. Provided: ${dto.preferredLearningDays.length}`,
+      );
     }
 
-    const attendanceNumber =
-      dto.attendanceNumber?.trim() || this.generateAttendanceNumber();
+    // Validate no duplicate days
+    const uniqueDays = new Set(dto.preferredLearningDays);
+    if (uniqueDays.size !== dto.preferredLearningDays.length) {
+      throw new BadRequestException('Duplicate learning days are not allowed');
+    }
+
+    // Generate or validate attendance number
+    let attendanceNumber = dto.attendanceNumber?.trim();
+    if (!attendanceNumber) {
+      attendanceNumber = this.generateAttendanceNumber();
+    }
 
     const conflict = await this.studentParticipantModel
       .findOne({ attendanceNumber })
@@ -92,12 +126,20 @@ export class AttendanceService {
       );
     }
 
+    const learningDaysPerWeek = this.calculateLearningDaysPerWeek(
+      dto.programDurationMonths,
+    );
+
     const created = await this.studentParticipantModel.create({
-      userId,
+      fullName: dto.fullName.trim(),
       attendanceNumber,
+      branchId: new Types.ObjectId(dto.branchId),
+      learningType: dto.learningType,
       instrumentType: dto.instrumentType,
       programDurationMonths: dto.programDurationMonths,
-      classId: dto.classId ? new Types.ObjectId(dto.classId) : undefined,
+      preferredLearningDays: dto.preferredLearningDays,
+      registrationStartDate: new Date(dto.registrationStartDate),
+      learningDaysPerWeek,
       isActive: true,
     });
     return created.toObject();
@@ -105,18 +147,33 @@ export class AttendanceService {
 
   async listTeacherParticipants() {
     return this.teacherParticipantModel
-      .find()
-      .populate('userId', 'firstName lastName email role')
+      .find({ isActive: true })
+      .sort({ fullName: 1 })
       .lean()
       .exec();
   }
 
   async listStudentParticipants() {
     return this.studentParticipantModel
-      .find()
-      .populate('userId', 'firstName lastName email role')
+      .find({ isActive: true })
+      .populate('branchId', 'name slug')
+      .sort({ fullName: 1 })
       .lean()
       .exec();
+  }
+
+  async getStudentByAttendanceNumber(attendanceNumber: string) {
+    const student = await this.studentParticipantModel
+      .findOne({ attendanceNumber: attendanceNumber.trim(), isActive: true })
+      .populate('branchId', 'name slug')
+      .lean()
+      .exec();
+    
+    if (!student) {
+      throw new NotFoundException('Student not found with this attendance number');
+    }
+    
+    return student;
   }
 
   // Teacher attendance
@@ -128,16 +185,24 @@ export class AttendanceService {
       throw new NotFoundException('Teacher participant not found or inactive');
     }
 
+    // Check if there's an open session today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const openRecord = await this.teacherAttendanceModel
       .findOne({
         participantId: participant._id,
+        checkInAt: { $gte: today, $lt: tomorrow },
         checkOutAt: { $exists: false },
       })
       .lean()
       .exec();
+    
     if (openRecord) {
       throw new BadRequestException(
-        'Teacher already has an open attendance session',
+        'Teacher already has an open attendance session today',
       );
     }
 
@@ -147,6 +212,7 @@ export class AttendanceService {
       checkInAt: now,
       recordedBy: new Types.ObjectId(adminUserId),
     });
+    
     return created.toObject();
   }
 
@@ -192,8 +258,9 @@ export class AttendanceService {
       .find({
         checkInAt: { $gte: start, $lte: end },
       })
-      .populate('participantId')
+      .populate('participantId', 'fullName instruments teachingDays')
       .populate('recordedBy', 'firstName lastName email')
+      .sort({ checkInAt: -1 })
       .lean()
       .exec();
     return records;
@@ -205,16 +272,14 @@ export class AttendanceService {
     adminUserId: string,
   ) {
     const participant = await this.studentParticipantModel
-      .findOne({ attendanceNumber: dto.attendanceNumber, isActive: true })
+      .findById(dto.participantId)
       .exec();
-    if (!participant) {
-      throw new NotFoundException('Student not found in attendance registry');
+    
+    if (!participant || !participant.isActive) {
+      throw new NotFoundException('Student participant not found or inactive');
     }
 
-    if (!Types.ObjectId.isValid(dto.lessonId)) {
-      throw new BadRequestException('Invalid lesson id');
-    }
-
+    // Validate lesson exists and matches instrument
     const lesson = await this.lessonModel
       .findOne({
         _id: new Types.ObjectId(dto.lessonId),
@@ -223,17 +288,16 @@ export class AttendanceService {
       })
       .lean()
       .exec();
+    
     if (!lesson) {
       throw new BadRequestException(
         'Lesson not found for the student instrument',
       );
     }
 
+    // Validate revised lesson if provided
     let revisedLessonId: Types.ObjectId | undefined;
     if (dto.revisedLessonId) {
-      if (!Types.ObjectId.isValid(dto.revisedLessonId)) {
-        throw new BadRequestException('Invalid revised lesson id');
-      }
       const revisedLesson = await this.lessonModel
         .findOne({
           _id: new Types.ObjectId(dto.revisedLessonId),
@@ -242,6 +306,7 @@ export class AttendanceService {
         })
         .lean()
         .exec();
+      
       if (!revisedLesson) {
         throw new BadRequestException(
           'Revised lesson not found for the student instrument',
@@ -250,14 +315,15 @@ export class AttendanceService {
       revisedLessonId = new Types.ObjectId(dto.revisedLessonId);
     }
 
+    const now = new Date();
     const created = await this.studentAttendanceModel.create({
       participantId: participant._id,
       attendanceNumber: participant.attendanceNumber,
-      instrumentType: participant.instrumentType,
-      programDurationMonths: participant.programDurationMonths,
+      studentName: participant.fullName,
+      sessionDate: now,
       lessonId: new Types.ObjectId(dto.lessonId),
       revisedLessonId,
-      status: dto.status,
+      status: dto.status || 'present',
       recordedBy: new Types.ObjectId(adminUserId),
     });
 
@@ -265,8 +331,59 @@ export class AttendanceService {
   }
 
   async listInstrumentLessons(instrumentType?: string) {
-    const filter = instrumentType ? { instrumentType, isActive: true } : {};
-    return this.lessonModel.find(filter).sort({ order: 1 }).lean().exec();
+    const filter: any = { isActive: true };
+    if (instrumentType) {
+      filter.instrumentType = instrumentType;
+    }
+    return this.lessonModel
+      .find(filter)
+      .sort({ order: 1, title: 1 })
+      .lean()
+      .exec();
+  }
+
+  // Lessons management
+  async createLesson(data: {
+    instrumentType: string;
+    title: string;
+    code?: string;
+    order?: number;
+  }) {
+    const created = await this.lessonModel.create({
+      instrumentType: data.instrumentType,
+      title: data.title.trim(),
+      code: data.code?.trim(),
+      order: data.order ?? 0,
+      isActive: true,
+    });
+    return created.toObject();
+  }
+
+  async updateLesson(lessonId: string, data: {
+    title?: string;
+    code?: string;
+    order?: number;
+    isActive?: boolean;
+  }) {
+    const lesson = await this.lessonModel.findById(lessonId).exec();
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    if (data.title !== undefined) lesson.title = data.title.trim();
+    if (data.code !== undefined) lesson.code = data.code?.trim();
+    if (data.order !== undefined) lesson.order = data.order;
+    if (data.isActive !== undefined) lesson.isActive = data.isActive;
+
+    await lesson.save();
+    return lesson.toObject();
+  }
+
+  async deleteLesson(lessonId: string) {
+    const result = await this.lessonModel.findByIdAndDelete(lessonId).exec();
+    if (!result) {
+      throw new NotFoundException('Lesson not found');
+    }
+    return { success: true };
   }
 }
-

@@ -1,8 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
+  Put,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -42,6 +46,11 @@ export class AttendanceController {
     return this.attendanceService.listStudentParticipants();
   }
 
+  @Get('students/lookup/:attendanceNumber')
+  getStudentByAttendanceNumber(@Param('attendanceNumber') attendanceNumber: string) {
+    return this.attendanceService.getStudentByAttendanceNumber(attendanceNumber);
+  }
+
   // Teacher attendance
   @Post('teachers/check-in')
   checkInTeacher(
@@ -75,8 +84,28 @@ export class AttendanceController {
 
   // Lessons
   @Get('lessons')
-  listLessons() {
-    return this.attendanceService.listInstrumentLessons();
+  listLessons(@Query('instrumentType') instrumentType?: string) {
+    return this.attendanceService.listInstrumentLessons(instrumentType);
+  }
+
+  @Post('lessons')
+  createLesson(
+    @Body() body: { instrumentType: string; title: string; code?: string; order?: number },
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.attendanceService.createLesson(body);
+  }
+
+  @Put('lessons/:id')
+  updateLesson(
+    @Param('id') id: string,
+    @Body() body: { title?: string; code?: string; order?: number; isActive?: boolean },
+  ) {
+    return this.attendanceService.updateLesson(id, body);
+  }
+
+  @Delete('lessons/:id')
+  deleteLesson(@Param('id') id: string) {
+    return this.attendanceService.deleteLesson(id);
   }
 }
-
