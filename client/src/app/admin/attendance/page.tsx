@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetTeacherParticipantsQuery,
@@ -412,10 +412,12 @@ export default function AdminAttendancePage() {
     setShowLessonModal(true);
   };
 
-  // Update student form when looked up
-  useMemo(() => {
+  // Update student selection when lookup resolves
+  useEffect(() => {
     if (lookedUpStudent) {
       setSelectedStudentId(lookedUpStudent._id);
+    } else {
+      setSelectedStudentId("");
     }
   }, [lookedUpStudent]);
 
