@@ -109,7 +109,7 @@ export default function AdminAttendancePage() {
   });
 
   // Get lessons filtered by instrument
-  const { data: allLessons = [] } = useGetInstrumentLessonsQuery();
+  const { data: allLessons = [] } = useGetInstrumentLessonsQuery(undefined);
   const eligibleLessons = useMemo(() => {
     if (!lookedUpStudent) return [];
     return allLessons.filter(
