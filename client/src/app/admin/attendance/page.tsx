@@ -16,6 +16,8 @@ import {
   useCreateLessonMutation,
   useUpdateLessonMutation,
   useDeleteLessonMutation,
+  useGetBillingSummaryQuery,
+  useRecordStudentPaymentMutation,
   type DayOfWeek,
   type LearningType,
   type AttendanceStatus,
@@ -41,7 +43,7 @@ import {
 } from "lucide-react";
 import type { InstrumentType } from "@/store/api/storeApi";
 
-type AttendanceMode = "student" | "teacher" | "lessons";
+type AttendanceMode = "student" | "teacher" | "lessons" | "billing";
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
   "monday",
@@ -73,6 +75,11 @@ export default function AdminAttendancePage() {
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentStudentId, setPaymentStudentId] = useState<string>("");
+  const [paymentAmount, setPaymentAmount] = useState<string>("0");
+  const [paymentStatus, setPaymentStatus] = useState<"paid" | "partial" | "unpaid">("paid");
+  const [paymentNote, setPaymentNote] = useState<string>("");
 
   // Data queries
   const { data: branches = [] } = useGetBranchesAdminQuery();
@@ -80,6 +87,7 @@ export default function AdminAttendancePage() {
   const { data: studentParticipants = [] } = useGetStudentParticipantsQuery();
   const { data: todayAttendance = [], refetch: refetchToday } =
     useGetTodayTeacherAttendanceQuery();
+  const { data: billingSummary } = useGetBillingSummaryQuery();
   const [recordStudentAttendance, { isLoading: recordingStudent }] =
     useRecordStudentAttendanceMutation();
   const [registerTeacher, { isLoading: registeringTeacher }] =
@@ -91,6 +99,8 @@ export default function AdminAttendancePage() {
   const [createLesson, { isLoading: creatingLesson }] = useCreateLessonMutation();
   const [updateLesson, { isLoading: updatingLesson }] = useUpdateLessonMutation();
   const [deleteLesson, { isLoading: deletingLesson }] = useDeleteLessonMutation();
+  const [recordStudentPayment, { isLoading: recordingPayment }] =
+    useRecordStudentPaymentMutation();
 
   // Student attendance recording state
   const [studentCode, setStudentCode] = useState("");
@@ -172,6 +182,23 @@ export default function AdminAttendancePage() {
     });
     return openMap;
   }, [todayAttendance]);
+
+  // Overview / analytics (client-side; attendance tables only)
+  const totalStudents = studentParticipants.length;
+  const totalTeachers = teacherParticipants.length;
+  const totalLessons = allLessons.filter((l) => l.isActive).length;
+  const totalBranches = branches.length;
+  const teachersCheckedInNow = useMemo(() => {
+    let count = 0;
+    teacherParticipants.forEach((p) => {
+      if (currentTeacherStatus.get(p._id) === true) count += 1;
+    });
+    return count;
+  }, [teacherParticipants, currentTeacherStatus]);
+  const teacherSessionsToday = todayAttendance.length;
+  const billingItems = billingSummary?.items ?? [];
+  const unpaidCount = billingSummary?.unpaidCount ?? 0;
+  const partialCount = billingSummary?.partialCount ?? 0;
 
   // Handlers
   const handleStudentCodeChange = (value: string) => {
@@ -438,6 +465,66 @@ export default function AdminAttendancePage() {
           </h1>
         </div>
 
+        {/* Overview cards */}
+        <div className="mb-5 grid gap-3 md:grid-cols-4">
+          <div className="rounded-3xl card-elevated p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                {t("attendance.overview.students", "Students")}
+              </p>
+              <Users className="h-4 w-4 text-secondary/50" />
+            </div>
+            <p className="mt-2 text-3xl font-bold text-primary">
+              {billingSummary?.totalActiveStudents ?? totalStudents}
+            </p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.25em] text-foreground/60">
+              {t("attendance.overview.registry", "attendance registry")}
+            </p>
+          </div>
+          <div className="rounded-3xl card-elevated p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                {t("attendance.overview.teachers", "Teachers")}
+              </p>
+              <UserCheck className="h-4 w-4 text-secondary/50" />
+            </div>
+            <p className="mt-2 text-3xl font-bold text-primary">{totalTeachers}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.25em] text-foreground/60">
+              {t("attendance.overview.registry", "attendance registry")}
+            </p>
+          </div>
+          <div className="rounded-3xl card-elevated p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                {t("attendance.overview.checkedInNow", "Checked-in now")}
+              </p>
+              <Clock className="h-4 w-4 text-secondary/50" />
+            </div>
+            <p className="mt-2 text-3xl font-bold text-primary">{teachersCheckedInNow}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.25em] text-foreground/60">
+              {t("attendance.overview.sessionsToday", "sessions today")}: {teacherSessionsToday}
+            </p>
+          </div>
+          <div className="rounded-3xl card-elevated p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                {t("attendance.overview.masterData", "Master data")}
+              </p>
+              <BookOpen className="h-4 w-4 text-secondary/50" />
+            </div>
+            <p className="mt-2 text-3xl font-bold text-primary">
+              {billingSummary
+                ? `${billingSummary.paidCount}/${billingSummary.totalActiveStudents}`
+                : totalLessons}
+            </p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.25em] text-foreground/60">
+              {billingSummary
+                ? t("attendance.overview.payments", "students paid this month")
+                : `${t("attendance.overview.branches", "branches")}: ${totalBranches}`}
+            </p>
+          </div>
+        </div>
+
         {/* Mode switcher */}
         <div className="flex flex-wrap gap-2">
           <button
@@ -463,6 +550,17 @@ export default function AdminAttendancePage() {
           >
             <UserCheck className="h-4 w-4" />
             {t("attendance.mode.teacher", "Teacher Attendance")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("billing")}
+            className={`flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold transition ${
+              mode === "billing"
+                ? "bg-primary text-primary-foreground shadow-lg"
+                : "bg-background/60 text-foreground/70 hover:bg-background/80"
+            }`}
+          >
+            {t("attendance.mode.billing", "Billing")}
           </button>
           <button
             type="button"
@@ -801,6 +899,119 @@ export default function AdminAttendancePage() {
                 </div>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {mode === "billing" && (
+          <motion.div
+            key="billing"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-6"
+          >
+            <div className="rounded-2xl surface-elevated p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.billing.title", "Billing Overview")}
+                  </p>
+                  <h2 className="text-xl font-serif text-primary">
+                    {t("attendance.billing.subtitle", "Monthly tuition status")}
+                  </h2>
+                  {billingSummary && (
+                    <p className="mt-1 text-xs text-foreground/60">
+                      {t("attendance.billing.period", "Period")}:{" "}
+                      {billingSummary.year}-{String(billingSummary.month).padStart(2, "0")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mb-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl card-elevated p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {t("attendance.billing.paid", "Paid")}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-primary">
+                    {billingSummary?.paidCount ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-2xl card-elevated p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {t("attendance.billing.partial", "Partial")}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-amber-600">
+                    {partialCount}
+                  </p>
+                </div>
+                <div className="rounded-2xl card-elevated p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {t("attendance.billing.unpaid", "Unpaid")}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-red-600">
+                    {unpaidCount}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {billingItems.length > 0 ? (
+                  billingItems.map((item) => {
+                    const statusColor =
+                      item.status === "paid"
+                        ? "bg-green-500/10 text-green-600"
+                        : item.status === "partial"
+                          ? "bg-amber-500/10 text-amber-600"
+                          : "bg-red-500/10 text-red-600";
+                    return (
+                      <div
+                        key={item.participantId}
+                        className="flex items-center justify-between rounded-xl card-elevated px-4 py-3"
+                      >
+                        <div>
+                          <p className="font-semibold text-primary">
+                            {item.fullName}
+                          </p>
+                          <p className="text-xs text-foreground/60">
+                            {item.attendanceNumber} • {item.instrumentType}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
+                            {item.status === "paid"
+                              ? t("attendance.billing.status.paid", "Paid")
+                              : item.status === "partial"
+                                ? t("attendance.billing.status.partial", "Partial")
+                                : t("attendance.billing.status.unpaid", "Unpaid")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentStudentId(item.participantId);
+                              setPaymentStatus(item.status);
+                              setPaymentAmount("0");
+                              setPaymentNote("");
+                              setShowPaymentModal(true);
+                            }}
+                            className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90"
+                          >
+                            {t("attendance.billing.record", "Record")}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="py-8 text-center text-sm text-foreground/60">
+                    {t(
+                      "attendance.billing.none",
+                      "No active students in attendance registry for this month.",
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -1322,6 +1533,134 @@ export default function AdminAttendancePage() {
                     <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
                   )}
                   {t("attendance.add", "Register")}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && billingSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-serif text-primary">
+                {t("attendance.billing.recordTitle", "Record payment")}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="rounded-full p-1 hover:bg-background/60"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-xs text-foreground/60">
+                {t("attendance.billing.period", "Period")}:{" "}
+                {billingSummary.year}-{String(billingSummary.month).padStart(2, "0")}
+              </p>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.billing.amount", "Amount")}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.billing.status.label", "Status")}
+                </label>
+                <select
+                  value={paymentStatus}
+                  onChange={(e) =>
+                    setPaymentStatus(e.target.value as "paid" | "partial" | "unpaid")
+                  }
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value="paid">
+                    {t("attendance.billing.status.paid", "Paid")}
+                  </option>
+                  <option value="partial">
+                    {t("attendance.billing.status.partial", "Partial")}
+                  </option>
+                  <option value="unpaid">
+                    {t("attendance.billing.status.unpaid", "Unpaid")}
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.billing.note", "Note (optional)")}
+                </label>
+                <textarea
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60"
+                >
+                  {t("common.cancel", "Cancel")}
+                </button>
+                <button
+                  type="button"
+                  disabled={recordingPayment || !paymentStudentId}
+                  onClick={async () => {
+                    try {
+                      await recordStudentPayment({
+                        participantId: paymentStudentId,
+                        amount: Number(paymentAmount) || 0,
+                        month: billingSummary.month,
+                        year: billingSummary.year,
+                        status: paymentStatus,
+                        note: paymentNote || undefined,
+                      }).unwrap();
+                      pushToast({
+                        title: t(
+                          "attendance.billing.saved",
+                          "Payment information saved",
+                        ),
+                        variant: "success",
+                      });
+                      setShowPaymentModal(false);
+                    } catch (error: any) {
+                      pushToast({
+                        title: t(
+                          "attendance.error",
+                          "Unable to record payment",
+                        ),
+                        description: error?.data?.message || "Please try again",
+                        variant: "error",
+                      });
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                >
+                  {recordingPayment && (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
+                  )}
+                  {t("common.save", "Save")}
                 </button>
               </div>
             </div>

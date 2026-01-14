@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useCheckoutMutation,
   useGetCartQuery,
@@ -40,10 +40,11 @@ export default function CheckoutPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { pushToast } = useToast();
 
-  if (!isLoggedIn) {
-    router.replace("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoggedIn) router.replace("/login");
+  }, [isLoggedIn, router]);
+
+  if (!isLoggedIn) return null;
 
   const validate = () => {
     const next: Record<string, string> = {};

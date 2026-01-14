@@ -25,6 +25,10 @@ import {
   InstrumentLesson,
   InstrumentLessonDocument,
 } from './schemas/instrument-lesson.schema';
+import {
+  StudentPayment,
+  StudentPaymentDocument,
+} from './schemas/student-payment.schema';
 import { RegisterTeacherParticipantDto } from './dto/register-teacher-participant.dto';
 import { RegisterStudentParticipantDto } from './dto/register-student-participant.dto';
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
@@ -43,6 +47,8 @@ export class AttendanceService {
     private readonly studentAttendanceModel: Model<StudentAttendanceDocument>,
     @InjectModel(InstrumentLesson.name)
     private readonly lessonModel: Model<InstrumentLessonDocument>,
+    @InjectModel(StudentPayment.name)
+    private readonly studentPaymentModel: Model<StudentPaymentDocument>,
   ) {}
 
   // Helpers
@@ -385,5 +391,172 @@ export class AttendanceService {
       throw new NotFoundException('Lesson not found');
     }
     return { success: true };
+  }
+
+  // Billing / payments
+  private getCurrentYearMonth() {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  }
+
+  async recordStudentPayment(
+    dto: import('./dto/student-payment.dto').RecordStudentPaymentDto,
+    adminUserId: string,
+  ) {
+    const participant = await this.studentParticipantModel
+      .findById(dto.participantId)
+      .exec();
+
+    if (!participant || !participant.isActive) {
+      throw new NotFoundException('Student participant not found or inactive');
+    }
+
+    const month = dto.month;
+    const year = dto.year;
+
+    if (month < 1 || month > 12) {
+      throw new BadRequestException('Month must be between 1 and 12');
+    }
+
+    // Upsert-style: if a record exists for this participant/month/year, update it
+    const existing = await this.studentPaymentModel
+      .findOne({
+        participantId: participant._id,
+        month,
+        year,
+      })
+      .exec();
+
+    if (existing) {
+      existing.amount = dto.amount;
+      existing.status = dto.status;
+      existing.note = dto.note;
+      existing.paidAt =
+        dto.status === 'paid' || dto.status === 'partial'
+          ? new Date()
+          : undefined;
+      existing.recordedBy = new Types.ObjectId(adminUserId);
+      await existing.save();
+      return existing.toObject();
+    }
+
+    const created = await this.studentPaymentModel.create({
+      participantId: participant._id,
+      amount: dto.amount,
+      month,
+      year,
+      status: dto.status,
+      paidAt:
+        dto.status === 'paid' || dto.status === 'partial'
+          ? new Date()
+          : undefined,
+      recordedBy: new Types.ObjectId(adminUserId),
+      // dueDate could be derived from registration date + month; keep empty for now
+      note: dto.note,
+    });
+
+    return created.toObject();
+  }
+
+  async getStudentBillingSummary(year?: number, month?: number) {
+    const current = this.getCurrentYearMonth();
+    const targetYear = year ?? current.year;
+    const targetMonth = month ?? current.month;
+
+    // Load all active students
+    const students = await this.studentParticipantModel
+      .find({ isActive: true })
+      .select('_id fullName attendanceNumber instrumentType')
+      .lean()
+      .exec();
+
+    const totalActiveStudents = students.length;
+    if (totalActiveStudents === 0) {
+      return {
+        year: targetYear,
+        month: targetMonth,
+        totalActiveStudents: 0,
+        paidCount: 0,
+        partialCount: 0,
+        unpaidCount: 0,
+      };
+    }
+
+    const studentIds = students.map((s) => s._id);
+
+    const payments = await this.studentPaymentModel
+      .find({
+        participantId: { $in: studentIds },
+        year: targetYear,
+        month: targetMonth,
+      })
+      .select('participantId status')
+      .lean()
+      .exec();
+
+    const paymentByParticipant = new Map<string, 'paid' | 'partial' | 'unpaid'>();
+    payments.forEach((p) => {
+      const key = String(p.participantId);
+      // If multiple records somehow exist, prefer "paid" over "partial"/"unpaid"
+      const existing = paymentByParticipant.get(key);
+      if (!existing || p.status === 'paid') {
+        paymentByParticipant.set(key, p.status);
+      }
+    });
+
+    let paidCount = 0;
+    let partialCount = 0;
+    let unpaidCount = 0;
+
+    const items: {
+      participantId: string;
+      fullName: string;
+      attendanceNumber: string;
+      instrumentType: string;
+      status: 'paid' | 'partial' | 'unpaid';
+    }[] = [];
+
+    students.forEach((student) => {
+      const id = student._id;
+      const status = paymentByParticipant.get(String(id));
+      if (!status || status === 'unpaid') {
+        unpaidCount += 1;
+        items.push({
+          participantId: String(id),
+          fullName: student.fullName,
+          attendanceNumber: student.attendanceNumber,
+          instrumentType: student.instrumentType,
+          status: 'unpaid',
+        });
+      } else if (status === 'partial') {
+        partialCount += 1;
+        items.push({
+          participantId: String(id),
+          fullName: student.fullName,
+          attendanceNumber: student.attendanceNumber,
+          instrumentType: student.instrumentType,
+          status: 'partial',
+        });
+      } else if (status === 'paid') {
+        paidCount += 1;
+        items.push({
+          participantId: String(id),
+          fullName: student.fullName,
+          attendanceNumber: student.attendanceNumber,
+          instrumentType: student.instrumentType,
+          status: 'paid',
+        });
+      }
+    });
+
+    return {
+      year: targetYear,
+      month: targetMonth,
+      totalActiveStudents,
+      paidCount,
+      partialCount,
+      unpaidCount,
+      items,
+    };
   }
 }

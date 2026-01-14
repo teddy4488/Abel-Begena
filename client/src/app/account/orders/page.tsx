@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Package, ShoppingBag, ArrowRight, CheckCircle, Clock, Truck, XCircle, CreditCard } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useEffect } from "react";
 
 const statusConfig: Record<
   string,
@@ -28,10 +29,11 @@ export default function OrdersPage() {
     skip: !isLoggedIn,
   });
 
-  if (!isLoggedIn) {
-    router.replace("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoggedIn) router.replace("/login");
+  }, [isLoggedIn, router]);
+
+  if (!isLoggedIn) return null;
 
   const getStatusTranslation = (status: string) => {
     const key = `orders.status.${status.toLowerCase()}`;

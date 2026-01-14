@@ -22,6 +22,10 @@ import {
   InstrumentLesson,
   InstrumentLessonSchema,
 } from './schemas/instrument-lesson.schema';
+import {
+  StudentPayment,
+  StudentPaymentSchema,
+} from './schemas/student-payment.schema';
 
 @Module({
   imports: [
@@ -37,6 +41,7 @@ import {
       { name: TeacherAttendance.name, schema: TeacherAttendanceSchema },
       { name: StudentAttendance.name, schema: StudentAttendanceSchema },
       { name: InstrumentLesson.name, schema: InstrumentLessonSchema },
+      { name: StudentPayment.name, schema: StudentPaymentSchema },
     ]),
   ],
   controllers: [AttendanceController],

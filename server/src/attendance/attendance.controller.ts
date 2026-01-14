@@ -18,6 +18,7 @@ import { RegisterTeacherParticipantDto } from './dto/register-teacher-participan
 import { RegisterStudentParticipantDto } from './dto/register-student-participant.dto';
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
 import { RecordStudentAttendanceDto } from './dto/record-student-attendance.dto';
+import { RecordStudentPaymentDto } from './dto/student-payment.dto';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RoleGuard)
@@ -80,6 +81,25 @@ export class AttendanceController {
     @Request() req: { user: { sub: string } },
   ) {
     return this.attendanceService.recordStudentAttendance(dto, req.user.sub);
+  }
+
+  // Billing / payments
+  @Post('billing/pay')
+  recordStudentPayment(
+    @Body() dto: RecordStudentPaymentDto,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.attendanceService.recordStudentPayment(dto, req.user.sub);
+  }
+
+  @Get('billing/summary')
+  getBillingSummary(
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+  ) {
+    const parsedYear = year ? Number(year) : undefined;
+    const parsedMonth = month ? Number(month) : undefined;
+    return this.attendanceService.getStudentBillingSummary(parsedYear, parsedMonth);
   }
 
   // Lessons

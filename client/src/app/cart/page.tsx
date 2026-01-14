@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useEffect } from "react";
 import {
   useAddToCartMutation,
   useGetCartQuery,
@@ -24,10 +25,11 @@ export default function CartPage() {
   const { pushToast } = useToast();
   const { t } = useI18n();
 
-  if (!isLoggedIn) {
-    router.replace("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoggedIn) router.replace("/login");
+  }, [isLoggedIn, router]);
+
+  if (!isLoggedIn) return null;
 
   const handleQuantityChange = async (productId: string, delta: number) => {
     try {

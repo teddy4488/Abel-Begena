@@ -98,10 +98,35 @@ export type RecordStudentAttendanceBody = {
   status?: AttendanceStatus;
 };
 
+export type BillingSummary = {
+  year: number;
+  month: number;
+  totalActiveStudents: number;
+  paidCount: number;
+  partialCount: number;
+  unpaidCount: number;
+  items: {
+    participantId: string;
+    fullName: string;
+    attendanceNumber: string;
+    instrumentType: InstrumentType;
+    status: "paid" | "partial" | "unpaid";
+  }[];
+};
+
+export type RecordStudentPaymentBody = {
+  participantId: string;
+  amount: number;
+  month: number;
+  year: number;
+  status: "paid" | "partial" | "unpaid";
+  note?: string;
+};
+
 export const attendanceApi = createApi({
   reducerPath: "attendanceApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["TeacherParticipants", "StudentParticipants", "TeacherToday", "Lessons"],
+  tagTypes: ["TeacherParticipants", "StudentParticipants", "TeacherToday", "Lessons", "Billing"],
   endpoints: (builder) => ({
     getTeacherParticipants: builder.query<TeacherParticipant[], void>({
       query: () => "/attendance/teachers/participants",
@@ -162,10 +187,7 @@ export const attendanceApi = createApi({
       query: () => "/attendance/teachers/today",
       providesTags: ["TeacherToday"],
     }),
-    recordStudentAttendance: builder.mutation<
-      unknown,
-      RecordStudentAttendanceBody
-    >({
+    recordStudentAttendance: builder.mutation<unknown, RecordStudentAttendanceBody>({
       query: (body) => ({
         url: "/attendance/students/record",
         method: "POST",
@@ -215,6 +237,27 @@ export const attendanceApi = createApi({
       }),
       invalidatesTags: ["Lessons"],
     }),
+    getBillingSummary: builder.query<
+      BillingSummary,
+      { year?: number; month?: number } | void
+    >({
+      query: (params) => ({
+        url: "/attendance/billing/summary",
+        params: params ?? {},
+      }),
+      providesTags: ["Billing"],
+    }),
+    recordStudentPayment: builder.mutation<
+      unknown,
+      RecordStudentPaymentBody
+    >({
+      query: (body) => ({
+        url: "/attendance/billing/pay",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Billing"],
+    }),
   }),
 });
 
@@ -232,4 +275,6 @@ export const {
   useCreateLessonMutation,
   useUpdateLessonMutation,
   useDeleteLessonMutation,
+  useGetBillingSummaryQuery,
+  useRecordStudentPaymentMutation,
 } = attendanceApi;
