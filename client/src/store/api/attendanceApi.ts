@@ -123,10 +123,43 @@ export type RecordStudentPaymentBody = {
   note?: string;
 };
 
+export type GraduationEligibilityStatus =
+  | "eligible"
+  | "nearlyEligible"
+  | "notEligible";
+
+export type GraduationEligibilityItem = {
+  participantId: string;
+  fullName: string;
+  attendanceNumber: string;
+  instrumentType: InstrumentType;
+  branchId: string | {
+    _id: string;
+    name: string;
+    slug?: string;
+  };
+  programDurationMonths: 3 | 6 | 9;
+  registrationStartDate: string;
+  programEndDate: string;
+  totalSessions: number;
+  monthsPaid: number;
+  expectedMonths: number;
+  requiredSessions: number;
+  status: GraduationEligibilityStatus;
+  reasons: string[];
+};
+
 export const attendanceApi = createApi({
   reducerPath: "attendanceApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["TeacherParticipants", "StudentParticipants", "TeacherToday", "Lessons", "Billing"],
+  tagTypes: [
+    "TeacherParticipants",
+    "StudentParticipants",
+    "TeacherToday",
+    "Lessons",
+    "Billing",
+    "Eligibility",
+  ],
   endpoints: (builder) => ({
     getTeacherParticipants: builder.query<TeacherParticipant[], void>({
       query: () => "/attendance/teachers/participants",
@@ -258,6 +291,12 @@ export const attendanceApi = createApi({
       }),
       invalidatesTags: ["Billing"],
     }),
+    getGraduationEligibility: builder.query<GraduationEligibilityItem[], void>({
+      query: () => ({
+        url: "/attendance/graduation/eligibility",
+      }),
+      providesTags: ["Eligibility"],
+    }),
   }),
 });
 
@@ -277,4 +316,5 @@ export const {
   useDeleteLessonMutation,
   useGetBillingSummaryQuery,
   useRecordStudentPaymentMutation,
+  useGetGraduationEligibilityQuery,
 } = attendanceApi;

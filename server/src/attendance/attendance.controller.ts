@@ -102,6 +102,12 @@ export class AttendanceController {
     return this.attendanceService.getStudentBillingSummary(parsedYear, parsedMonth);
   }
 
+  // Graduation / certification eligibility
+  @Get('graduation/eligibility')
+  getGraduationEligibility() {
+    return this.attendanceService.getGraduationEligibility();
+  }
+
   // Lessons
   @Get('lessons')
   listLessons(@Query('instrumentType') instrumentType?: string) {

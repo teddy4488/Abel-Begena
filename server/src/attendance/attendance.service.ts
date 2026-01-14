@@ -393,6 +393,159 @@ export class AttendanceService {
     return { success: true };
   }
 
+  // Graduation / certification eligibility
+
+  private addMonths(date: Date, months: number) {
+    const d = new Date(date.getTime());
+    d.setMonth(d.getMonth() + months);
+    return d;
+  }
+
+  private getMonthKey(date: Date) {
+    return `${date.getFullYear()}-${date.getMonth() + 1}`;
+  }
+
+  /**
+   * Compute graduation / certification eligibility for all active students.
+   *
+   * Rules (first version, can be tuned later):
+   * - Expected program length = programDurationMonths (3 / 6 / 9)
+   * - Expected months paid = programDurationMonths
+   * - Required attendance sessions = programDurationMonths * 8
+   * - eligible:
+   *    monthsPaid >= expectedMonths AND totalSessions >= requiredSessions
+   * - nearlyEligible:
+   *    not eligible, but
+   *    monthsPaid >= expectedMonths - 1 AND totalSessions >= requiredSessions * 0.7
+   * - notEligible: everything else.
+   */
+  async getGraduationEligibility() {
+    // Load all active students
+    const students = await this.studentParticipantModel
+      .find({ isActive: true })
+      .select(
+        '_id fullName attendanceNumber instrumentType branchId programDurationMonths registrationStartDate',
+      )
+      .lean()
+      .exec();
+
+    if (!students.length) {
+      return [];
+    }
+
+    const participantIds = students.map((s) => s._id);
+
+    // Aggregate attendance counts per participant
+    const attendanceAgg = await this.studentAttendanceModel
+      .aggregate([
+        {
+          $match: {
+            participantId: { $in: participantIds },
+          },
+        },
+        {
+          $group: {
+            _id: '$participantId',
+            totalSessions: { $sum: 1 },
+          },
+        },
+      ])
+      .exec();
+
+    const attendanceByParticipant = new Map<string, number>();
+    attendanceAgg.forEach((row) => {
+      attendanceByParticipant.set(String(row._id), row.totalSessions ?? 0);
+    });
+
+    // Aggregate payments (count months with status paid/partial)
+    const paymentsAgg = await this.studentPaymentModel
+      .aggregate([
+        {
+          $match: {
+            participantId: { $in: participantIds },
+            status: { $in: ['paid', 'partial'] },
+          },
+        },
+        {
+          $group: {
+            _id: '$participantId',
+            monthsPaid: { $sum: 1 },
+          },
+        },
+      ])
+      .exec();
+
+    const paymentsByParticipant = new Map<string, number>();
+    paymentsAgg.forEach((row) => {
+      paymentsByParticipant.set(String(row._id), row.monthsPaid ?? 0);
+    });
+
+    const today = new Date();
+
+    return students.map((student) => {
+      const key = String(student._id);
+      const totalSessions = attendanceByParticipant.get(key) ?? 0;
+      const monthsPaid = paymentsByParticipant.get(key) ?? 0;
+
+      const expectedMonths = student.programDurationMonths;
+      const requiredSessions = expectedMonths * 8;
+
+      // Compute program end date
+      const registrationStart = new Date(student.registrationStartDate);
+      const programEndDate = this.addMonths(
+        registrationStart,
+        student.programDurationMonths,
+      );
+
+      let status: 'eligible' | 'nearlyEligible' | 'notEligible' = 'notEligible';
+      const reasons: string[] = [];
+
+      if (monthsPaid >= expectedMonths && totalSessions >= requiredSessions) {
+        status = 'eligible';
+      } else if (
+        monthsPaid >= Math.max(1, expectedMonths - 1) &&
+        totalSessions >= Math.round(requiredSessions * 0.7)
+      ) {
+        status = 'nearlyEligible';
+      } else {
+        status = 'notEligible';
+      }
+
+      if (monthsPaid < expectedMonths) {
+        reasons.push(
+          `Tuition months paid: ${monthsPaid} / ${expectedMonths} expected`,
+        );
+      }
+
+      if (totalSessions < requiredSessions) {
+        reasons.push(
+          `Attendance sessions: ${totalSessions} / ${requiredSessions} required`,
+        );
+      }
+
+      if (today < programEndDate) {
+        reasons.push('Program end date has not been reached yet');
+      }
+
+      return {
+        participantId: key,
+        fullName: student.fullName,
+        attendanceNumber: student.attendanceNumber,
+        instrumentType: student.instrumentType,
+        branchId: student.branchId,
+        programDurationMonths: student.programDurationMonths,
+        registrationStartDate: student.registrationStartDate,
+        programEndDate,
+        totalSessions,
+        monthsPaid,
+        expectedMonths,
+        requiredSessions,
+        status,
+        reasons,
+      };
+    });
+  }
+
   // Billing / payments
   private getCurrentYearMonth() {
     const now = new Date();

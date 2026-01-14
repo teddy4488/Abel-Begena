@@ -18,10 +18,12 @@ import {
   useDeleteLessonMutation,
   useGetBillingSummaryQuery,
   useRecordStudentPaymentMutation,
+  useGetGraduationEligibilityQuery,
   type DayOfWeek,
   type LearningType,
   type AttendanceStatus,
   type TeachingTimeRange,
+  type GraduationEligibilityItem,
 } from "@/store/api/attendanceApi";
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -43,7 +45,7 @@ import {
 } from "lucide-react";
 import type { InstrumentType } from "@/store/api/storeApi";
 
-type AttendanceMode = "student" | "teacher" | "lessons" | "billing";
+type AttendanceMode = "student" | "teacher" | "lessons" | "billing" | "eligibility";
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
   "monday",
@@ -88,6 +90,8 @@ export default function AdminAttendancePage() {
   const { data: todayAttendance = [], refetch: refetchToday } =
     useGetTodayTeacherAttendanceQuery();
   const { data: billingSummary } = useGetBillingSummaryQuery();
+  const { data: eligibility = [], isLoading: eligibilityLoading } =
+    useGetGraduationEligibilityQuery();
   const [recordStudentAttendance, { isLoading: recordingStudent }] =
     useRecordStudentAttendanceMutation();
   const [registerTeacher, { isLoading: registeringTeacher }] =
@@ -199,6 +203,18 @@ export default function AdminAttendancePage() {
   const billingItems = billingSummary?.items ?? [];
   const unpaidCount = billingSummary?.unpaidCount ?? 0;
   const partialCount = billingSummary?.partialCount ?? 0;
+
+  const eligibilitySummary = useMemo(() => {
+    let eligible = 0;
+    let nearly = 0;
+    let notEligible = 0;
+    eligibility.forEach((item) => {
+      if (item.status === "eligible") eligible += 1;
+      else if (item.status === "nearlyEligible") nearly += 1;
+      else notEligible += 1;
+    });
+    return { eligible, nearly, notEligible };
+  }, [eligibility]);
 
   // Handlers
   const handleStudentCodeChange = (value: string) => {
@@ -550,6 +566,18 @@ export default function AdminAttendancePage() {
           >
             <UserCheck className="h-4 w-4" />
             {t("attendance.mode.teacher", "Teacher Attendance")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("eligibility")}
+            className={`flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold transition ${
+              mode === "eligibility"
+                ? "bg-primary text-primary-foreground shadow-lg"
+                : "bg-background/60 text-foreground/70 hover:bg-background/80"
+            }`}
+          >
+            <GraduationCap className="h-4 w-4" />
+            {t("attendance.mode.eligibility", "Graduation Eligibility")}
           </button>
           <button
             type="button"
@@ -1098,6 +1126,203 @@ export default function AdminAttendancePage() {
                   );
                 })}
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {mode === "eligibility" && (
+          <motion.div
+            key="eligibility"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-6"
+          >
+            <div className="rounded-2xl surface-elevated p-6">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.eligibility.title", "Graduation & Certification")}
+                  </p>
+                  <h2 className="text-xl font-serif text-primary sm:text-2xl">
+                    {t(
+                      "attendance.eligibility.subtitle",
+                      "Eligibility overview by attendance & payments",
+                    )}
+                  </h2>
+                  <p className="mt-1 text-xs text-foreground/60 sm:text-sm">
+                    {t(
+                      "attendance.eligibility.description",
+                      "Uses attendance sessions and tuition months paid to highlight who is ready, nearly ready, or not yet eligible for graduation.",
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3 mb-4">
+                <div className="rounded-2xl card-elevated p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {t("attendance.eligibility.stats.eligible", "Eligible")}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-primary">
+                    {eligibilitySummary.eligible}
+                  </p>
+                </div>
+                <div className="rounded-2xl card-elevated p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {t("attendance.eligibility.stats.nearly", "Nearly eligible")}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-amber-600">
+                    {eligibilitySummary.nearly}
+                  </p>
+                </div>
+                <div className="rounded-2xl card-elevated p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
+                    {t("attendance.eligibility.stats.not", "Not yet eligible")}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-foreground">
+                    {eligibilitySummary.notEligible}
+                  </p>
+                </div>
+              </div>
+
+              {eligibilityLoading ? (
+                <p className="py-6 text-sm text-foreground/70">
+                  {t("attendance.eligibility.loading", "Calculating eligibility...")}
+                </p>
+              ) : eligibility.length === 0 ? (
+                <p className="py-6 text-sm text-foreground/70">
+                  {t(
+                    "attendance.eligibility.empty",
+                    "No active students found in the attendance registry.",
+                  )}
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl card-elevated p-4">
+                  <table className="min-w-full text-left text-sm">
+                    <thead>
+                      <tr className="text-xs uppercase tracking-[0.25em] text-secondary/70">
+                        <th className="px-3 py-2">
+                          {t("attendance.eligibility.table.student", "Student")}
+                        </th>
+                        <th className="px-3 py-2">
+                          {t("attendance.eligibility.table.instrument", "Instrument")}
+                        </th>
+                        <th className="px-3 py-2">
+                          {t("attendance.eligibility.table.program", "Program")}
+                        </th>
+                        <th className="px-3 py-2">
+                          {t("attendance.eligibility.table.attendance", "Attendance")}
+                        </th>
+                        <th className="px-3 py-2">
+                          {t("attendance.eligibility.table.payments", "Payments")}
+                        </th>
+                        <th className="px-3 py-2">
+                          {t("attendance.eligibility.table.status", "Status")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {eligibility.map((item: GraduationEligibilityItem) => {
+                        const branchName =
+                          typeof item.branchId === "object" && item.branchId !== null
+                            ? item.branchId.name
+                            : "";
+                        const statusLabel =
+                          item.status === "eligible"
+                            ? t("attendance.eligibility.status.eligible", "Eligible")
+                            : item.status === "nearlyEligible"
+                              ? t(
+                                  "attendance.eligibility.status.nearly",
+                                  "Nearly eligible",
+                                )
+                              : t(
+                                  "attendance.eligibility.status.not",
+                                  "Not yet eligible",
+                                );
+                        const statusClass =
+                          item.status === "eligible"
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : item.status === "nearlyEligible"
+                              ? "bg-amber-500/10 text-amber-600"
+                              : "bg-foreground/10 text-foreground/70";
+
+                        return (
+                          <tr key={item.participantId}>
+                            <td className="px-3 py-3 align-top">
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-primary">
+                                  {item.fullName}
+                                </span>
+                                <span className="text-xs text-foreground/60">
+                                  {item.attendanceNumber}
+                                  {branchName ? ` • ${branchName}` : ""}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 align-top text-xs text-foreground/70">
+                              {item.instrumentType}
+                            </td>
+                            <td className="px-3 py-3 align-top text-xs text-foreground/70">
+                              <div>
+                                <p>
+                                  {item.programDurationMonths}{" "}
+                                  {t("attendance.students.months", "months")}
+                                </p>
+                                <p>
+                                  {t(
+                                    "attendance.eligibility.expectedMonths",
+                                    "Expected months",
+                                  )}
+                                  : {item.expectedMonths}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 align-top text-xs text-foreground/70">
+                              <div>
+                                <p>
+                                  {t(
+                                    "attendance.eligibility.sessions",
+                                    "Sessions",
+                                  )}:{" "}
+                                  {item.totalSessions} / {item.requiredSessions}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 align-top text-xs text-foreground/70">
+                              <div>
+                                <p>
+                                  {t(
+                                    "attendance.eligibility.monthsPaid",
+                                    "Months paid",
+                                  )}:{" "}
+                                  {item.monthsPaid} / {item.expectedMonths}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 align-top">
+                              <div className="flex flex-col gap-1">
+                                <span
+                                  className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
+                                >
+                                  {statusLabel}
+                                </span>
+                                {item.reasons.length > 0 && (
+                                  <ul className="list-disc pl-4 text-[10px] text-foreground/60">
+                                    {item.reasons.slice(0, 3).map((reason) => (
+                                      <li key={reason}>{reason}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
