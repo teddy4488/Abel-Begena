@@ -8,7 +8,10 @@ import {
   useGetAllEnrollmentsQuery,
 } from "@/store/api/adminApi";
 import { useGetAllUsersQuery } from "@/store/api/userApi";
-import { useGetProductsQuery } from "@/store/api/storeApi";
+import { useGetProductsQuery, useGetAllOrdersQuery } from "@/store/api/storeApi";
+import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
+import { useGetAllFaqQuery } from "@/store/api/faqApi";
+import { useGetManageCommentsQuery } from "@/store/api/blogApi";
 import { useI18n } from "@/components/providers/I18nProvider";
 import {
   DollarSign,
@@ -20,6 +23,10 @@ import {
   CheckCircle2,
   Loader2,
   ArrowRight,
+  TrendingUp,
+  Package,
+  MapPin,
+  MessageSquare,
 } from "lucide-react";
 
 function formatCurrency(total?: number | null) {
@@ -57,10 +64,21 @@ export default function AdminConsolePage() {
   const { data: users, isLoading: usersLoading } = useGetAllUsersQuery();
   const { data: classes, isLoading: classesLoading } = useGetManagedClassesQuery();
   const { data: products, isLoading: productsLoading } = useGetProductsQuery();
+  const { data: orders, isLoading: ordersLoading } = useGetAllOrdersQuery();
+  const { data: branches, isLoading: branchesLoading } = useGetBranchesAdminQuery();
+  const { data: faqs, isLoading: faqsLoading } = useGetAllFaqQuery();
+  const { data: comments, isLoading: commentsLoading } = useGetManageCommentsQuery();
   const {
     data: pendingEnrollments = [],
     isLoading: pendingLoading,
   } = useGetAllEnrollmentsQuery({ status: "pending" });
+
+  // Calculate additional stats
+  const totalOrders = orders?.length ?? 0;
+  const totalBranches = branches?.length ?? 0;
+  const activeBranches = branches?.filter((b) => b.isActive).length ?? 0;
+  const totalFaqs = faqs?.length ?? 0;
+  const pendingComments = comments?.filter((c) => c.status === "pending").length ?? 0;
 
   const summaryCards = [
     {
@@ -70,6 +88,10 @@ export default function AdminConsolePage() {
       color: "text-green-600",
       bgColor: "bg-green-500/10",
       href: "/admin/analytics",
+      trend: analytics?.revenue.monthly && analytics.revenue.monthly.length > 1
+        ? analytics.revenue.monthly[analytics.revenue.monthly.length - 1]?.total - 
+          (analytics.revenue.monthly[analytics.revenue.monthly.length - 2]?.total ?? 0)
+        : undefined,
     },
     {
       label: t("admin.console.users", "Registered Users"),
@@ -78,13 +100,25 @@ export default function AdminConsolePage() {
       color: "text-blue-600",
       bgColor: "bg-blue-500/10",
       href: "/admin/users",
+      trend: analytics?.users.monthly && analytics.users.monthly.length > 1
+        ? analytics.users.monthly[analytics.users.monthly.length - 1]?.total - 
+          (analytics.users.monthly[analytics.users.monthly.length - 2]?.total ?? 0)
+        : undefined,
+    },
+    {
+      label: t("admin.console.totalClasses", "Total Classes"),
+      value: analyticsLoading ? "..." : analytics?.classes.total ?? "—",
+      icon: BookOpen,
+      color: "text-purple-600",
+      bgColor: "bg-purple-500/10",
+      href: "/admin/classes",
     },
     {
       label: t("admin.console.liveClasses", "Live Classes"),
       value: analyticsLoading ? "..." : analytics?.classes.live ?? "—",
       icon: BookOpen,
-      color: "text-purple-600",
-      bgColor: "bg-purple-500/10",
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-500/10",
       href: "/admin/classes",
     },
     {
@@ -96,6 +130,22 @@ export default function AdminConsolePage() {
       href: "/admin/store",
     },
     {
+      label: t("admin.console.totalOrders", "Total Orders"),
+      value: ordersLoading ? "..." : totalOrders,
+      icon: Package,
+      color: "text-pink-600",
+      bgColor: "bg-pink-500/10",
+      href: "/admin/orders",
+    },
+    {
+      label: t("admin.console.branches", "Branches"),
+      value: branchesLoading ? "..." : `${activeBranches}/${totalBranches}`,
+      icon: MapPin,
+      color: "text-teal-600",
+      bgColor: "bg-teal-500/10",
+      href: "/admin/branches",
+    },
+    {
       label: t("admin.console.pendingEnrollments", "Pending Enrollments"),
       value: pendingLoading ? "..." : pendingEnrollments.length,
       subtitle: t("admin.console.pendingSubtitle", "Awaiting review"),
@@ -104,6 +154,16 @@ export default function AdminConsolePage() {
       bgColor: "bg-amber-500/10",
       href: "/admin/enrollments",
       urgent: pendingEnrollments.length > 0,
+    },
+    {
+      label: t("admin.console.pendingComments", "Pending Comments"),
+      value: commentsLoading ? "..." : pendingComments,
+      subtitle: t("admin.console.commentsSubtitle", "Awaiting moderation"),
+      icon: MessageSquare,
+      color: "text-cyan-600",
+      bgColor: "bg-cyan-500/10",
+      href: "/admin/comments",
+      urgent: pendingComments > 0,
     },
   ];
 
@@ -130,7 +190,7 @@ export default function AdminConsolePage() {
       </motion.div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {summaryCards.map((card, index) => {
           const Icon = card.icon;
           return (
@@ -158,13 +218,23 @@ export default function AdminConsolePage() {
                 <p className="text-xs uppercase tracking-[0.4em] text-secondary/70 mb-1">
                   {card.label}
                 </p>
-                <p className="text-2xl font-bold text-primary">
-                  {typeof card.value === "string" && card.value === "..." ? (
-                    <Loader2 className="inline-block h-5 w-5 animate-spin" />
-                  ) : (
-                    card.value
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-primary">
+                    {typeof card.value === "string" && card.value === "..." ? (
+                      <Loader2 className="inline-block h-5 w-5 animate-spin" />
+                    ) : (
+                      card.value
+                    )}
+                  </p>
+                  {card.trend !== undefined && card.trend !== 0 && (
+                    <span className={`text-xs font-semibold flex items-center gap-1 ${
+                      card.trend > 0 ? "text-green-600" : "text-red-600"
+                    }`}>
+                      <TrendingUp className={`h-3 w-3 ${card.trend < 0 ? "rotate-180" : ""}`} />
+                      {Math.abs(card.trend)}
+                    </span>
                   )}
-                </p>
+                </div>
                 {card.subtitle && (
                   <p className="mt-1 text-[11px] uppercase tracking-[0.3em] text-foreground/50">
                     {card.subtitle}
@@ -205,26 +275,37 @@ export default function AdminConsolePage() {
           ) : (
             <ul className="space-y-2 text-sm">
               {(classes ?? []).slice(0, 5).map((klass, index) => (
-                <motion.li
+                <Link
                   key={klass._id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + index * 0.05 }}
-                  className="flex items-center justify-between rounded-2xl card-elevated px-4 py-3 transition-all hover:shadow-md"
+                  href="/admin/classes"
                 >
-                  <span className="font-medium text-primary truncate flex-1">
-                    {klass.title}
-                  </span>
-                  <span className={`ml-2 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-wide ${
-                    klass.isLive
-                      ? "bg-green-500/20 text-green-600"
-                      : "bg-foreground/10 text-foreground/60"
-                  }`}>
-                    {klass.isLive
-                      ? t("admin.console.status.live", "Live")
-                      : t("admin.console.status.draft", "Draft")}
-                  </span>
-                </motion.li>
+                  <motion.li
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + index * 0.05 }}
+                    className="flex items-center justify-between rounded-2xl card-elevated px-4 py-3 transition-all hover:shadow-md cursor-pointer group"
+                  >
+                    <span className="font-medium text-primary truncate flex-1 group-hover:text-secondary transition-colors">
+                      {klass.title}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {(klass as any).classType && (
+                        <span className="text-xs text-foreground/50 capitalize">
+                          {(klass as any).classType}
+                        </span>
+                      )}
+                      <span className={`ml-2 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-wide ${
+                        klass.isLive
+                          ? "bg-green-500/20 text-green-600"
+                          : "bg-foreground/10 text-foreground/60"
+                      }`}>
+                        {klass.isLive
+                          ? t("admin.console.status.live", "Live")
+                          : t("admin.console.status.draft", "Draft")}
+                      </span>
+                    </div>
+                  </motion.li>
+                </Link>
               ))}
               {!classes?.length && (
                 <li className="text-center py-8 text-sm text-foreground/60">

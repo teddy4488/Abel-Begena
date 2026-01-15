@@ -14,7 +14,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetCartQuery } from "@/store/api/storeApi";
 
-type RoleKey = "guest" | "User" | "Teacher" | "Admin";
+type RoleKey = "guest" | "User" | "Teacher" | "Admin" | "Student";
 type NavLink = { labelKey: string; href: string };
 
 const guestServices: NavLink[] = [
@@ -75,6 +75,15 @@ const navConfig: Record<
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
     ],
   },
+  Student: {
+    links: [
+      { labelKey: "nav.studentDashboard", href: "/student" },
+      { labelKey: "nav.attendance", href: "/student/attendance" },
+      { labelKey: "nav.payments", href: "/student/payments" },
+      { labelKey: "nav.classes", href: "/classes" },
+      { labelKey: "nav.store", href: "/store" },
+    ],
+  },
 };
 
 const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
@@ -85,6 +94,12 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
     { labelKey: "nav.enrollments", href: "/dashboard/enrollments" },
     { labelKey: "nav.orders", href: "/account/orders" },
     { labelKey: "nav.store", href: "/store" },
+  ],
+  Student: [
+    { labelKey: "nav.profile", href: "/profile" },
+    { labelKey: "nav.studentDashboard", href: "/student" },
+    { labelKey: "nav.attendance", href: "/student/attendance" },
+    { labelKey: "nav.payments", href: "/student/payments" },
   ],
   Teacher: [
     { labelKey: "nav.profile", href: "/profile" },
@@ -117,9 +132,15 @@ export default function Navbar() {
   const { data: cart } = useGetCartQuery(undefined, { skip: !isLoggedIn });
   const cartItemCount = cart?.itemCount ?? 0;
 
-  const roleKey: RoleKey = isLoggedIn
-    ? (user?.role as RoleKey) || "User"
-    : "guest";
+  const roleKey: RoleKey = useMemo(() => {
+    if (!isLoggedIn) return "guest";
+    // Use userType first, then fall back to role
+    if (user?.userType === "admin") return "Admin";
+    if (user?.userType === "teacher") return "Teacher";
+    if (user?.userType === "student") return "Student";
+    // Fallback to role for backward compatibility
+    return (user?.role as RoleKey) || "User";
+  }, [isLoggedIn, user?.userType, user?.role]);
 
   const navSettings = useMemo(() => navConfig[roleKey], [roleKey]);
   const servicesLinks = navSettings.services ?? [];

@@ -7,7 +7,7 @@ config({ path: '.env' });
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/abel-begena';
 
-// User Schema (aligned with main application for seeding)
+// User Schema (website users only)
 const UserSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true },
@@ -17,16 +17,73 @@ const UserSchema = new mongoose.Schema(
     phone: String,
     role: {
       type: String,
-      enum: ['User', 'Teacher', 'Admin'],
+      enum: ['User'],
       default: 'User',
     },
+    isActive: { type: Boolean, default: true },
+    isVerified: { type: Boolean, default: false },
+  },
+  { timestamps: true },
+);
+
+// Teacher Schema
+const TeacherSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    firstName: String,
+    lastName: String,
+    phone: String,
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
     teacherStatus: {
       type: String,
       enum: ['pending', 'approved', 'suspended'],
-      default: undefined,
+      default: 'pending',
     },
+    avatarUrl: String,
+    bio: String,
+    languagePreference: { type: String, enum: ['en', 'am'], default: 'en' },
+  },
+  { timestamps: true },
+);
+
+// AdminUser Schema
+const AdminUserSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    firstName: String,
+    lastName: String,
+    phone: String,
+    isActive: { type: Boolean, default: true },
+    isVerified: { type: Boolean, default: false },
+    avatarUrl: String,
+    languagePreference: { type: String, enum: ['en', 'am'], default: 'en' },
+  },
+  { timestamps: true },
+);
+
+// StudentAttendanceParticipant Schema
+const StudentAttendanceParticipantSchema = new mongoose.Schema(
+  {
+    email: { type: String, unique: true, sparse: true },
+    password: { type: String },
+    fullName: { type: String, required: true },
+    attendanceNumber: { type: String, required: true, unique: true },
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+    learningType: { type: String, enum: ['physical', 'online'], required: true },
+    instrumentType: { type: String, required: true },
+    programDurationMonths: { type: Number, enum: [3, 6, 9], required: true },
+    preferredLearningDays: { type: [String], required: true },
+    registrationStartDate: { type: Date, required: true },
+    learningDaysPerWeek: { type: Number, required: true },
+    isActive: { type: Boolean, default: true },
+    isVerified: { type: Boolean, default: false },
+    verificationCode: String,
+    verificationCodeExpiresAt: Date,
+    passwordResetCode: String,
+    passwordResetCodeExpiresAt: Date,
   },
   { timestamps: true },
 );
@@ -37,7 +94,7 @@ const ClassSchema = new mongoose.Schema(
     title: { type: String, required: true },
     instructorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Teacher',
       required: true,
     },
     materials: {
@@ -83,6 +140,9 @@ const BranchSchema = new mongoose.Schema(
 );
 
 const User = mongoose.model('User', UserSchema);
+const Teacher = mongoose.model('Teacher', TeacherSchema);
+const AdminUser = mongoose.model('AdminUser', AdminUserSchema);
+const StudentAttendanceParticipant = mongoose.model('StudentAttendanceParticipant', StudentAttendanceParticipantSchema);
 const Class = mongoose.model('Class', ClassSchema);
 const Branch = mongoose.model('Branch', BranchSchema);
 
@@ -94,40 +154,37 @@ async function seed() {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
-    // Drop existing collections
-    await User.collection.drop().catch(() => {
-      console.log('⚠️  Users collection does not exist, skipping drop');
-    });
-    await Class.collection.drop().catch(() => {
-      console.log('⚠️  Classes collection does not exist, skipping drop');
-    });
-    await Branch.collection.drop().catch(() => {
-      console.log('⚠️  Branches collection does not exist, skipping drop');
-    });
-    console.log('🗑️  Dropped existing collections');
+    // Drop ALL existing collections
+    if (mongoose.connection.db) {
+      const collections = await mongoose.connection.db.listCollections().toArray();
+      for (const collection of collections) {
+        await mongoose.connection.db.dropCollection(collection.name).catch(() => {
+          console.log(`⚠️  Collection ${collection.name} does not exist, skipping drop`);
+        });
+      }
+      console.log('🗑️  Dropped all existing collections');
+    }
 
     // Hash password
     const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // Create Admin User (verified & active)
-    const admin = await User.create({
+    // Create Admin User in AdminUser table (verified & active)
+    const admin = await AdminUser.create({
       email: 'admin@abelbegena.com',
       password: hashedPassword,
       firstName: 'Admin',
       lastName: 'User',
-      role: 'Admin',
       isActive: true,
       isVerified: true,
     });
     console.log('✅ Created Admin user:', admin.email);
 
-    // Create Teacher User (verified, active, approved)
-    const teacher = await User.create({
+    // Create Teacher User in Teacher table (verified, active, approved)
+    const teacher = await Teacher.create({
       email: 'teacher@abelbegena.com',
       password: hashedPassword,
       firstName: 'Master',
       lastName: 'Instructor',
-      role: 'Teacher',
       isActive: true,
       isVerified: true,
       teacherStatus: 'approved',
@@ -150,19 +207,19 @@ async function seed() {
     });
     console.log('✅ Created sample class:', sampleClass.title);
 
-    // Create a Standard User for testing
-    const student = await User.create({
+    // Create a Standard Website User for testing
+    const websiteUser = await User.create({
       email: 'user@abelbegena.com',
       password: hashedPassword,
       firstName: 'Test',
-      lastName: 'Student',
+      lastName: 'User',
       role: 'User',
       isActive: true,
       isVerified: true,
     });
-    console.log('✅ Created Student user:', student.email);
+    console.log('✅ Created Website user:', websiteUser.email);
 
-    // Create sample branches in Addis Ababa
+    // Create sample branches in Addis Ababa (must be created before student)
     const branches = await Branch.insertMany([
       {
         name: 'Bole Main Studio',
@@ -201,11 +258,31 @@ async function seed() {
     ]);
     console.log('✅ Created branches:', branches.map((b) => b.name).join(', '));
 
+    // Create a Test Student for testing (after branches are created)
+    const firstBranch = branches[0];
+    const student = await StudentAttendanceParticipant.create({
+      email: 'student@abelbegena.com',
+      password: hashedPassword,
+      fullName: 'Test Student',
+      attendanceNumber: 'STU001',
+      branchId: firstBranch._id,
+      learningType: 'physical',
+      instrumentType: 'Begena',
+      programDurationMonths: 6,
+      preferredLearningDays: ['monday', 'wednesday', 'friday'],
+      registrationStartDate: new Date(),
+      learningDaysPerWeek: 3,
+      isActive: true,
+      isVerified: true,
+    });
+    console.log('✅ Created Student:', student.email);
+
     console.log('\n🎉 Seed completed successfully!');
     console.log('\n📋 Test Credentials (all verified & active):');
     console.log('   Admin:   admin@abelbegena.com / password123');
     console.log('   Teacher: teacher@abelbegena.com / password123');
-    console.log('   User:    user@abelbegena.com / password123');
+    console.log('   Website User: user@abelbegena.com / password123');
+    console.log('   Student: student@abelbegena.com / password123');
 
     await mongoose.disconnect();
     console.log('\n👋 Disconnected from MongoDB');
@@ -218,4 +295,3 @@ async function seed() {
 }
 
 seed();
-

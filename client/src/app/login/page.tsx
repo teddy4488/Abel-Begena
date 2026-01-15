@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { getRoleLandingRoute } from "@/lib/utils";
+import { getUserLandingRoute } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/errors";
 import { Mail, Lock, LogIn } from "lucide-react";
 
@@ -57,7 +57,10 @@ export default function LoginPage() {
         description: t("login.successDescription", "Redirecting you to your dashboard."),
         variant: "success",
       });
-      const destination = getRoleLandingRoute(result.user?.role);
+      const destination = getUserLandingRoute(
+        result.user?.userType,
+        result.user?.role,
+      );
       router.replace(destination);
     } catch (err) {
       const fallback = t(

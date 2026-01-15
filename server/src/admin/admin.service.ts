@@ -8,6 +8,10 @@ import {
 } from '../order/schemas/order.schema';
 import { User, UserDocument } from '../user/schemas/user.schema';
 import { Class, ClassDocument } from '../class/schemas/class.schema';
+import {
+  StudentAttendanceParticipant,
+  StudentAttendanceParticipantDocument,
+} from '../attendance/schemas/student-attendance-participant.schema';
 
 type MonthlyValue = {
   label: string;
@@ -31,6 +35,10 @@ type AnalyticsOverview = {
     active: number;
     monthly: MonthlyValue[];
   };
+  students: {
+    total: number;
+    active: number;
+  };
   orders: {
     total: number;
     statusBreakdown: Record<OrderStatus, number>;
@@ -50,6 +58,8 @@ export class AdminService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Class.name)
     private readonly classModel: Model<ClassDocument>,
+    @InjectModel(StudentAttendanceParticipant.name)
+    private readonly studentParticipantModel: Model<StudentAttendanceParticipantDocument>,
   ) {}
 
   async getAnalyticsOverview(): Promise<AnalyticsOverview> {
@@ -63,6 +73,8 @@ export class AdminService {
       totalRevenueAgg,
       totalUsers,
       activeUsers,
+      totalStudents,
+      activeStudents,
       totalOrders,
       totalClasses,
       liveClasses,
@@ -114,6 +126,8 @@ export class AdminService {
       ]),
       this.userModel.countDocuments(),
       this.userModel.countDocuments({ isActive: true }),
+      this.studentParticipantModel.countDocuments(),
+      this.studentParticipantModel.countDocuments({ isActive: true }),
       this.orderModel.countDocuments(),
       this.classModel.countDocuments(),
       this.classModel.countDocuments({ isLive: true }),
@@ -142,6 +156,10 @@ export class AdminService {
         total: totalUsers,
         active: activeUsers,
         monthly: userMonthly,
+      },
+      students: {
+        total: totalStudents,
+        active: activeStudents,
       },
       orders: {
         total: totalOrders,

@@ -72,8 +72,18 @@ export class AuthController {
 
   @Get('session')
   @UseGuards(JwtAuthGuard)
-  async session(@Request() req: { user: { sub: string; exp?: number } }) {
-    const user = await this.authService.getSession(req.user.sub);
+  async session(
+    @Request() req: {
+      user: { sub: string; exp?: number; userType?: string };
+    },
+  ) {
+    const userType = req.user.userType as
+      | 'website_user'
+      | 'teacher'
+      | 'admin'
+      | 'student'
+      | undefined;
+    const user = await this.authService.getSession(req.user.sub, userType);
     const expiresAt = req.user.exp
       ? new Date(req.user.exp * 1000).toISOString()
       : null;

@@ -11,6 +11,34 @@ export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'frida
 
 @Schema({ timestamps: true })
 export class StudentAttendanceParticipant {
+  // Authentication fields (optional - for students who want to access portal)
+  @Prop({
+    unique: true,
+    sparse: true,
+    lowercase: true,
+    trim: true,
+    index: true,
+  })
+  email?: string;
+
+  @Prop()
+  password?: string;
+
+  @Prop({ default: false })
+  isVerified: boolean;
+
+  @Prop({ type: String, required: false, default: null })
+  verificationCode?: string;
+
+  @Prop({ type: Date, required: false, default: null })
+  verificationCodeExpiresAt?: Date;
+
+  @Prop({ type: String, required: false, default: null })
+  passwordResetCode?: string;
+
+  @Prop({ type: Date, required: false, default: null })
+  passwordResetCodeExpiresAt?: Date;
+
   // Independent student information - no reference to User table
   @Prop({ required: true, trim: true, maxlength: 120 })
   fullName: string;

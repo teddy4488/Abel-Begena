@@ -6,11 +6,16 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
+import { TeacherService } from '../teacher/teacher.service';
+import { AdminUserService } from '../admin-user/admin-user.service';
+import { StudentService } from '../student/student.service';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { MailService } from '../mail/mail.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+
+export type UserType = 'website_user' | 'teacher' | 'admin' | 'student';
 
 @Injectable()
 export class AuthService {
@@ -18,11 +23,15 @@ export class AuthService {
 
   constructor(
     private readonly userService: UserService,
+    private readonly teacherService: TeacherService,
+    private readonly adminUserService: AdminUserService,
+    private readonly studentService: StudentService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
   ) {}
 
   async register(dto: CreateUserDto) {
+    // Registration always creates a website user
     const safeUser = await this.userService.create({ ...dto, role: 'User' });
     if (!safeUser) {
       throw new BadRequestException('Unable to create account');
@@ -31,7 +40,11 @@ export class AuthService {
     if (!userId) {
       throw new BadRequestException('Unable to create account');
     }
-    const devCode = await this.issueVerificationCode(userId, safeUser.email);
+    const devCode = await this.issueVerificationCode(
+      userId,
+      safeUser.email,
+      'website_user',
+    );
     return {
       message: 'We sent a 6-digit verification code to your email.',
       email: safeUser.email,
@@ -41,69 +54,226 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string) {
-    const user = await this.userService.findByEmail(email);
-    if (!user) {
-      return null;
-    }
-
-    const isValid = await this.userService.comparePassword(
-      password,
-      user.password,
-    );
-
-    if (!isValid) {
-      return null;
-    }
-
-    if (!user.isVerified) {
-      throw new UnauthorizedException(
-        'Please verify your email before signing in.',
+    // Check all user tables in order: WebsiteUser, Teacher, AdminUser, Student
+    // Website User
+    let user = await this.userService.findByEmail(email);
+    if (user) {
+      const isValid = await this.userService.comparePassword(
+        password,
+        user.password,
       );
+      if (isValid) {
+        if (!user.isVerified) {
+          throw new UnauthorizedException(
+            'Please verify your email before signing in.',
+          );
+        }
+        const safeUser = this.userService.toSafeUser(
+          typeof user.toObject === 'function' ? user.toObject() : user,
+        );
+        return {
+          ...safeUser,
+          userType: 'website_user' as UserType,
+          role: (safeUser as { role?: string })?.role ?? 'User',
+        };
+      }
     }
 
-    return this.userService.toSafeUser(
-      typeof user.toObject === 'function' ? user.toObject() : user,
-    );
+    // Teacher
+    let teacher = await this.teacherService.findByEmail(email);
+    if (teacher) {
+      const isValid = await this.teacherService.comparePassword(
+        password,
+        teacher.password,
+      );
+      if (isValid) {
+        if (!teacher.isVerified) {
+          throw new UnauthorizedException(
+            'Please verify your email before signing in.',
+          );
+        }
+        const safeTeacher = this.teacherService.toSafeTeacher(
+          typeof teacher.toObject === 'function' ? teacher.toObject() : teacher,
+        );
+        return {
+          ...safeTeacher,
+          userType: 'teacher' as UserType,
+          role: 'Teacher',
+        };
+      }
+    }
+
+    // Admin User
+    let admin = await this.adminUserService.findByEmail(email);
+    if (admin) {
+      const isValid = await this.adminUserService.comparePassword(
+        password,
+        admin.password,
+      );
+      if (isValid) {
+        if (!admin.isVerified) {
+          throw new UnauthorizedException(
+            'Please verify your email before signing in.',
+          );
+        }
+        const safeAdmin = this.adminUserService.toSafeAdmin(
+          typeof admin.toObject === 'function' ? admin.toObject() : admin,
+        );
+        return {
+          ...safeAdmin,
+          userType: 'admin' as UserType,
+          role: 'Admin',
+        };
+      }
+    }
+
+    // Student
+    let student = await this.studentService.findByEmail(email);
+    if (student) {
+      if (!student.password) {
+        return null; // Student doesn't have password set yet
+      }
+      const isValid = await this.studentService.comparePassword(
+        password,
+        student.password,
+      );
+      if (isValid) {
+        if (!student.isVerified) {
+          throw new UnauthorizedException(
+            'Please verify your email before signing in.',
+          );
+        }
+        const safeStudent = this.studentService.toSafeStudent(
+          typeof student.toObject === 'function' ? student.toObject() : student,
+        );
+        return {
+          ...safeStudent,
+          userType: 'student' as UserType,
+          role: 'Student',
+        };
+      }
+    }
+
+    return null;
   }
 
   login(user: Record<string, unknown>) {
     const plainUser = this.extractPlainUser(user);
-    const safeUser = this.userService.toSafeUser(plainUser);
+    const userType = (plainUser as { userType?: UserType })?.userType ?? 'website_user';
+    const role = (plainUser as { role?: string })?.role ?? 'User';
+    
+    // Extract safe user based on type
+    let safeUser: Record<string, unknown> | null;
+    if (userType === 'teacher') {
+      safeUser = this.teacherService.toSafeTeacher(plainUser);
+    } else if (userType === 'admin') {
+      safeUser = this.adminUserService.toSafeAdmin(plainUser);
+    } else if (userType === 'student') {
+      safeUser = this.studentService.toSafeStudent(plainUser);
+    } else {
+      safeUser = this.userService.toSafeUser(plainUser);
+    }
+    
+    if (!safeUser) {
+      throw new BadRequestException('Unable to process user data');
+    }
+
     const rawId =
       (safeUser as { _id?: { toString: () => string } })?._id ??
       (plainUser as { _id?: { toString: () => string } })?._id ??
       (plainUser as { id?: string })?.id;
+    
     const payload = {
       sub: typeof rawId === 'string' ? rawId : (rawId?.toString?.() ?? ''),
-      role:
-        (safeUser as { role?: string })?.role ??
-        (plainUser as { role?: string })?.role ??
-        'User',
+      role,
+      userType,
     };
+    
     const accessToken = this.jwtService.sign(payload);
     const decoded: unknown = this.jwtService.decode(accessToken);
     const expiresAt = this.hasExpiry(decoded)
       ? new Date(decoded.exp * 1000).toISOString()
       : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    
     return {
       accessToken,
-      user: safeUser,
+      user: { ...safeUser, userType, role },
       expiresAt,
     };
   }
 
-  getSession(userId: string) {
-    return this.userService.findById(userId);
+  async getSession(userId: string, userType?: UserType) {
+    // Try to find user in the appropriate table based on userType
+    if (userType === 'teacher') {
+      const teacher = await this.teacherService.findById(userId);
+      if (teacher) {
+        return {
+          ...this.teacherService.toSafeTeacher(teacher),
+          userType: 'teacher' as UserType,
+          role: 'Teacher',
+        };
+      }
+    } else if (userType === 'admin') {
+      const admin = await this.adminUserService.findById(userId);
+      if (admin) {
+        return {
+          ...this.adminUserService.toSafeAdmin(admin),
+          userType: 'admin' as UserType,
+          role: 'Admin',
+        };
+      }
+    } else if (userType === 'student') {
+      const student = await this.studentService.findById(userId);
+      if (student) {
+        return {
+          ...this.studentService.toSafeStudent(student),
+          userType: 'student' as UserType,
+          role: 'Student',
+        };
+      }
+    }
+    
+    // Default to website user
+    const user = await this.userService.findById(userId);
+    if (user) {
+      return {
+        ...user,
+        userType: 'website_user' as UserType,
+        role: (user as { role?: string })?.role ?? 'User',
+      };
+    }
+    
+    return null;
   }
 
   async verifyEmail(dto: VerifyEmailDto) {
-    const user = await this.userService.findByEmail(dto.email);
+    // Check all user tables
+    let user: any = await this.userService.findByEmail(dto.email);
+    let userType: UserType = 'website_user';
+    
+    if (!user) {
+      user = await this.teacherService.findByEmail(dto.email);
+      userType = 'teacher';
+    }
+    
+    if (!user) {
+      user = await this.adminUserService.findByEmail(dto.email);
+      userType = 'admin';
+    }
+    
+    if (!user) {
+      user = await this.studentService.findByEmail(dto.email);
+      userType = 'student';
+    }
+    
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    
     if (user.isVerified) {
       return { message: 'Email already verified.' };
     }
+    
     if (
       !user.verificationCode ||
       !user.verificationCodeExpiresAt ||
@@ -113,10 +283,30 @@ export class AuthService {
         'Verification code has expired. Please request a new code.',
       );
     }
-    const matches = await this.userService.comparePassword(
-      dto.code,
-      user.verificationCode,
-    );
+    
+    let matches = false;
+    if (userType === 'teacher') {
+      matches = await this.teacherService.comparePassword(
+        dto.code,
+        user.verificationCode,
+      );
+    } else if (userType === 'admin') {
+      matches = await this.adminUserService.comparePassword(
+        dto.code,
+        user.verificationCode,
+      );
+    } else if (userType === 'student') {
+      matches = await this.studentService.comparePassword(
+        dto.code,
+        user.verificationCode,
+      );
+    } else {
+      matches = await this.userService.comparePassword(
+        dto.code,
+        user.verificationCode,
+      );
+    }
+    
     if (!matches) {
       throw new BadRequestException('Invalid verification code.');
     }
@@ -125,23 +315,59 @@ export class AuthService {
     if (!userId) {
       throw new BadRequestException('Unable to verify account.');
     }
-    await this.userService.markEmailVerified(userId);
+    
+    if (userType === 'teacher') {
+      await this.teacherService.markEmailVerified(userId);
+    } else if (userType === 'admin') {
+      await this.adminUserService.markEmailVerified(userId);
+    } else if (userType === 'student') {
+      await this.studentService.markEmailVerified(userId);
+    } else {
+      await this.userService.markEmailVerified(userId);
+    }
+    
     return { message: 'Email verified successfully.' };
   }
 
   async resendVerification(email: string) {
-    const user = await this.userService.findByEmail(email);
+    // Check all user tables
+    let user: any = await this.userService.findByEmail(email);
+    let userType: UserType = 'website_user';
+    
+    if (!user) {
+      user = await this.teacherService.findByEmail(email);
+      userType = 'teacher';
+    }
+    
+    if (!user) {
+      user = await this.adminUserService.findByEmail(email);
+      userType = 'admin';
+    }
+    
+    if (!user) {
+      user = await this.studentService.findByEmail(email);
+      userType = 'student';
+    }
+    
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    
     if (user.isVerified) {
       return { message: 'Email already verified.' };
     }
+    
     const userId = this.extractUserId(user);
     if (!userId) {
       throw new BadRequestException('Unable to resend code.');
     }
-    const devCode = await this.issueVerificationCode(userId, user.email);
+    
+    const devCode = await this.issueVerificationCode(
+      userId,
+      user.email,
+      userType,
+    );
+    
     return {
       message: 'We sent a fresh verification code to your email.',
       expiresInMinutes: this.verificationTtlMinutes,
@@ -150,13 +376,32 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user = await this.userService.findByEmail(dto.email);
+    // Check all user tables
+    let user: any = await this.userService.findByEmail(dto.email);
+    let userType: UserType = 'website_user';
+    
+    if (!user) {
+      user = await this.teacherService.findByEmail(dto.email);
+      userType = 'teacher';
+    }
+    
+    if (!user) {
+      user = await this.adminUserService.findByEmail(dto.email);
+      userType = 'admin';
+    }
+    
+    if (!user) {
+      user = await this.studentService.findByEmail(dto.email);
+      userType = 'student';
+    }
+    
     if (!user) {
       return {
         message: 'If that email exists, a reset code has been sent.',
       };
     }
-    const devCode = await this.issuePasswordResetCode(user.email);
+    
+    const devCode = await this.issuePasswordResetCode(dto.email, userType);
     return {
       message: 'If that email exists, a reset code has been sent.',
       ...(devCode ? { devCode } : {}),
@@ -164,10 +409,29 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const user = await this.userService.findByEmail(dto.email);
+    // Check all user tables
+    let user: any = await this.userService.findByEmail(dto.email);
+    let userType: UserType = 'website_user';
+    
+    if (!user) {
+      user = await this.teacherService.findByEmail(dto.email);
+      userType = 'teacher';
+    }
+    
+    if (!user) {
+      user = await this.adminUserService.findByEmail(dto.email);
+      userType = 'admin';
+    }
+    
+    if (!user) {
+      user = await this.studentService.findByEmail(dto.email);
+      userType = 'student';
+    }
+    
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    
     if (
       !user.passwordResetCode ||
       !user.passwordResetCodeExpiresAt ||
@@ -177,24 +441,82 @@ export class AuthService {
         'Reset code has expired. Please request a new code.',
       );
     }
-    const matches = await this.userService.comparePassword(
-      dto.code,
-      user.passwordResetCode,
-    );
+    
+    let matches = false;
+    if (userType === 'teacher') {
+      matches = await this.teacherService.comparePassword(
+        dto.code,
+        user.passwordResetCode,
+      );
+    } else if (userType === 'admin') {
+      matches = await this.adminUserService.comparePassword(
+        dto.code,
+        user.passwordResetCode,
+      );
+    } else if (userType === 'student') {
+      matches = await this.studentService.comparePassword(
+        dto.code,
+        user.passwordResetCode,
+      );
+    } else {
+      matches = await this.userService.comparePassword(
+        dto.code,
+        user.passwordResetCode,
+      );
+    }
+    
     if (!matches) {
       throw new BadRequestException('Invalid reset code.');
     }
-    await this.userService.resetPasswordWithCode(dto.email, dto.password);
+    
+    if (userType === 'teacher') {
+      await this.teacherService.resetPasswordWithCode(dto.email, dto.password);
+    } else if (userType === 'admin') {
+      await this.adminUserService.resetPasswordWithCode(dto.email, dto.password);
+    } else if (userType === 'student') {
+      await this.studentService.resetPasswordWithCode(dto.email, dto.password);
+    } else {
+      await this.userService.resetPasswordWithCode(dto.email, dto.password);
+    }
+    
     return { message: 'Password updated successfully.' };
   }
 
-  private async issueVerificationCode(userId: string, email: string) {
+  private async issueVerificationCode(
+    userId: string,
+    email: string,
+    userType: UserType = 'website_user',
+  ) {
     const code = this.generateVerificationCode();
-    const hash = await this.userService.hashPassword(code);
-    const expiresAt = new Date(
-      Date.now() + this.verificationTtlMinutes * 60 * 1000,
-    );
-    await this.userService.assignVerificationCode(userId, hash, expiresAt);
+    let hash: string;
+    let expiresAt: Date;
+    
+    if (userType === 'teacher') {
+      hash = await this.teacherService.hashPassword(code);
+      expiresAt = new Date(
+        Date.now() + this.verificationTtlMinutes * 60 * 1000,
+      );
+      await this.teacherService.assignVerificationCode(userId, hash, expiresAt);
+    } else if (userType === 'admin') {
+      hash = await this.adminUserService.hashPassword(code);
+      expiresAt = new Date(
+        Date.now() + this.verificationTtlMinutes * 60 * 1000,
+      );
+      await this.adminUserService.assignVerificationCode(userId, hash, expiresAt);
+    } else if (userType === 'student') {
+      hash = await this.studentService.hashPassword(code);
+      expiresAt = new Date(
+        Date.now() + this.verificationTtlMinutes * 60 * 1000,
+      );
+      await this.studentService.assignVerificationCode(userId, hash, expiresAt);
+    } else {
+      hash = await this.userService.hashPassword(code);
+      expiresAt = new Date(
+        Date.now() + this.verificationTtlMinutes * 60 * 1000,
+      );
+      await this.userService.assignVerificationCode(userId, hash, expiresAt);
+    }
+    
     await this.mailService.sendVerificationEmail(email, code);
     return process.env.NODE_ENV !== 'production' ? code : undefined;
   }
@@ -203,11 +525,28 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private async issuePasswordResetCode(email: string) {
+  private async issuePasswordResetCode(
+    email: string,
+    userType: UserType = 'website_user',
+  ) {
     const code = this.generateVerificationCode();
-    const hash = await this.userService.hashPassword(code);
+    let hash: string;
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    await this.userService.assignPasswordResetCode(email, hash, expiresAt);
+    
+    if (userType === 'teacher') {
+      hash = await this.teacherService.hashPassword(code);
+      await this.teacherService.assignPasswordResetCode(email, hash, expiresAt);
+    } else if (userType === 'admin') {
+      hash = await this.adminUserService.hashPassword(code);
+      await this.adminUserService.assignPasswordResetCode(email, hash, expiresAt);
+    } else if (userType === 'student') {
+      hash = await this.studentService.hashPassword(code);
+      await this.studentService.assignPasswordResetCode(email, hash, expiresAt);
+    } else {
+      hash = await this.userService.hashPassword(code);
+      await this.userService.assignPasswordResetCode(email, hash, expiresAt);
+    }
+    
     await this.mailService.sendPasswordResetEmail(email, code);
     return process.env.NODE_ENV !== 'production' ? code : undefined;
   }

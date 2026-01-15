@@ -119,7 +119,14 @@ export class UserController {
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   create(@Body() dto: CreateUserDto) {
-    return this.userService.create(dto);
+    // Only allow creating website users (role: 'User')
+    // Teachers and Admins must be created through their respective endpoints
+    if (dto.role && dto.role !== 'User') {
+      throw new Error(
+        'Cannot create teachers or admins through this endpoint. Use /admin/teachers or /admin/admins endpoints instead.',
+      );
+    }
+    return this.userService.create({ ...dto, role: 'User' });
   }
 
   @Patch(':id')

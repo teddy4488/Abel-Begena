@@ -10,13 +10,14 @@ import {
   useGetManagedClassesQuery,
   useUpdateManagedClassMutation,
 } from "@/store/api/adminApi";
-import { useGetAllUsersQuery } from "@/store/api/userApi";
+import { useGetTeachersQuery } from "@/store/api/adminApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 
 const emptyForm = {
   title: "",
   description: "",
+  classType: "online" as "online" | "physical" | "both",
   instructorId: "",
   startDate: "",
   endDate: "",
@@ -28,7 +29,7 @@ const emptyForm = {
 
 export default function AdminClassesPage() {
   const { data: classes, isLoading } = useGetManagedClassesQuery();
-  const { data: users } = useGetAllUsersQuery();
+  const { data: teachers = [] } = useGetTeachersQuery();
   const [createClass] = useCreateManagedClassMutation();
   const [updateClass] = useUpdateManagedClassMutation();
   const [deleteClass] = useDeleteManagedClassMutation();
@@ -41,9 +42,6 @@ export default function AdminClassesPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewFilter, setViewFilter] = useState<"all" | "unassigned" | "live">("all");
-
-  const teachers =
-    users?.filter((user) => user.role === "Teacher" || user.role === "Admin") ?? [];
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -68,6 +66,7 @@ export default function AdminClassesPage() {
     const payload = {
       title: form.title,
       description: form.description || undefined,
+      classType: form.classType || "online",
       instructorId: form.instructorId || undefined,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
@@ -109,6 +108,7 @@ export default function AdminClassesPage() {
     setForm({
       title: klass.title ?? "",
       description: klass.description ?? "",
+      classType: klass.classType ?? "online",
       instructorId: klass.instructorId?._id ?? "",
       startDate: klass.startDate ? klass.startDate.slice(0, 10) : "",
       endDate: klass.endDate ? klass.endDate.slice(0, 10) : "",
@@ -281,6 +281,20 @@ export default function AdminClassesPage() {
             rows={3}
               className="w-full rounded-2xl  card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
+              {t("admin.classes.form.classType", "Class Type")}
+            </label>
+            <select
+              value={form.classType}
+              onChange={(e) => setForm((prev) => ({ ...prev, classType: e.target.value as "online" | "physical" | "both" }))}
+              className="w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            >
+              <option value="online">{t("admin.classes.form.online", "Online")}</option>
+              <option value="physical">{t("admin.classes.form.physical", "Physical")}</option>
+              <option value="both">{t("admin.classes.form.both", "Both (Online & Physical)")}</option>
+            </select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">

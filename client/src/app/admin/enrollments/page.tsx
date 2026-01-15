@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { CheckCircle, Clock, Filter, Loader2, RefreshCcw, Search } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { CheckCircle, Clock, Filter, Loader2, RefreshCcw, Search, X, Eye, Check, XCircle, FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import {
   useGetAllEnrollmentsQuery,
@@ -46,6 +46,8 @@ export default function AdminEnrollmentsPage() {
     "all" | "active" | "pending" | "withdrawn"
   >("pending");
   const [search, setSearch] = useState("");
+  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<AdminEnrollment | null>(null);
 
   const { data = [], isLoading, isError, refetch, isFetching } =
     useGetAllEnrollmentsQuery(
@@ -246,16 +248,17 @@ export default function AdminEnrollmentsPage() {
                             </p>
                           )}
                           {enrollment.receiptUrl && (
-                            <p className="text-xs">
-                              <a
-                                href={enrollment.receiptUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-secondary underline underline-offset-2"
-                              >
-                                Receipt
-                              </a>
-                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedReceipt(enrollment.receiptUrl!);
+                                setSelectedEnrollment(enrollment);
+                              }}
+                              className="mt-1 inline-flex items-center gap-1 text-xs text-secondary hover:underline"
+                            >
+                              <Eye className="h-3 w-3" />
+                              {t("admin.enrollments.viewReceipt", "View Receipt")}
+                            </button>
                           )}
                         </td>
                         <td className="px-4 py-4">
@@ -382,14 +385,17 @@ export default function AdminEnrollmentsPage() {
                           </p>
                         )}
                         {enrollment.receiptUrl && (
-                          <a
-                            href={enrollment.receiptUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-secondary underline underline-offset-2 mt-1 inline-block"
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedReceipt(enrollment.receiptUrl!);
+                              setSelectedEnrollment(enrollment);
+                            }}
+                            className="mt-1 inline-flex items-center gap-1 text-xs text-secondary hover:underline"
                           >
+                            <Eye className="h-3 w-3" />
                             {t("admin.enrollments.viewReceipt", "View Receipt")}
-                          </a>
+                          </button>
                         )}
                       </div>
                       <div>
@@ -436,6 +442,155 @@ export default function AdminEnrollmentsPage() {
           )}
         </div>
       </div>
+
+      {/* Receipt Viewer Modal */}
+      <AnimatePresence>
+        {selectedReceipt && selectedEnrollment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-border p-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                    {t("admin.enrollments.receiptViewer", "Payment Receipt")}
+                  </p>
+                  <h3 className="text-lg font-serif text-primary">
+                    {[selectedEnrollment.student.firstName, selectedEnrollment.student.lastName]
+                      .filter(Boolean)
+                      .join(" ") || selectedEnrollment.student.email}
+                  </h3>
+                  <p className="text-sm text-foreground/70 mt-1">
+                    {selectedEnrollment.classTitle}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedReceipt(null);
+                    setSelectedEnrollment(null);
+                  }}
+                  className="rounded-full p-2 text-foreground/70 hover:bg-secondary/10 transition"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Receipt Image */}
+              <div className="relative bg-background p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div className="flex items-center justify-center min-h-[400px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedReceipt}
+                    alt="Payment receipt"
+                    className="max-w-full max-h-[70vh] rounded-lg shadow-lg object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      const errorDiv = target.nextElementSibling as HTMLElement;
+                      if (errorDiv) errorDiv.style.display = "flex";
+                    }}
+                  />
+                  <div className="hidden flex-col items-center justify-center gap-4 text-center p-8">
+                    <FileText className="h-16 w-16 text-foreground/30" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground/70">
+                        {t("admin.enrollments.receiptError", "Unable to load receipt image")}
+                      </p>
+                      <a
+                        href={selectedReceipt}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-2 text-xs text-secondary hover:underline"
+                      >
+                        {t("admin.enrollments.openInNewTab", "Open in new tab")}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Details & Actions */}
+              <div className="border-t border-border p-4 bg-background/50">
+                <div className="grid gap-4 md:grid-cols-2 mb-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-secondary/70 mb-1">
+                      {t("admin.enrollments.paymentDetails", "Payment Details")}
+                    </p>
+                    <div className="space-y-1 text-sm">
+                      {formatAmount(selectedEnrollment.amountPaid, selectedEnrollment.currency) && (
+                        <p className="font-semibold text-primary">
+                          {formatAmount(selectedEnrollment.amountPaid, selectedEnrollment.currency)}
+                        </p>
+                      )}
+                      {selectedEnrollment.paymentMethod && (
+                        <p className="text-foreground/70 capitalize">
+                          {t("admin.enrollments.method", "Method")}: {selectedEnrollment.paymentMethod}
+                        </p>
+                      )}
+                      {selectedEnrollment.paymentReference && (
+                        <p className="text-foreground/70 font-mono text-xs">
+                          {t("admin.enrollments.reference", "Reference")}: {selectedEnrollment.paymentReference}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-secondary/70 mb-1">
+                      {t("admin.enrollments.currentStatus", "Current Status")}
+                    </p>
+                    <span
+                      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                        statusPalette[selectedEnrollment.status ?? "pending"] ?? "bg-secondary/20 text-secondary"
+                      }`}
+                    >
+                      {t(`classes.status.${selectedEnrollment.status ?? "pending"}`, selectedEnrollment.status ?? "pending")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                {selectedEnrollment.status === "pending" && (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await handleStatusChange(selectedEnrollment, "active");
+                        setSelectedReceipt(null);
+                        setSelectedEnrollment(null);
+                      }}
+                      disabled={isUpdating}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
+                    >
+                      <Check className="h-4 w-4" />
+                      {t("admin.enrollments.approve", "Approve Payment")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await handleStatusChange(selectedEnrollment, "withdrawn");
+                        setSelectedReceipt(null);
+                        setSelectedEnrollment(null);
+                      }}
+                      disabled={isUpdating}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-red-500/60 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-500/10 disabled:opacity-60"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      {t("admin.enrollments.reject", "Reject")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

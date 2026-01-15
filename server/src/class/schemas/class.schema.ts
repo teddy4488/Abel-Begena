@@ -115,7 +115,14 @@ export class Class {
   @Prop({ trim: true })
   description?: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({
+    type: String,
+    enum: ['online', 'physical', 'both'],
+    default: 'online',
+  })
+  classType?: 'online' | 'physical' | 'both';
+
+  @Prop({ type: Types.ObjectId, ref: 'Teacher' })
   instructorId?: Types.ObjectId;
 
   @Prop()

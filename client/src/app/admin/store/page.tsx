@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import {
   useCreateProductMutation,
   useGetManageProductsQuery,
@@ -9,14 +10,16 @@ import {
   type InstrumentType,
 } from "@/store/api/storeApi";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/components/providers/I18nProvider";
+import { Plus, Upload, X, Package, TrendingDown, AlertTriangle, Loader2 } from "lucide-react";
 
 const productFormDefaults = {
   name: "",
-  instrumentType: "Begena",
+  instrumentType: "Begena" as InstrumentType,
   shortDescription: "",
   price: "",
   stock: "",
-  images: "",
+  images: [] as File[],
   isActive: true,
   promoActive: false,
   discountPrice: "",
@@ -24,7 +27,7 @@ const productFormDefaults = {
 
 export default function AdminStorePage() {
   const { data: products, isLoading } = useGetManageProductsQuery();
-  const [createProduct] = useCreateProductMutation();
+  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [updateProduct] = useUpdateProductMutation();
   const [uploadImage] = useUploadProductImageMutation();
   const [form, setForm] = useState(productFormDefaults);
@@ -36,12 +39,24 @@ export default function AdminStorePage() {
     Record<string, { discountPrice: string; promoActive: boolean }>
   >({});
   const [promoSavingId, setPromoSavingId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { pushToast } = useToast();
+  const { t } = useI18n();
 
   const sortedProducts = useMemo(
     () => [...(products ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [products],
   );
+
+  // Stock overview statistics
+  const stockStats = useMemo(() => {
+    const totalProducts = products?.length ?? 0;
+    const totalStock = products?.reduce((sum, p) => sum + (p.stock ?? 0), 0) ?? 0;
+    const lowStock = products?.filter((p) => (p.stock ?? 0) < 10 && (p.stock ?? 0) > 0).length ?? 0;
+    const outOfStock = products?.filter((p) => (p.stock ?? 0) === 0).length ?? 0;
+    const activeProducts = products?.filter((p) => p.isActive).length ?? 0;
+    return { totalProducts, totalStock, lowStock, outOfStock, activeProducts };
+  }, [products]);
 
   useEffect(() => {
     setPromoForms((prev) => {
@@ -89,31 +104,43 @@ export default function AdminStorePage() {
       return;
     }
     try {
-      await createProduct({
+      // Create product first without images
+      const newProduct = await createProduct({
         name: form.name,
-        instrumentType: form.instrumentType as InstrumentType,
+        instrumentType: form.instrumentType,
         shortDescription: form.shortDescription,
         price: Number(form.price),
         stock: Number(form.stock),
-        images: form.images
-          ? form.images.split(",").map((img) => img.trim())
-          : [],
+        images: [],
         isActive: form.isActive,
         promoActive: form.promoActive,
         discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
       }).unwrap();
+
+      // Upload images if any
+      if (form.images.length > 0) {
+        for (const imageFile of form.images) {
+          try {
+            await uploadImage({ id: newProduct._id, file: imageFile }).unwrap();
+          } catch (err) {
+            console.error("Failed to upload image:", err);
+          }
+        }
+      }
+
       pushToast({
-        title: "Product created",
-        description: "The store inventory has been updated.",
+        title: t("admin.store.productCreated", "Product created"),
+        description: t("admin.store.productCreatedDesc", "The store inventory has been updated."),
         variant: "success",
       });
       setForm(productFormDefaults);
       setErrors({});
+      setShowAddForm(false);
     } catch (error) {
       console.error(error);
       pushToast({
-        title: "Unable to create product",
-        description: "Please verify the form and try again.",
+        title: t("admin.store.createError", "Unable to create product"),
+        description: t("admin.store.createErrorDesc", "Please verify the form and try again."),
         variant: "error",
       });
     }
@@ -291,104 +318,324 @@ export default function AdminStorePage() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        pushToast({
+          title: t("admin.store.invalidFile", "Invalid file type"),
+          description: t("admin.store.imageOnly", "Please select image files only."),
+          variant: "error",
+        });
+        return false;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        pushToast({
+          title: t("admin.store.fileTooLarge", "File too large"),
+          description: t("admin.store.maxSize", "Maximum file size is 10MB"),
+          variant: "error",
+        });
+        return false;
+      }
+      return true;
+    });
+    setForm((prev) => ({ ...prev, images: [...prev.images, ...validFiles] }));
+  };
+
+  const removeImage = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  };
+
   return (
     <section className="space-y-6">
-      <form
-        onSubmit={handleSubmit}
-        className="grid gap-4 rounded-3xl  surface-elevated p-6 lg:grid-cols-5"
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
       >
-        <div className="lg:col-span-2">
-          <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
-            Add Product
-          </p>
-          <h2 className="text-xl font-serif text-primary">Store inventory</h2>
-        </div>
-        <div className="space-y-3 lg:col-span-3">
-          <div>
-            <input
-              required
-              value={form.name}
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="Name"
-              className={`w-full rounded-2xl border px-4 py-2 text-sm ${
-                errors.name ? "border-red-400" : "border-border"
-              } card-elevated70`}
-            />
-            {errors.name && (
-              <p className="mt-1 text-xs text-red-500">{errors.name}</p>
-            )}
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <select
-              value={form.instrumentType}
-              onChange={(e) => setForm((prev) => ({ ...prev, instrumentType: e.target.value }))}
-              className="rounded-2xl  card-elevated70 px-3 py-2 text-sm"
-            >
-              {["Begena", "Kirar", "Masinko", "Washint", "Kebero", "Other"].map(
-                (type) => (
-                  <option key={type}>{type}</option>
-                ),
-              )}
-            </select>
-            <input
-              value={form.images}
-              onChange={(e) => setForm((prev) => ({ ...prev, images: e.target.value }))}
-              placeholder="Image URLs (comma separated)"
-              className="rounded-2xl  card-elevated70 px-3 py-2 text-sm"
-            />
-          </div>
-          <textarea
-            value={form.shortDescription}
-            onChange={(e) => setForm((prev) => ({ ...prev, shortDescription: e.target.value }))}
-            placeholder="Short description"
-            rows={2}
-            className="w-full rounded-2xl  card-elevated70 px-4 py-2 text-sm"
-          />
-          <div className="grid gap-3 md:grid-cols-3">
+        <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+          {t("admin.store.kicker", "Inventory Management")}
+        </p>
+        <h1 className="text-3xl md:text-4xl font-serif text-primary">
+          {t("admin.store.title", "Store Products")}
+        </h1>
+        <p className="mt-2 text-sm text-foreground/70">
+          {t("admin.store.subtitle", "Manage your instrument inventory and stock levels.")}
+        </p>
+      </motion.div>
+
+      {/* Stock Overview */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
+      >
+        <div className="rounded-3xl surface-elevated p-5 card-elevated">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+              <Package className="h-5 w-5" />
+            </div>
             <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
+                {t("admin.store.stats.totalProducts", "Total Products")}
+              </p>
+              <p className="text-2xl font-bold text-primary">{stockStats.totalProducts}</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-3xl surface-elevated p-5 card-elevated">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/10 text-green-600">
+              <Package className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
+                {t("admin.store.stats.totalStock", "Total Stock")}
+              </p>
+              <p className="text-2xl font-bold text-primary">{stockStats.totalStock}</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-3xl surface-elevated p-5 card-elevated">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600">
+              <Package className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
+                {t("admin.store.stats.active", "Active")}
+              </p>
+              <p className="text-2xl font-bold text-primary">{stockStats.activeProducts}</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-3xl surface-elevated p-5 card-elevated">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
+                {t("admin.store.stats.lowStock", "Low Stock")}
+              </p>
+              <p className="text-2xl font-bold text-primary">{stockStats.lowStock}</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-3xl surface-elevated p-5 card-elevated">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-600">
+              <TrendingDown className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
+                {t("admin.store.stats.outOfStock", "Out of Stock")}
+              </p>
+              <p className="text-2xl font-bold text-primary">{stockStats.outOfStock}</p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Add Product Button */}
+      {!showAddForm && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
+          >
+            <Plus className="h-4 w-4" />
+            {t("admin.store.addProduct", "Add Product")}
+          </button>
+        </motion.div>
+      )}
+
+      {/* Add Product Form */}
+      {showAddForm && (
+        <motion.form
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-3xl surface-elevated p-6 card-elevated"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
+                {t("admin.store.newProduct", "New Product")}
+              </p>
+              <h2 className="text-xl font-serif text-primary">
+                {t("admin.store.addProductTitle", "Add Product to Store")}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddForm(false);
+                setForm(productFormDefaults);
+                setErrors({});
+              }}
+              className="rounded-full p-2 text-foreground/70 hover:bg-background transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                {t("admin.store.name", "Product Name")} *
+              </label>
+              <input
+                required
+                value={form.name}
+                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder={t("admin.store.namePlaceholder", "Enter product name")}
+                className={`w-full rounded-2xl border px-4 py-2 text-sm ${
+                  errors.name ? "border-red-400" : "border-border"
+                } card-elevated70 outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30`}
+              />
+              {errors.name && (
+                <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                {t("admin.store.instrumentType", "Instrument Type")} *
+              </label>
+              <select
+                value={form.instrumentType}
+                onChange={(e) => setForm((prev) => ({ ...prev, instrumentType: e.target.value as InstrumentType }))}
+                className="w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              >
+                {["Begena", "Kirar", "Masinko", "Washint", "Kebero", "Other"].map(
+                  (type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ),
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+              {t("admin.store.description", "Description")}
+            </label>
+            <textarea
+              value={form.shortDescription}
+              onChange={(e) => setForm((prev) => ({ ...prev, shortDescription: e.target.value }))}
+              placeholder={t("admin.store.descriptionPlaceholder", "Enter product description")}
+              rows={3}
+              className="w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            />
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+              {t("admin.store.images", "Product Images")}
+            </label>
+            <div className="space-y-3">
+              <label className="block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                <div className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 card-elevated50 p-6 cursor-pointer hover:border-secondary hover:card-elevated80 transition">
+                  <Upload className="h-5 w-5 text-secondary" />
+                  <span className="text-sm font-medium text-foreground/70">
+                    {t("admin.store.uploadImages", "Click to upload images (Max 10MB each)")}
+                  </span>
+                </div>
+              </label>
+              {form.images.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {form.images.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                {t("admin.store.price", "Price")} *
+              </label>
               <input
                 required
                 type="number"
                 min={0}
+                step="0.01"
                 value={form.price}
                 onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
-                placeholder="Price"
-                className={`w-full rounded-2xl border px-3 py-2 text-sm ${
+                placeholder={t("admin.store.pricePlaceholder", "0.00")}
+                className={`w-full rounded-2xl border px-4 py-2 text-sm ${
                   errors.price ? "border-red-400" : "border-border"
-                } card-elevated70`}
+                } card-elevated70 outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30`}
               />
               {errors.price && (
                 <p className="mt-1 text-xs text-red-500">{errors.price}</p>
               )}
             </div>
             <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                {t("admin.store.stock", "Stock Quantity")} *
+              </label>
               <input
                 required
                 type="number"
                 min={0}
                 value={form.stock}
                 onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
-                placeholder="Stock"
-                className={`w-full rounded-2xl border px-3 py-2 text-sm ${
+                placeholder={t("admin.store.stockPlaceholder", "0")}
+                className={`w-full rounded-2xl border px-4 py-2 text-sm ${
                   errors.stock ? "border-red-400" : "border-border"
-                } card-elevated70`}
+                } card-elevated70 outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30`}
               />
               {errors.stock && (
                 <p className="mt-1 text-xs text-red-500">{errors.stock}</p>
               )}
             </div>
             <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                {t("admin.store.discountPrice", "Discount Price")}
+              </label>
               <input
                 type="number"
                 min={0}
                 step="0.01"
                 value={form.discountPrice}
                 onChange={(e) => setForm((prev) => ({ ...prev, discountPrice: e.target.value }))}
-                placeholder="Promo price"
+                placeholder={t("admin.store.discountPlaceholder", "0.00")}
                 disabled={!form.promoActive}
-                className={`w-full rounded-2xl border px-3 py-2 text-sm ${
+                className={`w-full rounded-2xl border px-4 py-2 text-sm ${
                   errors.discountPrice ? "border-red-400" : "border-border"
-                } card-elevated70 disabled:opacity-60`}
+                } card-elevated70 outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30 disabled:opacity-60`}
               />
               {errors.discountPrice && (
                 <p className="mt-1 text-xs text-red-500">{errors.discountPrice}</p>
@@ -396,15 +643,16 @@ export default function AdminStorePage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.3em]">
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                className="h-4 w-4 rounded border-border accent-secondary"
               />
-              Active
+              <span className="text-foreground/80">{t("admin.store.active", "Active")}</span>
             </label>
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.promoActive}
@@ -415,18 +663,43 @@ export default function AdminStorePage() {
                     discountPrice: e.target.checked ? prev.discountPrice : "",
                   }))
                 }
+                className="h-4 w-4 rounded border-border accent-secondary"
               />
-              Promo active
+              <span className="text-foreground/80">{t("admin.store.promoActive", "Promo Active")}</span>
             </label>
           </div>
-          <button
-            type="submit"
-            className="w-full rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-          >
-            Add product
-          </button>
-        </div>
-      </form>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddForm(false);
+                setForm(productFormDefaults);
+                setErrors({});
+              }}
+              className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground/70 transition hover:border-secondary hover:text-secondary"
+            >
+              {t("button.cancel", "Cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={isCreating}
+              className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
+                  {t("admin.store.creating", "Creating...")}
+                </>
+              ) : (
+                <>
+                  <Plus className="inline-block h-4 w-4 mr-2" />
+                  {t("admin.store.createProduct", "Create Product")}
+                </>
+              )}
+            </button>
+          </div>
+        </motion.form>
+      )}
 
       <div className="rounded-3xl  surface-elevated p-6">
         <h2 className="text-xl font-serif text-primary">Inventory</h2>

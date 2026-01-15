@@ -5,6 +5,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UserModule } from '../user/user.module';
+import { TeacherModule } from '../teacher/teacher.module';
+import { AdminUserModule } from '../admin-user/admin-user.module';
+import { StudentModule } from '../student/student.module';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RoleGuard } from './guards/role.guard';
@@ -14,6 +17,9 @@ import { MailModule } from '../mail/mail.module';
 @Module({
   imports: [
     UserModule,
+    TeacherModule,
+    AdminUserModule,
+    StudentModule,
     MailModule,
     PassportModule,
     JwtModule.registerAsync({

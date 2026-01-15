@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 type JwtPayload = {
   sub: string;
   role: string;
+  userType?: 'website_user' | 'teacher' | 'admin' | 'student';
   exp?: number;
   iat?: number;
 };

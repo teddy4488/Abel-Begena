@@ -8,7 +8,10 @@ export function useRequireAdmin() {
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const router = useRouter();
 
-  const isAdmin = useMemo(() => user?.role === "Admin", [user?.role]);
+  const isAdmin = useMemo(
+    () => user?.userType === "admin" || user?.role === "Admin",
+    [user?.userType, user?.role],
+  );
 
   useEffect(() => {
     if (!isLoggedIn) {

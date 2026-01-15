@@ -12,12 +12,12 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoggedIn) {
       router.replace("/login");
-    } else if (user?.role !== "Teacher" && user?.role !== "Admin") {
+    } else if (user?.userType !== "teacher" && user?.userType !== "admin") {
       router.replace("/dashboard");
     }
-  }, [isLoggedIn, user?.role, router]);
+  }, [isLoggedIn, user?.userType, router]);
 
-  if (!isLoggedIn || (user?.role !== "Teacher" && user?.role !== "Admin")) {
+  if (!isLoggedIn || (user?.userType !== "teacher" && user?.userType !== "admin")) {
     return (
       <div className="flex h-screen items-center justify-center bg-background text-foreground">
         <p className="text-sm text-foreground/70">Checking permissions...</p>

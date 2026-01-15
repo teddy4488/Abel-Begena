@@ -21,7 +21,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, Users, ShoppingBag, DollarSign, BookOpen } from "lucide-react";
+import { TrendingUp, Users, ShoppingBag, DollarSign, BookOpen, GraduationCap } from "lucide-react";
 
 const COLORS = {
   active: "#10b981",
@@ -86,7 +86,8 @@ export default function AdminAnalyticsPage() {
   }
 
   const revenueLabel = t("admin.console.revenue", "Total Revenue");
-  const activeUsersLabel = t("admin.console.users", "Registered Users");
+  const websiteUsersLabel = t("admin.analytics.websiteUsers", "Website Users");
+  const studentsLabel = t("admin.analytics.students", "Attendance Students");
   const ordersLabel = t("admin.console.orderStatus", "Orders");
 
   return (
@@ -112,7 +113,7 @@ export default function AdminAnalyticsPage() {
       </motion.div>
 
       {/* Key Metrics Cards */}
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -138,7 +139,7 @@ export default function AdminAnalyticsPage() {
           transition={{ delay: 0.2 }}
         >
           <AnalyticsStat
-            label={activeUsersLabel}
+            label={websiteUsersLabel}
             value={data.users.active}
             icon={<Users className="w-5 h-5" />}
             color={COLORS.users}
@@ -146,6 +147,18 @@ export default function AdminAnalyticsPage() {
               ((data.users.monthly[data.users.monthly.length - 1]?.total || 0) -
                (data.users.monthly[data.users.monthly.length - 2]?.total || 0)) : 0
             }
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <AnalyticsStat
+            label={studentsLabel}
+            value={data.students?.active ?? 0}
+            icon={<GraduationCap className="w-5 h-5" />}
+            color="#10b981"
           />
         </motion.div>
         <motion.div

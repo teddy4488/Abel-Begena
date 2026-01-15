@@ -21,14 +21,18 @@ export class UserService {
   }
 
   async create(createUserDto: CreateUserDto) {
+    // UserService only creates website users (role: 'User')
+    // Teachers and Admins must be created through their respective services
+    if (createUserDto.role && createUserDto.role !== 'User') {
+      throw new Error(
+        'Cannot create teachers or admins through UserService. Use TeacherService or AdminUserService instead.',
+      );
+    }
     const hashedPassword = await this.hashPassword(createUserDto.password);
     const user = await this.userModel.create({
       ...createUserDto,
       password: hashedPassword,
-      role: createUserDto.role ?? 'User',
-      teacherStatus:
-        createUserDto.teacherStatus ??
-        (createUserDto.role === 'Teacher' ? 'pending' : undefined),
+      role: 'User', // Always 'User' for website users
     });
     return this.toSafeUser(user.toObject());
   }

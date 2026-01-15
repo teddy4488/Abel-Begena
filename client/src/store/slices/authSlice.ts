@@ -9,6 +9,7 @@ export type AuthUser = {
   firstName?: string;
   lastName?: string;
   role?: string;
+  userType?: "website_user" | "teacher" | "admin" | "student";
   phone?: string;
   avatarUrl?: string;
   bio?: string;
@@ -16,6 +17,12 @@ export type AuthUser = {
   languagePreference?: "en" | "am";
   isActive?: boolean;
   isVerified?: boolean;
+  // Student-specific fields
+  attendanceNumber?: string;
+  fullName?: string;
+  instrumentType?: string;
+  branchId?: string | { _id: string; name: string };
+  learningType?: "physical" | "online";
 };
 
 type AuthState = {

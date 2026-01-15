@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { getRoleLandingRoute } from "@/lib/utils";
+import { getUserLandingRoute } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Receipt } from "lucide-react";
 
@@ -51,10 +51,12 @@ export default function DashboardPage() {
       router.replace("/login");
       return;
     }
-    if (user?.role === "Admin" || user?.role === "Teacher") {
-      router.replace(getRoleLandingRoute(user?.role));
+    // Redirect based on userType
+    const userType = user?.userType;
+    if (userType === "admin" || userType === "teacher" || userType === "student") {
+      router.replace(getUserLandingRoute(userType, user?.role));
     }
-  }, [isLoggedIn, router, user?.role]);
+  }, [isLoggedIn, router, user?.userType, user?.role]);
 
   useEffect(() => {
     if (!isLoggedIn) return;

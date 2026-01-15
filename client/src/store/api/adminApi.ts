@@ -14,6 +14,10 @@ export type AnalyticsKpi = {
     active: number;
     monthly: { label: string; total: number }[];
   };
+  students: {
+    total: number;
+    active: number;
+  };
   orders: {
     total: number;
     statusBreakdown: Record<string, number>;
@@ -26,6 +30,7 @@ export type AnalyticsKpi = {
 
 export type ManagedClass = ClassSummary & {
   description?: string;
+  classType?: "online" | "physical" | "both";
   startDate?: string;
   endDate?: string;
   capacity?: number;
@@ -69,10 +74,55 @@ export type AdminEnrollment = {
   receiptUrl?: string | null;
 };
 
+export type Teacher = {
+  _id: string;
+  id?: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  isActive: boolean;
+  isVerified: boolean;
+  teacherStatus?: 'pending' | 'approved' | 'suspended';
+  avatarUrl?: string;
+  bio?: string;
+  languagePreference?: 'en' | 'am';
+};
+
+export type AdminUser = {
+  _id: string;
+  id?: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  isActive: boolean;
+  isVerified: boolean;
+  avatarUrl?: string;
+  languagePreference?: 'en' | 'am';
+};
+
+export type Student = {
+  _id: string;
+  id?: string;
+  email?: string;
+  fullName: string;
+  attendanceNumber: string;
+  branchId?: string;
+  learningType?: 'physical' | 'online';
+  instrumentType?: string;
+  programDurationMonths?: number;
+  preferredLearningDays?: string[];
+  registrationStartDate?: string;
+  learningDaysPerWeek?: number;
+  isActive: boolean;
+  isVerified: boolean;
+};
+
 export const adminApi = createApi({
   reducerPath: "adminApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["AdminAnalytics", "AdminClasses", "AdminEnrollments"],
+  tagTypes: ["AdminAnalytics", "AdminClasses", "AdminEnrollments", "Teachers", "Admins", "Students", "WebsiteUsers"],
   endpoints: (builder) => ({
     getAnalyticsOverview: builder.query<AnalyticsKpi, void>({
       query: () => "/admin/dashboard/analytics",
@@ -128,6 +178,22 @@ export const adminApi = createApi({
       }),
       providesTags: ["AdminEnrollments"],
     }),
+    getTeachers: builder.query<Teacher[], void>({
+      query: () => "/admin/teachers",
+      providesTags: ["Teachers"],
+    }),
+    getAdmins: builder.query<AdminUser[], void>({
+      query: () => "/admin/admins",
+      providesTags: ["Admins"],
+    }),
+    getStudents: builder.query<Student[], void>({
+      query: () => "/attendance/students/participants",
+      providesTags: ["Students"],
+    }),
+    getWebsiteUsers: builder.query<any[], void>({
+      query: () => "/users",
+      providesTags: ["WebsiteUsers"],
+    }),
   }),
 });
 
@@ -139,5 +205,9 @@ export const {
   useDeleteManagedClassMutation,
   useAssignClassInstructorMutation,
   useGetAllEnrollmentsQuery,
+  useGetTeachersQuery,
+  useGetAdminsQuery,
+  useGetStudentsQuery,
+  useGetWebsiteUsersQuery,
 } = adminApi;
 

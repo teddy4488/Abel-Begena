@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsEnum,
   IsMongoId,
   IsNotEmpty,
   IsNumber,
@@ -19,6 +20,10 @@ export class CreateClassDto {
   @IsString()
   @MaxLength(600)
   description?: string;
+
+  @IsOptional()
+  @IsEnum(['online', 'physical', 'both'])
+  classType?: 'online' | 'physical' | 'both';
 
   @IsOptional()
   @IsMongoId()

@@ -13,7 +13,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { extractErrorMessage } from "@/lib/errors";
 import { motion } from "framer-motion";
-import { Loader2, MapPin, Plus, Trash2, Save, Globe2 } from "lucide-react";
+import { Loader2, MapPin, Plus, Trash2, Save, Globe2, X } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const BranchMap = dynamic(
@@ -58,6 +58,7 @@ export default function AdminBranchesPage() {
   const [deleteBranch, { isLoading: isDeleting }] = useDeleteBranchMutation();
 
   const [form, setForm] = useState<BranchFormState>(emptyForm);
+  const [showModal, setShowModal] = useState(false);
 
   const isEditing = Boolean(form.id);
 
@@ -75,6 +76,17 @@ export default function AdminBranchesPage() {
       radiusMeters: branch.radiusMeters ?? 600,
       isActive: branch.isActive,
     });
+    setShowModal(true);
+  };
+
+  const handleReset = () => {
+    setForm(emptyForm);
+    setShowModal(false);
+  };
+
+  const handleNewBranch = () => {
+    setForm(emptyForm);
+    setShowModal(true);
   };
 
   // deletion handled via confirm modal (requestDelete / confirmDelete)
@@ -151,7 +163,7 @@ export default function AdminBranchesPage() {
       } else {
         await createBranch(payload).unwrap();
       }
-      setForm(emptyForm);
+      handleReset();
       pushToast({
         title: t(
           "branches.admin.savedTitle",
@@ -174,8 +186,6 @@ export default function AdminBranchesPage() {
       });
     }
   };
-
-  const handleReset = () => setForm(emptyForm);
 
   const isSubmitting = isCreating || isUpdating;
 
@@ -250,8 +260,8 @@ export default function AdminBranchesPage() {
         </div>
         <button
           type="button"
-          onClick={handleReset}
-          className="inline-flex items-center gap-2 rounded-full  px-4 py-2 text-xs font-semibold text-foreground hover:border-secondary hover:text-secondary"
+          onClick={handleNewBranch}
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
         >
           <Plus className="h-4 w-4" />
           {t("branches.admin.newBranch", "New branch")}
@@ -291,75 +301,158 @@ export default function AdminBranchesPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl  surface-elevated p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
-        >
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Globe2 className="h-4 w-4 text-secondary" />
-              <p className="text-sm font-semibold text-primary">
-                {t("branches.admin.mapTitle", "Map overview")}
-              </p>
-            </div>
-            <p className="text-xs text-foreground/60">
-              {t(
-                "branches.admin.mapHint",
-                "Click on the map to set coordinates and radius for each branch.",
-              )}
+      {/* Map Section - Full Width */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-3xl surface-elevated p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Globe2 className="h-4 w-4 text-secondary" />
+            <p className="text-sm font-semibold text-primary">
+              {t("branches.admin.mapTitle", "Map overview")}
             </p>
           </div>
+          <p className="text-xs text-foreground/60">
+            {t(
+              "branches.admin.mapHint",
+              "Click on the map to set coordinates and radius for each branch.",
+            )}
+          </p>
+        </div>
 
-          <div className="relative h-[360px] overflow-hidden rounded-2xl  card-elevated80">
-            <BranchMap
-              branches={mapBranches}
-              selectedBranchId={form.id ?? null}
-              radiusMeters={form.radiusMeters}
-              onPositionChange={(lat, lng) =>
-                setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
-              }
-            />
+        <div className="relative h-[500px] overflow-hidden rounded-2xl card-elevated80">
+          <BranchMap
+            branches={mapBranches}
+            selectedBranchId={form.id ?? null}
+            radiusMeters={form.radiusMeters}
+            onPositionChange={(lat, lng) =>
+              setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+            }
+          />
+        </div>
+      </motion.section>
+
+      {/* Branch List */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-4 rounded-3xl surface-elevated p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
+      >
+        <div className="mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+            {t("branches.admin.listTitle", "Existing branches")}
+          </p>
+        </div>
+        {mapBranches.length === 0 ? (
+          <p className="text-xs text-foreground/60">
+            {t(
+              "branches.admin.listEmpty",
+              "No branches yet. Create your first location above.",
+            )}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {mapBranches.map((branch) => (
+              <div
+                key={branch._id}
+                className="flex items-center justify-between gap-3 rounded-2xl card-elevated80 px-3 py-2 text-xs"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleEdit(branch)}
+                  className="flex flex-1 items-center gap-2 text-left"
+                >
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                    <MapPin className="h-3 w-3" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-primary">
+                      {branch.name}
+                    </span>
+                    <span className="text-foreground/60">
+                      {branch.address || branch.city || branch.slug}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => requestDelete(branch._id)}
+                  disabled={isDeleting}
+                  aria-label={t("branches.admin.delete", "Delete branch")}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500/40 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
           </div>
-        </motion.section>
+        )}
+      </motion.section>
 
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4 rounded-3xl  surface-elevated p-5 shadow-[0_20px_50px_var(--color-primary-glow)]"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              {t("branches.admin.form.radius", "Radius (m)")}
-            </label>
-            <input
-              type="range"
-              min={100}
-              max={3000}
-              value={form.radiusMeters}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  radiusMeters: Number(e.target.value) || 0,
-                }))
-              }
-              className="flex-1"
-            />
-            <span className="text-xs text-foreground/60 font-semibold">
-              {form.radiusMeters} m
-            </span>
-            {form.latitude != null && form.longitude != null && (
+      {/* Branch Form Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.96 }}
+            className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-surface p-6 shadow-2xl"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                  {t("branches.admin.kicker", "Locations")}
+                </p>
+                <h2 className="text-xl font-serif text-primary">
+                  {isEditing
+                    ? t("branches.admin.form.editTitle", "Edit branch")
+                    : t("branches.admin.form.createTitle", "Create new branch")}
+                </h2>
+              </div>
               <button
                 type="button"
-                onClick={() => handleReset()}
-                className="rounded-full  px-3 py-1 text-xs hover:border-secondary hover:text-secondary"
+                onClick={handleReset}
+                className="rounded-full p-2 text-foreground/70 hover:bg-secondary/10 transition"
+                aria-label="Close"
               >
-                {t("branches.admin.form.recenter", "Recenter map")}
+                <X className="h-4 w-4" />
               </button>
-            )}
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t("branches.admin.form.radius", "Radius (m)")}
+                </label>
+                <input
+                  type="range"
+                  min={100}
+                  max={3000}
+                  value={form.radiusMeters}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      radiusMeters: Number(e.target.value) || 0,
+                    }))
+                  }
+                  className="flex-1"
+                />
+                <span className="text-xs text-foreground/60 font-semibold">
+                  {form.radiusMeters} m
+                </span>
+              </div>
+              {form.latitude != null && form.longitude != null && (
+                <div className="rounded-2xl bg-secondary/5 p-3 text-xs">
+                  <p className="text-secondary/70 mb-1">
+                    {t("branches.admin.form.coordsLabel", "Coordinates")}
+                  </p>
+                  <p className="font-mono text-primary">
+                    {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+                  </p>
+                </div>
+              )}
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-primary">
                 {isEditing
@@ -530,59 +623,10 @@ export default function AdminBranchesPage() {
                 </>
               )}
             </button>
-          </form>
-
-          <div className="mt-6 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
-              {t("branches.admin.listTitle", "Existing branches")}
-            </p>
-            {mapBranches.length === 0 ? (
-              <p className="text-xs text-foreground/60">
-                {t(
-                  "branches.admin.listEmpty",
-                  "No branches yet. Create your first location above.",
-                )}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {mapBranches.map((branch) => (
-                  <div
-                    key={branch._id}
-                    className="flex items-center justify-between gap-3 rounded-2xl  card-elevated80 px-3 py-2 text-xs"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(branch)}
-                      className="flex flex-1 items-center gap-2 text-left"
-                    >
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-                        <MapPin className="h-3 w-3" />
-                      </span>
-                      <span>
-                        <span className="block font-semibold text-primary">
-                          {branch.name}
-                        </span>
-                        <span className="text-foreground/60">
-                          {branch.address || branch.city || branch.slug}
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => requestDelete(branch._id)}
-                      disabled={isDeleting}
-                      aria-label={t("branches.admin.delete", "Delete branch")}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500/40 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.section>
-      </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
       <ConfirmModal
         open={confirmOpen}

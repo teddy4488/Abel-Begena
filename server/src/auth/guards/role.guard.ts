@@ -9,7 +9,7 @@ import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
 type RequestWithUser = Request & {
-  user?: { role?: string };
+  user?: { role?: string; userType?: string };
 };
 
 @Injectable()
