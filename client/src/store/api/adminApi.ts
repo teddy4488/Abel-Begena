@@ -3,6 +3,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
 import type { ClassSummary } from "./classApi";
+import type { AuthUser } from "../slices/authSlice";
 
 export type AnalyticsKpi = {
   revenue: {
@@ -190,7 +191,7 @@ export const adminApi = createApi({
       query: () => "/attendance/students/participants",
       providesTags: ["Students"],
     }),
-    getWebsiteUsers: builder.query<any[], void>({
+    getWebsiteUsers: builder.query<AuthUser[], void>({
       query: () => "/users",
       providesTags: ["WebsiteUsers"],
     }),

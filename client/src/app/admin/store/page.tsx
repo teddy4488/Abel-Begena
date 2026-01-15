@@ -582,6 +582,7 @@ export default function AdminStorePage() {
             </div>
           </div>
 
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
                 {t("admin.store.price", "Price")} *

@@ -4,8 +4,6 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useAdminDeleteUserMutation,
-  useAdminUpdateUserMutation,
-  useGetAllUsersQuery,
 } from "@/store/api/userApi";
 import {
   useGetTeachersQuery,
@@ -14,12 +12,14 @@ import {
   useGetWebsiteUsersQuery,
 } from "@/store/api/adminApi";
 import type { AuthUser } from "@/store/slices/authSlice";
+import type { Teacher, AdminUser, Student } from "@/store/api/adminApi";
 import Image from "next/image";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { Search, UserCheck, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap } from "lucide-react";
+import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap } from "lucide-react";
 
 type UserTab = "website" | "teachers" | "admins" | "students";
+type UserItem = AuthUser | Teacher | AdminUser | Student;
 
 export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState<UserTab>("website");
@@ -35,7 +35,6 @@ export default function AdminUsersPage() {
   const { data: admins = [], isLoading: adminsLoading } = useGetAdminsQuery();
   const { data: students = [], isLoading: studentsLoading } = useGetStudentsQuery();
 
-  const [updateUser] = useAdminUpdateUserMutation();
   const [deleteUser] = useAdminDeleteUserMutation();
 
   const isLoading = websiteUsersLoading || teachersLoading || adminsLoading || studentsLoading;
@@ -58,12 +57,19 @@ export default function AdminUsersPage() {
 
   const filtered = useMemo(() => {
     return (
-      currentData?.filter((item: any) => {
+      currentData?.filter((item: UserItem) => {
+        // Safely access properties that may not exist on all types
+        const email = 'email' in item ? item.email : undefined;
+        const fullName = 'fullName' in item ? item.fullName : undefined;
+        const firstName = 'firstName' in item ? item.firstName : undefined;
+        const lastName = 'lastName' in item ? item.lastName : undefined;
+        const attendanceNumber = 'attendanceNumber' in item ? item.attendanceNumber : undefined;
+        
         const matchesSearch = !search || 
-          (item.email && item.email.toLowerCase().includes(search.toLowerCase())) ||
-          (item.fullName && item.fullName.toLowerCase().includes(search.toLowerCase())) ||
-          (item.firstName && `${item.firstName} ${item.lastName ?? ""}`.toLowerCase().includes(search.toLowerCase())) ||
-          (item.attendanceNumber && item.attendanceNumber.toLowerCase().includes(search.toLowerCase()));
+          (email && email.toLowerCase().includes(search.toLowerCase())) ||
+          (fullName && fullName.toLowerCase().includes(search.toLowerCase())) ||
+          (firstName && `${firstName} ${lastName ?? ""}`.toLowerCase().includes(search.toLowerCase())) ||
+          (attendanceNumber && attendanceNumber.toLowerCase().includes(search.toLowerCase()));
         
         const isActive = item.isActive ?? true;
         const matchesStatus =
@@ -86,11 +92,12 @@ export default function AdminUsersPage() {
     };
   }, [websiteUsers, teachers, admins, students]);
 
-  const handleActiveToggle = async (item: any, userType: UserTab) => {
+  const handleActiveToggle = async (item: UserItem, _userType: UserTab) => {
     try {
-      const id = item._id ?? item.id ?? "";
+      const _id = item._id ?? item.id ?? "";
       // For now, we'll handle updates based on user type
       // This would need backend endpoints for each user type
+      // TODO: Implement actual update logic based on userType
       pushToast({
         title: t("admin.users.statusUpdated", "Status updated"),
         variant: "success",
@@ -339,10 +346,19 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y divide-border/70">
             <AnimatePresence>
-              {filtered.map((item: any, index: number) => {
+              {filtered.map((item: UserItem, index: number) => {
+                // Safely access properties that may not exist on all types
+                const fullName = 'fullName' in item ? item.fullName : undefined;
+                const firstName = 'firstName' in item ? item.firstName : undefined;
+                const lastName = 'lastName' in item ? item.lastName : undefined;
+                const email = 'email' in item ? item.email : undefined;
+                const attendanceNumber = 'attendanceNumber' in item ? item.attendanceNumber : undefined;
+                const avatarUrl = 'avatarUrl' in item ? item.avatarUrl : undefined;
+                const teacherStatus = 'teacherStatus' in item ? item.teacherStatus : undefined;
+                
                 const isActive = item.isActive ?? true;
-                const displayName = item.fullName || `${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() || item.email || item.attendanceNumber;
-                const displayEmail = item.email || item.attendanceNumber || "";
+                const displayName = fullName || `${firstName ?? ""} ${lastName ?? ""}`.trim() || email || attendanceNumber || "Unknown";
+                const displayEmail = email || attendanceNumber || "";
                 
                 return (
                   <motion.tr
@@ -355,9 +371,9 @@ export default function AdminUsersPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        {item.avatarUrl ? (
+                        {avatarUrl ? (
                           <Image
-                            src={item.avatarUrl}
+                            src={avatarUrl}
                             alt={displayName}
                             width={40}
                             height={40}
@@ -373,8 +389,8 @@ export default function AdminUsersPage() {
                           {displayEmail && (
                             <p className="text-xs text-foreground/60">{displayEmail}</p>
                           )}
-                          {item.attendanceNumber && (
-                            <p className="text-xs text-foreground/60">ID: {item.attendanceNumber}</p>
+                          {attendanceNumber && (
+                            <p className="text-xs text-foreground/60">ID: {attendanceNumber}</p>
                           )}
                         </div>
                       </div>
@@ -382,7 +398,7 @@ export default function AdminUsersPage() {
                     {activeTab === "teachers" && (
                       <td className="px-6 py-4">
                         <span className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/60">
-                          {item.teacherStatus ?? "pending"}
+                          {teacherStatus ?? "pending"}
                         </span>
                       </td>
                     )}
