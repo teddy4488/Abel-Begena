@@ -27,9 +27,9 @@ export default function LoginPage() {
     if (!isLoggedIn) {
       return;
     }
-    const destination = getRoleLandingRoute(user?.role);
+    const destination = getUserLandingRoute(user?.userType, user?.role);
     router.replace(destination);
-  }, [isLoggedIn, user?.role, router]);
+  }, [isLoggedIn, user?.userType, user?.role, router]);
 
   const validate = () => {
     const next: Record<string, string> = {};

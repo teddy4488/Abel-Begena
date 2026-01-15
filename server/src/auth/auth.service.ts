@@ -17,6 +17,11 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 
 export type UserType = 'website_user' | 'teacher' | 'admin' | 'student';
 
+export type ValidatedUser = Record<string, unknown> & {
+  userType: UserType;
+  role: string;
+};
+
 @Injectable()
 export class AuthService {
   private readonly verificationTtlMinutes = 15;
@@ -53,7 +58,7 @@ export class AuthService {
     };
   }
 
-  async validateUser(email: string, password: string) {
+  async validateUser(email: string, password: string): Promise<ValidatedUser | null> {
     // Check all user tables in order: WebsiteUser, Teacher, AdminUser, Student
     // Website User
     let user = await this.userService.findByEmail(email);

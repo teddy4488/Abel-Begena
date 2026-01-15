@@ -17,7 +17,7 @@ import type { AuthUser } from "@/store/slices/authSlice";
 import Image from "next/image";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { Search, UserCheck, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, Users, GraduationCap } from "lucide-react";
+import { Search, UserCheck, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap } from "lucide-react";
 
 type UserTab = "website" | "teachers" | "admins" | "students";
 
