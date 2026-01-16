@@ -29,7 +29,7 @@ export class CommentService {
       postId: new Types.ObjectId(postId),
       authorId: new Types.ObjectId(authorId),
       content: dto.content,
-      status: 'pending',
+      status: 'approved', // Auto-approve comments
     });
     return created.toObject();
   }
@@ -123,5 +123,13 @@ export class CommentService {
       throw new NotFoundException('Comment not found');
     }
     return { message: 'Comment removed' };
+  }
+
+  async deleteByPostId(postId: string): Promise<{ message: string; deletedCount: number }> {
+    if (!Types.ObjectId.isValid(postId)) {
+      throw new BadRequestException('Invalid post id');
+    }
+    const result = await this.commentModel.deleteMany({ postId: new Types.ObjectId(postId) }).exec();
+    return { message: `${result.deletedCount} comments deleted for post ${postId}`, deletedCount: result.deletedCount };
   }
 }

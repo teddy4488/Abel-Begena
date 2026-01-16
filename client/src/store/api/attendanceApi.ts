@@ -358,6 +358,52 @@ export const attendanceApi = createApi({
       }),
       invalidatesTags: ["StudentParticipants"],
     }),
+    getOverduePayments: builder.query<
+      Array<{
+        participantId: string;
+        fullName: string;
+        attendanceNumber: string;
+        instrumentType: string;
+        year: number;
+        month: number;
+        dueDate: string;
+        daysOverdue: number;
+        amount?: number;
+        status?: "paid" | "partial" | "unpaid";
+      }>,
+      void
+    >({
+      query: () => "/attendance/payments/overdue",
+      providesTags: ["StudentPayments"],
+    }),
+    getStudentAttendanceReport: builder.query<
+      Array<{
+        _id: string;
+        sessionDate: string;
+        status: AttendanceStatus;
+        lessonId: { _id: string; title: string; code?: string };
+        revisedLessonId?: { _id: string; title: string; code?: string };
+      }>,
+      string
+    >({
+      query: (studentId) => `/attendance/admin/students/${studentId}/attendance-report`,
+      providesTags: ["StudentAttendance"],
+    }),
+    getStudentPaymentReport: builder.query<
+      Array<{
+        _id: string;
+        year: number;
+        month: number;
+        amount: number;
+        status: "paid" | "partial" | "unpaid";
+        note?: string;
+        createdAt?: string;
+      }>,
+      string
+    >({
+      query: (studentId) => `/attendance/admin/students/${studentId}/payment-report`,
+      providesTags: ["StudentPayments"],
+    }),
   }),
 });
 
@@ -381,4 +427,7 @@ export const {
   useGetMyAttendanceQuery,
   useGetMyPaymentsQuery,
   useConvertUserToStudentMutation,
+  useGetOverduePaymentsQuery,
+  useGetStudentAttendanceReportQuery,
+  useGetStudentPaymentReportQuery,
 } = attendanceApi;

@@ -10,6 +10,7 @@ import { BlogPost, BlogPostDocument } from './schemas/blog-post.schema';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import { UploadService } from '../upload/upload.service';
+import { CommentService } from './comment.service';
 
 type Actor = {
   sub: string;
@@ -38,6 +39,7 @@ export class BlogService {
     @InjectModel(BlogPost.name)
     private readonly blogModel: Model<BlogPostDocument>,
     private readonly uploadService: UploadService,
+    private readonly commentService: CommentService,
   ) {}
 
   async create(
@@ -197,6 +199,9 @@ export class BlogService {
     }
 
     this.assertCanModify(post, actor, true);
+
+    // Delete all comments associated with this post
+    await this.commentService.deleteByPostId(String(post._id));
 
     await post.deleteOne();
     return { message: 'Post deleted' };

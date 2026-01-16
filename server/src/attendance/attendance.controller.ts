@@ -201,4 +201,32 @@ export class AttendanceController {
   deleteLesson(@Param('id') id: string) {
     return this.attendanceService.deleteLesson(id);
   }
+
+  // Admin attendance reporting
+  @Get('reports')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getAttendanceReport(
+    @Query('studentId') studentId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('instrumentType') instrumentType?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.attendanceService.getAttendanceReport({
+      studentId,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      instrumentType,
+      branchId,
+    });
+  }
+
+  // Overdue payments
+  @Get('payments/overdue')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getOverduePayments() {
+    return this.attendanceService.getOverduePayments();
+  }
 }

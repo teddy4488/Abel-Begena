@@ -39,6 +39,10 @@ export class StudentAttendanceParticipant {
   @Prop({ type: Date, required: false, default: null })
   passwordResetCodeExpiresAt?: Date;
 
+  // Require password change on first login
+  @Prop({ type: Boolean, default: false })
+  mustChangePassword?: boolean;
+
   // Independent student information - no reference to User table
   @Prop({ required: true, trim: true, maxlength: 120 })
   fullName: string;
@@ -52,9 +56,9 @@ export class StudentAttendanceParticipant {
   })
   attendanceNumber: string;
 
-  // Branch where student is learning
-  @Prop({ type: Types.ObjectId, ref: 'Branch', required: true })
-  branchId: Types.ObjectId;
+  // Branch where student is learning (required only for physical learning)
+  @Prop({ type: Types.ObjectId, ref: 'Branch', required: false })
+  branchId?: Types.ObjectId;
 
   // Learning type: physical or online
   @Prop({ type: String, enum: ['physical', 'online'], required: true })

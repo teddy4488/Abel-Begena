@@ -21,8 +21,15 @@ export class RegisterStudentParticipantDto {
   @MinLength(2)
   fullName: string;
 
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(120)
+  email?: string;
+
+  @ValidateIf((o) => o.learningType === 'physical')
   @IsMongoId()
-  branchId: string;
+  @IsNotEmpty()
+  branchId?: string;
 
   @IsEnum(['physical', 'online'])
   learningType: LearningType;

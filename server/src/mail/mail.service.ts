@@ -62,6 +62,26 @@ export class MailService {
     });
   }
 
+  async sendStudentCredentialsEmail(
+    email: string,
+    password: string,
+    fullName: string,
+  ) {
+    await this.sendMail({
+      to: email,
+      subject: 'Welcome to Abel Begena Conservatory - Your Student Account',
+      html: this.renderCredentialsTemplate({
+        greeting: `Peace be with you, ${fullName}`,
+        intro:
+          'Your student account has been created. Please use the following credentials to log in. You will be required to change your password on first login.',
+        email,
+        password,
+        outro:
+          'Please keep these credentials secure. You will be prompted to change your password when you first log in.',
+      }),
+    });
+  }
+
   private async sendMail(options: {
     to: string;
     subject: string;
@@ -132,6 +152,28 @@ export class MailService {
             ${payload.code}
           </span>
         </div>
+        <p>${payload.outro}</p>
+        <p style="margin-top: 32px;">With gratitude,<br/>Abel Begena Conservatory</p>
+      </div>
+    `;
+  }
+
+  private renderCredentialsTemplate(payload: {
+    greeting: string;
+    intro: string;
+    email: string;
+    password: string;
+    outro: string;
+  }) {
+    return `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+        <p>${payload.greeting}</p>
+        <p>${payload.intro}</p>
+        <div style="margin: 24px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #f7d794;">
+          <p style="margin: 8px 0;"><strong>Email:</strong> ${payload.email}</p>
+          <p style="margin: 8px 0;"><strong>Password:</strong> <code style="background: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${payload.password}</code></p>
+        </div>
+        <p style="color: #d32f2f; font-weight: bold;">⚠️ Important: You must change your password when you first log in.</p>
         <p>${payload.outro}</p>
         <p style="margin-top: 32px;">With gratitude,<br/>Abel Begena Conservatory</p>
       </div>

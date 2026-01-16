@@ -7,11 +7,12 @@ import {
   useCheckoutMutation,
   useGetCartQuery,
 } from "@/store/api/storeApi";
+import { useGetBranchesQuery } from "@/store/api/branchApi";
 import { useAppSelector } from "@/store/hooks";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { CreditCard, MapPin, Phone, Building2, ArrowLeft, CheckCircle, ShoppingBag } from "lucide-react";
+import { CreditCard, MapPin, Phone, Building2, ArrowLeft, CheckCircle, ShoppingBag, Package, Truck } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const paymentMethods = [
@@ -28,13 +29,17 @@ export default function CheckoutPage() {
   const { data, isLoading } = useGetCartQuery(undefined, {
     skip: !isLoggedIn,
   });
+  const { data: branches = [] } = useGetBranchesQuery();
   const [checkout, { isLoading: isSubmitting }] = useCheckoutMutation();
   const [form, setForm] = useState({
+    deliveryOption: "Delivery" as "Pickup" | "Delivery",
+    pickupBranchId: "",
     city: "",
     street: "",
     postalCode: "",
     phone: "",
     paymentMethod: "CashOnDelivery",
+    receiptUrl: "",
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -48,10 +53,19 @@ export default function CheckoutPage() {
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!form.city.trim()) next.city = t("checkout.page.cityError");
-    if (!form.street.trim()) next.street = t("checkout.page.streetError");
-    if (!form.postalCode.trim()) next.postalCode = t("checkout.page.postalCodeError");
-    if (!/^[+0-9\s-]{6,}$/.test(form.phone)) next.phone = t("checkout.page.phoneError");
+    if (form.deliveryOption === "Pickup") {
+      if (!form.pickupBranchId) {
+        next.pickupBranchId = t("checkout.page.pickupBranchError", "Please select a branch");
+      }
+    } else {
+      if (!form.city.trim()) next.city = t("checkout.page.cityError");
+      if (!form.street.trim()) next.street = t("checkout.page.streetError");
+      if (!form.postalCode.trim()) next.postalCode = t("checkout.page.postalCodeError");
+      if (!/^[+0-9\s-]{6,}$/.test(form.phone)) next.phone = t("checkout.page.phoneError");
+    }
+    if (form.paymentMethod === "BankTransfer" && !form.receiptUrl.trim()) {
+      next.receiptUrl = t("checkout.page.receiptError", "Receipt URL is required for bank transfer");
+    }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -69,13 +83,16 @@ export default function CheckoutPage() {
 
     try {
       await checkout({
-        shippingAddress: {
+        deliveryOption: form.deliveryOption,
+        pickupBranchId: form.deliveryOption === "Pickup" ? form.pickupBranchId : undefined,
+        shippingAddress: form.deliveryOption === "Delivery" ? {
           city: form.city,
           street: form.street,
           postalCode: form.postalCode,
           phone: form.phone,
-        },
+        } : undefined,
         paymentMethod: form.paymentMethod,
+        receiptUrl: form.paymentMethod === "BankTransfer" ? form.receiptUrl : undefined,
       }).unwrap();
       pushToast({
         title: t("checkout.toast.success"),
@@ -145,11 +162,94 @@ export default function CheckoutPage() {
                 </motion.div>
               )}
 
+              {/* Delivery Option */}
               <div>
-                <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
-                  <Building2 className="h-4 w-4" />
-                  {t("checkout.page.city")}
-                </label>
+                <p className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                  <Package className="h-4 w-4" />
+                  {t("checkout.page.deliveryOption", "Delivery Option")}
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label
+                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
+                      form.deliveryOption === "Delivery"
+                        ? "border-secondary bg-secondary/10 text-secondary"
+                        : "border-border bg-background/60 hover:border-secondary/50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="deliveryOption"
+                      value="Delivery"
+                      checked={form.deliveryOption === "Delivery"}
+                      onChange={(e) =>
+                        setForm({ ...form, deliveryOption: e.target.value as "Pickup" | "Delivery" })
+                      }
+                      className="sr-only"
+                    />
+                    <Truck className="h-5 w-5" />
+                    <span>{t("checkout.page.delivery", "Delivery")}</span>
+                    {form.deliveryOption === "Delivery" && (
+                      <CheckCircle className="ml-auto h-4 w-4" />
+                    )}
+                  </label>
+                  <label
+                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
+                      form.deliveryOption === "Pickup"
+                        ? "border-secondary bg-secondary/10 text-secondary"
+                        : "border-border bg-background/60 hover:border-secondary/50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="deliveryOption"
+                      value="Pickup"
+                      checked={form.deliveryOption === "Pickup"}
+                      onChange={(e) =>
+                        setForm({ ...form, deliveryOption: e.target.value as "Pickup" | "Delivery" })
+                      }
+                      className="sr-only"
+                    />
+                    <Building2 className="h-5 w-5" />
+                    <span>{t("checkout.page.pickup", "Pickup")}</span>
+                    {form.deliveryOption === "Pickup" && (
+                      <CheckCircle className="ml-auto h-4 w-4" />
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {form.deliveryOption === "Pickup" ? (
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                    <Building2 className="h-4 w-4" />
+                    {t("checkout.page.pickupBranch", "Pickup Branch")}
+                  </label>
+                  <select
+                    required
+                    value={form.pickupBranchId}
+                    onChange={(e) => setForm({ ...form, pickupBranchId: e.target.value })}
+                    className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                      fieldErrors.pickupBranchId ? "border-red-400" : "border-border focus:border-secondary"
+                    } bg-background/80`}
+                  >
+                    <option value="">{t("checkout.page.selectBranch", "Select a branch")}</option>
+                    {branches.map((branch) => (
+                      <option key={branch._id} value={branch._id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.pickupBranchId && (
+                    <p className="mt-1 text-xs text-red-500">{fieldErrors.pickupBranchId}</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                      <Building2 className="h-4 w-4" />
+                      {t("checkout.page.city")}
+                    </label>
                 <input
                   type="text"
                   required
@@ -225,6 +325,8 @@ export default function CheckoutPage() {
                   )}
                 </div>
               </div>
+                </>
+              )}
 
               <div>
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
@@ -259,6 +361,35 @@ export default function CheckoutPage() {
                     </label>
                   ))}
                 </div>
+                {form.paymentMethod === "BankTransfer" && (
+                  <div className="mt-4">
+                    <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+                      <CreditCard className="h-4 w-4" />
+                      {t("checkout.page.receiptUrl", "Receipt URL")}
+                    </label>
+                    <input
+                      type="url"
+                      required={form.paymentMethod === "BankTransfer"}
+                      value={form.receiptUrl}
+                      onChange={(e) => setForm({ ...form, receiptUrl: e.target.value })}
+                      className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                        fieldErrors.receiptUrl ? "border-red-400" : "border-border focus:border-secondary"
+                      } bg-background/80`}
+                      placeholder="https://example.com/receipt.jpg"
+                    />
+                    {fieldErrors.receiptUrl && (
+                      <p className="mt-1 text-xs text-red-500">{fieldErrors.receiptUrl}</p>
+                    )}
+                    <p className="mt-2 text-xs text-foreground/60">
+                      {t("checkout.page.receiptNote", "Upload your payment receipt and provide the URL. Our team will verify and contact you.")}
+                    </p>
+                  </div>
+                )}
+                {form.paymentMethod === "CashOnDelivery" && (
+                  <p className="mt-4 text-xs text-foreground/60">
+                    {t("checkout.page.codNote", "Our team will contact you to confirm your order and arrange delivery.")}
+                  </p>
+                )}
               </div>
 
               <motion.button

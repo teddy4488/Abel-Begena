@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Order, OrderDocument, OrderStatus } from './schemas/order.schema';
+import { Order, OrderDocument, OrderStatus, PaymentMethod } from './schemas/order.schema';
 import { Cart, CartDocument } from './schemas/cart.schema';
 import { ProductService } from '../product/product.service';
 import { CheckoutDto } from './dto/checkout.dto';
@@ -192,10 +192,15 @@ export class OrderService {
       user: new Types.ObjectId(userId),
       items: cartItems,
       totalAmount,
+      deliveryOption: checkoutDto.deliveryOption,
+      pickupBranchId: checkoutDto.pickupBranchId
+        ? new Types.ObjectId(checkoutDto.pickupBranchId)
+        : undefined,
       shippingAddress: checkoutDto.shippingAddress,
       paymentMethod: checkoutDto.paymentMethod,
       status: OrderStatus.PENDING,
-      isPaid: false,
+      isPaid: checkoutDto.paymentMethod === PaymentMethod.BANK_TRANSFER && !!checkoutDto.receiptUrl,
+      receiptUrl: checkoutDto.receiptUrl,
     });
 
     // Reduce stock for all products

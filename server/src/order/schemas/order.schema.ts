@@ -10,6 +10,11 @@ export enum PaymentMethod {
   OTHER = 'Other',
 }
 
+export enum DeliveryOption {
+  PICKUP = 'Pickup',
+  DELIVERY = 'Delivery',
+}
+
 export enum OrderStatus {
   PENDING = 'Pending',
   PROCESSING = 'Processing',
@@ -36,14 +41,24 @@ export class Order {
       postalCode: String,
       phone: String,
     },
-    required: true,
+    required: false,
   })
-  shippingAddress: {
+  shippingAddress?: {
     city: string;
     street: string;
     postalCode: string;
     phone: string;
   };
+
+  @Prop({
+    required: true,
+    enum: DeliveryOption,
+    type: String,
+  })
+  deliveryOption: DeliveryOption;
+
+  @Prop({ type: Types.ObjectId, ref: 'Branch' })
+  pickupBranchId?: Types.ObjectId;
 
   @Prop({
     required: true,
@@ -61,6 +76,9 @@ export class Order {
 
   @Prop({ default: false })
   isPaid: boolean;
+
+  @Prop({ trim: true, maxlength: 500 })
+  receiptUrl?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

@@ -36,6 +36,8 @@ import { RegisterTeacherParticipantDto } from './dto/register-teacher-participan
 import { RegisterStudentParticipantDto } from './dto/register-student-participant.dto';
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
 import { RecordStudentAttendanceDto } from './dto/record-student-attendance.dto';
+import { MailService } from '../mail/mail.service';
+import { StudentService } from '../student/student.service';
 
 @Injectable()
 export class AttendanceService {
@@ -54,12 +56,35 @@ export class AttendanceService {
     private readonly studentPaymentModel: Model<StudentPaymentDocument>,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
+    private readonly mailService: MailService,
+    private readonly studentService: StudentService,
   ) {}
 
   // Helpers
   private generateAttendanceNumber(): string {
     // Generate 5-digit numeric code
     return Math.floor(10000 + Math.random() * 90000).toString();
+  }
+
+  private generateRandomPassword(): string {
+    // Generate a secure random password (12 characters: letters, numbers, symbols)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
+  private generateEmailFromName(fullName: string): string {
+    // Generate email from name: "John Doe" -> "john.doe@abelbegena.com"
+    const normalized = fullName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z\s]/g, '')
+      .replace(/\s+/g, '.');
+    const timestamp = Date.now().toString().slice(-6);
+    return `${normalized}.${timestamp}@abelbegena.com`;
   }
 
   private calculateLearningDaysPerWeek(programDurationMonths: 3 | 6 | 9): number {
@@ -141,10 +166,39 @@ export class AttendanceService {
       dto.programDurationMonths,
     );
 
+    // Generate email if not provided
+    let email = dto.email?.trim().toLowerCase();
+    if (!email) {
+      email = this.generateEmailFromName(dto.fullName);
+      // Ensure uniqueness
+      let counter = 1;
+      while (await this.studentParticipantModel.findOne({ email }).lean().exec()) {
+        email = this.generateEmailFromName(dto.fullName) + counter;
+        counter++;
+      }
+    } else {
+      // Check if email already exists
+      const existing = await this.studentParticipantModel.findOne({ email }).lean().exec();
+      if (existing) {
+        throw new BadRequestException('Email already in use');
+      }
+    }
+
+    // Generate password
+    const generatedPassword = this.generateRandomPassword();
+    const hashedPassword = await this.studentService.hashPassword(generatedPassword);
+
+    // Validate branch for physical learning
+    if (dto.learningType === 'physical' && !dto.branchId) {
+      throw new BadRequestException('Branch is required for physical learning');
+    }
+
     const created = await this.studentParticipantModel.create({
       fullName: dto.fullName.trim(),
+      email,
+      password: hashedPassword,
       attendanceNumber,
-      branchId: new Types.ObjectId(dto.branchId),
+      branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
       learningType: dto.learningType,
       instrumentType: dto.instrumentType,
       programDurationMonths: dto.programDurationMonths,
@@ -152,8 +206,27 @@ export class AttendanceService {
       registrationStartDate: new Date(dto.registrationStartDate),
       learningDaysPerWeek,
       isActive: true,
+      isVerified: true, // Auto-verify since admin is creating
+      mustChangePassword: true, // Require password change on first login
     });
-    return created.toObject();
+
+    // Send credentials email
+    try {
+      await this.mailService.sendStudentCredentialsEmail(
+        email,
+        generatedPassword,
+        dto.fullName,
+      );
+    } catch (error) {
+      // Log error but don't fail registration
+      console.error('Failed to send credentials email:', error);
+    }
+
+    return {
+      ...created.toObject(),
+      password: undefined, // Don't return password in response
+      generatedPassword: process.env.NODE_ENV !== 'production' ? generatedPassword : undefined, // Only in dev
+    };
   }
 
   async convertUserToStudent(
@@ -837,5 +910,89 @@ export class AttendanceService {
       unpaidCount,
       items,
     };
+  }
+
+  async getOverduePayments() {
+    const current = this.getCurrentYearMonth();
+    const currentDate = new Date();
+    
+    // Get all active students
+    const students = await this.studentParticipantModel
+      .find({ isActive: true })
+      .select('_id fullName attendanceNumber instrumentType registrationStartDate')
+      .lean()
+      .exec();
+
+    const overduePayments: Array<{
+      participantId: string;
+      fullName: string;
+      attendanceNumber: string;
+      instrumentType: string;
+      year: number;
+      month: number;
+      dueDate: Date;
+      daysOverdue: number;
+      amount?: number;
+      status?: 'paid' | 'partial' | 'unpaid';
+    }> = [];
+
+    for (const student of students) {
+      // Calculate expected payments from registration date
+      const registrationDate = new Date(student.registrationStartDate || new Date());
+      let checkYear = registrationDate.getFullYear();
+      let checkMonth = registrationDate.getMonth() + 1;
+
+      // Check payments up to current month
+      while (
+        checkYear < current.year ||
+        (checkYear === current.year && checkMonth <= current.month)
+      ) {
+        const payment = await this.studentPaymentModel
+          .findOne({
+            participantId: student._id,
+            year: checkYear,
+            month: checkMonth,
+          })
+          .lean()
+          .exec();
+
+        // Calculate due date (typically 5th of each month)
+        const dueDate = new Date(checkYear, checkMonth - 1, 5);
+        
+        // If payment is unpaid or partial, and due date has passed
+        if (!payment || payment.status === 'unpaid' || payment.status === 'partial') {
+          if (dueDate < currentDate) {
+            const daysOverdue = Math.floor(
+              (currentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            
+            overduePayments.push({
+              participantId: String(student._id),
+              fullName: student.fullName,
+              attendanceNumber: student.attendanceNumber,
+              instrumentType: student.instrumentType,
+              year: checkYear,
+              month: checkMonth,
+              dueDate,
+              daysOverdue,
+              amount: payment?.amount,
+              status: payment?.status || 'unpaid',
+            });
+          }
+        }
+
+        // Move to next month
+        checkMonth += 1;
+        if (checkMonth > 12) {
+          checkMonth = 1;
+          checkYear += 1;
+        }
+      }
+    }
+
+    // Sort by days overdue (most overdue first)
+    overduePayments.sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+    return overduePayments;
   }
 }

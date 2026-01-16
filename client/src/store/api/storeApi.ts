@@ -78,13 +78,16 @@ export const storeApi = createApi({
     checkout: builder.mutation<
       Order,
       {
-        shippingAddress: {
+        deliveryOption: "Pickup" | "Delivery";
+        pickupBranchId?: string;
+        shippingAddress?: {
           city: string;
           street: string;
           postalCode: string;
           phone: string;
         };
         paymentMethod: string;
+        receiptUrl?: string;
       }
     >({
       query: (body) => ({
