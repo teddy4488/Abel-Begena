@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type PaymentRequestDocument = PaymentRequest & Document;
 
-export type PaymentRequestType = 'enrollment' | 'order' | 'tuition';
+export type PaymentRequestType = 'enrollment' | 'order' | 'tuition' | 'student_conversion';
 export type PaymentRequestStatus = 'pending' | 'approved' | 'rejected';
 
 @Schema({ timestamps: true })

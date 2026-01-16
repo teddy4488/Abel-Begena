@@ -23,10 +23,10 @@
   --color-card-hover: rgba(255, 255, 255, 0.98);
   --color-card-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(253, 251, 247, 0.9) 100%);
   --color-surface-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
-  --color-shadow-sm: 0 2px 8px rgba(217, 119, 6, 0.08);
-  --color-shadow-md: 0 4px 16px rgba(217, 119, 6, 0.12);
-  --color-shadow-lg: 0 8px 32px rgba(217, 119, 6, 0.16);
-  --color-shadow-xl: 0 16px 48px rgba(217, 119, 6, 0.2);
+  --color-shadow-sm: 0 2px 8px rgba(217, 119, 6, 0.12);
+  --color-shadow-md: 0 4px 16px rgba(217, 119, 6, 0.18);
+  --color-shadow-lg: 0 8px 32px rgba(217, 119, 6, 0.22);
+  --color-shadow-xl: 0 16px 48px rgba(217, 119, 6, 0.25);
   --color-glow: 0 0 20px rgba(197, 160, 89, 0.3);
   --grain-color-1: rgba(217, 119, 6, 0.08);
   --grain-color-2: rgba(197, 160, 89, 0.1);
@@ -235,7 +235,7 @@ body::before {
 
 .surface-elevated {
   background: var(--color-surface-gradient);
-  box-shadow: var(--color-shadow-sm);
+  box-shadow: var(--color-shadow-md);
   position: relative;
 }
 

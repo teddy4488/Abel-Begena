@@ -50,7 +50,6 @@ const navConfig: Record<
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.orders", href: "/account/orders" },
-      { labelKey: "nav.contact", href: "#contact" },
     ],
   },
   Teacher: {

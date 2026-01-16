@@ -3,7 +3,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
 
-export type PaymentRequestType = "enrollment" | "order" | "tuition";
+export type PaymentRequestType = "enrollment" | "order" | "tuition" | "student_conversion";
 export type PaymentRequestStatus = "pending" | "approved" | "rejected";
 
 export type PaymentRequest = {

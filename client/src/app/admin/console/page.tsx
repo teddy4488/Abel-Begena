@@ -189,8 +189,8 @@ export default function AdminConsolePage() {
         </p>
       </motion.div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {/* Summary Cards - Better organized grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {summaryCards.map((card, index) => {
           const Icon = card.icon;
           return (
@@ -202,7 +202,7 @@ export default function AdminConsolePage() {
             >
               <Link
                 href={card.href}
-                className="group relative flex flex-col rounded-3xl card-elevated p-5 transition-all hover:shadow-[0_12px_40px_var(--color-primary-glow)]"
+                className="group relative flex flex-col rounded-3xl bg-surface-elevated p-5 shadow-lg transition-all hover:shadow-[0_12px_40px_var(--color-primary-glow)] hover:-translate-y-1"
               >
                 {card.urgent && (
                   <div className="absolute -right-2 -top-2 h-4 w-4 rounded-full bg-amber-500 animate-pulse" />

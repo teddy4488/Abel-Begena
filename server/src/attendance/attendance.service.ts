@@ -1,10 +1,13 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { UserService } from '../user/user.service';
 import {
   TeacherAttendanceParticipant,
   TeacherAttendanceParticipantDocument,
@@ -49,6 +52,8 @@ export class AttendanceService {
     private readonly lessonModel: Model<InstrumentLessonDocument>,
     @InjectModel(StudentPayment.name)
     private readonly studentPaymentModel: Model<StudentPaymentDocument>,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
   ) {}
 
   // Helpers
@@ -149,6 +154,77 @@ export class AttendanceService {
       isActive: true,
     });
     return created.toObject();
+  }
+
+  async convertUserToStudent(
+    userId: string,
+    dto: import('./dto/convert-user-to-student.dto').ConvertUserToStudentDto,
+  ) {
+    // Validate learning days count matches program duration
+    const expectedDays = this.calculateLearningDaysPerWeek(dto.programDurationMonths);
+    if (dto.preferredLearningDays.length !== expectedDays) {
+      throw new BadRequestException(
+        `Program duration of ${dto.programDurationMonths} months requires exactly ${expectedDays} learning days per week. Provided: ${dto.preferredLearningDays.length}`,
+      );
+    }
+
+    // Validate no duplicate days
+    const uniqueDays = new Set(dto.preferredLearningDays);
+    if (uniqueDays.size !== dto.preferredLearningDays.length) {
+      throw new BadRequestException('Duplicate learning days are not allowed');
+    }
+
+    // Validate branch is provided for physical learning
+    if (dto.learningType === 'physical' && !dto.branchId) {
+      throw new BadRequestException('Branch is required for physical learning');
+    }
+
+    // Get user to migrate
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if user already has a student record
+    const existingStudent = await this.studentParticipantModel
+      .findOne({ email: user.email })
+      .lean()
+      .exec();
+    if (existingStudent) {
+      throw new BadRequestException('User already has a student account');
+    }
+
+    // Generate attendance number
+    const attendanceNumber = this.generateAttendanceNumber();
+    const learningDaysPerWeek = this.calculateLearningDaysPerWeek(
+      dto.programDurationMonths,
+    );
+
+    // Create student record with user's email and password
+    const userDoc = await this.userService.findByEmail(user.email);
+    const student = await this.studentParticipantModel.create({
+      email: user.email,
+      password: userDoc?.password, // Preserve password
+      fullName: dto.fullName.trim(),
+      attendanceNumber,
+      branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
+      learningType: dto.learningType,
+      instrumentType: dto.instrumentType,
+      programDurationMonths: dto.programDurationMonths,
+      preferredLearningDays: dto.preferredLearningDays,
+      registrationStartDate: new Date(dto.registrationStartDate),
+      learningDaysPerWeek,
+      isActive: true,
+      isVerified: user.isVerified ?? false, // Preserve verification status
+    });
+
+    // Delete user from User table
+    await this.userService.remove(userId);
+
+    return {
+      message: 'User converted to student successfully',
+      student: student.toObject(),
+    };
   }
 
   async listTeacherParticipants() {

@@ -650,6 +650,12 @@ export default function DashboardPage() {
             >
               {t("dashboard.recentMaterials.history", "Enrollment history")}
             </Link>
+            <Link
+              href="/dashboard/become-student"
+              className="inline-flex w-full items-center justify-center rounded-full bg-secondary px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:brightness-105 sm:w-auto shadow-sm"
+            >
+              {t("dashboard.becomeStudent", "Become a Student")}
+            </Link>
           </div>
           {recentMaterials.length ? (
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">

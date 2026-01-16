@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
+import { UserModule } from '../user/user.module';
+import { UserModule } from '../user/user.module';
 import {
   TeacherAttendanceParticipant,
   TeacherAttendanceParticipantSchema,
@@ -29,6 +31,7 @@ import {
 
 @Module({
   imports: [
+    UserModule,
     MongooseModule.forFeature([
       {
         name: TeacherAttendanceParticipant.name,

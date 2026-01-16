@@ -6,10 +6,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import { ArrowLeft, Share2, Facebook, Twitter, Link as LinkIcon } from "lucide-react";
-import { useGetPostBySlugQuery, useGetCommentsQuery, useCreateCommentMutation } from "@/store/api/blogApi";
+import { useGetPostBySlugQuery, useGetCommentsQuery, useCreateCommentMutation, useUpdateCommentMutation, useDeleteCommentMutation } from "@/store/api/blogApi";
 import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { useToast } from "@/components/providers/ToastProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Edit, Trash2, X, Check } from "lucide-react";
 import { useState } from "react";
 
 export default function HeritageArticlePage() {
@@ -32,7 +34,12 @@ export default function HeritageArticlePage() {
     { skip: !post?._id },
   );
   const [createComment, { isLoading: isSubmitting }] = useCreateCommentMutation();
+  const [updateComment] = useUpdateCommentMutation();
+  const [deleteComment] = useDeleteCommentMutation();
+  const { pushToast } = useToast();
   const [commentText, setCommentText] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
 
   const handleShare = async () => {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
@@ -393,19 +400,122 @@ export default function HeritageArticlePage() {
           )}
 
           <div className="divide-y divide-border/70">
-            {comments.map((c) => (
-              <div key={c._id} className="py-3">
-                <p className="text-sm font-semibold text-primary">
-                  {c.authorId?.firstName || c.authorId?.email || t("heritage.comments.user", "User")}
-                </p>
-                <p className="text-sm text-foreground/80 whitespace-pre-wrap">
-                  {c.content}
-                </p>
-                <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/50">
-                  {new Date(c.createdAt ?? Date.now()).toLocaleDateString()}
-                </p>
-              </div>
-            ))}
+            {comments.map((c) => {
+              const userId = user?._id || user?.id;
+              const authorId = typeof c.authorId === 'object' && c.authorId !== null 
+                ? (c.authorId as any)?._id || (c.authorId as any)?.id 
+                : c.authorId;
+              const isOwner = isLoggedIn && user && userId && authorId === userId;
+              const isEditing = editingCommentId === c._id;
+              
+              return (
+                <div key={c._id} className="py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-semibold text-primary">
+                          {c.authorId?.firstName || c.authorId?.email || t("heritage.comments.user", "User")}
+                        </p>
+                        <span className="text-[10px] text-secondary/50">✝</span>
+                      </div>
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full rounded-2xl bg-background/80 border border-border px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                            rows={3}
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await updateComment({ id: c._id, content: editingText }).unwrap();
+                                  setEditingCommentId(null);
+                                  setEditingText("");
+                                  pushToast({
+                                    title: t("heritage.comments.updated", "Comment updated"),
+                                    variant: "success",
+                                  });
+                                } catch (error) {
+                                  pushToast({
+                                    title: t("heritage.comments.updateError", "Failed to update comment"),
+                                    variant: "error",
+                                  });
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-105"
+                            >
+                              <Check className="h-3 w-3" />
+                              {t("button.save", "Save")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCommentId(null);
+                                setEditingText("");
+                              }}
+                              className="inline-flex items-center gap-1 rounded-full border border-border bg-background/50 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-background"
+                            >
+                              <X className="h-3 w-3" />
+                              {t("button.cancel", "Cancel")}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                            {c.content}
+                          </p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/50 mt-1">
+                            {new Date(c.createdAt ?? Date.now()).toLocaleDateString()}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    {isOwner && !isEditing && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCommentId(c._id);
+                            setEditingText(c.content);
+                          }}
+                          className="rounded-full p-1.5 text-foreground/60 hover:bg-secondary/10 hover:text-secondary transition"
+                          aria-label={t("button.edit", "Edit")}
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm(t("heritage.comments.confirmDelete", "Delete this comment?"))) {
+                              try {
+                                await deleteComment(c._id).unwrap();
+                                pushToast({
+                                  title: t("heritage.comments.deleted", "Comment deleted"),
+                                  variant: "success",
+                                });
+                              } catch (error) {
+                                pushToast({
+                                  title: t("heritage.comments.deleteError", "Failed to delete comment"),
+                                  variant: "error",
+                                });
+                              }
+                            }
+                          }}
+                          className="rounded-full p-1.5 text-foreground/60 hover:bg-red-500/10 hover:text-red-500 transition"
+                          aria-label={t("button.delete", "Delete")}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             {!comments.length && (
               <p className="py-2 text-sm text-foreground/60">
                 {t("heritage.comments.empty", "No comments yet. Be the first to comment.")}

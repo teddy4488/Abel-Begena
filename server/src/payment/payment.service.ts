@@ -145,6 +145,25 @@ export class PaymentService {
       }
     }
 
+    // If approved and type is student_conversion, trigger user-to-student conversion
+    if (
+      dto.status === 'approved' &&
+      payment.type === 'student_conversion' &&
+      payment.userId
+    ) {
+      try {
+        // The conversion data should be stored in reviewNote or we need to fetch it
+        // For now, we'll let the admin manually trigger the conversion
+        // This can be enhanced later to automatically convert
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          'Failed to convert user to student after payment approval:',
+          error,
+        );
+      }
+    }
+
     return payment.toObject();
   }
 }

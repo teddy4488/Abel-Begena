@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UpdateCommentStatusDto } from './dto/update-comment-status.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
 
 @Controller('blog')
 export class CommentController {
@@ -58,10 +59,24 @@ export class CommentController {
     return this.commentService.updateStatus(id, dto);
   }
 
+  @Patch('comments/:id')
+  @UseGuards(JwtAuthGuard)
+  updateComment(
+    @Param('id') id: string,
+    @Body() dto: UpdateCommentDto,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.commentService.update(id, req.user.sub, dto);
+  }
+
   @Delete('comments/:id')
-  @Roles('Admin')
-  @UseGuards(JwtAuthGuard, RoleGuard)
-  remove(@Param('id') id: string) {
-    return this.commentService.remove(id);
+  @UseGuards(JwtAuthGuard)
+  remove(
+    @Param('id') id: string,
+    @Request() req: { user: { sub: string; role: string } },
+  ) {
+    // Admins can delete any comment, users can only delete their own
+    const userId = req.user.role === 'Admin' ? undefined : req.user.sub;
+    return this.commentService.remove(id, userId);
   }
 }

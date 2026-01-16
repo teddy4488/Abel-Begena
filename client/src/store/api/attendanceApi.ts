@@ -327,6 +327,37 @@ export const attendanceApi = createApi({
       query: () => "/attendance/students/me/payments",
       providesTags: ["StudentPayments"],
     }),
+    convertUserToStudent: builder.mutation<
+      { message: string; student: StudentParticipant },
+      {
+        fullName: string;
+        branchId?: string;
+        learningType: LearningType;
+        instrumentType: InstrumentType;
+        programDurationMonths: 3 | 6 | 9;
+        preferredLearningDays: DayOfWeek[];
+        registrationStartDate: string;
+        preferredSchedule?: string;
+        phone?: string;
+        emergencyContactName?: string;
+        emergencyContactPhone?: string;
+        occupation?: string;
+        city?: string;
+        address?: string;
+        amount: number;
+        currency?: string;
+        paymentMethod: string;
+        paymentReference: string;
+        note?: string;
+      }
+    >({
+      query: (body) => ({
+        url: "/attendance/students/convert",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["StudentParticipants"],
+    }),
   }),
 });
 
@@ -349,4 +380,5 @@ export const {
   useGetGraduationEligibilityQuery,
   useGetMyAttendanceQuery,
   useGetMyPaymentsQuery,
+  useConvertUserToStudentMutation,
 } = attendanceApi;

@@ -138,6 +138,17 @@ export const blogApi = createApi({
       }),
       invalidatesTags: ["Comments"],
     }),
+    updateComment: builder.mutation<
+      { _id: string; content: string },
+      { id: string; content: string }
+    >({
+      query: ({ id, content }) => ({
+        url: `/blog/comments/${id}`,
+        method: "PATCH",
+        body: { content },
+      }),
+      invalidatesTags: ["Comments"],
+    }),
     deleteComment: builder.mutation<{ message: string }, string>({
       query: (id) => ({
         url: `/blog/comments/${id}`,
@@ -170,6 +181,7 @@ export const {
   useCreateCommentMutation,
   useGetManageCommentsQuery,
   useUpdateCommentStatusMutation,
+  useUpdateCommentMutation,
   useDeleteCommentMutation,
   useUploadBlogImageMutation,
 } = blogApi;

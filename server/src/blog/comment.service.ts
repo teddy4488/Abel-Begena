@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Comment, CommentDocument } from './schemas/comment.schema';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { BlogPost } from './schemas/blog-post.schema';
 import { UpdateCommentStatusDto } from './dto/update-comment-status.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
 
 @Injectable()
 export class CommentService {
@@ -83,9 +84,39 @@ export class CommentService {
     return updated;
   }
 
-  async remove(id: string) {
+  async update(id: string, userId: string, dto: UpdateCommentDto) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid comment id');
+    }
+    const comment = await this.commentModel.findById(id).lean().exec();
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+    if (comment.authorId.toString() !== userId) {
+      throw new ForbiddenException('You can only edit your own comments');
+    }
+    const updated = await this.commentModel
+      .findByIdAndUpdate(
+        id,
+        { content: dto.content },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    return updated;
+  }
+
+  async remove(id: string, userId?: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid comment id');
+    }
+    const comment = await this.commentModel.findById(id).lean().exec();
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+    // If userId is provided, check ownership (for user deletions)
+    if (userId && comment.authorId.toString() !== userId) {
+      throw new ForbiddenException('You can only delete your own comments');
     }
     const removed = await this.commentModel.findByIdAndDelete(id).lean().exec();
     if (!removed) {

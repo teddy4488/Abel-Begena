@@ -41,6 +41,15 @@ export class AttendanceController {
     return this.attendanceService.registerStudentParticipant(dto);
   }
 
+  @Post('students/convert')
+  @UseGuards(JwtAuthGuard)
+  convertUserToStudent(
+    @Body() dto: import('./dto/convert-user-to-student.dto').ConvertUserToStudentDto,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.attendanceService.convertUserToStudent(req.user.sub, dto);
+  }
+
   @Get('teachers/participants')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
