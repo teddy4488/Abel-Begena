@@ -15,6 +15,9 @@ import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
 import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
 // import { BranchesMapModal } from "@/components/branches/BranchesMapModal";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { getUserLandingRoute } from "@/lib/utils";
 
 
 const BranchesMapModal = dynamic(
@@ -80,8 +83,17 @@ const sacredVideos = [
 
 export default function Home() {
   const { t, locale } = useI18n();
+  const router = useRouter();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const role = user?.role;
+
+  // Redirect logged-in users to their dashboard
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      const destination = getUserLandingRoute(user?.userType, user?.role);
+      router.replace(destination);
+    }
+  }, [isLoggedIn, user, router]);
   const { data: products, isLoading: isLoadingProducts } =
     useGetProductsQuery();
   const { data: classHighlights, isLoading: isLoadingClasses } =

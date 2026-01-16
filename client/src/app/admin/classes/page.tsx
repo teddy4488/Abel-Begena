@@ -105,6 +105,7 @@ export default function AdminClassesPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const startEdit = (klass: any) => {
     setEditingId(klass._id);
+    setShowForm(true);
     setForm({
       title: klass.title ?? "",
       description: klass.description ?? "",
@@ -125,6 +126,7 @@ export default function AdminClassesPage() {
     setEditingId(null);
     setForm(emptyForm);
     setFieldErrors({});
+    setShowForm(false);
   };
 
   const handleAssign = async (classId: string, value: string) => {
@@ -198,8 +200,13 @@ export default function AdminClassesPage() {
     const total = sortedClasses.length;
     const live = sortedClasses.filter((klass) => klass.isLive).length;
     const unassigned = sortedClasses.filter((klass) => !klass.instructorId).length;
-    return { total, live, unassigned };
+    const online = sortedClasses.filter((klass) => klass.classType === "online").length;
+    const physical = sortedClasses.filter((klass) => klass.classType === "physical").length;
+    const both = sortedClasses.filter((klass) => klass.classType === "both").length;
+    return { total, live, unassigned, online, physical, both };
   }, [sortedClasses]);
+
+  const [showForm, setShowForm] = useState(false);
 
   return (
     <section className="space-y-4 sm:space-y-6">
@@ -223,13 +230,169 @@ export default function AdminClassesPage() {
         </p>
       </motion.div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        <motion.form
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl  surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-6"
+      {/* Summary View */}
+      {!showForm && !editingId && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
         >
+          {/* Stats Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.total", "Total Classes")}
+              </p>
+              <p className="mt-1 text-2xl font-serif text-primary">{stats.total}</p>
+            </div>
+            <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.live", "Live Classes")}
+              </p>
+              <p className="mt-1 text-2xl font-serif text-primary">{stats.live}</p>
+            </div>
+            <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.unassigned", "Unassigned")}
+              </p>
+              <p className="mt-1 text-2xl font-serif text-primary">{stats.unassigned}</p>
+            </div>
+            <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.online", "Online Only")}
+              </p>
+              <p className="mt-1 text-2xl font-serif text-primary">{stats.online}</p>
+            </div>
+            <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.physical", "Physical Only")}
+              </p>
+              <p className="mt-1 text-2xl font-serif text-primary">{stats.physical}</p>
+            </div>
+            <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
+                {t("admin.classes.stats.both", "Both Types")}
+              </p>
+              <p className="mt-1 text-2xl font-serif text-primary">{stats.both}</p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                setShowForm(true);
+                clearForm();
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
+            >
+              <Edit className="h-4 w-4" />
+              {t("admin.classes.addClass", "Add New Class")}
+            </motion.button>
+          </div>
+
+          {/* Classes List */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={t("admin.classes.search", "Search classes...")}
+                  className="rounded-2xl border border-border bg-surface-elevated px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                />
+                <select
+                  value={viewFilter}
+                  onChange={(e) => setViewFilter(e.target.value as "all" | "unassigned" | "live")}
+                  className="rounded-2xl border border-border bg-surface-elevated px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                >
+                  <option value="all">{t("admin.classes.filter.all", "All Classes")}</option>
+                  <option value="live">{t("admin.classes.filter.live", "Live Only")}</option>
+                  <option value="unassigned">{t("admin.classes.filter.unassigned", "Unassigned")}</option>
+                </select>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="flex min-h-[200px] items-center justify-center rounded-3xl bg-surface-elevated shadow-lg">
+                <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+              </div>
+            ) : filteredClasses.length === 0 ? (
+              <div className="rounded-3xl bg-surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg">
+                {t("admin.classes.empty", "No classes found.")}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredClasses.map((klass) => (
+                  <motion.div
+                    key={klass._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col gap-3 rounded-2xl bg-surface-elevated p-4 shadow-lg sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-serif text-primary">{klass.title}</h3>
+                        {klass.isLive && (
+                          <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs font-semibold text-green-500">
+                            {t("admin.classes.live", "Live")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-foreground/70">{klass.description}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/60">
+                        <span>{t("admin.classes.type", "Type")}: {klass.classType}</span>
+                        {klass.instructorId && typeof klass.instructorId === "object" && (
+                          <span>
+                            {t("admin.classes.instructor", "Instructor")}:{" "}
+                            {(klass.instructorId as any).firstName} {(klass.instructorId as any).lastName}
+                          </span>
+                        )}
+                        {!klass.instructorId && (
+                          <span className="text-amber-500">{t("admin.classes.noInstructor", "No instructor")}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          startEdit(klass);
+                          setShowForm(true);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full bg-secondary/10 px-4 py-2 text-xs font-semibold text-secondary transition hover:bg-secondary/20"
+                      >
+                        <Edit className="h-3 w-3" />
+                        {t("button.edit", "Edit")}
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDelete(klass._id)}
+                        className="inline-flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/20"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        {t("button.delete", "Delete")}
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Form View */}
+      {(showForm || editingId) && (
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+          <motion.form
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            onSubmit={handleSubmit}
+            className="space-y-3 rounded-2xl bg-surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-6"
+          >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
@@ -412,11 +575,19 @@ export default function AdminClassesPage() {
               ? t("admin.classes.form.save", "Save class")
               : t("admin.classes.form.create", "Create class")}
           </motion.button>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            onClick={clearForm}
+            className="w-full rounded-full border border-border bg-surface-elevated px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition hover:bg-secondary/10"
+          >
+            {t("button.cancel", "Cancel")}
+          </motion.button>
         </motion.form>
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="rounded-2xl  surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-6"
+          className="rounded-2xl bg-surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-6"
         >
           <h2 className="text-lg font-serif text-primary sm:text-xl">
             {t("admin.classes.classesList", "Classes")}
@@ -574,7 +745,8 @@ export default function AdminClassesPage() {
             </div>
           )}
         </motion.div>
-      </div>
+        </div>
+      )}
     </section>
   );
 }
