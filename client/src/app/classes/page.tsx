@@ -386,7 +386,7 @@ export default function ClassesPage() {
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative z-[10000] w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-surface-elevated p-4 shadow-[0_40px_120px_rgba(0,0,0,0.8)] sm:max-w-lg sm:rounded-3xl sm:p-6"
+            className="relative z-[10000] w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-surface-elevated p-4 shadow-[0_40px_120px_rgba(0,0,0,0.8)] sm:max-w-2xl sm:rounded-3xl sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

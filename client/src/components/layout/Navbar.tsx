@@ -34,6 +34,7 @@ const navConfig: Record<
     links: [
       { labelKey: "nav.home", href: "/" },
       { labelKey: "nav.posts", href: "/heritage" },
+      { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.classes", href: "#classes" },
       { labelKey: "nav.about", href: "#about" },
@@ -318,9 +319,21 @@ export default function Navbar() {
             const handleClick = isAnchorLink
               ? (e: React.MouseEvent<HTMLAnchorElement>) => {
                   e.preventDefault();
-                  const element = document.querySelector(link.href);
-                  if (element) {
-                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                  // If on a different page, navigate to home first, then scroll
+                  if (pathname !== "/") {
+                    router.push("/");
+                    // Wait for navigation then scroll
+                    setTimeout(() => {
+                      const element = document.querySelector(link.href);
+                      if (element) {
+                        element.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }, 100);
+                  } else {
+                    const element = document.querySelector(link.href);
+                    if (element) {
+                      element.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
                   }
                 }
               : undefined;
@@ -451,9 +464,20 @@ export default function Navbar() {
               ? (e: React.MouseEvent<HTMLAnchorElement>) => {
                   e.preventDefault();
                   setMobileOpen(false);
-                  const element = document.querySelector(link.href);
-                  if (element) {
-                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                  // If on a different page, navigate to home first, then scroll
+                  if (pathname !== "/") {
+                    router.push("/");
+                    setTimeout(() => {
+                      const element = document.querySelector(link.href);
+                      if (element) {
+                        element.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }, 100);
+                  } else {
+                    const element = document.querySelector(link.href);
+                    if (element) {
+                      element.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
                   }
                 }
               : () => setMobileOpen(false);

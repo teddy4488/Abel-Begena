@@ -423,6 +423,41 @@ export default function AdminBranchesPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Map for selecting coordinates - Required for new branches */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("branches.admin.form.selectLocation", "Select Location on Map")} *
+                  </label>
+                  <div className="relative h-[300px] overflow-hidden rounded-2xl border-2 border-dashed border-secondary/30 bg-secondary/5">
+                    <BranchMap
+                      branches={[]}
+                      selectedBranchId={null}
+                      radiusMeters={form.radiusMeters}
+                      onPositionChange={(lat, lng) =>
+                        setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+                      }
+                    />
+                    {form.latitude == null || form.longitude == null ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                        <p className="text-sm font-semibold text-secondary">
+                          {t("branches.admin.form.clickMap", "Click on the map to select location")}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="absolute bottom-4 left-4 right-4 rounded-2xl bg-secondary/90 p-3 text-xs text-white shadow-lg">
+                        <p className="font-semibold mb-1">
+                          {t("branches.admin.form.selectedLocation", "Selected Location")}
+                        </p>
+                        <p className="font-mono">
+                          {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
                   {t("branches.admin.form.radius", "Radius (m)")}
@@ -454,21 +489,6 @@ export default function AdminBranchesPage() {
                   </p>
                 </div>
               )}
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-primary">
-                {isEditing
-                  ? t("branches.admin.form.editTitle", "Edit branch")
-                  : t("branches.admin.form.createTitle", "Create new branch")}
-              </p>
-              {form.latitude != null && form.longitude != null && (
-                <p className="text-xs text-foreground/60">
-                  {t("branches.admin.form.coordsLabel", "Coordinates")}{" "}
-                  <span className="font-mono">
-                    {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
-                  </span>
-                </p>
-              )}
-            </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <div>
