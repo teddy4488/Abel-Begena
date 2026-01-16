@@ -65,7 +65,7 @@ export default function CartPage() {
         <motion.header
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-2 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
+          className="space-y-2 rounded-2xl bg-linear-to-br from-surface-elevated via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
@@ -107,7 +107,7 @@ export default function CartPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6 text-center"
+            className="rounded-3xl bg-red-500/5 p-6 text-center shadow-sm"
           >
             <p className="text-sm text-red-500">
               {t("cart.page.error")}
@@ -129,7 +129,7 @@ export default function CartPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-3xl border border-border bg-surface/80 p-12 text-center"
+            className="rounded-3xl bg-surface-elevated p-12 text-center shadow-lg"
           >
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/10">
               <ShoppingBag className="h-10 w-10 text-secondary/60" />
@@ -160,10 +160,10 @@ export default function CartPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -100 }}
                   transition={{ delay: index * 0.1 }}
-                  className="group flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4 shadow-lg transition hover:border-secondary/30 sm:rounded-3xl sm:flex-row sm:items-center sm:p-6"
+                  className="group flex flex-col gap-4 rounded-2xl bg-surface-elevated p-4 shadow-lg transition hover:shadow-xl sm:rounded-3xl sm:flex-row sm:items-center sm:p-6"
                 >
                   {/* Product Image */}
-                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-background/80 sm:h-24 sm:w-24 sm:rounded-2xl">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-background/80 shadow-sm sm:h-24 sm:w-24 sm:rounded-2xl">
                     {item.product?.images?.[0] ? (
                       <Image
                         src={item.product.images[0]}
@@ -209,7 +209,7 @@ export default function CartPage() {
 
                   {/* Quantity Controls */}
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center rounded-full border border-border bg-background/50">
+                    <div className="flex items-center rounded-full bg-surface shadow-sm">
                       <motion.button
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleQuantityChange(item.productId, -1)}
@@ -251,7 +251,7 @@ export default function CartPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex flex-col gap-4 rounded-3xl border border-secondary/30 bg-linear-to-br from-secondary/5 via-surface to-primary/5 p-6 shadow-[0_25px_60px_var(--color-primary-glow)] sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-4 rounded-3xl bg-linear-to-br from-secondary/5 via-surface-elevated to-primary/5 p-6 shadow-[0_25px_60px_var(--color-primary-glow)] sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="text-sm text-foreground/70">{t("cart.page.totalAmount")}</p>
@@ -268,7 +268,7 @@ export default function CartPage() {
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/store"
-                  className="rounded-full border border-border px-6 py-3 text-center text-sm font-semibold transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+                  className="rounded-full bg-surface-elevated px-6 py-3 text-center text-sm font-semibold transition hover:bg-(--color-secondary-soft) shadow-sm"
                 >
                   {t("cart.continueShopping")}
                 </Link>

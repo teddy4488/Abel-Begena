@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { extractErrorMessage } from "@/lib/errors";
-import { User, Mail, Lock, ArrowRight } from "lucide-react";
+import { User, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function RegisterPage() {
   });
   const [register, { isLoading }] = useRegisterMutation();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -81,7 +82,7 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="w-full max-w-2xl rounded-3xl border border-border bg-surface/80 p-10 shadow-[0_40px_80px_var(--color-primary-glow)] backdrop-blur"
+        className="w-full max-w-2xl rounded-3xl bg-surface-elevated p-10 shadow-[0_40px_80px_var(--color-primary-glow)] backdrop-blur"
       >
         <div className="mb-8 text-center">
           <motion.div
@@ -119,7 +120,7 @@ export default function RegisterPage() {
               required
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 shadow-sm ${
                 fieldErrors.firstName ? "border-red-400" : "border-border focus:border-secondary"
               } bg-background/80`}
               placeholder="Kidus"
@@ -144,7 +145,7 @@ export default function RegisterPage() {
               required
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 shadow-sm ${
                 fieldErrors.lastName ? "border-red-400" : "border-border focus:border-secondary"
               } bg-background/80`}
               placeholder="Haile"
@@ -169,7 +170,7 @@ export default function RegisterPage() {
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 shadow-sm ${
                 fieldErrors.email ? "border-red-400" : "border-border focus:border-secondary"
               } bg-background/80`}
               placeholder="you@example.com"
@@ -189,16 +190,30 @@ export default function RegisterPage() {
               <Lock className="h-4 w-4" />
               {t("register.page.password")}
             </label>
-            <input
-              type="password"
-              required
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                fieldErrors.password ? "border-red-400" : "border-border focus:border-secondary"
-              } bg-background/80`}
-              placeholder={t("register.page.passwordPlaceholder")}
-            />
+            <div className="relative mt-2">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className={`w-full rounded-2xl border px-4 py-3 pr-10 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                  fieldErrors.password ? "border-red-400" : "border-border focus:border-secondary"
+                } bg-background/80`}
+                placeholder={t("register.page.passwordPlaceholder")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             {fieldErrors.password && (
               <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>
             )}

@@ -382,12 +382,12 @@ export default function ClassesPage() {
       </div>
 
       {selectedClass && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-0 py-0 backdrop-blur sm:items-center sm:px-4 sm:py-8">
-          <div className="absolute inset-0" onClick={handleClose} />
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 backdrop-blur-sm px-0 py-0 sm:items-center sm:px-4 sm:py-8" onClick={handleClose}>
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-3xl border border-border bg-surface/95 p-4 shadow-2xl sm:max-w-lg sm:rounded-3xl sm:p-6"
+            className="relative z-[10000] w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-surface-elevated p-4 shadow-[0_40px_120px_rgba(0,0,0,0.8)] sm:max-w-lg sm:rounded-3xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
@@ -418,10 +418,10 @@ export default function ClassesPage() {
                       paymentOption: "BankWithReceipt",
                     }))
                   }
-                  className={`rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                  className={`rounded-2xl px-3 py-2 text-xs font-semibold transition shadow-sm ${
                     form.paymentOption === "BankWithReceipt"
-                      ? "border-secondary bg-secondary/10 text-secondary"
-                      : "border-border bg-background/60 text-foreground/80"
+                      ? "bg-secondary/10 text-secondary"
+                      : "bg-surface-elevated text-foreground/80"
                   }`}
                 >
                   {t(
@@ -480,7 +480,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, amount: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -491,7 +491,7 @@ export default function ClassesPage() {
                       const nextCurrency = resolveCurrency(e.target.value);
                       setForm((prev) => ({ ...prev, currency: nextCurrency }));
                     }}
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   >
                     {currencyOptions.map((option) => (
                       <option key={option} value={option}>
@@ -546,7 +546,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, fullName: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -558,7 +558,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, phone: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
               </div>
@@ -578,7 +578,7 @@ export default function ClassesPage() {
                         emergencyContactName: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -595,7 +595,7 @@ export default function ClassesPage() {
                         emergencyContactPhone: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
               </div>
@@ -612,7 +612,7 @@ export default function ClassesPage() {
                         occupation: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -623,7 +623,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, city: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
               </div>
@@ -656,7 +656,7 @@ export default function ClassesPage() {
                         preferredDaysPerWeek: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -673,7 +673,7 @@ export default function ClassesPage() {
                         preferredSchedule: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                     placeholder={t(
                       "classes.modal.preferredSchedulePlaceholder",
                       "e.g. Mon/Wed/Fri evenings, or Sat/Sun mornings",

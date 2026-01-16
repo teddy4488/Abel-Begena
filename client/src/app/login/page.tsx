@@ -10,7 +10,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { getUserLandingRoute } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/errors";
-import { Mail, Lock, LogIn } from "lucide-react";
+import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function LoginPage() {
   const { t } = useI18n();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -88,7 +89,7 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="w-full max-w-md rounded-3xl border border-border bg-surface/80 p-8 shadow-[0_40px_80px_var(--color-primary-glow)] backdrop-blur"
+        className="w-full max-w-md rounded-3xl bg-surface-elevated p-8 shadow-[0_40px_80px_var(--color-primary-glow)] backdrop-blur"
       >
         <div className="mb-8 text-center">
           <motion.div
@@ -125,7 +126,7 @@ export default function LoginPage() {
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 shadow-sm ${
                 fieldErrors.email ? "border-red-400" : "border-border focus:border-secondary"
               } bg-background/80`}
               placeholder="you@example.com"
@@ -152,16 +153,30 @@ export default function LoginPage() {
                 {t("login.page.forgotPassword")}
               </Link>
             </div>
-            <input
-              type="password"
-              required
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                fieldErrors.password ? "border-red-400" : "border-border focus:border-secondary"
-              } bg-background/80`}
-              placeholder="••••••••"
-            />
+            <div className="relative mt-2">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className={`w-full rounded-2xl border px-4 py-3 pr-10 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                  fieldErrors.password ? "border-red-400" : "border-border focus:border-secondary"
+                } bg-background/80`}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             {fieldErrors.password && (
               <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>
             )}
@@ -171,7 +186,7 @@ export default function LoginPage() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-500"
+              className="rounded-2xl bg-red-500/10 px-4 py-3 text-center text-sm text-red-500 shadow-sm"
             >
               <p>{errorMessage}</p>
               {pendingEmail && (

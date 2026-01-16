@@ -50,7 +50,7 @@ export default function InfoPanel() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="fixed bottom-4 left-4 right-4 md:right-auto md:w-80 lg:w-96 z-30"
+      className="fixed bottom-4 left-4 right-4 md:right-auto md:w-80 lg:w-96 z-[100]"
     >
       <motion.div
         className="bg-gradient-to-br from-begena-cream/98 via-begena-cream/95 to-begena-cream/98 dark:from-begena-darkBrown/98 dark:via-begena-darkBrown/95 dark:to-begena-darkBrown/98 backdrop-blur-lg rounded-xl shadow-2xl border-2 border-begena-gold/40 overflow-hidden"

@@ -71,11 +71,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleSessionExpiry = () => {
-      pushToast({
-        title: "Session expired",
-        description: "Please sign in again to continue.",
-        variant: "error",
-      });
+      // Only show session expired if user was actually logged in
+      // This prevents showing it on page refresh when not logged in
+      const authData = typeof window !== "undefined" 
+        ? window.localStorage.getItem("abel-begena-auth")
+        : null;
+      if (authData) {
+        try {
+          const parsed = JSON.parse(authData);
+          if (parsed.user && parsed.isLoggedIn) {
+            pushToast({
+              title: "Session expired",
+              description: "Please sign in again to continue.",
+              variant: "error",
+            });
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
     };
     const handleApiError = (event: Event) => {
       const detail = (event as CustomEvent<{ message?: string }>).detail;

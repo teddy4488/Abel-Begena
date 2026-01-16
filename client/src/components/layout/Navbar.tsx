@@ -424,7 +424,7 @@ export default function Navbar() {
                 )}
                 <span>
                   {user?.firstName ||
-                    user?.email ||
+                    (user?.email ? user.email.split("@")[0] : "") ||
                     t("nav.profile", "My Account")}
                 </span>
                 <ChevronDown className="h-4 w-4" />
@@ -549,7 +549,7 @@ export default function Navbar() {
                     )}
                     <span>
                       {user?.firstName ||
-                        user?.email ||
+                        (user?.email ? user.email.split("@")[0] : "") ||
                         t("nav.profile", "My Account")}
                     </span>
                   </span>

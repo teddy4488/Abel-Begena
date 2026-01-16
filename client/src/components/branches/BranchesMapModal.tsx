@@ -82,13 +82,15 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-1200 flex items-center justify-center bg-black/60 px-4 py-8"
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        onClick={handleClose}
       >
         <motion.div
-          className="relative flex w-full max-w-4xl flex-col gap-4 rounded-3xl border border-border bg-surface p-4 shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
+          className="relative z-[10000] flex w-full max-w-4xl flex-col gap-4 rounded-3xl bg-surface-elevated p-4 shadow-[0_40px_120px_rgba(0,0,0,0.8)]"
+          onClick={(e) => e.stopPropagation()}
           initial={{ opacity: 0, y: 32, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -113,7 +115,7 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
             </button>
           </div>
 
-          <div className="flex gap-3 overflow-x-auto rounded-2xl border border-border bg-background/80 px-3 py-2 text-xs">
+          <div className="flex gap-3 overflow-x-auto rounded-2xl bg-surface px-3 py-2 text-xs shadow-sm">
             {safeBranches.map((branch) => (
               <button
                 key={branch._id}
@@ -136,7 +138,7 @@ export function BranchesMapModal({ open, onClose, branches }: Props) {
             )}
           </div>
 
-          <div className="relative h-[320px] overflow-hidden rounded-2xl border border-border bg-background/80">
+          <div className="relative h-[320px] overflow-hidden rounded-2xl bg-background shadow-inner">
             {safeBranches.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-foreground/60">
                 Branches will appear here once locations are configured.

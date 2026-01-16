@@ -133,7 +133,7 @@ export default function ProfilePage() {
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6 rounded-[32px] border border-border bg-surface p-8 shadow-lg"
+          className="space-y-6 rounded-[32px] bg-surface-elevated p-8 shadow-lg"
         >
           <div className="flex flex-wrap items-center gap-6">
             <div className="relative">
@@ -196,7 +196,7 @@ export default function ProfilePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="space-y-6 rounded-3xl border border-border bg-surface/90 p-8 shadow-lg backdrop-blur"
+          className="space-y-6 rounded-3xl bg-surface-elevated/90 p-8 shadow-lg backdrop-blur"
         >
           <div className="grid gap-6 md:grid-cols-2">
             <motion.label
@@ -215,7 +215,7 @@ export default function ProfilePage() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, firstName: e.target.value }))
                 }
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40 shadow-sm"
                 placeholder="Abel"
               />
             </motion.label>
@@ -235,7 +235,7 @@ export default function ProfilePage() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, lastName: e.target.value }))
                 }
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40"
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/40 shadow-sm"
                 placeholder="Begena"
               />
             </motion.label>

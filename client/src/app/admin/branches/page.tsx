@@ -393,12 +393,13 @@ export default function AdminBranchesPage() {
 
       {/* Branch Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-8" onClick={handleReset}>
           <motion.div
             initial={{ opacity: 0, y: 40, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.96 }}
-            className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-surface p-6 shadow-2xl"
+            className="relative z-[10000] w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-surface-elevated p-6 shadow-[0_40px_120px_rgba(0,0,0,0.8)]"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
               <div>

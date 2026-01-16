@@ -62,7 +62,7 @@ export default function HeritagePage() {
       <div className="mx-auto max-w-5xl space-y-6 sm:space-y-10">
         <motion.header
           style={{ opacity: heroOpacity, scale: heroScale }}
-          className="space-y-3 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
+          className="space-y-3 rounded-2xl bg-linear-to-br from-surface-elevated via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
         >
           <p className="text-xs uppercase tracking-[0.35em] text-secondary">
             {t("heritage.page.kicker")}
@@ -75,21 +75,21 @@ export default function HeritagePage() {
           </p>
         </motion.header>
 
-        <div className="sticky top-20 z-30 rounded-2xl border border-border bg-background/80 p-3 shadow-lg backdrop-blur sm:top-24 sm:rounded-3xl sm:p-5">
+        <div className="sticky top-20 z-30 rounded-2xl bg-surface-elevated/90 p-3 shadow-lg backdrop-blur sm:top-24 sm:rounded-3xl sm:p-5">
           <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t("heritage.page.search")}
-              className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="w-full rounded-2xl bg-surface-elevated px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-secondary/30 shadow-sm"
             />
             <select
               value={sortOrder}
               onChange={(e) =>
                 setSortOrder(e.target.value as "newest" | "oldest")
               }
-              className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="rounded-2xl bg-surface-elevated px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-secondary/30 shadow-sm"
             >
               <option value="newest">{t("heritage.page.sort.newest")}</option>
               <option value="oldest">{t("heritage.page.sort.oldest")}</option>
@@ -114,9 +114,9 @@ export default function HeritagePage() {
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
-              className="flex flex-col gap-5 rounded-3xl border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] md:flex-row"
+              className="flex flex-col gap-5 rounded-3xl bg-surface-elevated p-6 shadow-lg md:flex-row"
             >
-              <div className="relative h-48 w-full overflow-hidden rounded-2xl border border-border md:h-auto md:w-56">
+              <div className="relative h-48 w-full overflow-hidden rounded-2xl shadow-md md:h-auto md:w-56">
                 <div
                   className="h-full w-full bg-cover bg-center"
                   style={{ backgroundImage: `url(${post.coverImage})` }}
