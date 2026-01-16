@@ -52,13 +52,11 @@ export class MaterialsController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
   async getMaterials(
     @Query('instrumentType') instrumentType?: InstrumentType,
-    @Request() req?: { user: { sub: string; role: string } },
   ) {
-    // If user is a student, filter by their instrument type
-    // If user is teacher/admin, they can see all or filter by instrument type
+    // Materials are accessible to all students (public endpoint)
+    // Filter by instrument type if provided
     return this.materialsService.getMaterialsByInstrument(instrumentType);
   }
 

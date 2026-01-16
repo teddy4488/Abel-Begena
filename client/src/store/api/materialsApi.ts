@@ -38,6 +38,18 @@ export const materialsApi = createApi({
       }),
       providesTags: ["Materials"],
     }),
+    getPublicMaterials: builder.query<
+      InstrumentMaterial[],
+      { instrumentType?: InstrumentType } | void
+    >({
+      query: (params) => ({
+        url: "/materials",
+        params: params?.instrumentType
+          ? { instrumentType: params.instrumentType }
+          : undefined,
+      }),
+      providesTags: ["Materials"],
+    }),
     getTeacherMaterials: builder.query<InstrumentMaterial[], void>({
       query: () => "/materials/teacher",
       providesTags: ["Materials"],
@@ -79,6 +91,7 @@ export const materialsApi = createApi({
 
 export const {
   useGetMaterialsQuery,
+  useGetPublicMaterialsQuery,
   useGetTeacherMaterialsQuery,
   useUploadInstrumentMaterialMutation,
   useDeleteMaterialMutation,

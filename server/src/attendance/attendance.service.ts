@@ -336,6 +336,38 @@ export class AttendanceService {
     return created.toObject();
   }
 
+  async getStudentAttendanceRecords(studentId: string) {
+    const participant = await this.studentParticipantModel.findById(studentId).exec();
+    if (!participant) {
+      throw new NotFoundException('Student participant not found');
+    }
+
+    const records = await this.studentAttendanceModel
+      .find({ participantId: participant._id })
+      .populate('lessonId', 'title code instrumentType')
+      .populate('revisedLessonId', 'title code instrumentType')
+      .sort({ sessionDate: -1 })
+      .lean()
+      .exec();
+
+    return records;
+  }
+
+  async getStudentPayments(studentId: string) {
+    const participant = await this.studentParticipantModel.findById(studentId).exec();
+    if (!participant) {
+      throw new NotFoundException('Student participant not found');
+    }
+
+    const payments = await this.studentPaymentModel
+      .find({ participantId: participant._id })
+      .sort({ year: -1, month: -1 })
+      .lean()
+      .exec();
+
+    return payments;
+  }
+
   async listInstrumentLessons(instrumentType?: string) {
     const filter: any = { isActive: true };
     if (instrumentType) {

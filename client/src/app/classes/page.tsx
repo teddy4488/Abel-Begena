@@ -281,11 +281,11 @@ export default function ClassesPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex min-h-[200px] items-center justify-center rounded-3xl border border-border bg-surface">
+          <div className="flex min-h-[200px] items-center justify-center rounded-3xl surface-elevated shadow-lg">
             <Loader2 className="h-6 w-6 animate-spin text-secondary" />
           </div>
         ) : formattedClasses.length === 0 ? (
-          <div className="rounded-3xl border border-border bg-surface p-10 text-center text-sm text-foreground/70">
+          <div className="rounded-3xl surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg">
             {t(
               "classes.empty",
               "New cohorts are being prepared. Please check again soon.",
@@ -308,7 +308,7 @@ export default function ClassesPage() {
                 <motion.article
                   key={klass._id}
                   whileHover={{ y: -4 }}
-                  className="flex flex-col rounded-[28px] border border-border bg-surface/90 p-6 shadow-[0_25px_60px_rgba(34,6,9,0.08)] backdrop-blur"
+                  className="flex flex-col rounded-[28px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] backdrop-blur-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-2xl font-serif text-primary">
@@ -356,18 +356,20 @@ export default function ClassesPage() {
                         type="button"
                         onClick={() => handleOpen(klass)}
                         className="inline-flex flex-1 items-center justify-center rounded-full bg-primary px-4 py-2 font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
-                        disabled={status === "active" || isClosed}
+                        disabled={(status === "active" || status === "pending") || isClosed}
                       >
                         {status === "active"
                           ? t("classes.enrolled", "Already enrolled")
-                          : isClosed
-                            ? t("classes.deadlineClosed", "Closed")
-                            : t("classes.enrollCta", "Enroll now")}
+                          : status === "pending"
+                            ? t("classes.pending", "Enrollment pending")
+                            : isClosed
+                              ? t("classes.deadlineClosed", "Closed")
+                              : t("classes.enrollCta", "Enroll now")}
                       </button>
                     )}
                     <Link
-                      href="/dashboard"
-                      className="inline-flex items-center justify-center rounded-full border border-border px-4 py-2 text-foreground transition hover:bg-(--color-secondary-soft)"
+                      href={user?.userType === "student" ? "/student" : "/dashboard"}
+                      className="inline-flex items-center justify-center rounded-full surface-elevated px-4 py-2 text-foreground transition hover:shadow-lg"
                     >
                       {t("classes.dashboardCta", "View dashboard")}
                     </Link>

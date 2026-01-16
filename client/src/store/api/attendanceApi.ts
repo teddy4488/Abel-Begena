@@ -297,6 +297,34 @@ export const attendanceApi = createApi({
       }),
       providesTags: ["Eligibility"],
     }),
+    getMyAttendance: builder.query<
+      Array<{
+        _id: string;
+        sessionDate: string;
+        status: AttendanceStatus;
+        lessonId: { _id: string; title: string; code?: string };
+        revisedLessonId?: { _id: string; title: string; code?: string };
+      }>,
+      void
+    >({
+      query: () => "/attendance/students/me/attendance",
+      providesTags: ["StudentAttendance"],
+    }),
+    getMyPayments: builder.query<
+      Array<{
+        _id: string;
+        year: number;
+        month: number;
+        amount: number;
+        status: "paid" | "partial" | "unpaid";
+        note?: string;
+        createdAt?: string;
+      }>,
+      void
+    >({
+      query: () => "/attendance/students/me/payments",
+      providesTags: ["StudentPayments"],
+    }),
   }),
 });
 
@@ -317,4 +345,6 @@ export const {
   useGetBillingSummaryQuery,
   useRecordStudentPaymentMutation,
   useGetGraduationEligibilityQuery,
+  useGetMyAttendanceQuery,
+  useGetMyPaymentsQuery,
 } = attendanceApi;

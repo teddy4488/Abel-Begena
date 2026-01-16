@@ -108,7 +108,7 @@ export default function StorePage() {
       <div className="mx-auto max-w-6xl space-y-6 sm:space-y-10">
         <motion.header
           style={{ y: heroTranslate, opacity: heroOpacity }}
-          className="space-y-3 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
+          className="space-y-3 rounded-2xl surface-elevated bg-gradient-to-br from-surface via-background to-secondary/5 p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6 md:p-8"
         >
           <p className="text-xs uppercase tracking-[0.3em] text-secondary">
             {t("store.page.kicker")}
@@ -126,21 +126,21 @@ export default function StorePage() {
           </div>
         </motion.header>
 
-        <div className="sticky top-20 z-30 rounded-2xl border border-border bg-background/80 p-3 shadow-lg backdrop-blur sm:top-24 sm:rounded-3xl sm:p-5">
+        <div className="sticky top-20 z-30 rounded-2xl surface-elevated p-3 shadow-[0_25px_60px_rgba(18,6,6,0.12)] backdrop-blur-sm sm:top-24 sm:rounded-3xl sm:p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t("store.page.search")}
-              className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="w-full rounded-2xl surface-elevated px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-secondary/30 shadow-sm"
             />
             <select
               value={sortOrder}
               onChange={(e) =>
                 setSortOrder(e.target.value as "newest" | "priceAsc" | "priceDesc")
               }
-              className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="rounded-2xl surface-elevated px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-secondary/30 shadow-sm"
             >
               <option value="newest">{t("store.page.sort.newest")}</option>
               <option value="priceAsc">{t("store.page.sort.priceAsc")}</option>
@@ -153,10 +153,10 @@ export default function StorePage() {
                 key={filter}
                 type="button"
                 onClick={() => setCategory(filter)}
-                className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                className={`rounded-full surface-elevated px-4 py-2 text-xs font-semibold uppercase tracking-wide transition shadow-sm ${
                   category === filter
-                    ? "border-secondary bg-secondary/20 text-secondary"
-                    : "border-border text-foreground/70 hover:border-secondary/60"
+                    ? "bg-secondary/20 text-secondary shadow-lg"
+                    : "text-foreground/70 hover:shadow-md"
                 }`}
               >
                 {filter === "All" ? t("store.page.filter.all") : filter}
@@ -187,11 +187,11 @@ export default function StorePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="group flex flex-col rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-5"
+                className="group flex flex-col rounded-2xl surface-elevated p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] hover:shadow-[0_30px_70px_rgba(18,6,6,0.15)] transition-all sm:rounded-3xl sm:p-5"
               >
                 <Link
                   href={`/store/${product._id}`}
-                  className="relative block aspect-4/3 overflow-hidden rounded-2xl border border-border bg-background/80"
+                  className="relative block aspect-4/3 overflow-hidden rounded-2xl surface-elevated shadow-sm"
                 >
                 {onPromo && (
                   <span className="absolute left-3 top-3 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-primary-foreground shadow">
