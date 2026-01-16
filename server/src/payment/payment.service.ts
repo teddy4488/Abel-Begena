@@ -15,6 +15,7 @@ import {
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { ClassService } from '../class/class.service';
+import { AttendanceService } from '../attendance/attendance.service';
 import {
   Order,
   OrderDocument,
@@ -30,6 +31,8 @@ export class PaymentService {
     private readonly orderModel: Model<OrderDocument>,
     @Inject(forwardRef(() => ClassService))
     private readonly classService: ClassService,
+    @Inject(forwardRef(() => AttendanceService))
+    private readonly attendanceService: AttendanceService,
   ) {}
 
   async create(dto: Omit<CreatePaymentRequestDto, 'userId'>, userId: string) {
@@ -60,6 +63,7 @@ export class PaymentService {
       receiptUrl: dto.receiptUrl,
       status: 'pending' as PaymentRequestStatus,
       reviewNote: dto.reviewNote,
+      conversionData: (dto as any).conversionData,
     });
     return created.toObject();
   }
@@ -149,18 +153,22 @@ export class PaymentService {
     if (
       dto.status === 'approved' &&
       payment.type === 'student_conversion' &&
-      payment.userId
+      payment.userId &&
+      payment.conversionData
     ) {
       try {
-        // The conversion data should be stored in reviewNote or we need to fetch it
-        // For now, we'll let the admin manually trigger the conversion
-        // This can be enhanced later to automatically convert
+        const conversionData = JSON.parse(payment.conversionData);
+        await this.attendanceService.convertUserToStudent(
+          payment.userId.toString(),
+          conversionData,
+        );
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(
           'Failed to convert user to student after payment approval:',
           error,
         );
+        // Don't throw - payment is already approved, conversion can be done manually
       }
     }
 

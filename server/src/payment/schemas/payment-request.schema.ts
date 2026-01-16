@@ -16,7 +16,7 @@ export class PaymentRequest {
 
   @Prop({
     type: String,
-    enum: ['enrollment', 'order', 'tuition'],
+    enum: ['enrollment', 'order', 'tuition', 'student_conversion'],
     required: true,
   })
   type: PaymentRequestType;
@@ -56,6 +56,10 @@ export class PaymentRequest {
 
   @Prop({ type: String, trim: true, maxlength: 400 })
   reviewNote?: string;
+
+  // Store conversion data as JSON string for student_conversion type
+  @Prop({ type: String })
+  conversionData?: string;
 }
 
 export const PaymentRequestSchema =

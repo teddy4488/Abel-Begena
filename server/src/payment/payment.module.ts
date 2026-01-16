@@ -7,6 +7,7 @@ import {
   PaymentRequestSchema,
 } from './schemas/payment-request.schema';
 import { ClassModule } from '../class/class.module';
+import { AttendanceModule } from '../attendance/attendance.module';
 import { Order, OrderSchema } from '../order/schemas/order.schema';
 
 @Module({
@@ -16,6 +17,7 @@ import { Order, OrderSchema } from '../order/schemas/order.schema';
       { name: Order.name, schema: OrderSchema },
     ]),
     forwardRef(() => ClassModule),
+    forwardRef(() => AttendanceModule),
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

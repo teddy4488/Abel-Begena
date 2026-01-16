@@ -160,7 +160,30 @@ export default function BecomeStudentPage() {
     }
 
     try {
-      // First create payment request
+      // Prepare conversion data
+      const conversionData = {
+        fullName: form.fullName,
+        branchId: form.learningType === "physical" ? form.branchId : undefined,
+        learningType: form.learningType,
+        instrumentType: form.instrumentType,
+        programDurationMonths: form.programDurationMonths,
+        preferredLearningDays: form.preferredLearningDays,
+        registrationStartDate: form.registrationStartDate,
+        preferredSchedule: form.preferredSchedule || undefined,
+        phone: form.phone || undefined,
+        emergencyContactName: form.emergencyContactName || undefined,
+        emergencyContactPhone: form.emergencyContactPhone || undefined,
+        occupation: form.occupation || undefined,
+        city: form.city || undefined,
+        address: form.address || undefined,
+        amount: form.amount,
+        currency: form.currency,
+        paymentMethod: form.paymentMethod,
+        paymentReference: form.paymentReference,
+        note: form.note || undefined,
+      };
+
+      // Create payment request with conversion data
       const paymentRequest = await createPayment({
         type: "student_conversion",
         amount: form.amount,
@@ -168,6 +191,7 @@ export default function BecomeStudentPage() {
         method: form.paymentMethod,
         reference: form.paymentReference,
         reviewNote: form.note || undefined,
+        conversionData: JSON.stringify(conversionData),
       }).unwrap();
 
       // Then convert user to student (this will be pending until admin approves payment)

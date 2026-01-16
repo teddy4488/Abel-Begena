@@ -33,6 +33,7 @@ export type CreatePaymentRequestBody = {
   reference?: string;
   receiptUrl?: string;
   reviewNote?: string;
+  conversionData?: string; // JSON string for student_conversion type
 };
 
 export type UpdatePaymentStatusBody = {
