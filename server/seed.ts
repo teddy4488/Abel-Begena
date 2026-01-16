@@ -7,21 +7,43 @@ config({ path: '.env' });
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/abel-begena';
 
+// Instrument types enum
+const InstrumentType = {
+  BEGENA: 'Begena',
+  KIRAR: 'Kirar',
+  MASINKO: 'Masinko',
+  WASHINT: 'Washint',
+  KEBERO: 'Kebero',
+  OTHER: 'Other',
+};
+
 // User Schema (website users only)
 const UserSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     password: { type: String, required: true },
-    firstName: String,
-    lastName: String,
-    phone: String,
+    firstName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
+    phone: { type: String, unique: true, sparse: true, trim: true },
     role: {
       type: String,
       enum: ['User'],
       default: 'User',
+      required: true,
     },
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true, required: true },
     isVerified: { type: Boolean, default: false },
+    verificationCode: { type: String, default: null },
+    verificationCodeExpiresAt: { type: Date, default: null },
+    passwordResetCode: { type: String, default: null },
+    passwordResetCodeExpiresAt: { type: Date, default: null },
+    teacherStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'suspended'],
+    },
+    avatarUrl: { type: String },
+    bio: { type: String, trim: true },
+    languagePreference: { type: String, enum: ['en', 'am'], default: 'en' },
   },
   { timestamps: true },
 );
@@ -29,20 +51,24 @@ const UserSchema = new mongoose.Schema(
 // Teacher Schema
 const TeacherSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     password: { type: String, required: true },
-    firstName: String,
-    lastName: String,
-    phone: String,
+    firstName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
+    phone: { type: String, unique: true, sparse: true, trim: true },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
+    verificationCode: { type: String, default: null },
+    verificationCodeExpiresAt: { type: Date, default: null },
+    passwordResetCode: { type: String, default: null },
+    passwordResetCodeExpiresAt: { type: Date, default: null },
     teacherStatus: {
       type: String,
       enum: ['pending', 'approved', 'suspended'],
       default: 'pending',
     },
-    avatarUrl: String,
-    bio: String,
+    avatarUrl: { type: String },
+    bio: { type: String, trim: true },
     languagePreference: { type: String, enum: ['en', 'am'], default: 'en' },
   },
   { timestamps: true },
@@ -51,14 +77,18 @@ const TeacherSchema = new mongoose.Schema(
 // AdminUser Schema
 const AdminUserSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     password: { type: String, required: true },
-    firstName: String,
-    lastName: String,
-    phone: String,
+    firstName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
+    phone: { type: String, unique: true, sparse: true, trim: true },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
-    avatarUrl: String,
+    verificationCode: { type: String, default: null },
+    verificationCodeExpiresAt: { type: Date, default: null },
+    passwordResetCode: { type: String, default: null },
+    passwordResetCodeExpiresAt: { type: Date, default: null },
+    avatarUrl: { type: String },
     languagePreference: { type: String, enum: ['en', 'am'], default: 'en' },
   },
   { timestamps: true },
@@ -67,57 +97,199 @@ const AdminUserSchema = new mongoose.Schema(
 // StudentAttendanceParticipant Schema
 const StudentAttendanceParticipantSchema = new mongoose.Schema(
   {
-    email: { type: String, unique: true, sparse: true },
+    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true, index: true },
     password: { type: String },
-    fullName: { type: String, required: true },
-    attendanceNumber: { type: String, required: true, unique: true },
-    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+    fullName: { type: String, required: true, trim: true, maxlength: 120 },
+    attendanceNumber: { type: String, required: true, unique: true, trim: true, index: true, maxlength: 20 },
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
     learningType: { type: String, enum: ['physical', 'online'], required: true },
-    instrumentType: { type: String, required: true },
+    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true },
     programDurationMonths: { type: Number, enum: [3, 6, 9], required: true },
     preferredLearningDays: { type: [String], required: true },
     registrationStartDate: { type: Date, required: true },
     learningDaysPerWeek: { type: Number, required: true },
+    preferredSchedule: { type: String, trim: true, maxlength: 240 },
+    phone: { type: String, trim: true, maxlength: 40 },
+    emergencyContactName: { type: String, trim: true, maxlength: 120 },
+    emergencyContactPhone: { type: String, trim: true, maxlength: 40 },
+    occupation: { type: String, trim: true, maxlength: 120 },
+    city: { type: String, trim: true, maxlength: 120 },
+    address: { type: String, trim: true, maxlength: 240 },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
-    verificationCode: String,
-    verificationCodeExpiresAt: Date,
-    passwordResetCode: String,
-    passwordResetCodeExpiresAt: Date,
+    verificationCode: { type: String, default: null },
+    verificationCodeExpiresAt: { type: Date, default: null },
+    passwordResetCode: { type: String, default: null },
+    passwordResetCodeExpiresAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
 
-// Class Schema (simplified for seeding)
+// TeacherAttendanceParticipant Schema
+const TeacherAttendanceParticipantSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, required: true, trim: true, maxlength: 120 },
+    instruments: {
+      type: [String],
+      enum: Object.values(InstrumentType),
+      required: true,
+      validate: {
+        validator: (instruments: string[]) => instruments.length > 0,
+        message: 'Teacher must teach at least one instrument',
+      },
+    },
+    teachingDays: {
+      type: [String],
+      enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      required: true,
+    },
+    timeRanges: {
+      type: [
+        {
+          day: { type: String, enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] },
+          startTime: { type: String, required: true },
+          endTime: { type: String, required: true },
+        },
+      ],
+      required: true,
+    },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
+// InstrumentLesson Schema
+const InstrumentLessonSchema = new mongoose.Schema(
+  {
+    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true },
+    title: { type: String, required: true, trim: true, maxlength: 120 },
+    code: { type: String, trim: true, maxlength: 60 },
+    order: { type: Number, min: 0, default: 0 },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
+// StudentAttendance Schema
+const StudentAttendanceSchema = new mongoose.Schema(
+  {
+    participantId: { type: mongoose.Schema.Types.ObjectId, ref: 'StudentAttendanceParticipant', required: true, index: true },
+    attendanceNumber: { type: String, required: true, trim: true, index: true },
+    studentName: { type: String, required: true, trim: true },
+    sessionDate: { type: Date, required: true, index: true },
+    lessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'InstrumentLesson', required: true },
+    revisedLessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'InstrumentLesson' },
+    status: { type: String, enum: ['present', 'late', 'excused'], default: 'present' },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true },
+);
+
+// TeacherAttendance Schema
+const TeacherAttendanceSchema = new mongoose.Schema(
+  {
+    participantId: { type: mongoose.Schema.Types.ObjectId, ref: 'TeacherAttendanceParticipant', required: true, index: true },
+    checkInAt: { type: Date, required: true },
+    checkOutAt: { type: Date },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true },
+);
+
+// StudentPayment Schema
+const StudentPaymentSchema = new mongoose.Schema(
+  {
+    participantId: { type: mongoose.Schema.Types.ObjectId, ref: 'StudentAttendanceParticipant', required: true, index: true },
+    attendanceNumber: { type: String, required: true, trim: true, index: true },
+    studentName: { type: String, required: true, trim: true },
+    paymentDate: { type: Date, required: true, index: true },
+    amount: { type: Number, required: true, min: 0 },
+    currency: { type: String, trim: true, maxlength: 12, default: 'ETB' },
+    method: { type: String, trim: true, maxlength: 40 },
+    reference: { type: String, trim: true, maxlength: 120 },
+    status: { type: String, enum: ['paid', 'partial', 'unpaid'], default: 'paid' },
+    note: { type: String, trim: true, maxlength: 400 },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true },
+);
+
+// Class Schema
 const ClassSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
-    instructorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Teacher',
-      required: true,
-    },
+    description: { type: String, trim: true },
+    classType: { type: String, enum: ['online', 'physical', 'both'], default: 'online' },
+    instructorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    capacity: { type: Number, min: 0 },
     materials: {
       type: [
         {
-          title: String,
-          url: String,
-          uploadedAt: Date,
+          title: { type: String, required: true },
+          url: { type: String, required: true },
+          uploadedAt: { type: Date, default: Date.now },
         },
       ],
       default: [],
     },
     isLive: { type: Boolean, default: false },
-    liveRoomCode: String,
+    liveRoomCode: { type: String },
+    enrollments: {
+      type: [
+        {
+          student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+          enrolledAt: { type: Date, default: Date.now },
+          status: { type: String, enum: ['active', 'pending', 'withdrawn'], default: 'active' },
+          amountPaid: { type: Number, min: 0 },
+          currency: { type: String, trim: true, maxlength: 12 },
+          paymentMethod: { type: String, trim: true, maxlength: 40 },
+          paymentReference: { type: String, trim: true, maxlength: 120 },
+          note: { type: String, trim: true, maxlength: 400 },
+          fullName: { type: String, trim: true, maxlength: 160 },
+          phone: { type: String, trim: true, maxlength: 40 },
+          emergencyContactName: { type: String, trim: true, maxlength: 120 },
+          emergencyContactPhone: { type: String, trim: true, maxlength: 40 },
+          occupation: { type: String, trim: true, maxlength: 120 },
+          city: { type: String, trim: true, maxlength: 120 },
+          address: { type: String, trim: true, maxlength: 240 },
+          preferredDaysPerWeek: { type: Number, min: 1 },
+          preferredSchedule: { type: String, trim: true, maxlength: 240 },
+          learningGoals: { type: String, trim: true, maxlength: 240 },
+          notesForTeacher: { type: String, trim: true, maxlength: 400 },
+          receiptUrl: { type: String, trim: true, maxlength: 400 },
+          approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+          approvedAt: { type: Date },
+        },
+      ],
+      default: [],
+    },
+    schedule: {
+      type: [
+        {
+          _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
+          title: { type: String, required: true, trim: true, maxlength: 160 },
+          startTime: { type: Date, required: true },
+          endTime: { type: Date },
+          location: { type: String, trim: true, maxlength: 160 },
+          notes: { type: String, trim: true, maxlength: 800 },
+        },
+      ],
+      default: [],
+    },
+    tuition: { type: Number, min: 0 },
+    currency: { type: String, trim: true, maxlength: 12, default: 'ETB' },
+    enrollmentDeadline: { type: Date },
   },
   { timestamps: true },
 );
 
-// Branch Schema (simplified for seeding)
+// Branch Schema
 const BranchSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, trim: true },
+    slug: { type: String, required: true, trim: true, unique: true },
     description: { type: String, trim: true },
     address: { type: String, trim: true },
     city: { type: String, trim: true },
@@ -139,12 +311,135 @@ const BranchSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// BlogPost Schema
+const BlogPostSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    slug: { type: String, required: true, unique: true, lowercase: true, index: true },
+    content: { type: String, required: true },
+    author: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+    coverImage: { type: String, required: true },
+    isPublished: { type: Boolean, default: false },
+    status: { type: String, enum: ['draft', 'pending', 'published'], default: 'draft' },
+    publishedAt: { type: Date },
+  },
+  { timestamps: true },
+);
+
+// Comment Schema
+const CommentSchema = new mongoose.Schema(
+  {
+    postId: { type: mongoose.Schema.Types.ObjectId, ref: 'BlogPost', required: true, index: true },
+    authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    content: { type: String, required: true, trim: true, maxlength: 2000 },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  },
+  { timestamps: true },
+);
+
+// FAQ Schema
+const FaqSchema = new mongoose.Schema(
+  {
+    question: { type: String, required: true, trim: true },
+    answer: { type: String, required: true, trim: true },
+    order: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
+// InstrumentMaterial Schema
+const InstrumentMaterialSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 200 },
+    url: { type: String, required: true },
+    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true, index: true },
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+    uploadedAt: { type: Date, default: Date.now },
+    description: { type: String, trim: true, maxlength: 500 },
+    fileType: { type: String, enum: ['pdf', 'image', 'video', 'other'], default: 'other' },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
+// PaymentRequest Schema
+const PaymentRequestSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    type: { type: String, enum: ['enrollment', 'order', 'tuition', 'student_conversion'], required: true },
+    targetId: { type: mongoose.Schema.Types.ObjectId },
+    amount: { type: Number, min: 0, required: true },
+    currency: { type: String, trim: true, maxlength: 12, default: 'ETB' },
+    method: { type: String, trim: true, maxlength: 40 },
+    reference: { type: String, trim: true, maxlength: 120 },
+    receiptUrl: { type: String, trim: true, maxlength: 400 },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
+    reviewedAt: { type: Date },
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reviewNote: { type: String, trim: true, maxlength: 400 },
+    conversionData: { type: String },
+  },
+  { timestamps: true },
+);
+
+// Product Schema (simplified)
+const ProductSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true },
+    shortDescription: { type: String },
+    description: { type: String },
+    price: { type: Number, required: true, min: 0 },
+    currency: { type: String, default: 'ETB' },
+    stock: { type: Number, default: 0 },
+    images: { type: [String], default: [] },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
+// Order Schema (simplified)
+const OrderSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    items: {
+      type: [
+        {
+          productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+          quantity: { type: Number, required: true, min: 1 },
+          price: { type: Number, required: true, min: 0 },
+        },
+      ],
+      required: true,
+    },
+    total: { type: Number, required: true, min: 0 },
+    currency: { type: String, default: 'ETB' },
+    status: { type: String, enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
+    isPaid: { type: Boolean, default: false },
+  },
+  { timestamps: true },
+);
+
+// Create models
 const User = mongoose.model('User', UserSchema);
 const Teacher = mongoose.model('Teacher', TeacherSchema);
 const AdminUser = mongoose.model('AdminUser', AdminUserSchema);
 const StudentAttendanceParticipant = mongoose.model('StudentAttendanceParticipant', StudentAttendanceParticipantSchema);
+const TeacherAttendanceParticipant = mongoose.model('TeacherAttendanceParticipant', TeacherAttendanceParticipantSchema);
+const InstrumentLesson = mongoose.model('InstrumentLesson', InstrumentLessonSchema);
+const StudentAttendance = mongoose.model('StudentAttendance', StudentAttendanceSchema);
+const TeacherAttendance = mongoose.model('TeacherAttendance', TeacherAttendanceSchema);
+const StudentPayment = mongoose.model('StudentPayment', StudentPaymentSchema);
 const Class = mongoose.model('Class', ClassSchema);
 const Branch = mongoose.model('Branch', BranchSchema);
+const BlogPost = mongoose.model('BlogPost', BlogPostSchema);
+const Comment = mongoose.model('Comment', CommentSchema);
+const Faq = mongoose.model('Faq', FaqSchema);
+const InstrumentMaterial = mongoose.model('InstrumentMaterial', InstrumentMaterialSchema);
+const PaymentRequest = mongoose.model('PaymentRequest', PaymentRequestSchema);
+const Product = mongoose.model('Product', ProductSchema);
+const Order = mongoose.model('Order', OrderSchema);
 
 async function seed() {
   try {
@@ -159,7 +454,7 @@ async function seed() {
       const collections = await mongoose.connection.db.listCollections().toArray();
       for (const collection of collections) {
         await mongoose.connection.db.dropCollection(collection.name).catch(() => {
-          console.log(`⚠️  Collection ${collection.name} does not exist, skipping drop`);
+          // Ignore errors for non-existent collections
         });
       }
       console.log('🗑️  Dropped all existing collections');
@@ -188,36 +483,9 @@ async function seed() {
       isActive: true,
       isVerified: true,
       teacherStatus: 'approved',
+      bio: 'Experienced Begena master with 20+ years of teaching experience.',
     });
     console.log('✅ Created Teacher user:', teacher.email);
-
-    // Create Sample Class taught by the teacher
-    const sampleClass = await Class.create({
-      title: 'Introduction to Begena: The Harp of David',
-      instructorId: teacher._id,
-      isLive: false,
-      liveRoomCode: 'begena-101',
-      materials: [
-        {
-          title: 'Week 1: Historical Context',
-          url: 'https://example.com/material1.pdf',
-          uploadedAt: new Date(),
-        },
-      ],
-    });
-    console.log('✅ Created sample class:', sampleClass.title);
-
-    // Create a Standard Website User for testing
-    const websiteUser = await User.create({
-      email: 'user@abelbegena.com',
-      password: hashedPassword,
-      firstName: 'Test',
-      lastName: 'User',
-      role: 'User',
-      isActive: true,
-      isVerified: true,
-    });
-    console.log('✅ Created Website user:', websiteUser.email);
 
     // Create sample branches in Addis Ababa (must be created before student)
     const branches = await Branch.insertMany([
@@ -228,8 +496,7 @@ async function seed() {
         address: 'Bole Medhane Alem area',
         city: 'Addis Ababa',
         region: 'Addis Ababa',
-        // [lng, lat]
-        location: { type: 'Point', coordinates: [38.788, 8.993] },
+        location: { type: 'Point', coordinates: [38.788, 8.993] }, // [lng, lat]
         radiusMeters: 600,
         isActive: true,
       },
@@ -258,6 +525,54 @@ async function seed() {
     ]);
     console.log('✅ Created branches:', branches.map((b) => b.name).join(', '));
 
+    // Create Instrument Lessons for each instrument type
+    const begenaLessons = await InstrumentLesson.insertMany([
+      { instrumentType: InstrumentType.BEGENA, title: 'Introduction to Begena', code: 'BEG-001', order: 1, isActive: true },
+      { instrumentType: InstrumentType.BEGENA, title: 'Basic Posture and Holding', code: 'BEG-002', order: 2, isActive: true },
+      { instrumentType: InstrumentType.BEGENA, title: 'String Tuning Fundamentals', code: 'BEG-003', order: 3, isActive: true },
+      { instrumentType: InstrumentType.BEGENA, title: 'First Melodies', code: 'BEG-004', order: 4, isActive: true },
+      { instrumentType: InstrumentType.BEGENA, title: 'Traditional Mezmur Patterns', code: 'BEG-005', order: 5, isActive: true },
+    ]);
+
+    const masinkoLessons = await InstrumentLesson.insertMany([
+      { instrumentType: InstrumentType.MASINKO, title: 'Introduction to Masinko', code: 'MAS-001', order: 1, isActive: true },
+      { instrumentType: InstrumentType.MASINKO, title: 'Bow Technique Basics', code: 'MAS-002', order: 2, isActive: true },
+      { instrumentType: InstrumentType.MASINKO, title: 'Finger Positioning', code: 'MAS-003', order: 3, isActive: true },
+      { instrumentType: InstrumentType.MASINKO, title: 'Basic Scales', code: 'MAS-004', order: 4, isActive: true },
+    ]);
+
+    const keberoLessons = await InstrumentLesson.insertMany([
+      { instrumentType: InstrumentType.KEBERO, title: 'Introduction to Kebero', code: 'KEB-001', order: 1, isActive: true },
+      { instrumentType: InstrumentType.KEBERO, title: 'Hand Techniques', code: 'KEB-002', order: 2, isActive: true },
+      { instrumentType: InstrumentType.KEBERO, title: 'Rhythm Patterns', code: 'KEB-003', order: 3, isActive: true },
+    ]);
+
+    const kirarLessons = await InstrumentLesson.insertMany([
+      { instrumentType: InstrumentType.KIRAR, title: 'Introduction to Kirar', code: 'KIR-001', order: 1, isActive: true },
+      { instrumentType: InstrumentType.KIRAR, title: 'Plucking Techniques', code: 'KIR-002', order: 2, isActive: true },
+    ]);
+
+    const washintLessons = await InstrumentLesson.insertMany([
+      { instrumentType: InstrumentType.WASHINT, title: 'Introduction to Washint', code: 'WAS-001', order: 1, isActive: true },
+      { instrumentType: InstrumentType.WASHINT, title: 'Breathing and Embouchure', code: 'WAS-002', order: 2, isActive: true },
+    ]);
+
+    console.log('✅ Created instrument lessons for all instrument types');
+
+    // Create Teacher Attendance Participant
+    const teacherParticipant = await TeacherAttendanceParticipant.create({
+      fullName: 'Master Instructor',
+      instruments: [InstrumentType.BEGENA, InstrumentType.MASINKO],
+      teachingDays: ['monday', 'wednesday', 'friday'],
+      timeRanges: [
+        { day: 'monday', startTime: '09:00', endTime: '12:00' },
+        { day: 'wednesday', startTime: '09:00', endTime: '12:00' },
+        { day: 'friday', startTime: '09:00', endTime: '12:00' },
+      ],
+      isActive: true,
+    });
+    console.log('✅ Created Teacher Attendance Participant');
+
     // Create a Test Student for testing (after branches are created)
     const firstBranch = branches[0];
     const student = await StudentAttendanceParticipant.create({
@@ -267,15 +582,174 @@ async function seed() {
       attendanceNumber: 'STU001',
       branchId: firstBranch._id,
       learningType: 'physical',
-      instrumentType: 'Begena',
+      instrumentType: InstrumentType.BEGENA,
       programDurationMonths: 6,
       preferredLearningDays: ['monday', 'wednesday', 'friday'],
       registrationStartDate: new Date(),
       learningDaysPerWeek: 3,
+      phone: '+251911234567',
+      city: 'Addis Ababa',
       isActive: true,
       isVerified: true,
     });
     console.log('✅ Created Student:', student.email);
+
+    // Create Sample Class taught by the teacher
+    const sampleClass = await Class.create({
+      title: 'Introduction to Begena: The Harp of David',
+      description: 'Learn the fundamentals of playing the Begena, Ethiopia\'s sacred harp.',
+      classType: 'both',
+      instructorId: teacher._id,
+      startDate: new Date(),
+      isLive: false,
+      liveRoomCode: 'begena-101',
+      materials: [
+        {
+          title: 'Week 1: Historical Context',
+          url: 'https://example.com/material1.pdf',
+          uploadedAt: new Date(),
+        },
+      ],
+      tuition: 5000,
+      currency: 'ETB',
+    });
+    console.log('✅ Created sample class:', sampleClass.title);
+
+    // Create a Standard Website User for testing
+    const websiteUser = await User.create({
+      email: 'user@abelbegena.com',
+      password: hashedPassword,
+      firstName: 'Test',
+      lastName: 'User',
+      role: 'User',
+      isActive: true,
+      isVerified: true,
+    });
+    console.log('✅ Created Website user:', websiteUser.email);
+
+    // Create Sample Blog Posts
+    const blogPost1 = await BlogPost.create({
+      title: 'The Sacred History of Begena',
+      slug: 'sacred-history-begena',
+      content: 'The Begena, also known as the Harp of David, holds a special place in Ethiopian Orthodox Christian tradition...',
+      author: teacher._id,
+      coverImage: 'https://example.com/begena-history.jpg',
+      isPublished: true,
+      status: 'published',
+      publishedAt: new Date(),
+    });
+
+    const blogPost2 = await BlogPost.create({
+      title: 'Learning Traditional Ethiopian Instruments',
+      slug: 'learning-traditional-instruments',
+      content: 'Ethiopia has a rich musical heritage with instruments like Begena, Masinko, and Kebero...',
+      author: teacher._id,
+      coverImage: 'https://example.com/instruments.jpg',
+      isPublished: true,
+      status: 'published',
+      publishedAt: new Date(),
+    });
+    console.log('✅ Created blog posts');
+
+    // Create Sample Comments
+    await Comment.create({
+      postId: blogPost1._id,
+      authorId: websiteUser._id,
+      content: 'This is a wonderful article about Begena! Thank you for sharing.',
+      status: 'approved',
+    });
+    console.log('✅ Created sample comments');
+
+    // Create Sample FAQs
+    await Faq.insertMany([
+      {
+        question: 'What instruments do you teach?',
+        answer: 'We teach Begena, Masinko, Kebero, Kirar, Washint, and other traditional Ethiopian instruments.',
+        order: 1,
+        isActive: true,
+      },
+      {
+        question: 'Do you offer online classes?',
+        answer: 'Yes, we offer both online and physical classes. You can choose based on your preference.',
+        order: 2,
+        isActive: true,
+      },
+      {
+        question: 'What is the duration of the programs?',
+        answer: 'We offer 3-month, 6-month, and 9-month programs with different learning schedules.',
+        order: 3,
+        isActive: true,
+      },
+      {
+        question: 'How do I enroll as a student?',
+        answer: 'You can register on our website and fill out the enrollment form. An admin will review your application.',
+        order: 4,
+        isActive: true,
+      },
+    ]);
+    console.log('✅ Created FAQs');
+
+    // Create Sample Instrument Materials
+    await InstrumentMaterial.insertMany([
+      {
+        title: 'Begena Basic Exercises',
+        url: 'https://example.com/begena-exercises.pdf',
+        instrumentType: InstrumentType.BEGENA,
+        uploadedBy: teacher._id,
+        description: 'Basic exercises for beginners learning Begena',
+        fileType: 'pdf',
+        isActive: true,
+      },
+      {
+        title: 'Masinko Technique Guide',
+        url: 'https://example.com/masinko-technique.pdf',
+        instrumentType: InstrumentType.MASINKO,
+        uploadedBy: teacher._id,
+        description: 'Comprehensive guide to Masinko playing techniques',
+        fileType: 'pdf',
+        isActive: true,
+      },
+    ]);
+    console.log('✅ Created instrument materials');
+
+    // Create Sample Products
+    await Product.insertMany([
+      {
+        name: 'Traditional Begena',
+        instrumentType: InstrumentType.BEGENA,
+        shortDescription: 'Handcrafted traditional Begena',
+        description: 'Beautifully crafted traditional Begena made by master artisans.',
+        price: 15000,
+        currency: 'ETB',
+        stock: 5,
+        images: ['https://example.com/begena1.jpg'],
+        isActive: true,
+      },
+      {
+        name: 'Masinko Instrument',
+        instrumentType: InstrumentType.MASINKO,
+        shortDescription: 'Authentic Masinko',
+        description: 'Traditional Masinko with high-quality materials.',
+        price: 3000,
+        currency: 'ETB',
+        stock: 10,
+        images: ['https://example.com/masinko1.jpg'],
+        isActive: true,
+      },
+    ]);
+    console.log('✅ Created sample products');
+
+    // Create Sample Student Attendance Record
+    await StudentAttendance.create({
+      participantId: student._id,
+      attendanceNumber: student.attendanceNumber,
+      studentName: student.fullName,
+      sessionDate: new Date(),
+      lessonId: begenaLessons[0]._id,
+      status: 'present',
+      recordedBy: admin._id,
+    });
+    console.log('✅ Created sample student attendance record');
 
     console.log('\n🎉 Seed completed successfully!');
     console.log('\n📋 Test Credentials (all verified & active):');
@@ -283,6 +757,19 @@ async function seed() {
     console.log('   Teacher: teacher@abelbegena.com / password123');
     console.log('   Website User: user@abelbegena.com / password123');
     console.log('   Student: student@abelbegena.com / password123');
+    console.log('\n📚 Created Data:');
+    console.log(`   - ${begenaLessons.length} Begena lessons`);
+    console.log(`   - ${masinkoLessons.length} Masinko lessons`);
+    console.log(`   - ${keberoLessons.length} Kebero lessons`);
+    console.log(`   - ${kirarLessons.length} Kirar lessons`);
+    console.log(`   - ${washintLessons.length} Washint lessons`);
+    console.log(`   - ${branches.length} branches`);
+    console.log('   - 1 sample class');
+    console.log('   - 2 blog posts');
+    console.log('   - 4 FAQs');
+    console.log('   - 2 instrument materials');
+    console.log('   - 2 products');
+    console.log('   - 1 attendance record');
 
     await mongoose.disconnect();
     console.log('\n👋 Disconnected from MongoDB');
