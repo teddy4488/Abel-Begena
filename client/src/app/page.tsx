@@ -22,8 +22,7 @@ const BranchesMapModal = dynamic(
   { ssr: false }
 );
 
-const heroImage =
-  "https://images.unsplash.com/photo-1505685296765-3a2736de412f?auto=format&fit=crop&w=900&q=90";
+const heroImage = "/assets/abel.jpg";
 
 const galleryImages = [
   { src: "/assets/abel.jpg", caption: "Handcrafted Begena" },
@@ -39,43 +38,43 @@ const galleryImages = [
 const sacredVideos = [
   {
     id: 1,
-    url: "https://youtu.be/X_D2HypWF94",
-    title: "Begena Meditative Hymn",
-    titleAm: "የበገና ማሰላሰል",
-    description: "Ancient melodies for spiritual reflection",
-    descriptionAm: "ለመንፈሳዊ ማሰላሰል ጥንታዊ ዜማዎች",
+    url: "https://www.youtube.com/embed/0UZyHXWIOr8",
+    title: "Abel Begena – Meditative Mezmur I",
+    titleAm: "አቤል በገና – ማሰላሰል መዝሙር 1",
+    description: "Original sacred begena hymn performed by Abel.",
+    descriptionAm: "በአቤል የተጫወተ የቅዱስ የበገና መዝሙር።",
   },
   {
     id: 2,
-    url: "https://youtu.be/X_D2HypWF94",
-    title: "Saint Yared Hymn on Begena",
-    titleAm: "የቅዱስ ያሬድ መዝሙሮች",
-    description: "The foundation of Ethiopian sacred music",
-    descriptionAm: "የኢትዮጵያ ቅዱስ ሙዚቃ መሰረት",
+    url: "https://www.youtube.com/embed/PKaseOBi6q0",
+    title: "Abel Begena – Meditative Mezmur II",
+    titleAm: "አቤል በገና – ማሰላሰል መዝሙር 2",
+    description: "Continuation of Abel’s contemplative begena series.",
+    descriptionAm: "የአቤል የማሰላሰል መዝሙሮች ቀጥሎ።",
   },
   {
     id: 3,
-    url: "https://youtu.be/X_D2HypWF94",
-    title: "Orthodox Mezmur – Harp",
-    titleAm: "የማሲንቆ ወግ",
-    description: "The one-stringed fiddle of Ethiopia",
-    descriptionAm: "የኢትዮጵያ አንድ ገመድ ማሲንቆ",
+    url: "https://www.youtube.com/embed/qeLMIzrbZf0",
+    title: "Abel Begena – Liturgical Hymn",
+    titleAm: "አቤል በገና – የሥርዓት መዝሙር",
+    description: "Traditional Ethiopian Orthodox Tewahedo chant on begena.",
+    descriptionAm: "በበገና የተቀነበረ የኢትዮጵያ ኦርቶዶክስ መዝሙር።",
   },
   {
     id: 4,
-    url: "https://youtu.be/X_D2HypWF94",
-    title: "Liturgical Chant (Zema)",
-    titleAm: "የሥርዓት ዝማሬዎች",
-    description: "Tewahedo church worship music",
-    descriptionAm: "የተዋሕዶ ቤተ ክርስቲያን አምልኮ ሙዚቃ",
+    url: "https://www.youtube.com/embed/e1hB7Jp2P7o",
+    title: "Abel Begena – Devotional Mezmur",
+    titleAm: "አቤል በገና – የመንፈሳዊ መዝሙር",
+    description: "Slow, prayerful begena performance for reflection.",
+    descriptionAm: "ለማሰላሰል ተስማሚ ዝግጅት ያለው የበገና ንባብ።",
   },
   {
     id: 5,
-    url: "https://youtu.be/X_D2HypWF94",
-    title: "Kirar & Begena Hymn",
-    titleAm: "የኪራር ዜማዎች",
-    description: "The lyre of the Ethiopian highlands",
-    descriptionAm: "የኢትዮጵያ ደጋማ ኪራር",
+    url: "https://www.youtube.com/embed/Y0biCmIBu4E",
+    title: "Abel Begena – Concert Mezmur",
+    titleAm: "አቤል በገና – የኮንሰርት መዝሙር",
+    description: "Live-style begena performance showcasing Abel’s craft.",
+    descriptionAm: "የአቤል የበገና ችሎታን የሚያሳይ ህያው አፈፃፀም።",
   },
 ];
 
@@ -168,7 +167,7 @@ export default function Home() {
 
   const primaryCta =
     !isLoggedIn || role === undefined
-      ? { href: "/classes", label: t("hero.cta.default") }
+      ? { href: "#classes", label: t("hero.cta.default") }
       : role === "Teacher"
         ? { href: "/teacher", label: t("hero.cta.teacher") }
         : role === "Admin"
@@ -187,6 +186,11 @@ export default function Home() {
       <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
         <section className="relative overflow-hidden rounded-2xl bg-[var(--color-surface-elevated)] px-4 py-8 shadow-[0_8px_32px_var(--color-primary-glow)] transition-colors sm:rounded-[32px] sm:px-6 sm:py-12 md:px-12 md:py-14 lg:px-16 dark:bg-[var(--color-surface-elevated)]">
           <div className="absolute inset-0 bg-gradient-to-tr from-[var(--color-background)] via-[var(--color-surface)] to-[var(--color-secondary-soft)] opacity-60 dark:opacity-40" />
+          {/* Subtle Orthodox crosses in the hero background */}
+          <div className="pointer-events-none absolute inset-0">
+            <span className="absolute left-6 top-10 text-6xl text-secondary/10">✝</span>
+            <span className="absolute right-10 bottom-8 text-7xl text-secondary/10">✝</span>
+          </div>
           <div className="relative grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">
               <p className="text-xs uppercase tracking-[0.35em] text-secondary">
@@ -407,7 +411,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-6 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]">
+        <section
+          id="classes"
+          className="space-y-6 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]"
+        >
           <FadeIn className="flex flex-col gap-2">
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("classHighlights.kicker")}
@@ -668,53 +675,6 @@ export default function Home() {
               </FadeIn>
             ))}
           </div>
-        </section>
-
-        {/* Newsletter Section */}
-        <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[var(--color-primary)]/10 via-[var(--color-surface-elevated)] to-[var(--color-secondary)]/10 p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:from-[var(--color-primary)]/5 dark:via-[var(--color-surface-elevated)] dark:to-[var(--color-secondary)]/5">
-          <div className="absolute inset-0 opacity-30">
-            <motion.div
-              className="absolute inset-0"
-              animate={{
-                backgroundPosition: ["0% 0%", "100% 100%"],
-              }}
-              transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
-              style={{
-                backgroundImage: "radial-gradient(circle at 30% 30%, var(--color-secondary-glow) 0%, transparent 50%)",
-                backgroundSize: "200% 200%",
-              }}
-            />
-          </div>
-          <FadeIn className="relative mx-auto max-w-2xl text-center">
-            <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              {t("newsletter.kicker")}
-            </p>
-            <h2 className="mt-2 text-3xl font-serif text-primary">
-              {t("newsletter.title")}
-            </h2>
-            <p className="mt-2 text-sm text-[var(--color-foreground-muted)]">
-              {t("newsletter.subtitle")}
-            </p>
-            <form className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-              <div className="relative flex-1 sm:max-w-sm">
-                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--color-foreground-muted)]" />
-                <input
-                  type="email"
-                  placeholder={t("newsletter.placeholder")}
-                  className="w-full rounded-full bg-[var(--color-card-bg)] py-3 pl-12 pr-4 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-full bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow-[0_15px_30px_var(--color-primary-glow)] transition hover:-translate-y-0.5 hover:brightness-95"
-              >
-                {t("newsletter.cta")}
-              </button>
-            </form>
-            <p className="mt-4 text-xs text-[var(--color-foreground-muted)] opacity-70">
-              {t("newsletter.privacy")}
-            </p>
-          </FadeIn>
         </section>
 
         <section
