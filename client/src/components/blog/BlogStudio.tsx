@@ -8,10 +8,12 @@ import {
   useDeletePostMutation,
   useGetManagePostsQuery,
   useUpdatePostMutation,
+  useUploadBlogImageMutation,
 } from "@/store/api/blogApi";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { motion } from "framer-motion";
+import { Upload, X, Loader2 } from "lucide-react";
 
 type BlogStudioProps = {
   filterByAuthorId?: string;
@@ -35,11 +37,14 @@ export function BlogStudio({
   const [createPost, { isLoading: isCreating }] = useCreatePostMutation();
   const [updatePost, { isLoading: isUpdating }] = useUpdatePostMutation();
   const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation();
+  const [uploadImage, { isLoading: isUploadingImage }] = useUploadBlogImageMutation();
   const { pushToast } = useToast();
   const { user } = useAppSelector((state) => state.auth);
   const isAdmin = user?.role === "Admin";
   const [search, setSearch] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string>("");
   const [form, setForm] = useState({
     ...emptyForm,
   });
@@ -61,6 +66,8 @@ export function BlogStudio({
     if (!activePostId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({ ...emptyForm });
+      setCoverImageFile(null);
+      setCoverImagePreview("");
       return;
     }
     const post = posts.find((p) => p._id === activePostId);
@@ -73,8 +80,58 @@ export function BlogStudio({
         isPublished: post.isPublished,
         status: post.status ?? (post.isPublished ? "published" : "draft"),
       });
+      setCoverImagePreview(post.coverImage || "");
+      setCoverImageFile(null);
     }
   }, [activePostId, posts]);
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      pushToast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "error",
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      pushToast({
+        title: "File too large",
+        description: "Maximum file size is 10MB",
+        variant: "error",
+      });
+      return;
+    }
+
+    setCoverImageFile(file);
+    setCoverImagePreview(URL.createObjectURL(file));
+
+    // Upload image
+    try {
+      const result = await uploadImage(file).unwrap();
+      setForm((prev) => ({ ...prev, coverImage: result.imageUrl }));
+      pushToast({
+        title: "Image uploaded",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error(error);
+      pushToast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "error",
+      });
+      setCoverImageFile(null);
+      setCoverImagePreview("");
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -229,15 +286,61 @@ export function BlogStudio({
               onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
               className="rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
             />
-            <input
-              type="text"
-              placeholder="Cover image URL"
-              value={form.coverImage}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, coverImage: e.target.value }))
-              }
-              className="rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-            />
+            <div className="space-y-2">
+              <label className="block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  disabled={isUploadingImage}
+                />
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex-1 rounded-2xl card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 cursor-pointer hover:card-elevated90 ${
+                      isUploadingImage ? "opacity-60 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {isUploadingImage ? (
+                      <div className="flex items-center gap-2 text-foreground/70">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Uploading...</span>
+                      </div>
+                    ) : coverImagePreview ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground/70 truncate">Image selected</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCoverImageFile(null);
+                            setCoverImagePreview("");
+                            setForm((prev) => ({ ...prev, coverImage: "" }));
+                          }}
+                          className="ml-2 text-red-500 hover:text-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-foreground/70">
+                        <Upload className="h-4 w-4" />
+                        <span>Upload cover image</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </label>
+              {coverImagePreview && (
+                <div className="relative rounded-xl overflow-hidden border border-border">
+                  <img
+                    src={coverImagePreview}
+                    alt="Cover preview"
+                    className="w-full h-32 object-cover"
+                  />
+                </div>
+              )}
+            </div>
           </div>
           {isAdmin && (
             <div className="grid gap-3 md:grid-cols-2">

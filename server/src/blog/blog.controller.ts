@@ -8,8 +8,13 @@ import {
   Post,
   Query,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { BlogService } from './blog.service';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
@@ -69,6 +74,22 @@ export class BlogController {
     @Request() req: { user: { sub: string; role: string } },
   ) {
     return this.blogService.remove(id, req.user);
+  }
+
+  @Post('upload-image')
+  @Roles('Admin', 'Teacher')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Image file is required');
+    }
+    const imageUrl = await this.blogService.uploadCoverImage(file);
+    return { imageUrl };
   }
 
   @Get(':slug')

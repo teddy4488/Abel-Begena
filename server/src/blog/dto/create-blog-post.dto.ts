@@ -22,9 +22,10 @@ export class CreateBlogPostDto {
   @IsNotEmpty()
   content: string;
 
+  @IsOptional()
+  @IsString()
   @IsUrl()
-  @IsNotEmpty()
-  coverImage: string;
+  coverImage?: string;
 
   @IsOptional()
   @IsBoolean()

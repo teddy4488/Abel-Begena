@@ -9,6 +9,7 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { BlogPost, BlogPostDocument } from './schemas/blog-post.schema';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
+import { UploadService } from '../upload/upload.service';
 
 type Actor = {
   sub: string;
@@ -36,6 +37,7 @@ export class BlogService {
   constructor(
     @InjectModel(BlogPost.name)
     private readonly blogModel: Model<BlogPostDocument>,
+    private readonly uploadService: UploadService,
   ) {}
 
   async create(
@@ -58,6 +60,7 @@ export class BlogService {
       author: new Types.ObjectId(actor.sub),
       isPublished: status === 'published',
       status,
+      coverImage: dto.coverImage || '',
       ...(status === 'published' ? { publishedAt: new Date() } : {}),
     });
     return this.populateAndFormat(post);
@@ -256,6 +259,13 @@ export class BlogService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  async uploadCoverImage(file: Express.Multer.File): Promise<string> {
+    if (!file) {
+      throw new BadRequestException('Image file is required');
+    }
+    return this.uploadService.uploadMaterial(file, 'abel-begena/blog');
   }
 
   private async populateAndFormat(

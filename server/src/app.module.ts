@@ -15,6 +15,7 @@ import { BranchModule } from './branch/branch.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { PaymentModule } from './payment/payment.module';
+import { MaterialsModule } from './materials/materials.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { PaymentModule } from './payment/payment.module';
     RealtimeModule,
     AttendanceModule,
     PaymentModule,
+    MaterialsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

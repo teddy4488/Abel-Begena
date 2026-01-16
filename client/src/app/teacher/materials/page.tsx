@@ -5,29 +5,47 @@ import { useAppSelector } from "@/store/hooks";
 import {
   useGetClassesQuery,
   useUploadMaterialMutation,
+  useGetClassAccessQuery,
 } from "@/store/api/classApi";
+import {
+  useGetTeacherMaterialsQuery,
+  useUploadInstrumentMaterialMutation,
+  useDeleteMaterialMutation,
+} from "@/store/api/materialsApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGetClassAccessQuery } from "@/store/api/classApi";
-import { Upload, FileText, Download, X, Loader2, File } from "lucide-react";
+import { Upload, FileText, Download, X, Loader2, File, BookOpen, GraduationCap } from "lucide-react";
+import { InstrumentType } from "@/store/api/storeApi";
 
 type UploadDraft = {
   title: string;
   file?: File;
+  description?: string;
+  instrumentType?: InstrumentType;
 };
+
+type TabType = "class" | "instrument";
 
 export default function TeacherMaterialsPage() {
   const { user } = useAppSelector((state) => state.auth);
   const { data: classes } = useGetClassesQuery();
-  const [uploadMaterial, { isLoading: isUploading }] =
+  const [uploadMaterial, { isLoading: isUploadingClass }] =
     useUploadMaterialMutation();
+  const [uploadInstrumentMaterial, { isLoading: isUploadingInstrument }] =
+    useUploadInstrumentMaterialMutation();
+  const [deleteMaterial] = useDeleteMaterialMutation();
+  const { data: instrumentMaterials, refetch: refetchInstrumentMaterials } =
+    useGetTeacherMaterialsQuery();
   const { pushToast } = useToast();
   const { t } = useI18n();
+  const [activeTab, setActiveTab] = useState<TabType>("class");
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [uploadDraft, setUploadDraft] = useState<UploadDraft>({
     title: "",
     file: undefined,
+    description: "",
+    instrumentType: "Begena",
   });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
@@ -77,69 +95,136 @@ export default function TeacherMaterialsPage() {
   };
 
   const handleUpload = async () => {
-    if (!selectedClassId) {
-      pushToast({
-        title: t("teacher.materials.selectClass", "Select a class first"),
-        variant: "error",
-      });
-      return;
-    }
-    if (!uploadDraft.file) {
-      pushToast({
-        title: t("teacher.materials.selectFile", "Choose a file first"),
-        variant: "error",
-      });
-      return;
-    }
-
-    // Validate file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024;
-    if (uploadDraft.file.size > maxSize) {
-      pushToast({
-        title: t("teacher.materials.fileTooLarge", "File too large"),
-        description: t("teacher.materials.maxSize", "Maximum file size is 50MB"),
-        variant: "error",
-      });
-      return;
-    }
-
-    try {
-      setUploadProgress(0);
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
+    if (activeTab === "class") {
+      if (!selectedClassId) {
+        pushToast({
+          title: t("teacher.materials.selectClass", "Select a class first"),
+          variant: "error",
         });
-      }, 200);
+        return;
+      }
+      if (!uploadDraft.file) {
+        pushToast({
+          title: t("teacher.materials.selectFile", "Choose a file first"),
+          variant: "error",
+        });
+        return;
+      }
 
-      await uploadMaterial({
-        classId: selectedClassId,
-        file: uploadDraft.file,
-        title: uploadDraft.title || uploadDraft.file.name,
-      }).unwrap();
+      // Validate file size (max 50MB)
+      const maxSize = 50 * 1024 * 1024;
+      if (uploadDraft.file.size > maxSize) {
+        pushToast({
+          title: t("teacher.materials.fileTooLarge", "File too large"),
+          description: t("teacher.materials.maxSize", "Maximum file size is 50MB"),
+          variant: "error",
+        });
+        return;
+      }
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+      try {
+        setUploadProgress(0);
+        const progressInterval = setInterval(() => {
+          setUploadProgress((prev) => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 10;
+          });
+        }, 200);
 
-      pushToast({
-        title: t("teacher.materials.uploadSuccess", "Material uploaded successfully"),
-        variant: "success",
-      });
-      
-      setUploadDraft({ title: "", file: undefined });
-      setUploadProgress(0);
-      void refetchMaterials();
-    } catch (error) {
-      setUploadProgress(0);
-      pushToast({
-        title: t("teacher.materials.uploadError", "Upload failed"),
-        description: error instanceof Error ? error.message : undefined,
-        variant: "error",
-      });
+        await uploadMaterial({
+          classId: selectedClassId,
+          file: uploadDraft.file,
+          title: uploadDraft.title || uploadDraft.file.name,
+        }).unwrap();
+
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+
+        pushToast({
+          title: t("teacher.materials.uploadSuccess", "Material uploaded successfully"),
+          variant: "success",
+        });
+        
+        setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+        setUploadProgress(0);
+        void refetchMaterials();
+      } catch (error) {
+        setUploadProgress(0);
+        pushToast({
+          title: t("teacher.materials.uploadError", "Upload failed"),
+          description: error instanceof Error ? error.message : undefined,
+          variant: "error",
+        });
+      }
+    } else {
+      // Instrument-based upload
+      if (!uploadDraft.file) {
+        pushToast({
+          title: t("teacher.materials.selectFile", "Choose a file first"),
+          variant: "error",
+        });
+        return;
+      }
+      if (!uploadDraft.instrumentType) {
+        pushToast({
+          title: "Select instrument type",
+          variant: "error",
+        });
+        return;
+      }
+
+      const maxSize = 50 * 1024 * 1024;
+      if (uploadDraft.file.size > maxSize) {
+        pushToast({
+          title: t("teacher.materials.fileTooLarge", "File too large"),
+          description: t("teacher.materials.maxSize", "Maximum file size is 50MB"),
+          variant: "error",
+        });
+        return;
+      }
+
+      try {
+        setUploadProgress(0);
+        const progressInterval = setInterval(() => {
+          setUploadProgress((prev) => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 10;
+          });
+        }, 200);
+
+        await uploadInstrumentMaterial({
+          file: uploadDraft.file,
+          title: uploadDraft.title || uploadDraft.file.name,
+          instrumentType: uploadDraft.instrumentType,
+          description: uploadDraft.description,
+        }).unwrap();
+
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+
+        pushToast({
+          title: "Material uploaded successfully",
+          description: `All ${uploadDraft.instrumentType} students can now access this material`,
+          variant: "success",
+        });
+        
+        setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+        setUploadProgress(0);
+        void refetchInstrumentMaterials();
+      } catch (error) {
+        setUploadProgress(0);
+        pushToast({
+          title: "Upload failed",
+          description: error instanceof Error ? error.message : undefined,
+          variant: "error",
+        });
+      }
     }
   };
 
@@ -156,11 +241,14 @@ export default function TeacherMaterialsPage() {
     return File;
   };
 
+  const instrumentTypes: InstrumentType[] = ["Begena", "Kirar", "Masinko", "Washint", "Kebero", "Other"];
+  const isUploading = isUploadingClass || isUploadingInstrument;
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="mb-4 sm:mb-6">
         <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-          {t("teacher.materials.kicker", "Class Materials")}
+          {t("teacher.materials.kicker", "Materials Management")}
         </p>
         <h1 className="text-2xl font-serif text-primary sm:text-3xl">
           {t("teacher.materials.title", "Upload Materials")}
@@ -168,9 +256,45 @@ export default function TeacherMaterialsPage() {
         <p className="mt-2 text-xs text-foreground/70 sm:text-sm">
           {t(
             "teacher.materials.subtitle",
-            "Upload PDFs, slides, videos, and other class materials for your students.",
+            "Upload materials for specific classes or for all students of an instrument type.",
           )}
         </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-border">
+        <button
+          onClick={() => {
+            setActiveTab("class");
+            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+          }}
+          className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 ${
+            activeTab === "class"
+              ? "border-secondary text-secondary"
+              : "border-transparent text-foreground/60 hover:text-foreground"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4" />
+            Class Materials
+          </div>
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab("instrument");
+            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+          }}
+          className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 ${
+            activeTab === "instrument"
+              ? "border-secondary text-secondary"
+              : "border-transparent text-foreground/60 hover:text-foreground"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Instrument Materials
+          </div>
+        </button>
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
@@ -184,23 +308,63 @@ export default function TeacherMaterialsPage() {
             {t("teacher.materials.uploadTitle", "Upload New Material")}
           </h2>
           <div className="space-y-3 sm:space-y-4">
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
-                {t("teacher.materials.selectClass", "Select Class")}
-              </label>
-              <select
-                value={selectedClassId ?? ""}
-                onChange={(e) => setSelectedClassId(e.target.value || null)}
-                className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-              >
-                <option value="">{t("teacher.materials.chooseClass", "Choose a class...")}</option>
-                {teacherClasses.map((klass) => (
-                  <option key={klass._id} value={klass._id}>
-                    {klass.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {activeTab === "class" ? (
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                  {t("teacher.materials.selectClass", "Select Class")}
+                </label>
+                <select
+                  value={selectedClassId ?? ""}
+                  onChange={(e) => setSelectedClassId(e.target.value || null)}
+                  className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value="">{t("teacher.materials.chooseClass", "Choose a class...")}</option>
+                  {teacherClasses.map((klass) => (
+                    <option key={klass._id} value={klass._id}>
+                      {klass.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    Instrument Type *
+                  </label>
+                  <select
+                    value={uploadDraft.instrumentType ?? "Begena"}
+                    onChange={(e) =>
+                      setUploadDraft((prev) => ({
+                        ...prev,
+                        instrumentType: e.target.value as InstrumentType,
+                      }))
+                    }
+                    className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  >
+                    {instrumentTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    placeholder="Brief description of the material..."
+                    value={uploadDraft.description ?? ""}
+                    onChange={(e) =>
+                      setUploadDraft((prev) => ({ ...prev, description: e.target.value }))
+                    }
+                    rows={2}
+                    className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </div>
+              </>
+            )}
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("teacher.materials.materialTitle", "Material Title")}
@@ -293,9 +457,24 @@ export default function TeacherMaterialsPage() {
               )}
             </div>
             <motion.button
-              whileHover={{ scale: selectedClassId && uploadDraft.file ? 1.02 : 1 }}
-              whileTap={{ scale: selectedClassId && uploadDraft.file ? 0.98 : 1 }}
-              disabled={isUploading || !selectedClassId || !uploadDraft.file || uploadProgress > 0}
+              whileHover={
+                (activeTab === "class" && selectedClassId && uploadDraft.file) ||
+                (activeTab === "instrument" && uploadDraft.file && uploadDraft.instrumentType)
+                  ? { scale: 1.02 }
+                  : { scale: 1 }
+              }
+              whileTap={
+                (activeTab === "class" && selectedClassId && uploadDraft.file) ||
+                (activeTab === "instrument" && uploadDraft.file && uploadDraft.instrumentType)
+                  ? { scale: 0.98 }
+                  : { scale: 1 }
+              }
+              disabled={
+                isUploading ||
+                (activeTab === "class" && (!selectedClassId || !uploadDraft.file)) ||
+                (activeTab === "instrument" && (!uploadDraft.file || !uploadDraft.instrumentType)) ||
+                uploadProgress > 0
+              }
               onClick={handleUpload}
               className="w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all"
             >
@@ -322,11 +501,13 @@ export default function TeacherMaterialsPage() {
           className="rounded-2xl  surface-elevated p-6 shadow-lg"
         >
           <h2 className="mb-4 text-xl font-serif text-primary">
-            {selectedClassId
-              ? t("teacher.materials.classMaterials", "Class Materials")
-              : t("teacher.materials.selectClassToView", "Select a class to view materials")}
+            {activeTab === "class"
+              ? selectedClassId
+                ? t("teacher.materials.classMaterials", "Class Materials")
+                : t("teacher.materials.selectClassToView", "Select a class to view materials")
+              : "Instrument Materials"}
           </h2>
-          {selectedClassId && classAccess ? (
+          {activeTab === "class" && selectedClassId && classAccess ? (
             <div className="space-y-3">
               {classAccess.materials.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border card-elevated50 p-8 text-center">
@@ -378,12 +559,99 @@ export default function TeacherMaterialsPage() {
                 </AnimatePresence>
               )}
             </div>
-          ) : (
+          ) : activeTab === "class" ? (
             <div className="rounded-xl border border-dashed border-border card-elevated50 p-8 text-center">
               <FileText className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
               <p className="text-sm text-foreground/70">
                 {t("teacher.materials.chooseClassPrompt", "Choose a class from the dropdown to view or upload materials.")}
               </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {!instrumentMaterials || instrumentMaterials.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border card-elevated50 p-8 text-center">
+                  <FileText className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
+                  <p className="text-sm text-foreground/70">
+                    No instrument materials uploaded yet.
+                  </p>
+                </div>
+              ) : (
+                <AnimatePresence>
+                  {instrumentMaterials.map((material, idx) => {
+                    const FileIcon = getFileIcon(material.url);
+                    return (
+                      <motion.div
+                        key={material._id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="rounded-xl  card-elevated50 p-4 hover:card-elevated80 transition-all hover:shadow-md"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                              <FileIcon className="w-5 h-5 text-secondary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-primary truncate">{material.title}</p>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">
+                                  {material.instrumentType}
+                                </span>
+                              </div>
+                              {material.description && (
+                                <p className="text-xs text-foreground/60 mt-1 line-clamp-1">
+                                  {material.description}
+                                </p>
+                              )}
+                              {material.uploadedAt && (
+                                <p className="text-xs text-foreground/60">
+                                  {new Date(material.uploadedAt).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={material.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 rounded-full  bg-background px-3 py-2 text-xs font-semibold uppercase tracking-wide transition hover:bg-secondary/10 hover:border-secondary flex-shrink-0"
+                            >
+                              <Download className="w-3 h-3" />
+                              Download
+                            </a>
+                            <button
+                              onClick={async () => {
+                                if (confirm("Delete this material?")) {
+                                  try {
+                                    await deleteMaterial(material._id).unwrap();
+                                    pushToast({
+                                      title: "Material deleted",
+                                      variant: "success",
+                                    });
+                                    void refetchInstrumentMaterials();
+                                  } catch (error) {
+                                    pushToast({
+                                      title: "Failed to delete",
+                                      variant: "error",
+                                    });
+                                  }
+                                }
+                              }}
+                              className="rounded-full p-2 hover:bg-red-500/10 text-red-500 transition-colors"
+                              aria-label="Delete material"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              )}
             </div>
           )}
         </motion.div>

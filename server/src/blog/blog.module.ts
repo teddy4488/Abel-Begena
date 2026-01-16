@@ -6,6 +6,7 @@ import { BlogPost, BlogPostSchema } from './schemas/blog-post.schema';
 import { Comment, CommentSchema } from './schemas/comment.schema';
 import { CommentService } from './comment.service';
 import { CommentController } from './comment.controller';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { CommentController } from './comment.controller';
       { name: BlogPost.name, schema: BlogPostSchema },
       { name: Comment.name, schema: CommentSchema },
     ]),
+    UploadModule,
   ],
   controllers: [BlogController, CommentController],
   providers: [BlogService, CommentService],

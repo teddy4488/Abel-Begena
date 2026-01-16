@@ -145,6 +145,17 @@ export const blogApi = createApi({
       }),
       invalidatesTags: ["Comments"],
     }),
+    uploadBlogImage: builder.mutation<{ imageUrl: string }, File>({
+      query: (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          url: "/blog/upload-image",
+          method: "POST",
+          body: formData,
+        };
+      },
+    }),
   }),
 });
 
@@ -160,5 +171,6 @@ export const {
   useGetManageCommentsQuery,
   useUpdateCommentStatusMutation,
   useDeleteCommentMutation,
+  useUploadBlogImageMutation,
 } = blogApi;
 

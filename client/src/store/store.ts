@@ -11,6 +11,7 @@ import { faqApi } from "./api/faqApi";
 import { adminApi } from "./api/adminApi";
 import { branchApi } from "./api/branchApi";
 import { paymentApi } from "./api/paymentApi";
+import { materialsApi } from "./api/materialsApi";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -26,6 +27,7 @@ export const store = configureStore({
     [adminApi.reducerPath]: adminApi.reducer,
     [branchApi.reducerPath]: branchApi.reducer,
     [paymentApi.reducerPath]: paymentApi.reducer,
+    [materialsApi.reducerPath]: materialsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -39,6 +41,7 @@ export const store = configureStore({
       adminApi.middleware,
       branchApi.middleware,
       paymentApi.middleware,
+      materialsApi.middleware,
     ),
 });
 
