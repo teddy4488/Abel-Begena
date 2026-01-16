@@ -182,7 +182,7 @@ export default function DashboardPage() {
   ];
 
   const renderSkeletonCard = () => (
-    <div className="rounded-2xl border border-border/60 bg-background/40 p-4 sm:rounded-3xl sm:p-5">
+    <div className="rounded-2xl surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2 w-full">
           <Skeleton className="h-3 w-24 rounded-full" />
@@ -195,7 +195,7 @@ export default function DashboardPage() {
         {[1, 2, 3].map((key) => (
           <div
             key={key}
-            className="flex items-center justify-between rounded-2xl border border-border/50 bg-background/30 px-4 py-3"
+            className="flex items-center justify-between rounded-2xl surface-elevated px-4 py-3 shadow-sm"
           >
             <Skeleton className="h-4 w-32 rounded-full" />
             <Skeleton className="h-4 w-20 rounded-full" />
@@ -224,7 +224,7 @@ export default function DashboardPage() {
   return (
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
       <div className="mx-auto max-w-6xl space-y-8 md:space-y-12">
-        <header className="space-y-3 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8">
+        <header className="space-y-3 rounded-2xl surface-elevated bg-gradient-to-br from-surface via-background to-secondary/5 p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6 md:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/80 px-3 py-2 sm:rounded-2xl sm:px-4">
+            <div className="flex items-center gap-3 rounded-xl surface-elevated px-3 py-2 shadow-sm sm:rounded-2xl sm:px-4">
               {user?.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -264,7 +264,7 @@ export default function DashboardPage() {
         </header>
 
         {hasPendingEnrollment && (
-          <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-3xl surface-elevated bg-amber-500/10 px-4 py-3 text-sm text-amber-800 shadow-lg">
             {t(
               "dashboard.pendingNotice",
               "One or more enrollments are awaiting review. Access will unlock as soon as the admin verifies your payment.",
@@ -277,7 +277,7 @@ export default function DashboardPage() {
             {[1, 2].map((item) => (
               <div
                 key={`skeleton-${item}`}
-                className="rounded-2xl border border-border/50 bg-background/30 p-4 sm:rounded-3xl sm:p-5"
+                className="rounded-2xl surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-5"
               >
                 <Skeleton className="h-3 w-28 rounded-full" />
                 <Skeleton className="mt-2 h-5 w-40 rounded-full" />
@@ -293,7 +293,7 @@ export default function DashboardPage() {
           </p>
         )}
 
-        <div className="space-y-6 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-[32px] sm:p-6">
+        <div className="space-y-6 rounded-2xl surface-elevated p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -305,14 +305,14 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/store"
-              className="w-full rounded-full border border-border px-4 py-2 text-center text-xs font-semibold uppercase tracking-widest transition hover:bg-secondary/10 sm:w-auto"
+              className="w-full rounded-full surface-elevated px-4 py-2 text-center text-xs font-semibold uppercase tracking-widest transition hover:shadow-md sm:w-auto shadow-sm"
             >
               {t("dashboard.cta.store", "Visit Store")}
             </Link>
           </div>
 
           {!isLoading && !classes.length && !error && (
-            <div className="rounded-2xl border border-border bg-background/70 p-4 text-center sm:rounded-3xl sm:p-6">
+            <div className="rounded-2xl surface-elevated p-4 text-center shadow-lg sm:rounded-3xl sm:p-6">
               <p className="text-base font-semibold text-primary sm:text-lg">
                 {t(
                   "dashboard.empty.title",
@@ -327,7 +327,7 @@ export default function DashboardPage() {
               </p>
               <Link
                 href="/classes"
-                className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:bg-(--color-secondary-soft) sm:w-auto"
+                className="mt-4 inline-flex w-full items-center justify-center rounded-full surface-elevated bg-secondary/10 px-5 py-2 text-sm font-semibold text-secondary transition hover:bg-secondary/20 hover:shadow-md sm:w-auto shadow-sm"
               >
                 {t("dashboard.empty.cta", "Browse classes")}
               </Link>
@@ -342,7 +342,7 @@ export default function DashboardPage() {
               : classes.map((classAccess) => (
                   <div
                     key={classAccess.class._id}
-                    className="rounded-2xl border border-border bg-background/70 p-4 sm:rounded-3xl sm:p-5"
+                    className="rounded-2xl surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-5"
                   >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-2">
@@ -395,7 +395,7 @@ export default function DashboardPage() {
                           key={`${classAccess.class._id}-${material.url}`}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="flex items-center justify-between rounded-2xl border border-border bg-background/50 px-4 py-3 text-sm hover:bg-background/80 hover:shadow-md transition-all group"
+                            className="flex items-center justify-between rounded-2xl surface-elevated px-4 py-3 text-sm hover:shadow-lg transition-all group shadow-sm"
                         >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <span className="text-lg shrink-0">{getFileIcon(material.url)}</span>
@@ -423,7 +423,7 @@ export default function DashboardPage() {
                       })}
                     </ul>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-border/50 bg-background/30 p-6 text-center">
+                    <div className="rounded-xl surface-elevated p-6 text-center shadow-lg">
                     <p className="text-sm text-foreground/70">
                       {t(
                         "dashboard.materials.empty",
@@ -441,7 +441,7 @@ export default function DashboardPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <motion.div
             whileHover={{ y: -4 }}
-            className="space-y-3 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+            className="space-y-3 rounded-[32px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]"
           >
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
               {t("dashboard.store.kicker", "Storefront access")}
@@ -468,7 +468,7 @@ export default function DashboardPage() {
 
           <motion.div
             whileHover={{ y: -4 }}
-            className="space-y-3 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+            className="space-y-3 rounded-[32px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]"
           >
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
               {t("dashboard.account.kicker", "Account history")}
@@ -479,13 +479,13 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-3 text-sm">
               <Link
                 href="/account/orders"
-                className="rounded-2xl border border-border px-4 py-2 text-left transition hover:border-secondary/50"
+                className="rounded-2xl surface-elevated px-4 py-2 text-left transition hover:shadow-md shadow-sm"
               >
                 {t("dashboard.account.orders", "View order history")}
               </Link>
               <Link
                 href="/profile"
-                className="rounded-2xl border border-border px-4 py-2 text-left transition hover:border-secondary/50"
+                className="rounded-2xl surface-elevated px-4 py-2 text-left transition hover:shadow-md shadow-sm"
               >
                 {t("dashboard.account.profile", "Update profile details")}
               </Link>
@@ -494,7 +494,7 @@ export default function DashboardPage() {
 
           <motion.div
             whileHover={{ y: -4 }}
-            className="space-y-3 rounded-[32px] border border-border bg-surface p-6 shadow-[0_25px_60px_rgba(45,10,18,0.08)]"
+            className="space-y-3 rounded-[32px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]"
           >
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
               {t("dashboard.payments.kicker", "Payment insights")}
@@ -523,7 +523,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="space-y-4 rounded-[32px] border border-border bg-surface p-6 shadow-[0_20px_40px_rgba(45,10,18,0.08)]"
+            className="space-y-4 rounded-[32px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -546,7 +546,7 @@ export default function DashboardPage() {
                 {learningProgress.slice(0, 4).map((klass) => (
                   <div
                     key={klass.id}
-                    className="rounded-2xl border border-border bg-background/70 p-4"
+                    className="rounded-2xl surface-elevated p-4 shadow-sm"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -584,7 +584,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border/60 bg-background/40 p-8 text-center text-sm text-foreground/70">
+              <div className="rounded-2xl surface-elevated p-8 text-center text-sm text-foreground/70 shadow-lg">
                 {t(
                   "dashboard.progress.empty",
                   "Enroll in a class to start tracking your progress toward mastery.",
@@ -597,7 +597,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
-            className="space-y-4 rounded-[32px] border border-border bg-surface p-6 shadow-[0_20px_40px_rgba(45,10,18,0.08)]"
+            className="space-y-4 rounded-[32px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]"
           >
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -618,7 +618,7 @@ export default function DashboardPage() {
                 </div>
               ))}
               {hasPendingEnrollment && (
-                <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-900">
+                <div className="rounded-2xl surface-elevated bg-amber-500/10 p-4 text-sm text-amber-900 shadow-lg">
                   <p className="font-semibold">
                     {t("dashboard.highlights.pending", "Enrollment pending review")}
                   </p>
@@ -634,7 +634,7 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        <div className="rounded-[32px] border border-border bg-surface/80 p-6 shadow-[0_20px_40px_rgba(45,10,18,0.08)]">
+        <div className="rounded-[32px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -646,7 +646,7 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/dashboard/enrollments"
-              className="inline-flex w-full items-center justify-center rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-widest transition hover:bg-secondary/10 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-full surface-elevated px-4 py-2 text-xs font-semibold uppercase tracking-widest transition hover:shadow-md sm:w-auto shadow-sm"
             >
               {t("dashboard.recentMaterials.history", "Enrollment history")}
             </Link>
@@ -656,7 +656,7 @@ export default function DashboardPage() {
               {recentMaterials.map((material) => (
                 <li
                   key={`${material.classId}-${material.url}`}
-                  className="rounded-2xl border border-border bg-background/80 p-4 transition hover:border-secondary/40 hover:bg-background"
+                  className="rounded-2xl surface-elevated p-4 transition hover:shadow-lg shadow-sm"
                 >
                   <p className="text-xs uppercase tracking-[0.3em] text-secondary/80">
                     {material.classTitle}
@@ -694,7 +694,7 @@ export default function DashboardPage() {
               ))}
             </ul>
           ) : (
-            <div className="mt-5 rounded-2xl border border-dashed border-border/50 bg-background/30 p-6 text-center">
+            <div className="mt-5 rounded-2xl surface-elevated p-6 text-center shadow-lg">
               <p className="text-sm text-foreground/70">
                 {t(
                   "dashboard.recentMaterials.empty",

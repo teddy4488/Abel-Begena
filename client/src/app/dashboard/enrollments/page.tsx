@@ -56,7 +56,7 @@ export default function MyEnrollmentsPage() {
   return (
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
-        <header className="space-y-3 rounded-2xl border border-border bg-surface/90 p-4 text-center shadow-lg sm:rounded-[32px] sm:p-6 md:p-8">
+        <header className="space-y-3 rounded-2xl surface-elevated p-4 text-center shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6 md:p-8">
           <p className="text-xs uppercase tracking-[0.35em] text-secondary">
             {t("enrollments.kicker", "Tuition & Access")}
           </p>
@@ -71,7 +71,7 @@ export default function MyEnrollmentsPage() {
           </p>
         </header>
 
-        <div className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-[32px] sm:p-6">
+        <div className="rounded-2xl surface-elevated p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6">
           {isLoading && (
             <p className="text-sm text-foreground/70">
               {t("enrollments.loading", "Loading enrollment history...")}
@@ -79,12 +79,12 @@ export default function MyEnrollmentsPage() {
           )}
 
           {isError && (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">
+            <div className="rounded-2xl surface-elevated bg-red-500/10 p-4 text-sm text-red-600 shadow-lg">
               <p>{t("enrollments.error", "Unable to load enrollments.")}</p>
               <button
                 type="button"
                 onClick={() => refetch()}
-                className="mt-2 rounded-full border border-red-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-600 transition hover:bg-red-500/10"
+                className="mt-2 rounded-full surface-elevated bg-red-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-600 transition hover:bg-red-500/20 hover:shadow-md shadow-sm"
               >
                 {t("button.retry", "Retry")}
               </button>
@@ -92,7 +92,7 @@ export default function MyEnrollmentsPage() {
           )}
 
           {!isLoading && !isError && enrollments.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-border/70 bg-background/80 p-8 text-center text-sm text-foreground/70">
+            <div className="rounded-2xl surface-elevated p-8 text-center text-sm text-foreground/70 shadow-lg">
               <p>{t("enrollments.empty.title", "No enrollments yet.")}</p>
               <p className="mt-2">
                 {t(
@@ -102,7 +102,7 @@ export default function MyEnrollmentsPage() {
               </p>
               <Link
                 href="/classes"
-                className="mt-4 inline-flex items-center justify-center rounded-full border border-secondary px-5 py-2 text-sm font-semibold text-secondary transition hover:bg-(--color-secondary-soft)"
+                className="mt-4 inline-flex items-center justify-center rounded-full surface-elevated bg-secondary/10 px-5 py-2 text-sm font-semibold text-secondary transition hover:bg-secondary/20 hover:shadow-md shadow-sm"
               >
                 {t("enrollments.empty.cta", "Browse classes")}
               </Link>
@@ -120,7 +120,7 @@ export default function MyEnrollmentsPage() {
                 <motion.article
                   key={`${enrollment.classId ?? enrollment.classTitle}-${status}-${enrollment.paymentReference ?? ""}`}
                   whileHover={{ y: -2 }}
-                  className="rounded-3xl border border-border bg-background/80 p-5"
+                  className="rounded-3xl surface-elevated p-5 shadow-lg hover:shadow-xl transition-all"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -174,14 +174,14 @@ export default function MyEnrollmentsPage() {
                     {enrollment.classId ? (
                       <Link
                         href={`/live/class/${enrollment.classId}`}
-                        className="rounded-full border border-secondary px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:bg-(--color-secondary-soft)"
+                        className="rounded-full surface-elevated bg-secondary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-secondary transition hover:bg-secondary/20 hover:shadow-md shadow-sm"
                       >
                         {t("enrollments.viewClass", "Open class")}
                       </Link>
                     ) : null}
                     <Link
                       href="/dashboard"
-                      className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-foreground transition hover:bg-(--color-secondary-soft)"
+                      className="rounded-full surface-elevated px-4 py-2 text-xs font-semibold uppercase tracking-wide text-foreground transition hover:shadow-md shadow-sm"
                     >
                       {t("enrollments.backDashboard", "Back to dashboard")}
                     </Link>

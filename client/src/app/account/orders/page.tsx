@@ -46,7 +46,7 @@ export default function OrdersPage() {
         <motion.header
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-2 rounded-2xl border border-border bg-linear-to-br from-surface via-background to-(--color-secondary-soft) p-4 shadow-lg sm:rounded-[32px] sm:p-6 md:p-8"
+          className="space-y-2 rounded-2xl surface-elevated bg-gradient-to-br from-surface via-background to-secondary/5 p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6 md:p-8"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
@@ -69,7 +69,7 @@ export default function OrdersPage() {
         {isLoading && (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-3xl border border-border bg-surface p-6">
+              <div key={i} className="rounded-3xl surface-elevated p-6 shadow-lg">
                 <div className="flex justify-between">
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-32" />
@@ -93,7 +93,7 @@ export default function OrdersPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6 text-center"
+            className="rounded-3xl surface-elevated bg-red-500/10 p-6 text-center shadow-lg"
           >
             <p className="text-sm text-red-500">
               {t("orders.page.error")}
@@ -115,7 +115,7 @@ export default function OrdersPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-3xl border border-border bg-surface/80 p-12 text-center"
+            className="rounded-3xl surface-elevated p-12 text-center shadow-lg"
           >
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/10">
               <ShoppingBag className="h-10 w-10 text-secondary/60" />
@@ -147,7 +147,7 @@ export default function OrdersPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="group rounded-3xl border border-border bg-surface p-6 shadow-[0_25px_60px_var(--color-primary-glow)] transition hover:border-secondary/30"
+                className="group rounded-3xl surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] transition hover:shadow-[0_30px_70px_rgba(18,6,6,0.15)]"
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -197,7 +197,7 @@ export default function OrdersPage() {
                   </span>
                 </div>
 
-                <div className="mt-6 space-y-3 rounded-2xl border border-border bg-background/60 p-4">
+                <div className="mt-6 space-y-3 rounded-2xl surface-elevated p-4 shadow-sm">
                   <p className="text-xs uppercase tracking-[0.3em] text-secondary">
                     {t("orders.page.items")} ({order.items.length})
                   </p>

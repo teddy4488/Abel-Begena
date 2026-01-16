@@ -33,7 +33,7 @@ const navConfig: Record<
   guest: {
     links: [
       { labelKey: "nav.home", href: "/" },
-      { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.posts", href: "/heritage" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.classes", href: "/classes" },
       { labelKey: "nav.about", href: "#about" },
@@ -45,8 +45,7 @@ const navConfig: Record<
     links: [
       { labelKey: "nav.dashboard", href: "/dashboard" },
       { labelKey: "nav.classes", href: "/classes" },
-      { labelKey: "nav.enrollments", href: "/dashboard/enrollments" },
-      { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.posts", href: "/heritage" },
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.orders", href: "/account/orders" },
@@ -56,7 +55,7 @@ const navConfig: Record<
   Teacher: {
     links: [
       { labelKey: "nav.teacherStudio", href: "/teacher" },
-      { labelKey: "nav.heritage", href: "/heritage" },
+      { labelKey: "nav.posts", href: "/heritage" },
       { labelKey: "nav.classes", href: "/teacher" },
       { labelKey: "nav.dashboard", href: "/dashboard" },
       { labelKey: "nav.store", href: "/store" },
@@ -91,7 +90,6 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
     { labelKey: "nav.profile", href: "/profile" },
     { labelKey: "nav.dashboard", href: "/dashboard" },
     { labelKey: "nav.classes", href: "/classes" },
-    { labelKey: "nav.enrollments", href: "/dashboard/enrollments" },
     { labelKey: "nav.orders", href: "/account/orders" },
     { labelKey: "nav.store", href: "/store" },
   ],
@@ -315,16 +313,30 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-4 lg:flex">
-          {navSettings.links.map((link) => (
-            <Link
-              key={link.labelKey}
-              href={link.href}
-              className={navLinkBaseClass}
-              data-active={isActiveLink(link.href) ? "true" : undefined}
-            >
-              {t(link.labelKey)}
-            </Link>
-          ))}
+          {navSettings.links.map((link) => {
+            const isAnchorLink = link.href.startsWith("#");
+            const handleClick = isAnchorLink
+              ? (e: React.MouseEvent<HTMLAnchorElement>) => {
+                  e.preventDefault();
+                  const element = document.querySelector(link.href);
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }
+              : undefined;
+            
+            return (
+              <Link
+                key={link.labelKey}
+                href={link.href}
+                onClick={handleClick}
+                className={navLinkBaseClass}
+                data-active={isActiveLink(link.href) ? "true" : undefined}
+              >
+                {t(link.labelKey)}
+              </Link>
+            );
+          })}
           {servicesLinks.length > 0 && (
             <div
               className="relative"
@@ -433,17 +445,31 @@ export default function Navbar() {
 
       {mobileOpen && (
         <div className="space-y-2 bg-[var(--color-surface-elevated)] px-5 py-4 text-base font-medium uppercase text-foreground shadow-[0_-2px_8px_var(--color-primary-glow)] lg:hidden dark:bg-[var(--color-surface-elevated)]">
-          {navSettings.links.map((link) => (
-            <Link
-              key={link.labelKey}
-              href={link.href}
-              className={clsx(navLinkMobileClass, "w-full")}
-              data-active={isActiveLink(link.href) ? "true" : undefined}
-              onClick={() => setMobileOpen(false)}
-            >
-              {t(link.labelKey)}
-            </Link>
-          ))}
+          {navSettings.links.map((link) => {
+            const isAnchorLink = link.href.startsWith("#");
+            const handleClick = isAnchorLink
+              ? (e: React.MouseEvent<HTMLAnchorElement>) => {
+                  e.preventDefault();
+                  setMobileOpen(false);
+                  const element = document.querySelector(link.href);
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }
+              : () => setMobileOpen(false);
+            
+            return (
+              <Link
+                key={link.labelKey}
+                href={link.href}
+                onClick={handleClick}
+                className={clsx(navLinkMobileClass, "w-full")}
+                data-active={isActiveLink(link.href) ? "true" : undefined}
+              >
+                {t(link.labelKey)}
+              </Link>
+            );
+          })}
           {servicesLinks.length > 0 && (
             <details className="group">
               <summary className="flex cursor-pointer items-center justify-between py-2">
