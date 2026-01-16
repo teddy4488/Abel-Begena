@@ -61,6 +61,16 @@ export class AttendanceController {
     return this.attendanceService.getStudentByAttendanceNumber(attendanceNumber);
   }
 
+  @Patch('students/participants/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  updateStudentParticipant(
+    @Param('id') id: string,
+    @Body() updateData: Partial<{ isActive?: boolean; isVerified?: boolean }>,
+  ) {
+    return this.attendanceService.updateStudentParticipant(id, updateData);
+  }
+
   // Teacher attendance
   @Post('teachers/check-in')
   @Roles('Admin')

@@ -10,6 +10,10 @@ import {
   useGetAdminsQuery,
   useGetStudentsQuery,
   useGetWebsiteUsersQuery,
+  useUpdateTeacherMutation,
+  useUpdateAdminMutation,
+  useUpdateWebsiteUserMutation,
+  useUpdateStudentMutation,
 } from "@/store/api/adminApi";
 import type { AuthUser } from "@/store/slices/authSlice";
 import type { Teacher, AdminUser, Student } from "@/store/api/adminApi";
@@ -36,6 +40,10 @@ export default function AdminUsersPage() {
   const { data: students = [], isLoading: studentsLoading } = useGetStudentsQuery();
 
   const [deleteUser] = useAdminDeleteUserMutation();
+  const [updateTeacher] = useUpdateTeacherMutation();
+  const [updateAdmin] = useUpdateAdminMutation();
+  const [updateWebsiteUser] = useUpdateWebsiteUserMutation();
+  const [updateStudent] = useUpdateStudentMutation();
 
   const isLoading = websiteUsersLoading || teachersLoading || adminsLoading || studentsLoading;
 
@@ -92,12 +100,46 @@ export default function AdminUsersPage() {
     };
   }, [websiteUsers, teachers, admins, students]);
 
-  const handleActiveToggle = async (item: UserItem, _userType: UserTab) => {
+  const handleActiveToggle = async (item: UserItem, userType: UserTab) => {
     try {
       const _id = item._id ?? item.id ?? "";
-      // For now, we'll handle updates based on user type
-      // This would need backend endpoints for each user type
-      // TODO: Implement actual update logic based on userType
+      if (!_id) {
+        throw new Error("User ID not found");
+      }
+
+      const currentIsActive = "isActive" in item ? item.isActive : true;
+      const newIsActive = !currentIsActive;
+
+      // Update based on user type
+      switch (userType) {
+        case "website":
+          await updateWebsiteUser({
+            id: _id,
+            data: { isActive: newIsActive },
+          }).unwrap();
+          break;
+        case "teachers":
+          await updateTeacher({
+            id: _id,
+            data: { isActive: newIsActive },
+          }).unwrap();
+          break;
+        case "admins":
+          await updateAdmin({
+            id: _id,
+            data: { isActive: newIsActive },
+          }).unwrap();
+          break;
+        case "students":
+          await updateStudent({
+            id: _id,
+            data: { isActive: newIsActive },
+          }).unwrap();
+          break;
+        default:
+          throw new Error(`Unknown user type: ${userType}`);
+      }
+
       pushToast({
         title: t("admin.users.statusUpdated", "Status updated"),
         variant: "success",

@@ -159,6 +159,8 @@ export const attendanceApi = createApi({
     "Lessons",
     "Billing",
     "Eligibility",
+    "StudentAttendance",
+    "StudentPayments",
   ],
   endpoints: (builder) => ({
     getTeacherParticipants: builder.query<TeacherParticipant[], void>({

@@ -182,6 +182,24 @@ export class AttendanceService {
     return student;
   }
 
+  async updateStudentParticipant(
+    id: string,
+    updateData: Partial<StudentAttendanceParticipant>,
+  ) {
+    const student = await this.studentParticipantModel.findById(id).exec();
+    if (!student) {
+      throw new NotFoundException('Student participant not found');
+    }
+
+    Object.assign(student, updateData);
+    await student.save();
+    return this.studentParticipantModel
+      .findById(id)
+      .populate('branchId', 'name slug')
+      .lean()
+      .exec();
+  }
+
   // Teacher attendance
   async checkIn(dto: TeacherCheckInDto, adminUserId: string) {
     const participant = await this.teacherParticipantModel

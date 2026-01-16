@@ -195,6 +195,50 @@ export const adminApi = createApi({
       query: () => "/users",
       providesTags: ["WebsiteUsers"],
     }),
+    updateTeacher: builder.mutation<
+      Teacher,
+      { id: string; data: Partial<Teacher> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/admin/teachers/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["Teachers"],
+    }),
+    updateAdmin: builder.mutation<
+      AdminUser,
+      { id: string; data: Partial<AdminUser> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/admin/admins/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["Admins"],
+    }),
+    updateWebsiteUser: builder.mutation<
+      AuthUser,
+      { id: string; data: Partial<AuthUser> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/users/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["WebsiteUsers"],
+    }),
+    updateStudent: builder.mutation<
+      Student,
+      { id: string; data: Partial<Student> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/attendance/students/participants/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["Students"],
+    }),
   }),
 });
 
@@ -210,5 +254,9 @@ export const {
   useGetAdminsQuery,
   useGetStudentsQuery,
   useGetWebsiteUsersQuery,
+  useUpdateTeacherMutation,
+  useUpdateAdminMutation,
+  useUpdateWebsiteUserMutation,
+  useUpdateStudentMutation,
 } = adminApi;
 
