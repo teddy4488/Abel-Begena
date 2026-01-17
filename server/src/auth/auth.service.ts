@@ -515,12 +515,23 @@ export class AuthService {
       // update() method will hash the password automatically
       await this.adminUserService.update(userId, { password: dto.newPassword });
     } else {
-      // website_user
-      const user = await this.userService.findById(userId);
-      if (!user || !user.password) {
-        throw new BadRequestException('User not found or password not set');
+      // website_user - need to get user with password, so use findByEmail
+      // First get the user email from the safe user object
+      const safeUser = await this.userService.findById(userId);
+      if (!safeUser || !('email' in safeUser)) {
+        throw new BadRequestException('User not found');
       }
-      const isValid = await this.userService.comparePassword(dto.currentPassword, user.password);
+      // Now get the full user document (with password) using findByEmail
+      const userDoc = await this.userService.findByEmail((safeUser as { email: string }).email);
+      if (!userDoc) {
+        throw new BadRequestException('User not found');
+      }
+      // UserDocument has password property
+      const userPassword = (userDoc as { password?: string }).password;
+      if (!userPassword) {
+        throw new BadRequestException('Password not set');
+      }
+      const isValid = await this.userService.comparePassword(dto.currentPassword, userPassword);
       if (!isValid) {
         throw new BadRequestException('Current password is incorrect');
       }

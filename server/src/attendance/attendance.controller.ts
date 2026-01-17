@@ -203,24 +203,25 @@ export class AttendanceController {
     return this.attendanceService.deleteLesson(id);
   }
 
-  // Admin attendance reporting
+  // Admin attendance reporting - using existing endpoints
   @Get('reports')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   getAttendanceReport(
     @Query('studentId') studentId?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('instrumentType') instrumentType?: string,
-    @Query('branchId') branchId?: string,
   ) {
-    return this.attendanceService.getAttendanceReport({
-      studentId,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      instrumentType,
-      branchId,
-    });
+    if (studentId) {
+      // Return both attendance and payment reports for a specific student
+      return Promise.all([
+        this.attendanceService.getStudentAttendanceRecords(studentId),
+        this.attendanceService.getStudentPayments(studentId),
+      ]).then(([attendance, payments]) => ({
+        attendance,
+        payments,
+      }));
+    }
+    // If no studentId, return billing summary
+    return this.attendanceService.getStudentBillingSummary();
   }
 
   // Overdue payments

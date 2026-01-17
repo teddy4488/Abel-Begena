@@ -1,9 +1,11 @@
 import {
   IsArray,
   IsDateString,
+  IsEmail,
   IsEnum,
   IsIn,
   IsMongoId,
+  IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,

@@ -6,13 +6,11 @@ import Link from "next/link";
 import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, BookOpen, Clock, Calendar, Download, FileText, Video, Image as ImageIcon, File, ExternalLink, Bell } from "lucide-react";
+import { GraduationCap, BookOpen, Clock, Calendar, Download, FileText, Video, Image as ImageIcon, File, ExternalLink, Bell, AlertCircle } from "lucide-react";
 import { useGetPublicMaterialsQuery } from "@/store/api/materialsApi";
 import { useGetClassesQuery } from "@/store/api/classApi";
 import { useGetMyUpcomingPaymentsQuery } from "@/store/api/attendanceApi";
 import { InstrumentType } from "@/store/api/storeApi";
-import { AlertCircle, Calendar, Bell } from "lucide-react";
-import Link from "next/link";
 
 export default function StudentDashboardPage() {
   const router = useRouter();
