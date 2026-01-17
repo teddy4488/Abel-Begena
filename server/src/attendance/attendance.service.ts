@@ -995,4 +995,79 @@ export class AttendanceService {
 
     return overduePayments;
   }
+
+  async getUpcomingPayments(studentId: string, daysAhead: number = 14) {
+    const participant = await this.studentParticipantModel.findById(studentId).exec();
+    if (!participant) {
+      throw new NotFoundException('Student participant not found');
+    }
+
+    const current = this.getCurrentYearMonth();
+    const currentDate = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(currentDate.getDate() + daysAhead);
+
+    // Calculate expected payments from registration date up to future date
+    const registrationDate = new Date(participant.registrationStartDate || new Date());
+    let checkYear = registrationDate.getFullYear();
+    let checkMonth = registrationDate.getMonth() + 1;
+
+    const upcomingPayments: Array<{
+      year: number;
+      month: number;
+      dueDate: Date;
+      daysUntilDue: number;
+      amount?: number;
+      status?: 'paid' | 'partial' | 'unpaid';
+    }> = [];
+
+    // Check payments up to future date
+    while (
+      checkYear < futureDate.getFullYear() ||
+      (checkYear === futureDate.getFullYear() && checkMonth <= futureDate.getMonth() + 1)
+    ) {
+      // Calculate due date (typically 5th of each month)
+      const dueDate = new Date(checkYear, checkMonth - 1, 5);
+      
+      // Only include if due date is in the future (up to daysAhead)
+      if (dueDate >= currentDate && dueDate <= futureDate) {
+        const payment = await this.studentPaymentModel
+          .findOne({
+            participantId: participant._id,
+            year: checkYear,
+            month: checkMonth,
+          })
+          .lean()
+          .exec();
+
+        // Only include if payment is unpaid or doesn't exist yet
+        if (!payment || payment.status === 'unpaid' || payment.status === 'partial') {
+          const daysUntilDue = Math.floor(
+            (dueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          
+          upcomingPayments.push({
+            year: checkYear,
+            month: checkMonth,
+            dueDate,
+            daysUntilDue,
+            amount: payment?.amount,
+            status: payment?.status || 'unpaid',
+          });
+        }
+      }
+
+      // Move to next month
+      checkMonth += 1;
+      if (checkMonth > 12) {
+        checkMonth = 1;
+        checkYear += 1;
+      }
+    }
+
+    // Sort by due date (soonest first)
+    upcomingPayments.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+
+    return upcomingPayments;
+  }
 }

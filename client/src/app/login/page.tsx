@@ -58,6 +58,13 @@ export default function LoginPage() {
         description: t("login.successDescription", "Redirecting you to your dashboard."),
         variant: "success",
       });
+      
+      // Check if student must change password on first login
+      if (result.user?.userType === "student" && result.user?.mustChangePassword) {
+        router.replace("/change-password");
+        return;
+      }
+      
       const destination = getUserLandingRoute(
         result.user?.userType,
         result.user?.role,

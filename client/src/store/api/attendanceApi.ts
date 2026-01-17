@@ -404,6 +404,23 @@ export const attendanceApi = createApi({
       query: (studentId) => `/attendance/admin/students/${studentId}/payment-report`,
       providesTags: ["StudentPayments"],
     }),
+    getMyUpcomingPayments: builder.query<
+      Array<{
+        year: number;
+        month: number;
+        dueDate: string;
+        daysUntilDue: number;
+        amount?: number;
+        status?: "paid" | "partial" | "unpaid";
+      }>,
+      { daysAhead?: number } | void
+    >({
+      query: (params) => ({
+        url: "/attendance/students/me/upcoming-payments",
+        params: params ?? {},
+      }),
+      providesTags: ["StudentPayments"],
+    }),
   }),
 });
 
@@ -430,4 +447,5 @@ export const {
   useGetOverduePaymentsQuery,
   useGetStudentAttendanceReportQuery,
   useGetStudentPaymentReportQuery,
+  useGetMyUpcomingPaymentsQuery,
 } = attendanceApi;

@@ -487,6 +487,49 @@ export class AuthService {
     return { message: 'Password updated successfully.' };
   }
 
+  async changePassword(userId: string, userType: UserType | undefined, dto: { currentPassword: string; newPassword: string }) {
+    // Only students need password change on first login
+    // But this endpoint can be used by any user type
+    if (userType === 'student') {
+      await this.studentService.changePassword(userId, dto.currentPassword, dto.newPassword);
+    } else if (userType === 'teacher') {
+      const teacher = await this.teacherService.findById(userId);
+      if (!teacher || !teacher.password) {
+        throw new BadRequestException('Teacher not found or password not set');
+      }
+      const isValid = await this.teacherService.comparePassword(dto.currentPassword, teacher.password);
+      if (!isValid) {
+        throw new BadRequestException('Current password is incorrect');
+      }
+      // update() method will hash the password automatically
+      await this.teacherService.update(userId, { password: dto.newPassword } as any);
+    } else if (userType === 'admin') {
+      const admin = await this.adminUserService.findById(userId);
+      if (!admin || !admin.password) {
+        throw new BadRequestException('Admin not found or password not set');
+      }
+      const isValid = await this.adminUserService.comparePassword(dto.currentPassword, admin.password);
+      if (!isValid) {
+        throw new BadRequestException('Current password is incorrect');
+      }
+      // update() method will hash the password automatically
+      await this.adminUserService.update(userId, { password: dto.newPassword });
+    } else {
+      // website_user
+      const user = await this.userService.findById(userId);
+      if (!user || !user.password) {
+        throw new BadRequestException('User not found or password not set');
+      }
+      const isValid = await this.userService.comparePassword(dto.currentPassword, user.password);
+      if (!isValid) {
+        throw new BadRequestException('Current password is incorrect');
+      }
+      // update() method will hash the password automatically
+      await this.userService.update(userId, { password: dto.newPassword } as any);
+    }
+    return { message: 'Password changed successfully.' };
+  }
+
   private async issueVerificationCode(
     userId: string,
     email: string,

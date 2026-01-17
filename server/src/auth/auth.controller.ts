@@ -16,6 +16,8 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UserType } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -44,6 +46,15 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Request() req: { user: { sub: string; userType?: string } },
+  ) {
+    return this.authService.changePassword(req.user.sub, req.user.userType as UserType | undefined, dto);
   }
 
   @Post('login')

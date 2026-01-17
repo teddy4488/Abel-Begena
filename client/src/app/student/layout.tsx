@@ -33,8 +33,15 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="w-full">{children}</main>
+    <div className="relative min-h-screen bg-background text-foreground">
+      {/* Subtle Orthodox cross decorations */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <span className="absolute left-8 top-20 text-5xl text-secondary/5">✝</span>
+        <span className="absolute right-12 top-40 text-6xl text-secondary/5">✝</span>
+        <span className="absolute bottom-40 left-12 text-4xl text-secondary/5">✝</span>
+        <span className="absolute bottom-20 right-8 text-5xl text-secondary/5">✝</span>
+      </div>
+      <main className="relative z-10 w-full">{children}</main>
     </div>
   );
 }

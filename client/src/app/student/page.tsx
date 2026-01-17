@@ -6,10 +6,13 @@ import Link from "next/link";
 import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, BookOpen, Clock, Calendar, Download, FileText, Video, Image as ImageIcon, File, ExternalLink } from "lucide-react";
+import { GraduationCap, BookOpen, Clock, Calendar, Download, FileText, Video, Image as ImageIcon, File, ExternalLink, Bell } from "lucide-react";
 import { useGetPublicMaterialsQuery } from "@/store/api/materialsApi";
 import { useGetClassesQuery } from "@/store/api/classApi";
+import { useGetMyUpcomingPaymentsQuery } from "@/store/api/attendanceApi";
 import { InstrumentType } from "@/store/api/storeApi";
+import { AlertCircle, Calendar, Bell } from "lucide-react";
+import Link from "next/link";
 
 export default function StudentDashboardPage() {
   const router = useRouter();
@@ -25,6 +28,9 @@ export default function StudentDashboardPage() {
   
   // Get classes and filter live classes for online learners only
   const { data: classes = [] } = useGetClassesQuery();
+  const { data: upcomingPayments = [] } = useGetMyUpcomingPaymentsQuery({ daysAhead: 14 }, {
+    skip: !isLoggedIn || user?.userType !== "student",
+  });
   const isOnlineLearner = user?.learningType === "online";
   
   const liveClasses = useMemo(() => {
@@ -47,8 +53,14 @@ export default function StudentDashboardPage() {
       } else {
         router.replace("/dashboard");
       }
+      return;
     }
-  }, [isLoggedIn, router, user?.userType]);
+    // Redirect to password change page if student must change password
+    if (user?.mustChangePassword) {
+      router.replace("/change-password");
+      return;
+    }
+  }, [isLoggedIn, router, user?.userType, user?.mustChangePassword]);
 
   if (!isLoggedIn || user?.userType !== "student") {
     return null;
@@ -172,6 +184,95 @@ export default function StudentDashboardPage() {
             </Link>
           </div>
         </motion.div>
+
+        {/* Upcoming Payment Notifications */}
+        {upcomingPayments.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="rounded-3xl surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:p-8 border-l-4 border-amber-500"
+          >
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
+                <Bell className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                  {t("student.dashboard.upcomingPayments.kicker", "Payment Reminder")}
+                </p>
+                <h2 className="text-xl font-serif text-primary">
+                  {t("student.dashboard.upcomingPayments.title", "Upcoming Payment Due Dates")}
+                </h2>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {upcomingPayments.slice(0, 3).map((payment, index) => {
+                const urgencyColor =
+                  payment.daysUntilDue <= 3
+                    ? "bg-red-500/10 text-red-600 border-red-500/30"
+                    : payment.daysUntilDue <= 7
+                      ? "bg-orange-500/10 text-orange-600 border-orange-500/30"
+                      : "bg-amber-500/10 text-amber-600 border-amber-500/30";
+                
+                const urgencyText =
+                  payment.daysUntilDue === 0
+                    ? t("student.dashboard.upcomingPayments.dueToday", "Due Today")
+                    : payment.daysUntilDue === 1
+                      ? t("student.dashboard.upcomingPayments.dueTomorrow", "Due Tomorrow")
+                      : t("student.dashboard.upcomingPayments.dueInDays", `Due in ${payment.daysUntilDue} days`);
+
+                const monthName = new Date(payment.year, payment.month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+                return (
+                  <motion.div
+                    key={`${payment.year}-${payment.month}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 + index * 0.05 }}
+                    className={`flex items-center justify-between rounded-xl border px-4 py-3 ${urgencyColor}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5" />
+                      <div>
+                        <p className="font-semibold text-primary">
+                          {monthName}
+                        </p>
+                        <p className="text-xs text-foreground/70">
+                          {new Date(payment.dueDate).toLocaleDateString()} • {urgencyText}
+                        </p>
+                        {payment.amount && (
+                          <p className="mt-1 text-sm font-semibold">
+                            {payment.amount.toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "ETB",
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Link
+                      href="/student/payments"
+                      className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90 transition"
+                    >
+                      {t("student.dashboard.upcomingPayments.view", "View Details")}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {upcomingPayments.length > 3 && (
+              <Link
+                href="/student/payments"
+                className="mt-4 block text-center text-sm text-secondary hover:underline"
+              >
+                {t("student.dashboard.upcomingPayments.viewAll", `View all ${upcomingPayments.length} upcoming payments`)}
+              </Link>
+            )}
+          </motion.div>
+        )}
 
         {/* Instrument Materials Section */}
         {studentInstrumentType && (

@@ -19,6 +19,7 @@ import {
   useGetBillingSummaryQuery,
   useRecordStudentPaymentMutation,
   useGetGraduationEligibilityQuery,
+  useGetOverduePaymentsQuery,
   type DayOfWeek,
   type LearningType,
   type AttendanceStatus,
@@ -90,6 +91,7 @@ export default function AdminAttendancePage() {
   const { data: todayAttendance = [], refetch: refetchToday } =
     useGetTodayTeacherAttendanceQuery();
   const { data: billingSummary } = useGetBillingSummaryQuery();
+  const { data: overduePayments = [] } = useGetOverduePaymentsQuery();
   const { data: eligibility = [], isLoading: eligibilityLoading } =
     useGetGraduationEligibilityQuery();
   const [recordStudentAttendance, { isLoading: recordingStudent }] =
@@ -1036,6 +1038,82 @@ export default function AdminAttendancePage() {
                       "attendance.billing.none",
                       "No active students in attendance registry for this month.",
                     )}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Overdue Payments Section */}
+            <div className="rounded-2xl surface-elevated p-6">
+              <div className="mb-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.billing.overdue", "Overdue Payments")}
+                </p>
+                <h2 className="text-xl font-serif text-primary">
+                  {t("attendance.billing.overdueTitle", "Students with overdue payments")}
+                </h2>
+                <p className="mt-1 text-xs text-foreground/60">
+                  {overduePayments.length > 0
+                    ? `${overduePayments.length} ${t("attendance.billing.overdueCount", "payment(s) overdue")}`
+                    : t("attendance.billing.noOverdue", "No overdue payments")}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {overduePayments.length > 0 ? (
+                  overduePayments.map((payment) => {
+                    const daysColor =
+                      payment.daysOverdue > 30
+                        ? "bg-red-500/10 text-red-600"
+                        : payment.daysOverdue > 14
+                          ? "bg-orange-500/10 text-orange-600"
+                          : "bg-yellow-500/10 text-yellow-600";
+                    return (
+                      <div
+                        key={`${payment.participantId}-${payment.year}-${payment.month}`}
+                        className="flex items-center justify-between rounded-xl card-elevated px-4 py-3"
+                      >
+                        <div>
+                          <p className="font-semibold text-primary">{payment.fullName}</p>
+                          <p className="text-xs text-foreground/60">
+                            {payment.attendanceNumber} • {payment.instrumentType} •{" "}
+                            {new Date(payment.dueDate).toLocaleDateString()} •{" "}
+                            {payment.year}-{String(payment.month).padStart(2, "0")}
+                          </p>
+                          {payment.amount && (
+                            <p className="mt-1 text-sm font-semibold text-primary">
+                              {payment.amount.toLocaleString("en-US", {
+                                style: "currency",
+                                currency: "ETB",
+                              })}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${daysColor}`}>
+                            {payment.daysOverdue}{" "}
+                            {t("attendance.billing.daysOverdue", "day(s) overdue")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentStudentId(payment.participantId);
+                              setPaymentStatus(payment.status || "unpaid");
+                              setPaymentAmount(payment.amount?.toString() || "0");
+                              setPaymentNote("");
+                              setShowPaymentModal(true);
+                            }}
+                            className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90"
+                          >
+                            {t("attendance.billing.record", "Record Payment")}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="py-8 text-center text-sm text-foreground/60">
+                    {t("attendance.billing.noOverdue", "No overdue payments")}
                   </p>
                 )}
               </div>

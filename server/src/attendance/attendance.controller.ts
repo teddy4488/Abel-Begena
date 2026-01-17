@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -228,5 +229,18 @@ export class AttendanceController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   getOverduePayments() {
     return this.attendanceService.getOverduePayments();
+  }
+
+  @Get('students/me/upcoming-payments')
+  @UseGuards(JwtAuthGuard)
+  getMyUpcomingPayments(
+    @Request() req: { user: { sub: string } },
+    @Query('daysAhead') daysAhead?: string,
+  ) {
+    const days = daysAhead ? parseInt(daysAhead, 10) : 14;
+    if (isNaN(days) || days < 0) {
+      throw new BadRequestException('Invalid daysAhead parameter');
+    }
+    return this.attendanceService.getUpcomingPayments(req.user.sub, days);
   }
 }

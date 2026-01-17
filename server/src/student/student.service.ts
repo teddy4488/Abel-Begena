@@ -95,6 +95,24 @@ export class StudentService {
       .exec();
   }
 
+  async changePassword(studentId: string, currentPassword: string, newPassword: string) {
+    const student = await this.studentModel.findById(studentId).exec();
+    if (!student || !student.password) {
+      throw new Error('Student not found or password not set');
+    }
+    
+    const isValid = await this.comparePassword(currentPassword, student.password);
+    if (!isValid) {
+      throw new Error('Current password is incorrect');
+    }
+
+    const hashedPassword = await this.hashPassword(newPassword);
+    await this.studentModel.findByIdAndUpdate(studentId, {
+      password: hashedPassword,
+      mustChangePassword: false, // Clear the flag after password change
+    }).exec();
+  }
+
   toSafeStudent(student: unknown) {
     if (!student || typeof student !== 'object') {
       return null;
