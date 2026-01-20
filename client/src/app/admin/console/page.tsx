@@ -386,7 +386,7 @@ export default function AdminConsolePage() {
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        {pendingLoading ? (
+        {enrollmentsLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-secondary" />
           </div>

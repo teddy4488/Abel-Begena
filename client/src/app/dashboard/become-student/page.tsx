@@ -43,6 +43,12 @@ export default function BecomeStudentPage() {
   const { pushToast } = useToast();
   const { t } = useI18n();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
+
+  // Avoid SSR evaluation of client-only APIs (guards build-time ReferenceError on location/window)
+  const isClient = typeof window !== "undefined";
+  if (!isClient) {
+    return null;
+  }
   const { data: branches = [] } = useGetBranchesQuery();
   const [convertToStudent, { isLoading: isConverting }] = useConvertUserToStudentMutation();
   const [createPayment, { isLoading: isCreatingPayment }] = useCreatePaymentRequestMutation();
