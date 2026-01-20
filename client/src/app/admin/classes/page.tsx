@@ -52,7 +52,15 @@ export default function AdminClassesPage() {
   const [activeTab, setActiveTab] = useState<"classes" | "lessons">("classes");
   
   // Lessons management
-  const INSTRUMENTS: InstrumentType[] = ["Begena", "Washint", "Kebero", "Other"];
+  // Keep this in sync with backend InstrumentType (Begena, Kirar, Masinko, Washint, Kebero, Other)
+  const INSTRUMENTS: InstrumentType[] = [
+    "Begena",
+    "Masinko",
+    "Kirar",
+    "Washint",
+    "Kebero",
+    "Other",
+  ];
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>("Begena");
   const { data: lessons = [], isLoading: lessonsLoading } = useGetInstrumentLessonsQuery(selectedInstrument);
   const [createLesson, { isLoading: creatingLesson }] = useCreateLessonMutation();
