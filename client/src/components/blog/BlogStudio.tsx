@@ -9,6 +9,7 @@ import {
   useGetManagePostsQuery,
   useUpdatePostMutation,
   useUploadBlogImageMutation,
+  useGetManageCommentsQuery,
 } from "@/store/api/blogApi";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -38,6 +39,7 @@ export function BlogStudio({
   const [updatePost, { isLoading: isUpdating }] = useUpdatePostMutation();
   const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation();
   const [uploadImage, { isLoading: isUploadingImage }] = useUploadBlogImageMutation();
+  const { data: allComments = [] } = useGetManageCommentsQuery();
   const { pushToast } = useToast();
   const { user } = useAppSelector((state) => state.auth);
   const isAdmin = user?.role === "Admin";
@@ -61,6 +63,20 @@ export function BlogStudio({
       return matchesAuthor && matchesSearch;
     });
   }, [filterByAuthorId, posts, search]);
+
+  const commentCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    allComments.forEach((c) => {
+      const pid =
+        typeof c.postId === "object" && c.postId?._id
+          ? (c.postId as any)._id.toString()
+          : (c.postId as unknown as string);
+      if (pid) {
+        map.set(pid, (map.get(pid) ?? 0) + 1);
+      }
+    });
+    return map;
+  }, [allComments]);
 
   useEffect(() => {
     if (!activePostId) {
@@ -248,7 +264,12 @@ export function BlogStudio({
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span>{post.title}</span>
+                  <span className="flex items-center gap-2">
+                    {post.title}
+                    <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-semibold text-foreground/70">
+                      {commentCounts.get(post._id) ?? 0}
+                    </span>
+                  </span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
                       post.status === "published"

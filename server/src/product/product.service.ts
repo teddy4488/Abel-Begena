@@ -132,6 +132,15 @@ export class ProductService {
     return product.toObject();
   }
 
+  async delete(id: string) {
+    const product = await this.productModel.findById(id).exec();
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    await product.deleteOne();
+    return { message: 'Product deleted' };
+  }
+
   private validatePricing(
     price: number,
     discountPrice?: number,

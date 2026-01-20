@@ -5,6 +5,7 @@ import {
   Patch,
   Param,
   Body,
+  Delete,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -79,5 +80,19 @@ export class ProductController {
       message: 'Image uploaded successfully',
       product: updatedProduct,
     };
+  }
+
+  @Patch(':id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
+    return this.productService.update(id, updateProductDto);
+  }
+
+  @Delete(':id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  delete(@Param('id') id: string) {
+    return this.productService.delete(id);
   }
 }

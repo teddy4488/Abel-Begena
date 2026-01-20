@@ -7,6 +7,7 @@ import {
   useGetManageProductsQuery,
   useUpdateProductMutation,
   useUploadProductImageMutation,
+  useDeleteProductMutation,
   type InstrumentType,
 } from "@/store/api/storeApi";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -30,6 +31,7 @@ export default function AdminStorePage() {
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [updateProduct] = useUpdateProductMutation();
   const [uploadImage] = useUploadProductImageMutation();
+  const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
   const [form, setForm] = useState(productFormDefaults);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingUploads, setPendingUploads] = useState<Record<string, File | null>>({});
@@ -40,6 +42,7 @@ export default function AdminStorePage() {
   >({});
   const [promoSavingId, setPromoSavingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { pushToast } = useToast();
   const { t } = useI18n();
 
@@ -104,38 +107,60 @@ export default function AdminStorePage() {
       return;
     }
     try {
-      // Create product first without images
-      const newProduct = await createProduct({
-        name: form.name,
-        instrumentType: form.instrumentType,
-        shortDescription: form.shortDescription,
-        price: Number(form.price),
-        stock: Number(form.stock),
-        images: [],
-        isActive: form.isActive,
-        promoActive: form.promoActive,
-        discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
-      }).unwrap();
+      let productId = editingId;
 
-      // Upload images if any
-      if (form.images.length > 0) {
-        for (const imageFile of form.images) {
-          try {
-            await uploadImage({ id: newProduct._id, file: imageFile }).unwrap();
-          } catch (err) {
-            console.error("Failed to upload image:", err);
+      if (editingId) {
+        await updateProduct({
+          id: editingId,
+          data: {
+            name: form.name,
+            instrumentType: form.instrumentType,
+            shortDescription: form.shortDescription,
+            price: Number(form.price),
+            stock: Number(form.stock),
+            isActive: form.isActive,
+            promoActive: form.promoActive,
+            discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
+          },
+        }).unwrap();
+      } else {
+        // Create product first without images
+        const newProduct = await createProduct({
+          name: form.name,
+          instrumentType: form.instrumentType,
+          shortDescription: form.shortDescription,
+          price: Number(form.price),
+          stock: Number(form.stock),
+          images: [],
+          isActive: form.isActive,
+          promoActive: form.promoActive,
+          discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
+        }).unwrap();
+        productId = newProduct._id;
+
+        // Upload images if any
+        if (form.images.length > 0) {
+          for (const imageFile of form.images) {
+            try {
+              await uploadImage({ id: newProduct._id, file: imageFile }).unwrap();
+            } catch (err) {
+              console.error("Failed to upload image:", err);
+            }
           }
         }
       }
 
       pushToast({
-        title: t("admin.store.productCreated", "Product created"),
+        title: editingId
+          ? t("admin.store.productUpdated", "Product updated")
+          : t("admin.store.productCreated", "Product created"),
         description: t("admin.store.productCreatedDesc", "The store inventory has been updated."),
         variant: "success",
       });
       setForm(productFormDefaults);
       setErrors({});
       setShowAddForm(false);
+      setEditingId(null);
     } catch (error) {
       console.error(error);
       pushToast({
@@ -160,6 +185,34 @@ export default function AdminStorePage() {
         title: "Unable to update product",
         variant: "error",
       });
+    }
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditingId(product._id);
+    setShowAddForm(true);
+    setForm({
+      name: product.name ?? "",
+      instrumentType: product.instrumentType ?? "Begena",
+      shortDescription: product.shortDescription ?? "",
+      price: (product.price ?? "").toString(),
+      stock: (product.stock ?? "").toString(),
+      images: [],
+      isActive: product.isActive ?? true,
+      promoActive: product.promoActive ?? false,
+      discountPrice: product.discountPrice?.toString() ?? "",
+    });
+    setErrors({});
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm("Delete this product? This cannot be undone.")) return;
+    try {
+      await deleteProduct(id).unwrap();
+      pushToast({ title: "Product deleted", variant: "success" });
+    } catch (error) {
+      console.error(error);
+      pushToast({ title: "Unable to delete product", variant: "error" });
     }
   };
 
@@ -713,22 +766,41 @@ export default function AdminStorePage() {
                 key={product._id}
                 className="rounded-2xl /70 p-4"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-lg font-semibold text-primary">{product.name}</p>
                     <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
                       {product.instrumentType}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleProduct(product._id, product.isActive)}
-                    className={`text-xs uppercase tracking-[0.3em] ${
-                      product.isActive ? "text-green-500" : "text-foreground/60"
-                    }`}
-                  >
-                    {product.isActive ? "Active" : "Hidden"}
-                  </button>
+                  <div className="flex flex-col items-end gap-1 text-right">
+                    <button
+                      type="button"
+                      onClick={() => toggleProduct(product._id, product.isActive)}
+                      className={`text-xs uppercase tracking-[0.3em] ${
+                        product.isActive ? "text-green-500" : "text-foreground/60"
+                      }`}
+                    >
+                      {product.isActive ? "Active" : "Hidden"}
+                    </button>
+                    <div className="flex gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => handleEditProduct(product)}
+                        className="rounded-full border border-border px-3 py-1 font-semibold transition hover:border-secondary"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={() => handleDeleteProduct(product._id)}
+                        className="rounded-full border border-red-500/50 px-3 py-1 font-semibold text-red-500 transition hover:bg-red-500/10 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <p className="mt-2 text-sm text-foreground/70">
                   {product.shortDescription || "No description"}

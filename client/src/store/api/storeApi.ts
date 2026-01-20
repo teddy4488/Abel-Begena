@@ -124,6 +124,13 @@ export const storeApi = createApi({
       }),
       invalidatesTags: ["Products"],
     }),
+    deleteProduct: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/products/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Products"],
+    }),
     updateOrderStatus: builder.mutation<
       Order,
       { id: string; status?: string; isPaid?: boolean }
@@ -164,6 +171,7 @@ export const {
   useGetAllOrdersQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
+  useDeleteProductMutation,
   useUpdateOrderStatusMutation,
   useUploadProductImageMutation,
 } = storeApi;
