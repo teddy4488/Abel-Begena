@@ -6,16 +6,6 @@ import { useI18n } from "@/components/providers/I18nProvider";
 
 const footerLinks = [
   {
-    labelKey: "footer.links.privacy",
-    fallback: "Privacy Policy",
-    href: "/privacy",
-  },
-  {
-    labelKey: "footer.links.terms",
-    fallback: "Terms of Service",
-    href: "/terms",
-  },
-  {
     labelKey: "footer.links.contact",
     fallback: "Contact",
     href: "#contact",

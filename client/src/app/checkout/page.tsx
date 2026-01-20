@@ -41,6 +41,7 @@ export default function CheckoutPage() {
     paymentMethod: "CashOnDelivery",
     receiptUrl: "",
   });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { pushToast } = useToast();
@@ -63,8 +64,12 @@ export default function CheckoutPage() {
       if (!form.postalCode.trim()) next.postalCode = t("checkout.page.postalCodeError");
       if (!/^[+0-9\s-]{6,}$/.test(form.phone)) next.phone = t("checkout.page.phoneError");
     }
-    if (form.paymentMethod === "BankTransfer" && !form.receiptUrl.trim()) {
-      next.receiptUrl = t("checkout.page.receiptError", "Receipt URL is required for bank transfer");
+    const offlineMethods = ["BankTransfer", "Telebirr", "CBEBirr"];
+    if (offlineMethods.includes(form.paymentMethod) && !form.receiptUrl.trim()) {
+      next.receiptUrl = t(
+        "checkout.page.receiptError",
+        "Receipt confirmation (reference or link) is required for this payment method",
+      );
     }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
@@ -92,7 +97,7 @@ export default function CheckoutPage() {
           phone: form.phone,
         } : undefined,
         paymentMethod: form.paymentMethod,
-        receiptUrl: form.paymentMethod === "BankTransfer" ? form.receiptUrl : undefined,
+        receiptUrl: form.receiptUrl || undefined,
       }).unwrap();
       pushToast({
         title: t("checkout.toast.success"),
@@ -361,33 +366,89 @@ export default function CheckoutPage() {
                     </label>
                   ))}
                 </div>
-                {form.paymentMethod === "BankTransfer" && (
-                  <div className="mt-4">
-                    <label className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
-                      <CreditCard className="h-4 w-4" />
-                      {t("checkout.page.receiptUrl", "Receipt URL")}
-                    </label>
-                    <input
-                      type="url"
-                      required={form.paymentMethod === "BankTransfer"}
-                      value={form.receiptUrl}
-                      onChange={(e) => setForm({ ...form, receiptUrl: e.target.value })}
-                      className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                        fieldErrors.receiptUrl ? "border-red-400" : "border-border focus:border-secondary"
-                      } bg-background/80`}
-                      placeholder="https://example.com/receipt.jpg"
-                    />
-                    {fieldErrors.receiptUrl && (
-                      <p className="mt-1 text-xs text-red-500">{fieldErrors.receiptUrl}</p>
-                    )}
-                    <p className="mt-2 text-xs text-foreground/60">
-                      {t("checkout.page.receiptNote", "Upload your payment receipt and provide the URL. Our team will verify and contact you.")}
+                {["BankTransfer", "Telebirr", "CBEBirr"].includes(form.paymentMethod) && (
+                  <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background/60 p-4">
+                    <p className="text-xs text-foreground/70">
+                      {form.paymentMethod === "BankTransfer"
+                        ? t(
+                            "checkout.page.bankTransferInstructions",
+                            "Please transfer the total amount to the bank account below, then upload your receipt or paste a confirmation link.",
+                          )
+                        : t(
+                            "checkout.page.telebirrInstructions",
+                            "Please send the total amount to the mobile wallet below, then upload your receipt or paste a confirmation link.",
+                          )}
                     </p>
+                    <div className="rounded-xl bg-surface-elevated px-4 py-3 text-xs text-foreground/80">
+                      {form.paymentMethod === "BankTransfer" ? (
+                        <>
+                          <p className="font-semibold">
+                            {t("checkout.page.bankName", "Bank")}: Commercial Bank of Ethiopia
+                          </p>
+                          <p className="font-mono text-sm">
+                            {t("checkout.page.bankAccount", "Account")}: 1000-000000-0000
+                          </p>
+                          <p>
+                            {t(
+                              "checkout.page.bankAccountName",
+                              "Account Name: Abel Begena Conservatory",
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold">
+                            {t("checkout.page.walletProvider", "Wallet")}: Telebirr
+                          </p>
+                          <p className="font-mono text-sm">
+                            {t("checkout.page.walletNumber", "Number")}: +251-900-000000
+                          </p>
+                          <p>
+                            {t(
+                              "checkout.page.walletName",
+                              "Name: Abel Begena Conservatory",
+                            )}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                        {t("checkout.page.receiptLabel", "Receipt / Confirmation")}
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          setReceiptFile(file);
+                        }}
+                        className="block w-full text-xs text-foreground/80"
+                      />
+                      <input
+                        type="url"
+                        value={form.receiptUrl}
+                        onChange={(e) => setForm({ ...form, receiptUrl: e.target.value })}
+                        className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
+                          fieldErrors.receiptUrl ? "border-red-400" : "border-border focus:border-secondary"
+                        } bg-background/80`}
+                        placeholder={t(
+                          "checkout.page.receiptUrlPlaceholder",
+                          "Paste a shared link or short note about your payment (required)",
+                        )}
+                      />
+                      {fieldErrors.receiptUrl && (
+                        <p className="mt-1 text-xs text-red-500">{fieldErrors.receiptUrl}</p>
+                      )}
+                    </div>
                   </div>
                 )}
                 {form.paymentMethod === "CashOnDelivery" && (
                   <p className="mt-4 text-xs text-foreground/60">
-                    {t("checkout.page.codNote", "Our team will contact you to confirm your order and arrange delivery.")}
+                    {t(
+                      "checkout.page.codNote",
+                      "Our team will contact you to confirm your order and arrange delivery.",
+                    )}
                   </p>
                 )}
               </div>

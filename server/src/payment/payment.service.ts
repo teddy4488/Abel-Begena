@@ -141,7 +141,7 @@ export class PaymentService {
       try {
         const order = await this.orderModel.findById(payment.targetId).exec();
         if (order) {
-          // If stock wasn't reserved at checkout (bank transfer), reserve it now.
+          // If stock wasn't reserved at checkout (offline payments), reserve it now.
           if (order.status === OrderStatus.PAYMENT_PENDING) {
             for (const item of order.items ?? []) {
               await this.productService.reduceStock(

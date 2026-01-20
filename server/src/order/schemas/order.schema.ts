@@ -6,7 +6,10 @@ export type OrderDocument = Order & Document;
 
 export enum PaymentMethod {
   BANK_TRANSFER = 'BankTransfer',
+  TELEBIRR = 'Telebirr',
+  CBE_BIRR = 'CBEBirr',
   CASH_ON_DELIVERY = 'CashOnDelivery',
+  MANUAL = 'Manual',
   OTHER = 'Other',
 }
 

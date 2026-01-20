@@ -189,8 +189,10 @@ export class OrderService {
       0,
     );
 
-    const isBankTransfer =
-      checkoutDto.paymentMethod === PaymentMethod.BANK_TRANSFER;
+    const requiresOfflineVerification =
+      checkoutDto.paymentMethod === PaymentMethod.BANK_TRANSFER ||
+      checkoutDto.paymentMethod === PaymentMethod.TELEBIRR ||
+      checkoutDto.paymentMethod === PaymentMethod.CBE_BIRR;
 
     // Create order
     const order = await this.orderModel.create({
@@ -203,13 +205,15 @@ export class OrderService {
         : undefined,
       shippingAddress: checkoutDto.shippingAddress,
       paymentMethod: checkoutDto.paymentMethod,
-      status: isBankTransfer ? OrderStatus.PAYMENT_PENDING : OrderStatus.PENDING,
+      status: requiresOfflineVerification
+        ? OrderStatus.PAYMENT_PENDING
+        : OrderStatus.PENDING,
       isPaid: false,
       receiptUrl: checkoutDto.receiptUrl,
     });
 
-    // For bank transfer orders, create a pending payment request for admin verification.
-    if (isBankTransfer) {
+    // For offline-payment orders, create a pending payment request for admin verification.
+    if (requiresOfflineVerification) {
       await this.paymentService.create(
         {
           type: 'order',

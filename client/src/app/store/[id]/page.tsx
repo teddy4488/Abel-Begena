@@ -28,6 +28,8 @@ export default function ProductDetailPage() {
     return Object.entries(data.attributes);
   }, [data]);
 
+  const [activeImage, setActiveImage] = useState<string | null>(null);
+
   const handleAddToCart = async () => {
     if (!isLoggedIn) {
       router.push("/login");
@@ -94,9 +96,10 @@ export default function ProductDetailPage() {
         <div className="flex-1 space-y-3 sm:space-y-4">
           <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-background/80 sm:rounded-3xl">
             {data.images?.length ? (
-              <div
-                className="h-full w-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${data.images[0]})` }}
+              <img
+                src={activeImage ?? data.images[0]}
+                alt={data.name}
+                className="h-full w-full object-cover"
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-foreground/50">
@@ -106,12 +109,23 @@ export default function ProductDetailPage() {
           </div>
           {data.images && data.images.length > 1 && (
             <div className="grid grid-cols-4 gap-3">
-              {data.images.slice(1, 5).map((image) => (
-                <div
+              {data.images.map((image) => (
+                <button
                   key={image}
-                  className="aspect-square rounded-2xl border border-border bg-cover bg-center"
-                  style={{ backgroundImage: `url(${image})` }}
-                />
+                  type="button"
+                  onClick={() => setActiveImage(image)}
+                  className={`aspect-square overflow-hidden rounded-2xl border bg-background/80 ${
+                    (activeImage ?? data.images?.[0]) === image
+                      ? "border-secondary ring-2 ring-secondary/60"
+                      : "border-border hover:border-secondary/60"
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={data.name}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
               ))}
             </div>
           )}
