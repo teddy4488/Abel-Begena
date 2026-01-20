@@ -141,6 +141,27 @@ export class UserService {
     return user ? this.toSafeUser(user) : null;
   }
 
+  async setRefreshToken(userId: string, refreshTokenHash: string, expiresAt: Date) {
+    await this.userModel.findByIdAndUpdate(userId, {
+      refreshTokenHash,
+      refreshTokenExpiresAt: expiresAt,
+    }).exec();
+  }
+
+  async clearRefreshToken(userId: string) {
+    await this.userModel.findByIdAndUpdate(userId, {
+      refreshTokenHash: null,
+      refreshTokenExpiresAt: null,
+    }).exec();
+  }
+
+  async getRefreshTokenData(userId: string) {
+    return this.userModel
+      .findById(userId, { refreshTokenHash: 1, refreshTokenExpiresAt: 1 })
+      .lean()
+      .exec();
+  }
+
   toSafeUser<T extends { password?: string }>(user: T): Omit<T, 'password'>;
   toSafeUser<T extends { password?: string } | null>(
     user: T,
@@ -162,6 +183,8 @@ export class UserService {
       verificationCodeExpiresAt: _verificationExpires,
       passwordResetCode: _passwordResetCode,
       passwordResetCodeExpiresAt: _passwordResetExpires,
+      refreshTokenHash: _refreshTokenHash,
+      refreshTokenExpiresAt: _refreshTokenExpiresAt,
       ...rest
     } = plain as Record<string, unknown>;
     void _password;
@@ -169,6 +192,8 @@ export class UserService {
     void _verificationExpires;
     void _passwordResetCode;
     void _passwordResetExpires;
+    void _refreshTokenHash;
+    void _refreshTokenExpiresAt;
     return rest;
   }
 }

@@ -16,12 +16,26 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { PaymentModule } from './payment/payment.module';
 import { MaterialsModule } from './materials/materials.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            ttl: Number(config.get<string>('THROTTLE_TTL') ?? 60),
+            limit: Number(config.get<string>('THROTTLE_LIMIT') ?? 120),
+          },
+        ],
+      }),
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -47,6 +61,12 @@ import { MaterialsModule } from './materials/materials.module';
     MaterialsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

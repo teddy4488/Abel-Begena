@@ -115,7 +115,15 @@ export const blogApi = createApi({
         _id: string;
         content: string;
         status: string;
-        postId?: { title?: string; slug?: string; status?: string; isPublished?: boolean };
+        postId?:
+          | string
+          | {
+              _id?: string;
+              title?: string;
+              slug?: string;
+              status?: string;
+              isPublished?: boolean;
+            };
         authorId?: { firstName?: string; lastName?: string; email?: string; avatarUrl?: string };
         createdAt?: string;
       }>,

@@ -67,6 +67,13 @@ export class User {
   @Prop({ type: Date, required: false, default: null })
   passwordResetCodeExpiresAt?: Date;
 
+  // Refresh-token session (rotated). Stored as a bcrypt hash.
+  @Prop({ type: String, required: false, default: null })
+  refreshTokenHash?: string | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  refreshTokenExpiresAt?: Date | null;
+
   @Prop()
   createdAt: Date;
 

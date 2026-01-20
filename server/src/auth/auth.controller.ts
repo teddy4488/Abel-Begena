@@ -18,6 +18,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserType } from './auth.service';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -59,26 +60,57 @@ export class AuthController {
 
   @Post('login')
   @UseGuards(LocalAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60 } })
   login(
     @Request() req: { user: Record<string, unknown> },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken, user, expiresAt } = this.authService.login(req.user);
+    const { accessToken, refreshToken, user, userId, expiresAt } =
+      this.authService.login(req.user);
 
     // Set an httpOnly cookie for desktop browsers and environments where
     // cross-site cookies are allowed, but also return the token in the JSON
     // payload so that mobile browsers (especially Safari) that block
     // third-party cookies can authenticate using an Authorization header.
     this.setSessionCookie(res, accessToken);
+    // Persist and set refresh token cookie for silent re-auth / rotation.
+    void this.authService.persistRefreshToken(
+      userId,
+      (user as { userType?: UserType })?.userType ?? 'website_user',
+      refreshToken,
+    );
+    this.setRefreshCookie(res, refreshToken);
 
     return { user, expiresAt, accessToken };
   }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  logout(@Res({ passthrough: true }) res: Response) {
+  logout(
+    @Request() req: { user: { sub: string; userType?: string } },
+    @Res({ passthrough: true }) res: Response,
+  ) {
     this.clearSessionCookie(res);
+    this.clearRefreshCookie(res);
+    void this.authService.clearRefreshToken(
+      req.user.sub,
+      (req.user.userType as UserType | undefined) ?? 'website_user',
+    );
     return { message: 'Logged out successfully' };
+  }
+
+  @Post('refresh')
+  @Throttle({ default: { limit: 20, ttl: 60 } })
+  async refresh(
+    @Request() req: { cookies?: Record<string, string | undefined> },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const token = req.cookies?.refresh_token;
+    const { accessToken, refreshToken, expiresAt, user } =
+      await this.authService.refreshSession(token ?? '');
+    this.setSessionCookie(res, accessToken);
+    this.setRefreshCookie(res, refreshToken);
+    return { accessToken, expiresAt, user };
   }
 
   @Get('session')
@@ -109,12 +141,29 @@ export class AuthController {
       // we must use SameSite=None; Secure.
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 2 * 60 * 60 * 1000,
+      maxAge: 15 * 60 * 1000,
+    });
+  }
+
+  private setRefreshCookie(res: Response, token: string) {
+    res.cookie('refresh_token', token, {
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
   }
 
   private clearSessionCookie(res: Response) {
     res.clearCookie('access_token', {
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+  }
+
+  private clearRefreshCookie(res: Response) {
+    res.clearCookie('refresh_token', {
       httpOnly: true,
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: process.env.NODE_ENV === 'production',

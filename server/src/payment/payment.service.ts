@@ -21,6 +21,7 @@ import {
   OrderDocument,
   OrderStatus,
 } from '../order/schemas/order.schema';
+import { ProductService } from '../product/product.service';
 
 @Injectable()
 export class PaymentService {
@@ -33,6 +34,8 @@ export class PaymentService {
     private readonly classService: ClassService,
     @Inject(forwardRef(() => AttendanceService))
     private readonly attendanceService: AttendanceService,
+    @Inject(forwardRef(() => ProductService))
+    private readonly productService: ProductService,
   ) {}
 
   async create(dto: Omit<CreatePaymentRequestDto, 'userId'>, userId: string) {
@@ -136,10 +139,22 @@ export class PaymentService {
       payment.targetId
     ) {
       try {
-        await this.orderModel.findByIdAndUpdate(payment.targetId, {
-          isPaid: true,
-          status: OrderStatus.PROCESSING,
-        });
+        const order = await this.orderModel.findById(payment.targetId).exec();
+        if (order) {
+          // If stock wasn't reserved at checkout (bank transfer), reserve it now.
+          if (order.status === OrderStatus.PAYMENT_PENDING) {
+            for (const item of order.items ?? []) {
+              await this.productService.reduceStock(
+                item.productId.toString(),
+                item.quantity,
+              );
+            }
+          }
+
+          order.isPaid = true;
+          order.status = OrderStatus.PROCESSING;
+          await order.save();
+        }
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(

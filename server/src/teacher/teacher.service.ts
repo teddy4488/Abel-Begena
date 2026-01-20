@@ -82,6 +82,27 @@ export class TeacherService {
     return this.teacherModel.findById(id).lean().exec();
   }
 
+  async setRefreshToken(teacherId: string, refreshTokenHash: string, expiresAt: Date) {
+    await this.teacherModel.findByIdAndUpdate(teacherId, {
+      refreshTokenHash,
+      refreshTokenExpiresAt: expiresAt,
+    }).exec();
+  }
+
+  async clearRefreshToken(teacherId: string) {
+    await this.teacherModel.findByIdAndUpdate(teacherId, {
+      refreshTokenHash: null,
+      refreshTokenExpiresAt: null,
+    }).exec();
+  }
+
+  async getRefreshTokenData(teacherId: string) {
+    return this.teacherModel
+      .findById(teacherId, { refreshTokenHash: 1, refreshTokenExpiresAt: 1 })
+      .lean()
+      .exec();
+  }
+
   async assignVerificationCode(
     teacherId: string,
     codeHash: string,
@@ -146,7 +167,16 @@ export class TeacherService {
       return null;
     }
     const t = teacher as Record<string, unknown>;
-    const { password, verificationCode, passwordResetCode, ...safe } = t;
+    const {
+      password,
+      verificationCode,
+      passwordResetCode,
+      refreshTokenHash,
+      refreshTokenExpiresAt,
+      ...safe
+    } = t;
+    void refreshTokenHash;
+    void refreshTokenExpiresAt;
     return safe;
   }
 }

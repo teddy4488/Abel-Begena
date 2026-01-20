@@ -90,38 +90,48 @@ export default function AdminCommentsPage() {
           </p>
         ) : (
           <div className="divide-y divide-border/70">
-            {comments.map((c) => (
-              <div key={c._id} className="grid gap-3 py-3 md:grid-cols-[1fr_auto] md:items-center">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-primary">
-                    {c.authorId?.firstName || c.authorId?.email || "User"}
-                  </p>
-                  <p className="text-xs text-foreground/60">
-                    {c.postId?.title ?? "Untitled"} ({c.postId?.slug ?? ""})
-                  </p>
-                  <p className="text-sm text-foreground/80 whitespace-pre-wrap">
-                    {c.content}
-                  </p>
-                  <p className="text-[11px] uppercase tracking-[0.25em] text-foreground/50">
-                    {c.status} •{" "}
-                    {c.createdAt
-                      ? new Date(c.createdAt).toLocaleString()
-                      : ""}
-                  </p>
+            {comments.map((c) => {
+              const postMeta =
+                typeof c.postId === "object" && c.postId !== null
+                  ? c.postId
+                  : undefined;
+              const postSlug =
+                postMeta?.slug ??
+                (typeof c.postId === "string" ? c.postId : "");
+
+              return (
+                <div key={c._id} className="grid gap-3 py-3 md:grid-cols-[1fr_auto] md:items-center">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-primary">
+                      {c.authorId?.firstName || c.authorId?.email || "User"}
+                    </p>
+                    <p className="text-xs text-foreground/60">
+                      {postMeta?.title ?? "Untitled"} ({postSlug})
+                    </p>
+                    <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                      {c.content}
+                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-foreground/50">
+                      {c.status} •{" "}
+                      {c.createdAt
+                        ? new Date(c.createdAt).toLocaleString()
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    <button
+                      type="button"
+                      disabled={isDeleting}
+                      onClick={() => handleDelete(c._id)}
+                      className="inline-flex items-center gap-1 rounded-full border border-red-500/50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-500/10 disabled:opacity-60"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {t("button.delete", "Delete")}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2 md:justify-end">
-                  <button
-                    type="button"
-                    disabled={isDeleting}
-                    onClick={() => handleDelete(c._id)}
-                    className="inline-flex items-center gap-1 rounded-full border border-red-500/50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-500/10 disabled:opacity-60"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t("button.delete", "Delete")}
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

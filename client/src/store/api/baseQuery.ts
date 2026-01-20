@@ -6,8 +6,9 @@ import type {
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { logout } from "../slices/authSlice";
 import type { RootState } from "../store";
+import { setCredentials } from "../slices/authSlice";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: apiBaseUrl,
@@ -30,10 +31,6 @@ export const authorizedBaseQuery: BaseQueryFn<
   const result = await rawBaseQuery(args, api, extraOptions);
 
   if (result.error?.status === 401) {
-    // Only force a global logout on 401s from application endpoints
-    // other than `/auth/session`. For the session probe itself, we
-    // simply emit a "session-expired" event so the UI can react
-    // without immediately wiping any optimistic client state.
     const path =
       typeof args === "string"
         ? args
@@ -41,6 +38,40 @@ export const authorizedBaseQuery: BaseQueryFn<
           ? args.url
           : "";
 
+    // Avoid loops: don't try refresh if the failing endpoint is itself auth refresh/login.
+    const isAuthRefresh = path.startsWith("/auth/refresh");
+    const isAuthLogin = path.startsWith("/auth/login");
+
+    if (!isAuthRefresh && !isAuthLogin) {
+      // Attempt silent refresh once (uses httpOnly refresh cookie)
+      const refreshResult = await rawBaseQuery(
+        { url: "/auth/refresh", method: "POST" },
+        api,
+        extraOptions,
+      );
+
+      if (!refreshResult.error) {
+        const data = refreshResult.data as
+          | { accessToken?: string | null; expiresAt?: string | null; user?: any }
+          | undefined;
+
+        api.dispatch(
+          setCredentials({
+            token: data?.accessToken ?? null,
+            user: data?.user ?? null,
+            sessionExpiresAt: data?.expiresAt ?? null,
+          }),
+        );
+
+        // Retry original request with updated token in state
+        return await rawBaseQuery(args, api, extraOptions);
+      }
+    }
+
+    // Only force a global logout on 401s from application endpoints
+    // other than `/auth/session`. For the session probe itself, we
+    // simply emit a "session-expired" event so the UI can react
+    // without immediately wiping any optimistic client state.
     if (!path.startsWith("/auth/session")) {
       api.dispatch(logout());
     }

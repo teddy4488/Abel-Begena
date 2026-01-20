@@ -9,6 +9,7 @@ import { Order, OrderDocument, OrderStatus, PaymentMethod } from './schemas/orde
 import { Cart, CartDocument } from './schemas/cart.schema';
 import { ProductService } from '../product/product.service';
 import { CheckoutDto } from './dto/checkout.dto';
+import { PaymentService } from '../payment/payment.service';
 
 @Injectable()
 export class OrderService {
@@ -18,6 +19,7 @@ export class OrderService {
     @InjectModel(Cart.name)
     private readonly cartModel: Model<CartDocument>,
     private readonly productService: ProductService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   async addToCart(userId: string, productId: string, quantity: number) {
@@ -187,6 +189,9 @@ export class OrderService {
       0,
     );
 
+    const isBankTransfer =
+      checkoutDto.paymentMethod === PaymentMethod.BANK_TRANSFER;
+
     // Create order
     const order = await this.orderModel.create({
       user: new Types.ObjectId(userId),
@@ -198,17 +203,34 @@ export class OrderService {
         : undefined,
       shippingAddress: checkoutDto.shippingAddress,
       paymentMethod: checkoutDto.paymentMethod,
-      status: OrderStatus.PENDING,
-      isPaid: checkoutDto.paymentMethod === PaymentMethod.BANK_TRANSFER && !!checkoutDto.receiptUrl,
+      status: isBankTransfer ? OrderStatus.PAYMENT_PENDING : OrderStatus.PENDING,
+      isPaid: false,
       receiptUrl: checkoutDto.receiptUrl,
     });
 
-    // Reduce stock for all products
-    for (const item of cartItems) {
-      await this.productService.reduceStock(
-        item.productId.toString(),
-        item.quantity,
+    // For bank transfer orders, create a pending payment request for admin verification.
+    if (isBankTransfer) {
+      await this.paymentService.create(
+        {
+          type: 'order',
+          targetId: order._id.toString(),
+          amount: totalAmount,
+          currency: 'ETB',
+          method: checkoutDto.paymentMethod,
+          reference: undefined,
+          receiptUrl: checkoutDto.receiptUrl,
+          reviewNote: undefined,
+        },
+        userId,
       );
+    } else {
+      // For non-bank-transfer orders (e.g. Cash on Delivery), reserve stock immediately.
+      for (const item of cartItems) {
+        await this.productService.reduceStock(
+          item.productId.toString(),
+          item.quantity,
+        );
+      }
     }
 
     // Clear cart

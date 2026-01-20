@@ -80,6 +80,27 @@ export class AdminUserService {
     return this.adminUserModel.findById(id).lean().exec();
   }
 
+  async setRefreshToken(adminId: string, refreshTokenHash: string, expiresAt: Date) {
+    await this.adminUserModel.findByIdAndUpdate(adminId, {
+      refreshTokenHash,
+      refreshTokenExpiresAt: expiresAt,
+    }).exec();
+  }
+
+  async clearRefreshToken(adminId: string) {
+    await this.adminUserModel.findByIdAndUpdate(adminId, {
+      refreshTokenHash: null,
+      refreshTokenExpiresAt: null,
+    }).exec();
+  }
+
+  async getRefreshTokenData(adminId: string) {
+    return this.adminUserModel
+      .findById(adminId, { refreshTokenHash: 1, refreshTokenExpiresAt: 1 })
+      .lean()
+      .exec();
+  }
+
   async assignVerificationCode(
     adminId: string,
     codeHash: string,
@@ -144,7 +165,16 @@ export class AdminUserService {
       return null;
     }
     const a = admin as Record<string, unknown>;
-    const { password, verificationCode, passwordResetCode, ...safe } = a;
+    const {
+      password,
+      verificationCode,
+      passwordResetCode,
+      refreshTokenHash,
+      refreshTokenExpiresAt,
+      ...safe
+    } = a;
+    void refreshTokenHash;
+    void refreshTokenExpiresAt;
     return safe;
   }
 }

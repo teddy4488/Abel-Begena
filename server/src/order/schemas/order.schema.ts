@@ -17,6 +17,7 @@ export enum DeliveryOption {
 
 export enum OrderStatus {
   PENDING = 'Pending',
+  PAYMENT_PENDING = 'PaymentPending',
   PROCESSING = 'Processing',
   SHIPPED = 'Shipped',
   DELIVERED = 'Delivered',

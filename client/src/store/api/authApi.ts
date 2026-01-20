@@ -18,6 +18,12 @@ type LoginResponse = {
   accessToken?: string | null;
 };
 
+type RefreshResponse = {
+  user: AuthUser | null;
+  expiresAt?: string | null;
+  accessToken?: string | null;
+};
+
 type RegisterResponse = {
   message: string;
   email: string;
@@ -98,6 +104,28 @@ export const authApi = createApi({
         }
       },
     }),
+    refresh: builder.mutation<RefreshResponse, void>({
+      query: () => ({
+        url: "/auth/refresh",
+        method: "POST",
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data?.user) {
+            dispatch(
+              setCredentials({
+                token: data.accessToken ?? null,
+                user: data.user ?? null,
+                sessionExpiresAt: data.expiresAt ?? null,
+              }),
+            );
+          }
+        } catch {
+          // ignore - baseQuery will handle logout if needed
+        }
+      },
+    }),
     verifyEmail: builder.mutation<{ message: string }, { email: string; code: string }>({
       query: (body) => ({
         url: "/auth/verify-email",
@@ -141,6 +169,7 @@ export const {
   useRegisterMutation,
   useLogoutMutation,
   useSessionQuery,
+  useRefreshMutation,
   useVerifyEmailMutation,
   useResendVerificationMutation,
   useForgotPasswordMutation,

@@ -483,6 +483,25 @@ export class AttendanceService {
     }
 
     const now = new Date();
+
+    // Prevent accidental duplicates: allow at most one attendance record per participant per day.
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    const existingToday = await this.studentAttendanceModel
+      .findOne({
+        participantId: participant._id,
+        sessionDate: { $gte: startOfDay, $lte: endOfDay },
+      })
+      .lean()
+      .exec();
+    if (existingToday) {
+      throw new BadRequestException(
+        'Attendance already recorded for this student today.',
+      );
+    }
+
     const created = await this.studentAttendanceModel.create({
       participantId: participant._id,
       attendanceNumber: participant.attendanceNumber,

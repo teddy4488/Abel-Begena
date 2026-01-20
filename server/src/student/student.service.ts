@@ -32,6 +32,27 @@ export class StudentService {
     return this.studentModel.findById(id).lean().exec();
   }
 
+  async setRefreshToken(studentId: string, refreshTokenHash: string, expiresAt: Date) {
+    await this.studentModel.findByIdAndUpdate(studentId, {
+      refreshTokenHash,
+      refreshTokenExpiresAt: expiresAt,
+    }).exec();
+  }
+
+  async clearRefreshToken(studentId: string) {
+    await this.studentModel.findByIdAndUpdate(studentId, {
+      refreshTokenHash: null,
+      refreshTokenExpiresAt: null,
+    }).exec();
+  }
+
+  async getRefreshTokenData(studentId: string) {
+    return this.studentModel
+      .findById(studentId, { refreshTokenHash: 1, refreshTokenExpiresAt: 1 })
+      .lean()
+      .exec();
+  }
+
   async assignVerificationCode(
     studentId: string,
     codeHash: string,
@@ -122,8 +143,12 @@ export class StudentService {
       password,
       verificationCode,
       passwordResetCode,
+      refreshTokenHash,
+      refreshTokenExpiresAt,
       ...safe
     } = s;
+    void refreshTokenHash;
+    void refreshTokenExpiresAt;
     return safe;
   }
 }

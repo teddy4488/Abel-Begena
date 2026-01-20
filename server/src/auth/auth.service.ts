@@ -25,6 +25,8 @@ export type ValidatedUser = Record<string, unknown> & {
 @Injectable()
 export class AuthService {
   private readonly verificationTtlMinutes = 15;
+  private readonly refreshTtlDays = 30;
+  private readonly resendCooldownMs = 60 * 1000;
 
   constructor(
     private readonly userService: UserService,
@@ -193,8 +195,12 @@ export class AuthService {
       role,
       userType,
     };
-    
-    const accessToken = this.jwtService.sign(payload);
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(
+      { ...payload, typ: 'refresh' as const },
+      { expiresIn: `${this.refreshTtlDays}d` },
+    );
     const decoded: unknown = this.jwtService.decode(accessToken);
     const expiresAt = this.hasExpiry(decoded)
       ? new Date(decoded.exp * 1000).toISOString()
@@ -202,9 +208,112 @@ export class AuthService {
     
     return {
       accessToken,
+      refreshToken,
+      userId: payload.sub,
       user: { ...safeUser, userType, role },
       expiresAt,
     };
+  }
+
+  async persistRefreshToken(userId: string, userType: UserType, refreshToken: string) {
+    const decoded: unknown = this.jwtService.decode(refreshToken);
+    const expiresAt = this.hasExpiry(decoded)
+      ? new Date(decoded.exp * 1000)
+      : new Date(Date.now() + this.refreshTtlDays * 24 * 60 * 60 * 1000);
+
+    // Hash via bcrypt through the appropriate service helpers.
+    if (userType === 'teacher') {
+      const hash = await this.teacherService.hashPassword(refreshToken);
+      await this.teacherService.setRefreshToken(userId, hash, expiresAt);
+    } else if (userType === 'admin') {
+      const hash = await this.adminUserService.hashPassword(refreshToken);
+      await this.adminUserService.setRefreshToken(userId, hash, expiresAt);
+    } else if (userType === 'student') {
+      const hash = await this.studentService.hashPassword(refreshToken);
+      await this.studentService.setRefreshToken(userId, hash, expiresAt);
+    } else {
+      const hash = await this.userService.hashPassword(refreshToken);
+      await this.userService.setRefreshToken(userId, hash, expiresAt);
+    }
+
+    return expiresAt;
+  }
+
+  async clearRefreshToken(userId: string, userType: UserType) {
+    if (userType === 'teacher') {
+      await this.teacherService.clearRefreshToken(userId);
+    } else if (userType === 'admin') {
+      await this.adminUserService.clearRefreshToken(userId);
+    } else if (userType === 'student') {
+      await this.studentService.clearRefreshToken(userId);
+    } else {
+      await this.userService.clearRefreshToken(userId);
+    }
+  }
+
+  async refreshSession(refreshToken: string) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    if (!payload || payload.typ !== 'refresh') {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const userId: string = payload.sub;
+    const userType: UserType = payload.userType ?? 'website_user';
+
+    // Load stored hash and compare
+    const tokenData =
+      userType === 'teacher'
+        ? await this.teacherService.getRefreshTokenData(userId)
+        : userType === 'admin'
+          ? await this.adminUserService.getRefreshTokenData(userId)
+          : userType === 'student'
+            ? await this.studentService.getRefreshTokenData(userId)
+            : await this.userService.getRefreshTokenData(userId);
+
+    const storedHash = (tokenData as any)?.refreshTokenHash as string | null | undefined;
+    const storedExpiresAt = (tokenData as any)?.refreshTokenExpiresAt as string | Date | null | undefined;
+
+    if (!storedHash) {
+      throw new UnauthorizedException('Refresh session not found');
+    }
+    if (storedExpiresAt && new Date(storedExpiresAt).getTime() < Date.now()) {
+      throw new UnauthorizedException('Refresh session expired');
+    }
+
+    const compare =
+      userType === 'teacher'
+        ? await this.teacherService.comparePassword(refreshToken, storedHash)
+        : userType === 'admin'
+          ? await this.adminUserService.comparePassword(refreshToken, storedHash)
+          : userType === 'student'
+            ? await this.studentService.comparePassword(refreshToken, storedHash)
+            : await this.userService.comparePassword(refreshToken, storedHash);
+
+    if (!compare) {
+      throw new UnauthorizedException('Refresh token does not match');
+    }
+
+    // Rotate: issue new tokens and store new refresh token hash
+    const accessPayload = { sub: userId, role: payload.role, userType };
+    const newAccessToken = this.jwtService.sign(accessPayload, { expiresIn: '15m' });
+    const newRefreshToken = this.jwtService.sign(
+      { ...accessPayload, typ: 'refresh' as const },
+      { expiresIn: `${this.refreshTtlDays}d` },
+    );
+    const decoded: unknown = this.jwtService.decode(newAccessToken);
+    const expiresAt = this.hasExpiry(decoded)
+      ? new Date(decoded.exp * 1000).toISOString()
+      : new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    await this.persistRefreshToken(userId, userType, newRefreshToken);
+    const user = await this.getSession(userId, userType);
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken, expiresAt, user };
   }
 
   async getSession(userId: string, userType?: UserType) {
@@ -361,6 +470,20 @@ export class AuthService {
     if (user.isVerified) {
       return { message: 'Email already verified.' };
     }
+
+    // Basic resend throttle: prevent spamming codes.
+    // We infer the last-send time from the existing expiry timestamp.
+    if (user.verificationCodeExpiresAt) {
+      const issuedAt = new Date(
+        user.verificationCodeExpiresAt.getTime() -
+          this.verificationTtlMinutes * 60 * 1000,
+      );
+      if (Date.now() - issuedAt.getTime() < this.resendCooldownMs) {
+        throw new BadRequestException(
+          'Please wait a moment before requesting another verification code.',
+        );
+      }
+    }
     
     const userId = this.extractUserId(user);
     if (!userId) {
@@ -404,6 +527,16 @@ export class AuthService {
       return {
         message: 'If that email exists, a reset code has been sent.',
       };
+    }
+
+    // Basic resend throttle for reset codes (10 min TTL in issuePasswordResetCode).
+    if (user.passwordResetCodeExpiresAt) {
+      const issuedAt = new Date(user.passwordResetCodeExpiresAt.getTime() - 10 * 60 * 1000);
+      if (Date.now() - issuedAt.getTime() < this.resendCooldownMs) {
+        return {
+          message: 'If that email exists, a reset code has been sent.',
+        };
+      }
     }
     
     const devCode = await this.issuePasswordResetCode(dto.email, userType);
