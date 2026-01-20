@@ -3,40 +3,20 @@
 import { useState } from "react";
 import {
   useGetManageCommentsQuery,
-  useUpdateCommentStatusMutation,
   useDeleteCommentMutation,
 } from "@/store/api/blogApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { Loader2, CheckCircle, XCircle, Trash2, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, RefreshCw } from "lucide-react";
 
 export default function AdminCommentsPage() {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const { data: comments = [], isLoading, refetch, isFetching } =
     useGetManageCommentsQuery(search ? { search } : undefined);
-  const [updateStatus, { isLoading: isUpdating }] =
-    useUpdateCommentStatusMutation();
   const [deleteComment, { isLoading: isDeleting }] =
     useDeleteCommentMutation();
   const { pushToast } = useToast();
-
-  const handleStatus = async (id: string, status: "approved" | "rejected") => {
-    try {
-      await updateStatus({ id, status }).unwrap();
-      pushToast({
-        title: t("admin.comments.updated", "Comment updated"),
-        variant: "success",
-      });
-      refetch();
-    } catch (error) {
-      console.error(error);
-      pushToast({
-        title: t("admin.comments.updateError", "Unable to update comment"),
-        variant: "error",
-      });
-    }
-  };
 
   const handleDelete = async (id: string) => {
     if (
@@ -76,7 +56,7 @@ export default function AdminCommentsPage() {
             {t("admin.comments.title", "Comments")}
           </h1>
           <p className="text-sm text-foreground/70">
-            {t("admin.comments.subtitle", "Approve, reject, or delete comments on posts.")}
+            {t("admin.comments.subtitle", "Review and delete comments on posts.")}
           </p>
         </div>
         <button
@@ -130,24 +110,6 @@ export default function AdminCommentsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
-                  <button
-                    type="button"
-                    disabled={isUpdating}
-                    onClick={() => handleStatus(c._id, "approved")}
-                    className="inline-flex items-center gap-1 rounded-full border border-green-500/60 px-3 py-1 text-xs font-semibold text-green-600 transition hover:bg-green-500/10 disabled:opacity-60"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    {t("admin.comments.approve", "Approve")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isUpdating}
-                    onClick={() => handleStatus(c._id, "rejected")}
-                    className="inline-flex items-center gap-1 rounded-full border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-600 transition hover:bg-amber-500/10 disabled:opacity-60"
-                  >
-                    <XCircle className="h-4 w-4" />
-                    {t("admin.comments.reject", "Reject")}
-                  </button>
                   <button
                     type="button"
                     disabled={isDeleting}

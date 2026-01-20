@@ -29,6 +29,7 @@ export default function AdminFaqPage() {
   const { t } = useI18n();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyFaq);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (!editingId) return;
@@ -40,6 +41,7 @@ export default function AdminFaqPage() {
         order: match.order ?? 0,
         isActive: match.isActive ?? true,
       });
+      setShowModal(true);
     }
   }, [editingId, faqs]);
 
@@ -59,6 +61,7 @@ export default function AdminFaqPage() {
   const reset = () => {
     setEditingId(null);
     setForm(emptyFaq);
+    setShowModal(false);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -157,130 +160,24 @@ export default function AdminFaqPage() {
             "Manage the public FAQ shown on the homepage.",
           )}
         </p>
+        <button
+          type="button"
+          onClick={() => {
+            reset();
+            setShowModal(true);
+          }}
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
+        >
+          <Plus className="h-4 w-4" />
+          {t("admin.faq.add", "Add FAQ")}
+        </button>
       </motion.div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <motion.form
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl  surface-elevated p-6 shadow-lg"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-serif text-primary">
-              {editingId
-                ? t("admin.faq.edit", "Edit FAQ")
-                : t("admin.faq.new", "New FAQ")}
-            </h2>
-            {editingId && (
-              <button
-                type="button"
-                onClick={reset}
-                className="rounded-full p-1 text-foreground/70 hover:card-elevated60"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
-                {t("admin.faq.question", "Question")}
-              </label>
-              <input
-                value={form.question}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, question: e.target.value }))
-                }
-                className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                placeholder={t("admin.faq.questionPlaceholder", "How do I enroll?")}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
-                {t("admin.faq.answer", "Answer")}
-              </label>
-              <textarea
-                value={form.answer}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, answer: e.target.value }))
-                }
-                rows={4}
-                className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                placeholder={t("admin.faq.answerPlaceholder", "Provide the detailed answer...")}
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
-                  {t("admin.faq.order", "Order")}
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.order ?? 0}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      order: Number(e.target.value ?? 0),
-                    }))
-                  }
-                  className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                />
-              </div>
-              <div className="flex items-end gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, isActive: !prev.isActive }))
-                  }
-                  className="inline-flex items-center gap-2 rounded-full  px-3 py-2 text-sm font-semibold transition hover:border-secondary"
-                >
-                  {form.isActive ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 text-secondary" />
-                      {t("admin.faq.active", "Active")}
-                    </>
-                  ) : (
-                    <>
-                      <Circle className="h-4 w-4 text-foreground/50" />
-                      {t("admin.faq.inactive", "Inactive")}
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={isCreating || isUpdating}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95 disabled:opacity-60"
-            >
-              {isCreating || isUpdating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t("admin.faq.saving", "Saving...")}
-                </>
-              ) : editingId ? (
-                <>
-                  <Save className="h-4 w-4" />
-                  {t("admin.faq.save", "Save")}
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4" />
-                  {t("admin.faq.add", "Add FAQ")}
-                </>
-              )}
-            </button>
-          </div>
-        </motion.form>
-
+      <div className="space-y-3 rounded-2xl surface-elevated p-6 shadow-lg">
         <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
-          className="space-y-3 rounded-2xl  surface-elevated p-6 shadow-lg"
+          className="space-y-3"
         >
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-serif text-primary">
@@ -327,7 +224,10 @@ export default function AdminFaqPage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setEditingId(faq._id)}
+                      onClick={() => {
+                        setEditingId(faq._id);
+                        setShowModal(true);
+                      }}
                       className="rounded-full  px-3 py-2 text-xs font-semibold uppercase tracking-[0.25em] transition hover:border-secondary"
                     >
                       {t("button.edit", "Edit")}
@@ -348,6 +248,132 @@ export default function AdminFaqPage() {
           )}
         </motion.div>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <motion.form
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onSubmit={handleSubmit}
+            className="w-full max-w-xl space-y-4 rounded-3xl bg-surface-elevated p-6 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-serif text-primary">
+                {editingId
+                  ? t("admin.faq.edit", "Edit FAQ")
+                  : t("admin.faq.new", "New FAQ")}
+              </h2>
+              <button
+                type="button"
+                onClick={reset}
+                className="rounded-full p-1 text-foreground/70 hover:card-elevated60"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                  {t("admin.faq.question", "Question")}
+                </label>
+                <input
+                  value={form.question}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, question: e.target.value }))
+                  }
+                  className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  placeholder={t("admin.faq.questionPlaceholder", "How do I enroll?")}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                  {t("admin.faq.answer", "Answer")}
+                </label>
+                <textarea
+                  value={form.answer}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, answer: e.target.value }))
+                  }
+                  rows={4}
+                  className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  placeholder={t("admin.faq.answerPlaceholder", "Provide the detailed answer...")}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
+                    {t("admin.faq.order", "Order")}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.order ?? 0}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        order: Number(e.target.value ?? 0),
+                      }))
+                    }
+                    className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </div>
+                <div className="flex items-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({ ...prev, isActive: !prev.isActive }))
+                    }
+                    className="inline-flex items-center gap-2 rounded-full  px-3 py-2 text-sm font-semibold transition hover:border-secondary"
+                  >
+                    {form.isActive ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-secondary" />
+                        {t("admin.faq.active", "Active")}
+                      </>
+                    ) : (
+                      <>
+                        <Circle className="h-4 w-4 text-foreground/50" />
+                        {t("admin.faq.inactive", "Inactive")}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={isCreating || isUpdating}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95 disabled:opacity-60"
+              >
+                {isCreating || isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("admin.faq.saving", "Saving...")}
+                  </>
+                ) : editingId ? (
+                  <>
+                    <Save className="h-4 w-4" />
+                    {t("admin.faq.save", "Save")}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    {t("admin.faq.add", "Add FAQ")}
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={reset}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-secondary/10"
+              >
+                {t("button.cancel", "Cancel")}
+              </button>
+            </div>
+          </motion.form>
+        </div>
+      )}
     </section>
   );
 }

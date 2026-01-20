@@ -69,16 +69,18 @@ export default function AdminConsolePage() {
   const { data: faqs, isLoading: faqsLoading } = useGetAllFaqQuery();
   const { data: comments, isLoading: commentsLoading } = useGetManageCommentsQuery();
   const {
-    data: pendingEnrollments = [],
-    isLoading: pendingLoading,
-  } = useGetAllEnrollmentsQuery({ status: "pending" });
+    data: enrollments = [],
+    isLoading: enrollmentsLoading,
+  } = useGetAllEnrollmentsQuery(undefined);
 
   // Calculate additional stats
   const totalOrders = orders?.length ?? 0;
   const totalBranches = branches?.length ?? 0;
   const activeBranches = branches?.filter((b) => b.isActive).length ?? 0;
   const totalFaqs = faqs?.length ?? 0;
-  const pendingComments = comments?.filter((c) => c.status === "pending").length ?? 0;
+  const totalComments = comments?.length ?? 0;
+  const totalEnrollments = enrollments?.length ?? 0;
+  const pendingEnrollments = enrollments?.filter((e) => e.status === "pending") ?? [];
 
   const summaryCards = [
     {
@@ -106,19 +108,11 @@ export default function AdminConsolePage() {
         : undefined,
     },
     {
-      label: t("admin.console.totalClasses", "Total Classes"),
-      value: analyticsLoading ? "..." : analytics?.classes.total ?? "—",
+      label: t("admin.console.classes", "Classes"),
+      value: classesLoading ? "..." : classes?.length ?? "—",
       icon: BookOpen,
       color: "text-purple-600",
       bgColor: "bg-purple-500/10",
-      href: "/admin/classes",
-    },
-    {
-      label: t("admin.console.liveClasses", "Live Classes"),
-      value: analyticsLoading ? "..." : analytics?.classes.live ?? "—",
-      icon: BookOpen,
-      color: "text-indigo-600",
-      bgColor: "bg-indigo-500/10",
       href: "/admin/classes",
     },
     {
@@ -146,9 +140,9 @@ export default function AdminConsolePage() {
       href: "/admin/branches",
     },
     {
-      label: t("admin.console.pendingEnrollments", "Pending Enrollments"),
-      value: pendingLoading ? "..." : pendingEnrollments.length,
-      subtitle: t("admin.console.pendingSubtitle", "Awaiting review"),
+      label: t("admin.console.enrollments", "Enrollments"),
+      value: enrollmentsLoading ? "..." : totalEnrollments,
+      subtitle: t("admin.console.pendingSubtitle", "Pending") + `: ${pendingEnrollments.length}`,
       icon: Clock,
       color: "text-amber-600",
       bgColor: "bg-amber-500/10",
@@ -156,14 +150,20 @@ export default function AdminConsolePage() {
       urgent: pendingEnrollments.length > 0,
     },
     {
-      label: t("admin.console.pendingComments", "Pending Comments"),
-      value: commentsLoading ? "..." : pendingComments,
-      subtitle: t("admin.console.commentsSubtitle", "Awaiting moderation"),
+      label: t("admin.console.comments", "Comments"),
+      value: commentsLoading ? "..." : totalComments,
       icon: MessageSquare,
       color: "text-cyan-600",
       bgColor: "bg-cyan-500/10",
       href: "/admin/comments",
-      urgent: pendingComments > 0,
+    },
+    {
+      label: t("admin.console.faqs", "FAQs"),
+      value: faqsLoading ? "..." : totalFaqs,
+      icon: AlertCircle,
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-500/10",
+      href: "/admin/faq",
     },
   ];
 
