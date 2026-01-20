@@ -23,10 +23,10 @@ export class RegisterStudentParticipantDto {
   @MinLength(2)
   fullName: string;
 
-  @IsOptional()
   @IsEmail()
+  @IsNotEmpty()
   @MaxLength(120)
-  email?: string;
+  email: string;
 
   @ValidateIf((o) => o.learningType === 'physical')
   @IsMongoId()

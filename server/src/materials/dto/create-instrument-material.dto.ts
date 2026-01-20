@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsMongoId, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { InstrumentType } from '../../product/schemas/product.schema';
 
 export class CreateInstrumentMaterialDto {
@@ -9,6 +9,10 @@ export class CreateInstrumentMaterialDto {
 
   @IsEnum(InstrumentType)
   instrumentType: InstrumentType;
+
+  @IsOptional()
+  @IsMongoId()
+  lessonId?: string;
 
   @IsOptional()
   @IsString()

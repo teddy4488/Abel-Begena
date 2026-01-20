@@ -28,6 +28,7 @@ export class MaterialsService {
     instrumentType: InstrumentType,
     uploadedBy: string,
     description?: string,
+    lessonId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('Material file is required');
@@ -56,6 +57,7 @@ export class MaterialsService {
       title,
       url,
       instrumentType,
+      lessonId: lessonId ? new Types.ObjectId(lessonId) : undefined,
       uploadedBy: new Types.ObjectId(uploadedBy),
       description,
       fileType,

@@ -20,6 +20,9 @@ export class InstrumentMaterial {
   })
   instrumentType: InstrumentType;
 
+  @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson', required: false })
+  lessonId?: Types.ObjectId;
+
   @Prop({ type: Types.ObjectId, ref: 'Teacher', required: true })
   uploadedBy: Types.ObjectId;
 

@@ -7,6 +7,7 @@ export type InstrumentMaterial = {
   title: string;
   url: string;
   instrumentType: InstrumentType;
+  lessonId?: string;
   uploadedBy: {
     _id: string;
     firstName?: string;
@@ -61,15 +62,19 @@ export const materialsApi = createApi({
         title: string;
         instrumentType: InstrumentType;
         description?: string;
+        lessonId?: string;
       }
     >({
-      query: ({ file, title, instrumentType, description }) => {
+      query: ({ file, title, instrumentType, description, lessonId }) => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("title", title);
         formData.append("instrumentType", instrumentType);
         if (description) {
           formData.append("description", description);
+        }
+        if (lessonId) {
+          formData.append("lessonId", lessonId);
         }
         return {
           url: "/materials/upload",

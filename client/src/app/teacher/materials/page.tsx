@@ -12,6 +12,7 @@ import {
   useUploadInstrumentMaterialMutation,
   useDeleteMaterialMutation,
 } from "@/store/api/materialsApi";
+import { useGetInstrumentLessonsQuery } from "@/store/api/attendanceApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +24,7 @@ type UploadDraft = {
   file?: File;
   description?: string;
   instrumentType?: InstrumentType;
+  lessonId?: string;
 };
 
 type TabType = "class" | "instrument";
@@ -46,9 +48,22 @@ export default function TeacherMaterialsPage() {
     file: undefined,
     description: "",
     instrumentType: "Begena",
+    lessonId: "",
   });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  
+  // Get lessons for selected instrument
+  const { data: lessons = [] } = useGetInstrumentLessonsQuery(
+    uploadDraft.instrumentType || undefined
+  );
+  
+  const filteredLessons = useMemo(() => {
+    if (!uploadDraft.instrumentType) return [];
+    return lessons.filter(
+      (lesson) => lesson.instrumentType === uploadDraft.instrumentType && lesson.isActive
+    );
+  }, [lessons, uploadDraft.instrumentType]);
 
   const teacherClasses = useMemo(
     () =>
@@ -148,7 +163,7 @@ export default function TeacherMaterialsPage() {
           variant: "success",
         });
         
-        setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+        setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena", lessonId: "" });
         setUploadProgress(0);
         void refetchMaterials();
       } catch (error) {
@@ -203,6 +218,7 @@ export default function TeacherMaterialsPage() {
           title: uploadDraft.title || uploadDraft.file.name,
           instrumentType: uploadDraft.instrumentType,
           description: uploadDraft.description,
+          lessonId: uploadDraft.lessonId || undefined,
         }).unwrap();
 
         clearInterval(progressInterval);
@@ -214,7 +230,7 @@ export default function TeacherMaterialsPage() {
           variant: "success",
         });
         
-        setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+        setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena", lessonId: "" });
         setUploadProgress(0);
         void refetchInstrumentMaterials();
       } catch (error) {
@@ -266,7 +282,7 @@ export default function TeacherMaterialsPage() {
         <button
           onClick={() => {
             setActiveTab("class");
-            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena", lessonId: "" });
           }}
           className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 ${
             activeTab === "class"
@@ -282,7 +298,7 @@ export default function TeacherMaterialsPage() {
         <button
           onClick={() => {
             setActiveTab("instrument");
-            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena" });
+            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena", lessonId: "" });
           }}
           className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 ${
             activeTab === "instrument"
@@ -348,6 +364,30 @@ export default function TeacherMaterialsPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("teacher.materials.lesson", "Lesson")} ({t("teacher.materials.optional", "Optional")})
+                  </label>
+                  <select
+                    value={uploadDraft.lessonId || ""}
+                    onChange={(e) =>
+                      setUploadDraft((prev) => ({ ...prev, lessonId: e.target.value || undefined }))
+                    }
+                    className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  >
+                    <option value="">{t("teacher.materials.selectLesson", "Select a lesson (optional)")}</option>
+                    {filteredLessons.map((lesson) => (
+                      <option key={lesson._id} value={lesson._id}>
+                        {lesson.title} {lesson.code && `(${lesson.code})`}
+                      </option>
+                    ))}
+                  </select>
+                  {filteredLessons.length === 0 && uploadDraft.instrumentType && (
+                    <p className="mt-1 text-xs text-foreground/60">
+                      {t("teacher.materials.noLessons", "No lessons available for this instrument yet.")}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">

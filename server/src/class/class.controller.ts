@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Request,
   UploadedFile,
@@ -16,6 +17,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ClassService } from './class.service';
+import { AttendanceService } from '../attendance/attendance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
@@ -31,7 +33,10 @@ import { Request as ExpressRequest } from 'express';
 
 @Controller('classes')
 export class ClassController {
-  constructor(private readonly classService: ClassService) {}
+  constructor(
+    private readonly classService: ClassService,
+    private readonly attendanceService: AttendanceService,
+  ) {}
 
   @Get('public')
   getPublicCatalog() {
@@ -253,5 +258,39 @@ export class ClassController {
       updateEnrollmentStatusDto,
       req.user.sub,
     );
+  }
+
+  // Lesson management endpoints (moved from attendance controller)
+  @Get('lessons')
+  @Roles('Admin', 'Student', 'Teacher')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  listLessons(@Query('instrumentType') instrumentType?: string) {
+    return this.attendanceService.listInstrumentLessons(instrumentType);
+  }
+
+  @Post('lessons')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  createLesson(
+    @Body() body: { instrumentType: string; title: string; code?: string; order?: number },
+  ) {
+    return this.attendanceService.createLesson(body);
+  }
+
+  @Put('lessons/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  updateLesson(
+    @Param('id') id: string,
+    @Body() body: { title?: string; code?: string; order?: number; isActive?: boolean },
+  ) {
+    return this.attendanceService.updateLesson(id, body);
+  }
+
+  @Delete('lessons/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  deleteLesson(@Param('id') id: string) {
+    return this.attendanceService.deleteLesson(id);
   }
 }

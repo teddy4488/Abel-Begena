@@ -166,22 +166,16 @@ export class AttendanceService {
       dto.programDurationMonths,
     );
 
-    // Generate email if not provided
-    let email = dto.email?.trim().toLowerCase();
+    // Email is required - validate it
+    const email = dto.email.trim().toLowerCase();
     if (!email) {
-      email = this.generateEmailFromName(dto.fullName);
-      // Ensure uniqueness
-      let counter = 1;
-      while (await this.studentParticipantModel.findOne({ email }).lean().exec()) {
-        email = this.generateEmailFromName(dto.fullName) + counter;
-        counter++;
-      }
-    } else {
-      // Check if email already exists
-      const existing = await this.studentParticipantModel.findOne({ email }).lean().exec();
-      if (existing) {
-        throw new BadRequestException('Email already in use');
-      }
+      throw new BadRequestException('Email is required for student registration');
+    }
+    
+    // Check if email already exists
+    const existing = await this.studentParticipantModel.findOne({ email }).lean().exec();
+    if (existing) {
+      throw new BadRequestException('Email already in use');
     }
 
     // Generate password

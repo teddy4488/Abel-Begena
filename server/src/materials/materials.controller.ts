@@ -48,6 +48,7 @@ export class MaterialsController {
       dto.instrumentType,
       req.user.sub,
       dto.description,
+      dto.lessonId,
     );
   }
 

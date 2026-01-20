@@ -137,6 +137,7 @@ export default function AdminAttendancePage() {
   // Student registration form state
   const [studentForm, setStudentForm] = useState({
     fullName: "",
+    email: "",
     branchId: "",
     learningType: "physical" as LearningType,
     instrumentType: "Begena" as InstrumentType,
@@ -280,6 +281,7 @@ export default function AdminAttendancePage() {
     try {
       await registerStudent({
         fullName: studentForm.fullName.trim(),
+        email: studentForm.email.trim(),
         branchId: studentForm.branchId,
         learningType: studentForm.learningType,
         instrumentType: studentForm.instrumentType,
@@ -297,6 +299,7 @@ export default function AdminAttendancePage() {
       setShowAddStudentModal(false);
       setStudentForm({
         fullName: "",
+        email: "",
         branchId: "",
         learningType: "physical",
         instrumentType: "Begena",
@@ -1440,6 +1443,22 @@ export default function AdminAttendancePage() {
                   }
                   className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.students.email", "Email")} *
+                </label>
+                <input
+                  type="email"
+                  value={studentForm.email}
+                  onChange={(e) =>
+                    setStudentForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  required
+                  placeholder="student@example.com"
                 />
               </div>
 

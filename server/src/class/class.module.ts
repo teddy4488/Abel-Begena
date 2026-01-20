@@ -8,6 +8,7 @@ import { UploadModule } from '../upload/upload.module';
 import { ClassOwnerGuard } from '../auth/guards/class-owner.guard';
 import { AuthModule } from '../auth/auth.module';
 import { PaymentModule } from '../payment/payment.module';
+import { AttendanceModule } from '../attendance/attendance.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PaymentModule } from '../payment/payment.module';
     UploadModule,
     AuthModule,
     forwardRef(() => PaymentModule),
+    AttendanceModule, // Import for lesson management
   ],
   providers: [ClassService, ClassOwnerGuard],
   controllers: [ClassController],

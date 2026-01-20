@@ -82,7 +82,8 @@ export type RegisterTeacherParticipantBody = {
 
 export type RegisterStudentParticipantBody = {
   fullName: string;
-  branchId: string;
+  email: string;
+  branchId?: string;
   learningType: LearningType;
   instrumentType: InstrumentType;
   programDurationMonths: 3 | 6 | 9;
@@ -235,7 +236,7 @@ export const attendanceApi = createApi({
       string | undefined
     >({
       query: (instrumentType) => ({
-        url: "/attendance/lessons",
+        url: "/classes/lessons",
         params: instrumentType ? { instrumentType } : {},
       }),
       providesTags: ["Lessons"],
@@ -245,7 +246,7 @@ export const attendanceApi = createApi({
       { instrumentType: InstrumentType; title: string; code?: string; order?: number }
     >({
       query: (body) => ({
-        url: "/attendance/lessons",
+        url: "/classes/lessons",
         method: "POST",
         body,
       }),
@@ -256,7 +257,7 @@ export const attendanceApi = createApi({
       { id: string; title?: string; code?: string; order?: number; isActive?: boolean }
     >({
       query: ({ id, ...body }) => ({
-        url: `/attendance/lessons/${id}`,
+        url: `/classes/lessons/${id}`,
         method: "PUT",
         body,
       }),
@@ -267,7 +268,7 @@ export const attendanceApi = createApi({
       string
     >({
       query: (id) => ({
-        url: `/attendance/lessons/${id}`,
+        url: `/classes/lessons/${id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Lessons"],

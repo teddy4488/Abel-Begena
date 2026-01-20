@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Edit, Loader2, Trash2 } from "lucide-react";
+import { Edit, Loader2, Trash2, Plus, Music, X } from "lucide-react";
 import {
   useAssignClassInstructorMutation,
   useCreateManagedClassMutation,
@@ -11,6 +11,13 @@ import {
   useUpdateManagedClassMutation,
 } from "@/store/api/adminApi";
 import { useGetTeachersQuery } from "@/store/api/adminApi";
+import {
+  useGetInstrumentLessonsQuery,
+  useCreateLessonMutation,
+  useUpdateLessonMutation,
+  useDeleteLessonMutation,
+} from "@/store/api/attendanceApi";
+import type { InstrumentType } from "@/store/api/storeApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 
@@ -42,6 +49,24 @@ export default function AdminClassesPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewFilter, setViewFilter] = useState<"all" | "unassigned" | "live">("all");
+  const [activeTab, setActiveTab] = useState<"classes" | "lessons">("classes");
+  
+  // Lessons management
+  const INSTRUMENTS: InstrumentType[] = ["Begena", "Washint", "Kebero", "Other"];
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>("Begena");
+  const { data: lessons = [], isLoading: lessonsLoading } = useGetInstrumentLessonsQuery(selectedInstrument);
+  const [createLesson, { isLoading: creatingLesson }] = useCreateLessonMutation();
+  const [updateLesson, { isLoading: updatingLesson }] = useUpdateLessonMutation();
+  const [deleteLesson, { isLoading: deletingLesson }] = useDeleteLessonMutation();
+  const [showLessonModal, setShowLessonModal] = useState(false);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [lessonForm, setLessonForm] = useState({
+    instrumentType: "Begena" as InstrumentType,
+    title: "",
+    code: "",
+    order: 0,
+    isActive: true,
+  });
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -208,6 +233,96 @@ export default function AdminClassesPage() {
 
   const [showForm, setShowForm] = useState(false);
 
+  // Lesson handlers
+  const handleLessonSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lessonForm.title.trim()) {
+      pushToast({
+        title: t("admin.lessons.error", "Error"),
+        description: t("admin.lessons.titleRequired", "Lesson title is required"),
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      if (editingLessonId) {
+        await updateLesson({
+          id: editingLessonId,
+          title: lessonForm.title,
+          code: lessonForm.code || undefined,
+          order: lessonForm.order,
+          isActive: lessonForm.isActive,
+        }).unwrap();
+        pushToast({
+          title: t("admin.lessons.updated", "Lesson updated"),
+          variant: "success",
+        });
+      } else {
+        await createLesson({
+          instrumentType: lessonForm.instrumentType,
+          title: lessonForm.title,
+          code: lessonForm.code || undefined,
+          order: lessonForm.order,
+        }).unwrap();
+        pushToast({
+          title: t("admin.lessons.created", "Lesson created"),
+          variant: "success",
+        });
+      }
+      setShowLessonModal(false);
+      setEditingLessonId(null);
+      setLessonForm({
+        instrumentType: selectedInstrument,
+        title: "",
+        code: "",
+        order: 0,
+        isActive: true,
+      });
+    } catch (error: any) {
+      pushToast({
+        title: t("admin.lessons.error", "Error"),
+        description: error?.data?.message || t("admin.lessons.errorDesc", "Unable to save lesson"),
+        variant: "error",
+      });
+    }
+  };
+
+  const startEditLesson = (lesson: any) => {
+    setEditingLessonId(lesson._id);
+    setLessonForm({
+      instrumentType: lesson.instrumentType,
+      title: lesson.title,
+      code: lesson.code || "",
+      order: lesson.order || 0,
+      isActive: lesson.isActive !== false,
+    });
+    setShowLessonModal(true);
+  };
+
+  const handleDeleteLesson = async (lessonId: string) => {
+    if (!confirm(t("admin.lessons.confirmDelete", "Are you sure you want to delete this lesson?"))) {
+      return;
+    }
+    try {
+      await deleteLesson(lessonId).unwrap();
+      pushToast({
+        title: t("admin.lessons.deleted", "Lesson deleted"),
+        variant: "success",
+      });
+    } catch (error: any) {
+      pushToast({
+        title: t("admin.lessons.error", "Error"),
+        description: error?.data?.message || t("admin.lessons.deleteError", "Unable to delete lesson"),
+        variant: "error",
+      });
+    }
+  };
+
+  const filteredLessons = useMemo(() => {
+    return lessons.filter((lesson) => lesson.instrumentType === selectedInstrument);
+  }, [lessons, selectedInstrument]);
+
   return (
     <section className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -225,11 +340,40 @@ export default function AdminClassesPage() {
         <p className="mt-2 text-xs text-foreground/70 sm:text-sm">
           {t(
             "admin.classes.subtitle",
-            "Create, edit, and manage all classes and courses.",
+            "Create, edit, and manage all classes, instruments, and lessons.",
           )}
         </p>
       </motion.div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setActiveTab("classes")}
+          className={`px-4 py-2 text-sm font-semibold transition ${
+            activeTab === "classes"
+              ? "border-b-2 border-primary text-primary"
+              : "text-foreground/60 hover:text-foreground"
+          }`}
+        >
+          {t("admin.classes.tabs.classes", "Classes")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("lessons")}
+          className={`px-4 py-2 text-sm font-semibold transition ${
+            activeTab === "lessons"
+              ? "border-b-2 border-primary text-primary"
+              : "text-foreground/60 hover:text-foreground"
+          }`}
+        >
+          {t("admin.classes.tabs.lessons", "Instruments & Lessons")}
+        </button>
+      </div>
+
+      {/* Classes Tab */}
+      {activeTab === "classes" && (
+        <>
       {/* Summary View */}
       {!showForm && !editingId && (
         <motion.div
@@ -381,6 +525,278 @@ export default function AdminClassesPage() {
               </div>
             )}
           </div>
+        </motion.div>
+      )}
+        </>
+      )}
+
+      {/* Lessons Tab */}
+      {activeTab === "lessons" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          {/* Instrument Selector */}
+          <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+              {t("admin.lessons.selectInstrument", "Select Instrument")}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {INSTRUMENTS.map((instrument) => (
+                <button
+                  key={instrument}
+                  type="button"
+                  onClick={() => {
+                    setSelectedInstrument(instrument);
+                    setLessonForm((prev) => ({ ...prev, instrumentType: instrument }));
+                  }}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    selectedInstrument === instrument
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-foreground hover:bg-secondary/10"
+                  }`}
+                >
+                  <Music className="mr-2 inline h-4 w-4" />
+                  {instrument}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Add Lesson Button */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-serif text-primary">
+                {t("admin.lessons.title", `Lessons for ${selectedInstrument}`)}
+              </h2>
+              <p className="text-xs text-foreground/70 mt-1">
+                {t("admin.lessons.subtitle", `Manage lessons for ${selectedInstrument} students`)}
+              </p>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                setEditingLessonId(null);
+                setLessonForm({
+                  instrumentType: selectedInstrument,
+                  title: "",
+                  code: "",
+                  order: filteredLessons.length,
+                  isActive: true,
+                });
+                setShowLessonModal(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
+            >
+              <Plus className="h-4 w-4" />
+              {t("admin.lessons.addLesson", "Add Lesson")}
+            </motion.button>
+          </div>
+
+          {/* Lessons List */}
+          {lessonsLoading ? (
+            <div className="flex min-h-[200px] items-center justify-center rounded-3xl bg-surface-elevated shadow-lg">
+              <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+            </div>
+          ) : filteredLessons.length === 0 ? (
+            <div className="rounded-3xl bg-surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg">
+              {t("admin.lessons.empty", `No lessons found for ${selectedInstrument}.`)}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredLessons
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((lesson) => (
+                  <motion.div
+                    key={lesson._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col gap-3 rounded-2xl bg-surface-elevated p-4 shadow-lg sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-serif text-primary">{lesson.title}</h3>
+                        {lesson.code && (
+                          <span className="rounded-full bg-secondary/10 px-2 py-1 text-xs font-semibold text-secondary">
+                            {lesson.code}
+                          </span>
+                        )}
+                        {!lesson.isActive && (
+                          <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs font-semibold text-red-500">
+                            {t("admin.lessons.inactive", "Inactive")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-foreground/60">
+                        {t("admin.lessons.order", "Order")}: {lesson.order || 0}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => startEditLesson(lesson)}
+                        className="inline-flex items-center gap-2 rounded-full bg-secondary/10 px-4 py-2 text-xs font-semibold text-secondary transition hover:bg-secondary/20"
+                      >
+                        <Edit className="h-3 w-3" />
+                        {t("button.edit", "Edit")}
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDeleteLesson(lesson._id)}
+                        disabled={deletingLesson}
+                        className="inline-flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/20 disabled:opacity-60"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        {t("button.delete", "Delete")}
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+            </div>
+          )}
+
+          {/* Lesson Modal */}
+          {showLessonModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-md rounded-3xl bg-surface-elevated p-6 shadow-2xl"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-xl font-serif text-primary">
+                    {editingLessonId
+                      ? t("admin.lessons.editLesson", "Edit Lesson")
+                      : t("admin.lessons.newLesson", "New Lesson")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLessonModal(false);
+                      setEditingLessonId(null);
+                    }}
+                    className="rounded-full p-1 hover:bg-background/60"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleLessonSubmit} className="space-y-4">
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("admin.lessons.form.instrument", "Instrument")} *
+                    </label>
+                    <select
+                      value={lessonForm.instrumentType}
+                      onChange={(e) =>
+                        setLessonForm((prev) => ({
+                          ...prev,
+                          instrumentType: e.target.value as InstrumentType,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      required
+                    >
+                      {INSTRUMENTS.map((instrument) => (
+                        <option key={instrument} value={instrument}>
+                          {instrument}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("admin.lessons.form.title", "Title")} *
+                    </label>
+                    <input
+                      type="text"
+                      value={lessonForm.title}
+                      onChange={(e) =>
+                        setLessonForm((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                      className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      required
+                      placeholder={t("admin.lessons.form.titlePlaceholder", "Lesson title")}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("admin.lessons.form.code", "Code")}
+                    </label>
+                    <input
+                      type="text"
+                      value={lessonForm.code}
+                      onChange={(e) =>
+                        setLessonForm((prev) => ({ ...prev, code: e.target.value }))
+                      }
+                      className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      placeholder={t("admin.lessons.form.codePlaceholder", "Lesson code (optional)")}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("admin.lessons.form.order", "Order")}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={lessonForm.order}
+                      onChange={(e) =>
+                        setLessonForm((prev) => ({
+                          ...prev,
+                          order: parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    />
+                  </div>
+                  {editingLessonId && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isActive"
+                        checked={lessonForm.isActive}
+                        onChange={(e) =>
+                          setLessonForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                        }
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <label htmlFor="isActive" className="text-sm text-foreground/70">
+                        {t("admin.lessons.form.active", "Active")}
+                      </label>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <motion.button
+                      type="submit"
+                      whileTap={{ scale: 0.97 }}
+                      disabled={creatingLesson || updatingLesson}
+                      className="flex-1 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95 disabled:opacity-60"
+                    >
+                      {creatingLesson || updatingLesson ? (
+                        <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                      ) : editingLessonId ? (
+                        t("admin.lessons.form.update", "Update Lesson")
+                      ) : (
+                        t("admin.lessons.form.create", "Create Lesson")
+                      )}
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        setShowLessonModal(false);
+                        setEditingLessonId(null);
+                      }}
+                      className="flex-1 rounded-full border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-secondary/10"
+                    >
+                      {t("button.cancel", "Cancel")}
+                    </motion.button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
         </motion.div>
       )}
 
