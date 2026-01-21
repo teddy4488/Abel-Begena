@@ -216,17 +216,11 @@ export default function ClassesPage() {
   };
 
   const formattedClasses = useMemo(() => classes ?? [], [classes]);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const frame = window.requestAnimationFrame(() => {
-      setNow(Date.now());
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [formattedClasses.length]);
+    setNow(Date.now());
+  }, []);
   const isInstructor = user?.role === "Teacher";
   const isAdmin = user?.role === "Admin";
 
@@ -236,7 +230,7 @@ export default function ClassesPage() {
     }
     const resolvedCurrency = currency ?? "ETB";
     try {
-      return new Intl.NumberFormat(undefined, {
+      return new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: resolvedCurrency,
       }).format(amount);
@@ -303,7 +297,7 @@ export default function ClassesPage() {
               const deadline = klass.enrollmentDeadline
                 ? new Date(klass.enrollmentDeadline)
                 : null;
-              const isClosed = deadline !== null && deadline.getTime() < now;
+              const isClosed = deadline !== null && now > 0 && deadline.getTime() < now;
               return (
                 <motion.article
                   key={klass._id}
@@ -334,7 +328,7 @@ export default function ClassesPage() {
                         {deadline
                           ? isClosed
                             ? t("classes.deadlineClosed", "Closed")
-                            : deadline.toLocaleDateString()
+                            : deadline.toLocaleDateString("en-US")
                           : t("classes.deadlineRolling", "Rolling admission")}
                       </span>
                     </div>
@@ -382,11 +376,11 @@ export default function ClassesPage() {
       </div>
 
       {selectedClass && (
-        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 backdrop-blur-sm px-0 py-0 sm:items-center sm:px-4 sm:py-8" onClick={handleClose}>
+        <div className="fixed inset-0 z-9999 flex items-end justify-center bg-black/70 backdrop-blur-sm px-0 py-0 sm:items-center sm:px-4 sm:py-8" onClick={handleClose}>
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative z-[10000] w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-surface-elevated p-4 shadow-[0_40px_120px_rgba(0,0,0,0.8)] sm:max-w-2xl sm:rounded-3xl sm:p-6"
+            className="relative z-10000 w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-surface-elevated p-4 shadow-[0_40px_120px_rgba(0,0,0,0.8)] sm:max-w-2xl sm:rounded-3xl sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

@@ -7,6 +7,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum ClassPaymentMethod {
   CHAPA = 'Chapa',
@@ -18,6 +19,7 @@ export enum ClassPaymentMethod {
 }
 
 export class EnrollClassDto {
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   amount: number;
@@ -77,6 +79,7 @@ export class EnrollClassDto {
   address?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   preferredDaysPerWeek?: number;

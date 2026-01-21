@@ -429,20 +429,7 @@ export default function AdminClassesPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setShowForm(true);
-                clearForm();
-              }}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
-            >
-              <Edit className="h-4 w-4" />
-              {t("admin.classes.addClass", "Add New Class")}
-            </motion.button>
-          </div>
+          {/* Action Buttons removed (not used) */}
 
           {/* Classes List */}
           <div className="space-y-4">
