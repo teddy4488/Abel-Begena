@@ -28,87 +28,70 @@ export class OrderService {
     }
 
     const userObjectId = new Types.ObjectId(userId);
-    let cart = await this.cartModel.findOne({ user: userObjectId }).exec();
+    const existingCart = await this.cartModel
+      .findOne({ user: userObjectId })
+      .lean()
+      .exec();
 
-    if (!cart) {
-      cart = new this.cartModel({ user: userObjectId, items: [] });
-    }
-
-    // Ensure all existing items have an _id and price to prevent subdocument/save errors
-    cart.items = (cart.items ?? []).map((item) => {
-      if (!(item as any)._id) {
-        (item as any)._id = new Types.ObjectId();
-      }
-      if (typeof item.priceAtCheckout !== 'number') {
-        (item as any).priceAtCheckout = 0;
-      }
-      return item;
-    });
-
-    const cartItems = cart.items ?? [];
-    const existingItemIndex = cartItems.findIndex(
+    const cartItems = existingCart?.items ?? [];
+    const idx = cartItems.findIndex(
       (item) => item.productId.toString() === productId,
     );
 
-    // Remove item entirely when quantity is zero
+    // Remove item when quantity is zero
     if (quantity === 0) {
-      if (existingItemIndex >= 0) {
-        cartItems.splice(existingItemIndex, 1);
-        await this.persistCart(cart);
+      if (idx >= 0) {
+        cartItems.splice(idx, 1);
+        await this.cartModel.updateOne(
+          { user: userObjectId },
+          { $set: { items: cartItems } },
+          { upsert: true },
+        );
       }
       return this.getCartSummary(userId);
     }
 
-    // Handle positive quantity (add/increase)
-    if (quantity > 0) {
-      const product = await this.productService.findById(productId);
-
-      if (!product) {
-        throw new NotFoundException('Product not found');
-      }
-
-      if (!product.isActive) {
-        throw new BadRequestException('Product is not available');
-      }
-
-      if (product.stock < quantity) {
-        throw new BadRequestException('Insufficient stock');
-      }
-
-      const unitPrice = this.resolveProductPrice(product);
-
-      if (existingItemIndex >= 0) {
-        cartItems[existingItemIndex].quantity += quantity;
-        cartItems[existingItemIndex].priceAtCheckout = unitPrice;
-      } else {
-        cartItems.push({
-          _id: new Types.ObjectId(),
-          productId: new Types.ObjectId(productId),
-          quantity,
-          priceAtCheckout: unitPrice,
-        });
-      }
-
-      cart.items = cartItems;
-      await this.persistCart(cart);
-      return this.getCartSummary(userId);
+    // Validate product before add/update
+    const product = await this.productService.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    if (!product.isActive) {
+      throw new BadRequestException('Product is not available');
+    }
+    if (product.stock < Math.abs(quantity)) {
+      throw new BadRequestException('Insufficient stock');
     }
 
-    // Handle negative quantity (decrease/remove)
-    if (existingItemIndex === -1) {
-      throw new BadRequestException('Item not found in cart');
-    }
+    const unitPrice = this.resolveProductPrice(product);
 
-    const newQuantity = cartItems[existingItemIndex].quantity + quantity;
-
-    if (newQuantity <= 0) {
-      cartItems.splice(existingItemIndex, 1);
+    if (idx >= 0) {
+      cartItems[idx] = {
+        ...cartItems[idx],
+        quantity: cartItems[idx].quantity + quantity,
+        priceAtCheckout: unitPrice,
+        _id:
+          (cartItems[idx] as any)._id ??
+          new Types.ObjectId(),
+      };
+      if (cartItems[idx].quantity <= 0) {
+        cartItems.splice(idx, 1);
+      }
     } else {
-      cartItems[existingItemIndex].quantity = newQuantity;
+      cartItems.push({
+        _id: new Types.ObjectId(),
+        productId: new Types.ObjectId(productId),
+        quantity,
+        priceAtCheckout: unitPrice,
+      });
     }
 
-    cart.items = cartItems;
-    await this.persistCart(cart);
+    await this.cartModel.updateOne(
+      { user: userObjectId },
+      { $set: { items: cartItems } },
+      { upsert: true },
+    );
+
     return this.getCartSummary(userId);
   }
 
@@ -174,22 +157,22 @@ export class OrderService {
   async checkout(userId: string, checkoutDto: CheckoutDto) {
     const cart = await this.cartModel
       .findOne({ user: new Types.ObjectId(userId) })
+      .lean()
       .exec();
 
     if (!cart || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty');
     }
 
-    const cartItems = cart.items;
+    const cartItems = cart.items ?? [];
 
-    // Ensure cart items have an _id before further processing
-    for (const item of cartItems) {
-      if (!(item as any)._id) {
-        (item as any)._id = new Types.ObjectId();
-      }
-    }
-
-    // Validate all products and stock, and repair missing priceAtCheckout
+    // Validate products/stock, normalize items
+    const normalizedItems: Array<{
+      _id: Types.ObjectId;
+      productId: Types.ObjectId;
+      quantity: number;
+      priceAtCheckout: number;
+    }> = [];
     for (const item of cartItems) {
       const product = await this.productService.findById(
         item.productId.toString(),
@@ -208,19 +191,26 @@ export class OrderService {
         );
       }
 
-      // Update price if it changed or missing
       const latestPrice = this.resolveProductPrice(product);
-      if (typeof item.priceAtCheckout !== 'number' || latestPrice !== item.priceAtCheckout) {
-        (item as any).priceAtCheckout = latestPrice;
-      }
-      // Ensure item has an _id
-      if (!(item as any)._id) {
-        (item as any)._id = new Types.ObjectId();
-      }
+      const priceAtCheckout =
+        typeof item.priceAtCheckout === 'number'
+          ? item.priceAtCheckout
+          : latestPrice;
+
+      normalizedItems.push({
+        _id:
+          (item as any)._id
+            ? new Types.ObjectId(String((item as any)._id))
+            : new Types.ObjectId(),
+        productId: new Types.ObjectId(item.productId),
+        quantity: item.quantity,
+        priceAtCheckout:
+          latestPrice !== priceAtCheckout ? latestPrice : priceAtCheckout,
+      });
     }
 
     // Calculate total
-    const totalAmount = cartItems.reduce(
+    const totalAmount = normalizedItems.reduce(
       (sum, item) => sum + item.quantity * item.priceAtCheckout,
       0,
     );
@@ -236,14 +226,6 @@ export class OrderService {
         throw new BadRequestException('Receipt/confirmation is required for this payment method');
       }
     }
-
-    // Create order with explicit _id on items to avoid subdoc id issues
-    const normalizedItems = cartItems.map((item) => ({
-      _id: new Types.ObjectId(String((item as any)._id)),
-      productId: new Types.ObjectId(item.productId),
-      quantity: item.quantity,
-      priceAtCheckout: item.priceAtCheckout,
-    }));
 
     let order;
     try {
@@ -330,28 +312,40 @@ export class OrderService {
   }
 
   async updateStatus(id: string, status?: OrderStatus, isPaid?: boolean) {
-    const update: Partial<Order> = {};
-
-    if (status !== undefined) {
-      update.status = status;
-    }
-
-    if (isPaid !== undefined) {
-      update.isPaid = isPaid;
-    }
-
-    const order = await this.orderModel
-      .findByIdAndUpdate(id, update, { new: true })
-      .populate('user', 'email firstName lastName')
-      .populate('items.productId', 'name images')
-      .lean()
-      .exec();
-
-    if (!order) {
+    const existing = await this.orderModel.findById(id).exec();
+    if (!existing) {
       throw new NotFoundException('Order not found');
     }
 
-    return order;
+    const nextStatus = status ?? existing.status;
+    const nextIsPaid = typeof isPaid === 'boolean' ? isPaid : existing.isPaid;
+
+    // Do not allow marking an order as shipped/delivered if it is not paid.
+    if (
+      (nextStatus === OrderStatus.SHIPPED ||
+        nextStatus === OrderStatus.DELIVERED) &&
+      !nextIsPaid
+    ) {
+      throw new BadRequestException(
+        'Order must be marked as paid before it can be shipped or delivered',
+      );
+    }
+
+    // Prevent un-marking an already paid order.
+    if (existing.isPaid && isPaid === false) {
+      throw new BadRequestException('Paid orders cannot be marked as unpaid');
+    }
+
+    existing.status = nextStatus;
+    existing.isPaid = nextIsPaid;
+
+    await existing.save();
+
+    const populated = await existing
+      .populate('user', 'email firstName lastName')
+      .populate('items.productId', 'name images');
+
+    return populated.toObject();
   }
 
   async getUserOrders(userId: string) {

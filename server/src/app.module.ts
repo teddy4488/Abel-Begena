@@ -18,6 +18,7 @@ import { PaymentModule } from './payment/payment.module';
 import { MaterialsModule } from './materials/materials.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { APP_GUARD } from '@nestjs/core';
     AttendanceModule,
     PaymentModule,
     MaterialsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [

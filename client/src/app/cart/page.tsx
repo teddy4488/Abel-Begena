@@ -190,7 +190,7 @@ export default function CartPage() {
                       <span className="text-foreground/70">
                         {item.priceAtCheckout.toLocaleString("en-US", {
                           style: "currency",
-                          currency: "USD",
+                          currency: "ETB",
                         })}
                       </span>
                       <span className="text-foreground/40">×</span>
@@ -201,7 +201,7 @@ export default function CartPage() {
                       <span className="font-semibold text-primary">
                         {item.subtotal.toLocaleString("en-US", {
                           style: "currency",
-                          currency: "USD",
+                          currency: "ETB",
                         })}
                       </span>
                     </div>
@@ -258,7 +258,7 @@ export default function CartPage() {
                 <p className="text-3xl font-serif text-primary">
                   {data.totalAmount.toLocaleString("en-US", {
                     style: "currency",
-                    currency: "USD",
+                    currency: "ETB",
                   })}
                 </p>
                 <p className="text-xs text-foreground/50">

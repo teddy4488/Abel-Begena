@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   useCheckoutMutation,
   useGetCartQuery,
+  useUploadReceiptMutation,
 } from "@/store/api/storeApi";
 import { useGetBranchesQuery } from "@/store/api/branchApi";
 import { useAppSelector } from "@/store/hooks";
@@ -31,6 +32,8 @@ export default function CheckoutPage() {
   });
   const { data: branches = [] } = useGetBranchesQuery();
   const [checkout, { isLoading: isSubmitting }] = useCheckoutMutation();
+  const [uploadReceipt, { isLoading: isUploadingReceipt }] =
+    useUploadReceiptMutation();
   const [form, setForm] = useState({
     deliveryOption: "Delivery" as "Pickup" | "Delivery",
     pickupBranchId: "",
@@ -65,7 +68,11 @@ export default function CheckoutPage() {
       if (!/^[+0-9\s-]{6,}$/.test(form.phone)) next.phone = t("checkout.page.phoneError");
     }
     const offlineMethods = ["BankTransfer", "Telebirr", "CBEBirr"];
-    if (offlineMethods.includes(form.paymentMethod) && !form.receiptUrl.trim()) {
+    if (
+      offlineMethods.includes(form.paymentMethod) &&
+      !form.receiptUrl.trim() &&
+      !receiptFile
+    ) {
       next.receiptUrl = t(
         "checkout.page.receiptError",
         "Receipt confirmation (reference or link) is required for this payment method",
@@ -87,6 +94,14 @@ export default function CheckoutPage() {
     }
 
     try {
+      const offlineMethods = ["BankTransfer", "Telebirr", "CBEBirr"];
+      let receiptUrl: string | undefined = form.receiptUrl.trim() || undefined;
+
+      if (offlineMethods.includes(form.paymentMethod) && receiptFile) {
+        const uploaded = await uploadReceipt({ file: receiptFile }).unwrap();
+        receiptUrl = uploaded.url;
+      }
+
       await checkout({
         deliveryOption: form.deliveryOption,
         pickupBranchId: form.deliveryOption === "Pickup" ? form.pickupBranchId : undefined,
@@ -97,7 +112,7 @@ export default function CheckoutPage() {
           phone: form.phone,
         } : undefined,
         paymentMethod: form.paymentMethod,
-        receiptUrl: form.receiptUrl || undefined,
+        receiptUrl,
       }).unwrap();
       pushToast({
         title: t("checkout.toast.success"),
@@ -455,11 +470,13 @@ export default function CheckoutPage() {
 
               <motion.button
                 type="submit"
-                disabled={isSubmitting || isLoading}
+                disabled={isSubmitting || isLoading || isUploadingReceipt}
                 whileTap={{ scale: 0.97 }}
                 className="w-full rounded-full bg-primary px-6 py-4 text-center text-sm font-semibold text-primary-foreground shadow-[0_20px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSubmitting ? t("checkout.page.processing") : t("checkout.page.placeOrder")}
+                {isSubmitting || isUploadingReceipt
+                  ? t("checkout.page.processing")
+                  : t("checkout.page.placeOrder")}
               </motion.button>
             </form>
           </motion.div>
@@ -519,7 +536,7 @@ export default function CheckoutPage() {
                     <p className="text-sm font-semibold text-secondary">
                       {item.subtotal.toLocaleString("en-US", {
                         style: "currency",
-                        currency: "USD",
+                        currency: "ETB",
                       })}
                     </p>
                   </motion.div>
@@ -531,7 +548,7 @@ export default function CheckoutPage() {
                     <span>
                       {data.totalAmount.toLocaleString("en-US", {
                         style: "currency",
-                        currency: "USD",
+                        currency: "ETB",
                       })}
                     </span>
                   </div>
@@ -544,7 +561,7 @@ export default function CheckoutPage() {
                     <span className="text-2xl font-serif text-primary">
                       {data.totalAmount.toLocaleString("en-US", {
                         style: "currency",
-                        currency: "USD",
+                        currency: "ETB",
                       })}
                     </span>
                   </div>

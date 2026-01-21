@@ -18,6 +18,8 @@ import {
   Loader2,
   Search,
   RefreshCcw,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 
 const statusConfig: Record<
@@ -103,33 +105,6 @@ export default function AdminOrdersPage() {
       }).unwrap();
       pushToast({
         title: t("admin.orders.statusUpdated", "Order updated"),
-        variant: "success",
-      });
-    } catch (error) {
-      console.error(error);
-      pushToast({
-        title: t("admin.orders.updateError", "Unable to update order"),
-        variant: "error",
-      });
-    }
-  };
-
-  const handlePaymentToggle = async (
-    orderId: string,
-    status: string,
-    currentPaid: boolean,
-  ) => {
-    try {
-      await updateStatus({
-        id: orderId,
-        status,
-        isPaid: !currentPaid,
-      }).unwrap();
-      pushToast({
-        title: t(
-          "admin.orders.paymentUpdated",
-          currentPaid ? "Payment marked as unpaid" : "Payment verified",
-        ),
         variant: "success",
       });
     } catch (error) {
@@ -429,7 +404,7 @@ export default function AdminOrdersPage() {
                         <p className="font-semibold text-primary">
                           {order.totalAmount.toLocaleString("en-US", {
                             style: "currency",
-                            currency: "USD",
+                            currency: "ETB",
                           })}
                         </p>
                       </td>
@@ -450,30 +425,39 @@ export default function AdminOrdersPage() {
                         </select>
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handlePaymentToggle(order._id, order.status, order.isPaid)
-                          }
-                          disabled={isUpdating}
-                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
-                            order.isPaid
-                              ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
-                              : "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
-                          }`}
-                        >
-                          {order.isPaid ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3" />
-                              {t("admin.orders.paid", "Paid")}
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-3 h-3" />
-                              {t("admin.orders.unverified", "Unverified")}
-                            </>
+                        <div className="flex flex-col gap-2">
+                          <span
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                              order.isPaid
+                                ? "bg-green-500/10 text-green-600"
+                                : "bg-amber-500/10 text-amber-600"
+                            }`}
+                          >
+                            {order.isPaid ? (
+                              <>
+                                <CheckCircle2 className="w-3 h-3" />
+                                {t("admin.orders.paid", "Paid")}
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-3 h-3" />
+                                {t("admin.orders.unverified", "Unverified")}
+                              </>
+                            )}
+                          </span>
+                          {order.receiptUrl && (
+                            <a
+                              href={order.receiptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-secondary transition hover:text-primary"
+                            >
+                              <FileText className="h-3 w-3" />
+                              {t("admin.orders.viewReceipt", "View receipt")}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
                           )}
-                        </button>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-xs text-foreground/60">
@@ -549,7 +533,7 @@ export default function AdminOrdersPage() {
                       <p className="text-lg font-bold text-primary">
                         {order.totalAmount.toLocaleString("en-US", {
                           style: "currency",
-                          currency: "USD",
+                          currency: "ETB",
                         })}
                       </p>
                     </div>
@@ -577,30 +561,39 @@ export default function AdminOrdersPage() {
                         <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
                           {t("admin.orders.table.payment", "Payment")}
                         </p>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handlePaymentToggle(order._id, order.status, order.isPaid)
-                          }
-                          disabled={isUpdating}
-                          className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
-                            order.isPaid
-                              ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
-                              : "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
-                          }`}
-                        >
-                          {order.isPaid ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3" />
-                              {t("admin.orders.paid", "Paid")}
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-3 h-3" />
-                              {t("admin.orders.unverified", "Unverified")}
-                            </>
+                        <div className="space-y-2">
+                          <span
+                            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
+                              order.isPaid
+                                ? "bg-green-500/10 text-green-600"
+                                : "bg-amber-500/10 text-amber-600"
+                            }`}
+                          >
+                            {order.isPaid ? (
+                              <>
+                                <CheckCircle2 className="w-3 h-3" />
+                                {t("admin.orders.paid", "Paid")}
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-3 h-3" />
+                                {t("admin.orders.unverified", "Unverified")}
+                              </>
+                            )}
+                          </span>
+                          {order.receiptUrl && (
+                            <a
+                              href={order.receiptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-secondary transition hover:text-primary"
+                            >
+                              <FileText className="h-3 w-3" />
+                              {t("admin.orders.viewReceipt", "View receipt")}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
                           )}
-                        </button>
+                        </div>
                       </div>
                     </div>
                   </div>

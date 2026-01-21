@@ -38,6 +38,7 @@ export type Order = {
   status: string;
   paymentMethod: string;
   isPaid: boolean;
+  receiptUrl?: string;
   createdAt: string;
   updatedAt?: string;
   items: CartItemResponse[];
@@ -96,6 +97,17 @@ export const storeApi = createApi({
         body,
       }),
       invalidatesTags: ["Cart", "Orders"],
+    }),
+    uploadReceipt: builder.mutation<{ url: string }, { file: File }>({
+      query: ({ file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          url: "/uploads/receipt",
+          method: "POST",
+          body: formData,
+        };
+      },
     }),
     getMyOrders: builder.query<Order[], void>({
       query: () => "/orders/my-orders",
@@ -167,6 +179,7 @@ export const {
   useAddToCartMutation,
   useGetCartQuery,
   useCheckoutMutation,
+  useUploadReceiptMutation,
   useGetMyOrdersQuery,
   useGetAllOrdersQuery,
   useCreateProductMutation,

@@ -47,7 +47,14 @@ export class CheckoutDto {
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
 
-  @IsOptional()
+  // Receipt is required for offline methods (BankTransfer, Telebirr, CBEBirr)
+  @ValidateIf(
+    (o) =>
+      o.paymentMethod === PaymentMethod.BANK_TRANSFER ||
+      o.paymentMethod === PaymentMethod.TELEBIRR ||
+      o.paymentMethod === PaymentMethod.CBE_BIRR,
+  )
   @IsString()
+  @IsNotEmpty()
   receiptUrl?: string;
 }
