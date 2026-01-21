@@ -20,7 +20,7 @@ export class OrderService {
     private readonly cartModel: Model<CartDocument>,
     private readonly productService: ProductService,
     private readonly paymentService: PaymentService,
-  ) { }
+  ) {}
 
   async addToCart(userId: string, productId: string, quantity: number) {
     if (!Types.ObjectId.isValid(productId)) {
@@ -34,10 +34,13 @@ export class OrderService {
       cart = new this.cartModel({ user: userObjectId, items: [] });
     }
 
-    // Ensure all existing items have an _id to prevent subdocument save errors
+    // Ensure all existing items have an _id and price to prevent subdocument/save errors
     cart.items = (cart.items ?? []).map((item) => {
       if (!(item as any)._id) {
         (item as any)._id = new Types.ObjectId();
+      }
+      if (typeof item.priceAtCheckout !== 'number') {
+        (item as any).priceAtCheckout = 0;
       }
       return item;
     });
@@ -131,6 +134,10 @@ export class OrderService {
         const product = await this.productService.findById(
           item.productId.toString(),
         );
+        const priceAtCheckout =
+          typeof item.priceAtCheckout === 'number'
+            ? item.priceAtCheckout
+            : this.resolveProductPrice(product ?? { price: 0 });
         return {
           productId: item.productId,
           product: product
@@ -140,8 +147,8 @@ export class OrderService {
             }
             : null,
           quantity: item.quantity,
-          priceAtCheckout: item.priceAtCheckout,
-          subtotal: item.quantity * item.priceAtCheckout,
+          priceAtCheckout,
+          subtotal: item.quantity * priceAtCheckout,
         };
       }),
     );
@@ -173,8 +180,11 @@ export class OrderService {
       }
     }
 
-    // Validate all products and stock
+    // Validate all products and stock, and repair missing priceAtCheckout
     for (const item of cartItems) {
+      const product = await this.productService.findById(
+        item.productId.toString(),
+      );
       const product = await this.productService.findById(
         item.productId.toString(),
       );
@@ -192,10 +202,14 @@ export class OrderService {
         );
       }
 
-      // Update price if it changed
+      // Update price if it changed or missing
       const latestPrice = this.resolveProductPrice(product);
-      if (latestPrice !== item.priceAtCheckout) {
-        item.priceAtCheckout = latestPrice;
+      if (typeof item.priceAtCheckout !== 'number' || latestPrice !== item.priceAtCheckout) {
+        (item as any).priceAtCheckout = latestPrice;
+      }
+      // Ensure item has an _id
+      if (!(item as any)._id) {
+        (item as any)._id = new Types.ObjectId();
       }
     }
 
@@ -238,7 +252,13 @@ export class OrderService {
       });
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('Failed to create order', { error, userId, cartItems: normalizedItems });
+      console.error('Failed to create order', {
+        error,
+        userId,
+        cartItems: normalizedItems,
+        deliveryOption: checkoutDto.deliveryOption,
+        paymentMethod: checkoutDto.paymentMethod,
+      });
       throw error;
     }
 
