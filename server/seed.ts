@@ -783,7 +783,7 @@ async function seed() {
     const today = new Date();
     await StudentPayment.create({
       participantId: student._id,
-      amount: 1500,
+      amount: 2500,
       month: today.getMonth() + 1,
       year: today.getFullYear(),
       status: 'paid',

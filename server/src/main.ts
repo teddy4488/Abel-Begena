@@ -12,9 +12,13 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.use(helmet());
-  // Let Express know it's running behind Render's proxy so secure cookies
+  // Let Express know it's running behind a proxy (Render) so secure cookies
   // are respected when we set SameSite=None cookies.
-  app.set('trust proxy', 1);
+  const httpAdapter = app.getHttpAdapter();
+  const instance: unknown = httpAdapter.getInstance?.();
+  if (instance && typeof (instance as any).set === 'function') {
+    (instance as any).set('trust proxy', 1);
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({
