@@ -194,23 +194,36 @@ export class OrderService {
       checkoutDto.paymentMethod === PaymentMethod.TELEBIRR ||
       checkoutDto.paymentMethod === PaymentMethod.CBE_BIRR;
 
-    // Create order
-    const order = await this.orderModel.create({
-      user: new Types.ObjectId(userId),
-      items: cartItems,
-      totalAmount,
-      deliveryOption: checkoutDto.deliveryOption,
-      pickupBranchId: checkoutDto.pickupBranchId
-        ? new Types.ObjectId(checkoutDto.pickupBranchId)
-        : undefined,
-      shippingAddress: checkoutDto.shippingAddress,
-      paymentMethod: checkoutDto.paymentMethod,
-      status: requiresOfflineVerification
-        ? OrderStatus.PAYMENT_PENDING
-        : OrderStatus.PENDING,
-      isPaid: false,
-      receiptUrl: checkoutDto.receiptUrl,
-    });
+    // Create order with plain objects to avoid subdoc _id issues
+    const normalizedItems = cartItems.map((item) => ({
+      productId: new Types.ObjectId(item.productId),
+      quantity: item.quantity,
+      priceAtCheckout: item.priceAtCheckout,
+    }));
+
+    let order;
+    try {
+      order = await this.orderModel.create({
+        user: new Types.ObjectId(userId),
+        items: normalizedItems,
+        totalAmount,
+        deliveryOption: checkoutDto.deliveryOption,
+        pickupBranchId: checkoutDto.pickupBranchId
+          ? new Types.ObjectId(checkoutDto.pickupBranchId)
+          : undefined,
+        shippingAddress: checkoutDto.shippingAddress,
+        paymentMethod: checkoutDto.paymentMethod,
+        status: requiresOfflineVerification
+          ? OrderStatus.PAYMENT_PENDING
+          : OrderStatus.PENDING,
+        isPaid: false,
+        receiptUrl: checkoutDto.receiptUrl,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to create order', { error, userId, cartItems: normalizedItems });
+      throw error;
+    }
 
     // For offline-payment orders, create a pending payment request for admin verification.
     if (requiresOfflineVerification) {
