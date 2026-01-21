@@ -22,6 +22,55 @@ export class OrderService {
     private readonly paymentService: PaymentService,
   ) {}
 
+  private formatOrder(order: any) {
+    const items = (order?.items ?? []).map((item: any) => {
+      const populatedProduct = item?.productId && typeof item.productId === 'object'
+        ? item.productId
+        : null;
+      const productId =
+        populatedProduct?._id?.toString?.() ??
+        item?.productId?.toString?.() ??
+        String(item?.productId ?? '');
+      const quantity = typeof item?.quantity === 'number' ? item.quantity : 0;
+      const priceAtCheckout =
+        typeof item?.priceAtCheckout === 'number' ? item.priceAtCheckout : 0;
+      const subtotal = quantity * priceAtCheckout;
+      return {
+        productId,
+        product: populatedProduct
+          ? {
+              name: populatedProduct.name,
+              images: populatedProduct.images,
+            }
+          : null,
+        quantity,
+        priceAtCheckout,
+        subtotal,
+      };
+    });
+
+    const totalAmount =
+      typeof order?.totalAmount === 'number'
+        ? order.totalAmount
+        : items.reduce((sum: number, it: any) => sum + (it.subtotal ?? 0), 0);
+
+    return {
+      ...order,
+      _id: order?._id?.toString?.() ?? order?._id,
+      user:
+        order?.user && typeof order.user === 'object'
+          ? {
+              _id: order.user._id?.toString?.() ?? order.user._id,
+              email: order.user.email,
+              firstName: order.user.firstName,
+              lastName: order.user.lastName,
+            }
+          : order?.user,
+      items,
+      totalAmount,
+    };
+  }
+
   async addToCart(userId: string, productId: string, quantity: number) {
     if (!Types.ObjectId.isValid(productId)) {
       throw new BadRequestException('Invalid product id');
@@ -285,17 +334,23 @@ export class OrderService {
     // Clear cart
     await this.cartModel.deleteOne({ _id: cart._id });
 
-    return order.toObject();
+    const fullOrder = await this.orderModel
+      .findById(order._id)
+      .populate('items.productId', 'name images')
+      .lean()
+      .exec();
+    return this.formatOrder(fullOrder ?? order.toObject());
   }
 
   async findAll() {
-    return this.orderModel
+    const orders = await this.orderModel
       .find()
       .populate('user', 'email firstName lastName')
       .populate('items.productId', 'name images')
       .sort({ createdAt: -1 })
       .lean()
       .exec();
+    return orders.map((o) => this.formatOrder(o));
   }
 
   async findById(id: string) {
@@ -303,12 +358,13 @@ export class OrderService {
       return null;
     }
 
-    return this.orderModel
+    const order = await this.orderModel
       .findById(id)
       .populate('user', 'email firstName lastName')
       .populate('items.productId', 'name images')
       .lean()
       .exec();
+    return order ? this.formatOrder(order) : null;
   }
 
   async updateStatus(id: string, status?: OrderStatus, isPaid?: boolean) {
@@ -346,16 +402,17 @@ export class OrderService {
       { path: 'items.productId', select: 'name images' },
     ]);
 
-    return existing.toObject();
+    return this.formatOrder(existing.toObject());
   }
 
   async getUserOrders(userId: string) {
-    return this.orderModel
+    const orders = await this.orderModel
       .find({ user: new Types.ObjectId(userId) })
       .populate('items.productId', 'name images')
       .sort({ createdAt: -1 })
       .lean()
       .exec();
+    return orders.map((o) => this.formatOrder(o));
   }
 
   private resolveProductPrice(product: {
