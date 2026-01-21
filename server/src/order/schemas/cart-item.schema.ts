@@ -3,10 +3,10 @@ import { Document, Types } from 'mongoose';
 
 export type CartItemDocument = CartItem & Document;
 
-@Schema()
+@Schema({ _id: true })
 export class CartItem {
-  @Prop({ type: Types.ObjectId, default: () => new Types.ObjectId() })
-  _id?: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, auto: true })
+  _id: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId: Types.ObjectId;

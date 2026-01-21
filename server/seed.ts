@@ -411,6 +411,7 @@ const OrderSchema = new mongoose.Schema(
     items: {
       type: [
         {
+          _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
           productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
           quantity: { type: Number, required: true, min: 1 },
           priceAtCheckout: { type: Number, required: true, min: 0 },
@@ -450,6 +451,25 @@ const OrderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Cart Schema (aligned with src/order/schemas/cart.schema.ts)
+const CartItemSchema = new mongoose.Schema(
+  {
+    _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    priceAtCheckout: { type: Number, required: true, min: 0 },
+  },
+  { _id: true },
+);
+
+const CartSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', unique: true, index: true },
+    items: { type: [CartItemSchema], default: [] },
+  },
+  { timestamps: true },
+);
+
 // Create models
 const User = mongoose.model('User', UserSchema);
 const Teacher = mongoose.model('Teacher', TeacherSchema);
@@ -469,6 +489,7 @@ const InstrumentMaterial = mongoose.model('InstrumentMaterial', InstrumentMateri
 const PaymentRequest = mongoose.model('PaymentRequest', PaymentRequestSchema);
 const Product = mongoose.model('Product', ProductSchema);
 const Order = mongoose.model('Order', OrderSchema);
+const Cart = mongoose.model('Cart', CartSchema);
 
 async function seed() {
   try {
