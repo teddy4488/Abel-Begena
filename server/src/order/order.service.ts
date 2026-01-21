@@ -196,6 +196,7 @@ export class OrderService {
 
     // Create order with plain objects to avoid subdoc _id issues
     const normalizedItems = cartItems.map((item) => ({
+      _id: new Types.ObjectId(),
       productId: new Types.ObjectId(item.productId),
       quantity: item.quantity,
       priceAtCheckout: item.priceAtCheckout,
