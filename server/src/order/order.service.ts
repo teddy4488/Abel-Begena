@@ -341,11 +341,12 @@ export class OrderService {
 
     await existing.save();
 
-    const populated = await existing
-      .populate('user', 'email firstName lastName')
-      .populate('items.productId', 'name images');
+    await existing.populate([
+      { path: 'user', select: 'email firstName lastName' },
+      { path: 'items.productId', select: 'name images' },
+    ]);
 
-    return populated.toObject();
+    return existing.toObject();
   }
 
   async getUserOrders(userId: string) {
