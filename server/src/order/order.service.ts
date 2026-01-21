@@ -185,9 +185,6 @@ export class OrderService {
       const product = await this.productService.findById(
         item.productId.toString(),
       );
-      const product = await this.productService.findById(
-        item.productId.toString(),
-      );
 
       if (!product || !product.isActive) {
         const productLabel = item.productId.toString();
@@ -224,9 +221,16 @@ export class OrderService {
       checkoutDto.paymentMethod === PaymentMethod.TELEBIRR ||
       checkoutDto.paymentMethod === PaymentMethod.CBE_BIRR;
 
+    // Require receipt for offline payments
+    if (requiresOfflineVerification) {
+      if (!checkoutDto.receiptUrl || typeof checkoutDto.receiptUrl !== 'string' || !checkoutDto.receiptUrl.trim()) {
+        throw new BadRequestException('Receipt/confirmation is required for this payment method');
+      }
+    }
+
     // Create order with explicit _id on items to avoid subdoc id issues
     const normalizedItems = cartItems.map((item) => ({
-      _id: new Types.ObjectId((item as any)._id),
+      _id: new Types.ObjectId(String((item as any)._id)),
       productId: new Types.ObjectId(item.productId),
       quantity: item.quantity,
       priceAtCheckout: item.priceAtCheckout,
