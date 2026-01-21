@@ -196,23 +196,28 @@ const TeacherAttendanceSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// StudentPayment Schema
+// StudentPayment Schema (mirrors src/attendance/schemas/student-payment.schema.ts)
 const StudentPaymentSchema = new mongoose.Schema(
   {
-    participantId: { type: mongoose.Schema.Types.ObjectId, ref: 'StudentAttendanceParticipant', required: true, index: true },
-    attendanceNumber: { type: String, required: true, trim: true, index: true },
-    studentName: { type: String, required: true, trim: true },
-    paymentDate: { type: Date, required: true, index: true },
-    amount: { type: Number, required: true, min: 0 },
-    currency: { type: String, trim: true, maxlength: 12, default: 'ETB' },
-    method: { type: String, trim: true, maxlength: 40 },
-    reference: { type: String, trim: true, maxlength: 120 },
+    participantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'StudentAttendanceParticipant',
+      required: true,
+      index: true,
+    },
+    amount: { type: Number, min: 2000, max: 999999, required: true },
+    month: { type: Number, min: 1, max: 12, required: true },
+    year: { type: Number, min: 2000, max: 9999, required: true },
     status: { type: String, enum: ['paid', 'partial', 'unpaid'], default: 'paid' },
-    note: { type: String, trim: true, maxlength: 400 },
+    dueDate: { type: Date },
+    paidAt: { type: Date },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    note: { type: String, trim: true, maxlength: 240 },
   },
   { timestamps: true },
 );
+StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 }, { unique: true });
+StudentPaymentSchema.index({ year: 1, month: 1 });
 
 // Class Schema
 const ClassSchema = new mongoose.Schema(
@@ -399,24 +404,48 @@ const ProductSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Order Schema (simplified)
+// Order Schema (aligned with src/order/schemas/order.schema.ts)
 const OrderSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     items: {
       type: [
         {
           productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
           quantity: { type: Number, required: true, min: 1 },
-          price: { type: Number, required: true, min: 0 },
+          priceAtCheckout: { type: Number, required: true, min: 0 },
         },
       ],
       required: true,
     },
-    total: { type: Number, required: true, min: 0 },
-    currency: { type: String, default: 'ETB' },
-    status: { type: String, enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
+    totalAmount: { type: Number, required: true, min: 0 },
+    shippingAddress: {
+      type: {
+        city: String,
+        street: String,
+        postalCode: String,
+        phone: String,
+      },
+      required: false,
+    },
+    deliveryOption: {
+      type: String,
+      enum: ['Pickup', 'Delivery'],
+      required: true,
+    },
+    pickupBranchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+    paymentMethod: {
+      type: String,
+      enum: ['BankTransfer', 'Telebirr', 'CBEBirr', 'CashOnDelivery', 'Manual', 'Other'],
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ['Pending', 'PaymentPending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
+      default: 'Pending',
+    },
     isPaid: { type: Boolean, default: false },
+    receiptUrl: { type: String, trim: true, maxlength: 500 },
   },
   { timestamps: true },
 );
@@ -724,7 +753,7 @@ async function seed() {
         price: 15000,
         currency: 'ETB',
         stock: 5,
-        images: ['https://example.com/begena1.jpg'],
+        images: ['https://images.unsplash.com/photo-1525283117698-859fc07a86e8?auto=format&fit=crop&w=800&q=80'],
         isActive: true,
       },
       {
@@ -735,7 +764,7 @@ async function seed() {
         price: 3000,
         currency: 'ETB',
         stock: 10,
-        images: ['https://example.com/masinko1.jpg'],
+        images: ['https://images.unsplash.com/photo-1445985543470-41fba5c3144a?auto=format&fit=crop&w=800&q=80'],
         isActive: true,
       },
     ]);
@@ -751,7 +780,18 @@ async function seed() {
       status: 'present',
       recordedBy: admin._id,
     });
-    console.log('✅ Created sample student attendance record');
+    const today = new Date();
+    await StudentPayment.create({
+      participantId: student._id,
+      amount: 1500,
+      month: today.getMonth() + 1,
+      year: today.getFullYear(),
+      status: 'paid',
+      paidAt: today,
+      recordedBy: admin._id,
+      note: 'Seed tuition payment',
+    });
+    console.log('✅ Created sample student attendance record and payment');
 
     console.log('\n🎉 Seed completed successfully!');
     console.log('\n📋 Test Credentials (all verified & active):');
