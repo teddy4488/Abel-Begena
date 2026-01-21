@@ -39,6 +39,31 @@ export type Order = {
   paymentMethod: string;
   isPaid: boolean;
   receiptUrl?: string;
+  deliveryOption?: "Pickup" | "Delivery" | string;
+  shippingAddress?: {
+    city: string;
+    street: string;
+    postalCode: string;
+    phone: string;
+  };
+  pickupBranchId?:
+    | string
+    | {
+        _id: string;
+        name: string;
+        address?: string;
+        city?: string;
+        region?: string;
+      };
+  user?:
+    | string
+    | {
+        _id: string;
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        phone?: string;
+      };
   createdAt: string;
   updatedAt?: string;
   items: CartItemResponse[];

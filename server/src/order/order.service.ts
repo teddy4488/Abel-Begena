@@ -64,8 +64,21 @@ export class OrderService {
               email: order.user.email,
               firstName: order.user.firstName,
               lastName: order.user.lastName,
+              phone: order.user.phone,
             }
           : order?.user,
+      pickupBranchId:
+        order?.pickupBranchId && typeof order.pickupBranchId === 'object'
+          ? {
+              _id:
+                order.pickupBranchId._id?.toString?.() ??
+                order.pickupBranchId._id,
+              name: order.pickupBranchId.name,
+              address: order.pickupBranchId.address,
+              city: order.pickupBranchId.city,
+              region: order.pickupBranchId.region,
+            }
+          : order?.pickupBranchId,
       items,
       totalAmount,
     };
@@ -345,8 +358,9 @@ export class OrderService {
   async findAll() {
     const orders = await this.orderModel
       .find()
-      .populate('user', 'email firstName lastName')
+      .populate('user', 'email firstName lastName phone')
       .populate('items.productId', 'name images')
+      .populate('pickupBranchId', 'name address city region')
       .sort({ createdAt: -1 })
       .lean()
       .exec();
@@ -360,8 +374,9 @@ export class OrderService {
 
     const order = await this.orderModel
       .findById(id)
-      .populate('user', 'email firstName lastName')
+      .populate('user', 'email firstName lastName phone')
       .populate('items.productId', 'name images')
+      .populate('pickupBranchId', 'name address city region')
       .lean()
       .exec();
     return order ? this.formatOrder(order) : null;
@@ -398,8 +413,9 @@ export class OrderService {
     await existing.save();
 
     await existing.populate([
-      { path: 'user', select: 'email firstName lastName' },
+      { path: 'user', select: 'email firstName lastName phone' },
       { path: 'items.productId', select: 'name images' },
+      { path: 'pickupBranchId', select: 'name address city region' },
     ]);
 
     return this.formatOrder(existing.toObject());

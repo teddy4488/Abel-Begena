@@ -16,6 +16,8 @@ const statusConfig: Record<
   { color: string; bg: string; icon: React.ElementType }
 > = {
   Pending: { color: "text-amber-600", bg: "bg-amber-500/10", icon: Clock },
+  PaymentPending: { color: "text-amber-600", bg: "bg-amber-500/10", icon: Clock },
+  PaymentRejected: { color: "text-rose-600", bg: "bg-rose-500/10", icon: XCircle },
   Processing: { color: "text-blue-600", bg: "bg-blue-500/10", icon: Package },
   Shipped: { color: "text-indigo-600", bg: "bg-indigo-500/10", icon: Truck },
   Delivered: { color: "text-emerald-600", bg: "bg-emerald-500/10", icon: CheckCircle },
@@ -253,9 +255,17 @@ export default function OrdersPage() {
                         : "bg-amber-500/10 text-amber-600"
                     }`}
                   >
-                    {order.isPaid ? t("orders.page.paid") : t("orders.page.unpaid")}
+                    {order.isPaid
+                      ? t("orders.page.paid")
+                      : order.status === "PaymentPending"
+                        ? t("orders.page.paymentPending", "Payment pending review")
+                        : order.status === "PaymentRejected"
+                          ? t("orders.page.paymentRejected", "Payment rejected")
+                          : t("orders.page.unpaid")}
                   </span>
-              {!order.isPaid && order.paymentMethod !== "CashOnDelivery" && (
+              {!order.isPaid &&
+                order.paymentMethod !== "CashOnDelivery" &&
+                (order.status === "PaymentRejected" || order.status === "PaymentPending") && (
                 <button
                   type="button"
                   onClick={() => setSelectedOrderId(order._id)}

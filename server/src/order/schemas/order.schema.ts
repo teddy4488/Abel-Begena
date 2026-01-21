@@ -20,6 +20,7 @@ export enum DeliveryOption {
 export enum OrderStatus {
   PENDING = 'Pending',
   PAYMENT_PENDING = 'PaymentPending',
+  PAYMENT_REJECTED = 'PaymentRejected',
   PROCESSING = 'Processing',
   SHIPPED = 'Shipped',
   DELIVERED = 'Delivered',

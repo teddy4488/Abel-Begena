@@ -6,6 +6,11 @@ import {
   useGetAllOrdersQuery,
   useUpdateOrderStatusMutation,
 } from "@/store/api/storeApi";
+import {
+  useGetPendingPaymentRequestsQuery,
+  useUpdatePaymentStatusMutation,
+  type PaymentRequest,
+} from "@/store/api/paymentApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import {
@@ -20,6 +25,10 @@ import {
   RefreshCcw,
   FileText,
   ExternalLink,
+  X,
+  Check,
+  User,
+  MapPin,
 } from "lucide-react";
 
 const statusConfig: Record<
@@ -31,6 +40,18 @@ const statusConfig: Record<
     bg: "bg-amber-500/10",
     icon: Clock,
     label: "orders.status.pending",
+  },
+  PaymentPending: {
+    color: "text-amber-600",
+    bg: "bg-amber-500/10",
+    icon: Clock,
+    label: "orders.status.paymentpending",
+  },
+  PaymentRejected: {
+    color: "text-rose-600",
+    bg: "bg-rose-500/10",
+    icon: XCircle,
+    label: "orders.status.paymentrejected",
   },
   Processing: {
     color: "text-blue-600",
@@ -63,11 +84,18 @@ export default function AdminOrdersPage() {
     useGetAllOrdersQuery();
   const [updateStatus, { isLoading: isUpdating }] =
     useUpdateOrderStatusMutation();
+  const { data: pendingOrderPayments = [] } = useGetPendingPaymentRequestsQuery({
+    type: "order",
+  });
+  const [updatePaymentStatus, { isLoading: isReviewingPayment }] =
+    useUpdatePaymentStatusMutation();
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
 
   const filtered = useMemo(() => {
     return (orders ?? [])
@@ -111,6 +139,78 @@ export default function AdminOrdersPage() {
       console.error(error);
       pushToast({
         title: t("admin.orders.updateError", "Unable to update order"),
+        variant: "error",
+      });
+    }
+  };
+
+  const pendingByOrderId = useMemo(() => {
+    const map = new Map<string, PaymentRequest>();
+    for (const req of pendingOrderPayments ?? []) {
+      if (req.type !== "order") continue;
+      const targetId =
+        typeof req.targetId === "string" ? req.targetId : req.targetId ?? null;
+      if (targetId) {
+        map.set(targetId, req);
+      }
+    }
+    return map;
+  }, [pendingOrderPayments]);
+
+  const getCustomerLabel = (order: any) => {
+    const user = order?.user;
+    if (user && typeof user === "object") {
+      const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
+      return name || user.email || t("admin.orders.unknownCustomer", "Customer");
+    }
+    return t("admin.orders.unknownCustomer", "Customer");
+  };
+
+  const getCustomerSub = (order: any) => {
+    const user = order?.user;
+    if (user && typeof user === "object") {
+      return user.email || user.phone || "";
+    }
+    return "";
+  };
+
+  const handleApprove = async (orderId: string) => {
+    const req = pendingByOrderId.get(orderId);
+    if (!req) return;
+    try {
+      await updatePaymentStatus({
+        id: req._id,
+        body: { status: "approved", reason: reviewNote || undefined },
+      }).unwrap();
+      pushToast({
+        title: t("admin.payments.review.approved", "Payment approved"),
+        variant: "success",
+      });
+      setReviewNote("");
+    } catch {
+      pushToast({
+        title: t("admin.payments.review.error", "Failed to update payment"),
+        variant: "error",
+      });
+    }
+  };
+
+  const handleReject = async (orderId: string) => {
+    const req = pendingByOrderId.get(orderId);
+    if (!req) return;
+    try {
+      await updatePaymentStatus({
+        id: req._id,
+        body: { status: "rejected", reason: reviewNote || undefined },
+      }).unwrap();
+      pushToast({
+        title: t("admin.payments.review.rejected", "Payment rejected"),
+        variant: "success",
+      });
+      setReviewNote("");
+    } catch {
+      pushToast({
+        title: t("admin.payments.review.error", "Failed to update payment"),
         variant: "error",
       });
     }
@@ -230,13 +330,13 @@ export default function AdminOrdersPage() {
                 {t("admin.orders.stats.revenue", "Paid Revenue")}
               </p>
               <p className="text-2xl font-bold text-primary mt-1">
-                {stats.revenue.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                {stats.revenue.toLocaleString("en-US", { style: "currency", currency: "ETB" })}
               </p>
               <p className="text-xs text-foreground/60">
                 {t("admin.orders.stats.avgTicket", "Avg ticket")}:{" "}
                 {stats.avgTicket.toLocaleString("en-US", {
                   style: "currency",
-                  currency: "USD",
+                  currency: "ETB",
                 })}
               </p>
             </div>
@@ -369,6 +469,7 @@ export default function AdminOrdersPage() {
             <tbody className="divide-y divide-border/70">
               <AnimatePresence>
                 {filtered.map((order, index) => {
+                  const pendingReq = pendingByOrderId.get(order._id);
                   return (
                     <motion.tr
                       key={order._id}
@@ -384,15 +485,18 @@ export default function AdminOrdersPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-foreground/70">
-                          {order.items[0]?.product?.name ?? t("admin.orders.custom", "Custom")}
-                        </p>
-                        <p className="text-xs text-foreground/50">
-                          {order.items.length}{" "}
-                          {order.items.length === 1
-                            ? t("store.item", "item")
-                            : t("store.items", "items")}
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(order)}
+                          className="text-left"
+                        >
+                          <p className="font-semibold text-primary">
+                            {getCustomerLabel(order)}
+                          </p>
+                          <p className="text-xs text-foreground/50">
+                            {getCustomerSub(order)}
+                          </p>
+                        </button>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-foreground/80">
@@ -430,13 +534,20 @@ export default function AdminOrdersPage() {
                             className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
                               order.isPaid
                                 ? "bg-green-500/10 text-green-600"
-                                : "bg-amber-500/10 text-amber-600"
+                                : pendingReq
+                                  ? "bg-amber-500/10 text-amber-600"
+                                  : "bg-amber-500/10 text-amber-600"
                             }`}
                           >
                             {order.isPaid ? (
                               <>
                                 <CheckCircle2 className="w-3 h-3" />
                                 {t("admin.orders.paid", "Paid")}
+                              </>
+                            ) : pendingReq ? (
+                              <>
+                                <Clock className="w-3 h-3" />
+                                {t("admin.orders.pendingReview", "Pending review")}
                               </>
                             ) : (
                               <>
@@ -456,6 +567,28 @@ export default function AdminOrdersPage() {
                               {t("admin.orders.viewReceipt", "View receipt")}
                               <ExternalLink className="h-3 w-3" />
                             </a>
+                          )}
+                          {pendingReq && (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleReject(order._id)}
+                                disabled={isReviewingPayment}
+                                className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-60"
+                              >
+                                <X className="h-3 w-3" />
+                                {t("admin.payments.reject", "Reject")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleApprove(order._id)}
+                                disabled={isReviewingPayment}
+                                className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-60"
+                              >
+                                <Check className="h-3 w-3" />
+                                {t("admin.payments.approve", "Approve")}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>
@@ -485,6 +618,7 @@ export default function AdminOrdersPage() {
             {filtered.map((order, index) => {
               const statusInfo = statusConfig[order.status] || statusConfig.Pending;
               const StatusIcon = statusInfo.icon;
+              const pendingReq = pendingByOrderId.get(order._id);
               return (
                 <motion.div
                   key={order._id}
@@ -566,13 +700,20 @@ export default function AdminOrdersPage() {
                             className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
                               order.isPaid
                                 ? "bg-green-500/10 text-green-600"
-                                : "bg-amber-500/10 text-amber-600"
+                                : pendingReq
+                                  ? "bg-amber-500/10 text-amber-600"
+                                  : "bg-amber-500/10 text-amber-600"
                             }`}
                           >
                             {order.isPaid ? (
                               <>
                                 <CheckCircle2 className="w-3 h-3" />
                                 {t("admin.orders.paid", "Paid")}
+                              </>
+                            ) : pendingReq ? (
+                              <>
+                                <Clock className="w-3 h-3" />
+                                {t("admin.orders.pendingReview", "Pending review")}
                               </>
                             ) : (
                               <>
@@ -593,6 +734,28 @@ export default function AdminOrdersPage() {
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           )}
+                          {pendingReq && (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleReject(order._id)}
+                                disabled={isReviewingPayment}
+                                className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2.5 py-2 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-60"
+                              >
+                                <X className="h-3 w-3" />
+                                {t("admin.payments.reject", "Reject")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleApprove(order._id)}
+                                disabled={isReviewingPayment}
+                                className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-primary px-2.5 py-2 text-[11px] font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-60"
+                              >
+                                <Check className="h-3 w-3" />
+                                {t("admin.payments.approve", "Approve")}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -602,6 +765,138 @@ export default function AdminOrdersPage() {
             })}
           </AnimatePresence>
         </motion.div>
+      )}
+
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur">
+          <div className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setSelectedOrder(null)}
+              className="absolute right-4 top-4 rounded-full p-2 text-foreground/70 transition hover:bg-secondary/10"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-xl font-serif text-primary">
+              {t("admin.orders.customerDetails", "Customer details")}
+            </h3>
+            <p className="mt-1 text-sm text-foreground/70">
+              {t("admin.orders.customerDetailsDesc", "Delivery/pickup and contact information.")}
+            </p>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-background/60 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
+                  <User className="mr-2 inline h-3 w-3" />
+                  {t("admin.orders.customer", "Customer")}
+                </p>
+                <p className="mt-2 font-semibold text-primary">
+                  {getCustomerLabel(selectedOrder)}
+                </p>
+                {getCustomerSub(selectedOrder) && (
+                  <p className="mt-1 text-sm text-foreground/70">
+                    {getCustomerSub(selectedOrder)}
+                  </p>
+                )}
+                {selectedOrder?.user && typeof selectedOrder.user === "object" && selectedOrder.user.phone && (
+                  <p className="mt-1 text-sm text-foreground/70">
+                    {t("admin.orders.phone", "Phone")}: {selectedOrder.user.phone}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-border bg-background/60 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
+                  <MapPin className="mr-2 inline h-3 w-3" />
+                  {t("admin.orders.delivery", "Delivery")}
+                </p>
+                <p className="mt-2 font-semibold text-primary">
+                  {selectedOrder.deliveryOption === "Pickup"
+                    ? t("admin.orders.pickup", "Pickup")
+                    : t("admin.orders.delivery", "Delivery")}
+                </p>
+                {selectedOrder.deliveryOption === "Pickup" && selectedOrder.pickupBranchId && typeof selectedOrder.pickupBranchId === "object" ? (
+                  <div className="mt-2 text-sm text-foreground/70">
+                    <p className="font-semibold text-foreground/80">{selectedOrder.pickupBranchId.name}</p>
+                    {(selectedOrder.pickupBranchId.address || selectedOrder.pickupBranchId.city) && (
+                      <p>
+                        {[selectedOrder.pickupBranchId.address, selectedOrder.pickupBranchId.city, selectedOrder.pickupBranchId.region]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
+                  </div>
+                ) : selectedOrder.shippingAddress ? (
+                  <div className="mt-2 text-sm text-foreground/70">
+                    <p>
+                      {selectedOrder.shippingAddress.street}, {selectedOrder.shippingAddress.city}{" "}
+                      {selectedOrder.shippingAddress.postalCode}
+                    </p>
+                    <p>
+                      {t("admin.orders.contactPhone", "Phone")}: {selectedOrder.shippingAddress.phone}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-foreground/60">
+                    {t("admin.orders.noAddress", "No address provided.")}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {selectedOrder.receiptUrl && (
+              <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
+                  {t("admin.orders.receipt", "Receipt")}
+                </p>
+                <a
+                  href={selectedOrder.receiptUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold transition hover:border-secondary"
+                >
+                  <FileText className="h-4 w-4" />
+                  {t("admin.orders.viewReceipt", "View receipt")}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            )}
+
+            <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t("admin.orders.reviewNote", "Review note (optional)")}
+              </label>
+              <textarea
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                rows={3}
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                placeholder={t("admin.orders.reviewNotePlaceholder", "Add a note (e.g. reference mismatch).")}
+              />
+
+              {pendingByOrderId.get(selectedOrder._id) && (
+                <div className="mt-3 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleReject(selectedOrder._id)}
+                    disabled={isReviewingPayment}
+                    className="flex-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-50"
+                  >
+                    {t("admin.payments.reject", "Reject")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApprove(selectedOrder._id)}
+                    disabled={isReviewingPayment}
+                    className="flex-1 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
+                  >
+                    {t("admin.payments.approve", "Approve")}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

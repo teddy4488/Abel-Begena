@@ -164,6 +164,28 @@ export class PaymentService {
       }
     }
 
+    // If rejected and type is order, mark order as payment rejected (still unpaid)
+    if (
+      dto.status === 'rejected' &&
+      payment.type === 'order' &&
+      payment.targetId
+    ) {
+      try {
+        const order = await this.orderModel.findById(payment.targetId).exec();
+        if (order) {
+          order.isPaid = false;
+          order.status = OrderStatus.PAYMENT_REJECTED;
+          await order.save();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          'Failed to mark order as payment rejected after payment rejection:',
+          error,
+        );
+      }
+    }
+
     // If approved and type is student_conversion, trigger user-to-student conversion
     if (
       dto.status === 'approved' &&
