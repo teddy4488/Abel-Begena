@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useSessionQuery } from "@/store/api/authApi";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logout } from "@/store/slices/authSlice";
+import { hydrateFromStorage, logout } from "@/store/slices/authSlice";
 
 export function AuthHydrator() {
   const { user, sessionExpiresAt, isLoggedIn } = useAppSelector(
@@ -14,12 +14,17 @@ export function AuthHydrator() {
     skip: Boolean(user),
   });
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didHydrateRef = useRef(false);
 
   useEffect(() => {
+    if (!didHydrateRef.current) {
+      didHydrateRef.current = true;
+      dispatch(hydrateFromStorage());
+    }
     if (!user) {
       void refetch();
     }
-  }, [refetch, user]);
+  }, [dispatch, refetch, user]);
 
   useEffect(() => {
     if (timeoutRef.current) {

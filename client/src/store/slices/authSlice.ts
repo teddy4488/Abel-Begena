@@ -35,45 +35,6 @@ type AuthState = {
 
 export const AUTH_STORAGE_KEY = "abel-begena-auth";
 
-const loadInitialState = (): AuthState => {
-  if (typeof window === "undefined") {
-    return {
-      token: null,
-      user: null,
-      isLoggedIn: false,
-      sessionExpiresAt: null,
-    };
-  }
-  try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) {
-      return {
-        token: null,
-        user: null,
-        isLoggedIn: false,
-        sessionExpiresAt: null,
-      };
-    }
-    const parsed = JSON.parse(raw) as Partial<AuthState>;
-    return {
-      token: typeof parsed.token === "string" ? parsed.token : null,
-      user: parsed.user ?? null,
-      isLoggedIn: Boolean(parsed.user),
-      sessionExpiresAt:
-        typeof parsed.sessionExpiresAt === "string"
-          ? parsed.sessionExpiresAt
-          : null,
-    };
-  } catch {
-    return {
-      token: null,
-      user: null,
-      isLoggedIn: false,
-      sessionExpiresAt: null,
-    };
-  }
-};
-
 const persistState = (state: AuthState) => {
   if (typeof window === "undefined") return;
   try {
@@ -98,12 +59,34 @@ const clearPersistedState = () => {
   }
 };
 
-const initialState: AuthState = loadInitialState();
+const initialState: AuthState = {
+  token: null,
+  user: null,
+  isLoggedIn: false,
+  sessionExpiresAt: null,
+};
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    hydrateFromStorage: (state) => {
+      if (typeof window === "undefined") return;
+      try {
+        const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as Partial<AuthState>;
+        state.token = typeof parsed.token === "string" ? parsed.token : null;
+        state.user = (parsed.user ?? null) as AuthUser | null;
+        state.isLoggedIn = Boolean(parsed.user);
+        state.sessionExpiresAt =
+          typeof parsed.sessionExpiresAt === "string"
+            ? parsed.sessionExpiresAt
+            : null;
+      } catch {
+        // ignore corrupted storage
+      }
+    },
     setCredentials: (
       state,
       action: PayloadAction<{
@@ -139,6 +122,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, updateProfile, logout } = authSlice.actions;
+export const { hydrateFromStorage, setCredentials, updateProfile, logout } =
+  authSlice.actions;
 export default authSlice.reducer;
 

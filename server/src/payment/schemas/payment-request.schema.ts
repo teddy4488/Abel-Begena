@@ -8,9 +8,6 @@ export type PaymentRequestStatus = 'pending' | 'approved' | 'rejected';
 
 @Schema({ timestamps: true })
 export class PaymentRequest {
-  @Prop({ type: Types.ObjectId, auto: true })
-  _id: Types.ObjectId;
-
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   userId: Types.ObjectId;
 
