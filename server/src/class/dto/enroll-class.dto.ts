@@ -1,11 +1,16 @@
 import {
+  IsArray,
+  IsDateString,
   IsEnum,
+  IsIn,
+  IsMongoId,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -104,4 +109,35 @@ export class EnrollClassDto {
   @IsString()
   @MaxLength(400)
   receiptUrl?: string;
+
+  // Student conversion fields (for user-to-student migration upon enrollment approval)
+  @IsOptional()
+  @IsEnum(['physical', 'online'])
+  learningType?: 'physical' | 'online';
+
+  @ValidateIf((o) => o.learningType === 'physical')
+  @IsMongoId()
+  @IsNotEmpty()
+  branchId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  instrumentType?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsIn([3, 6, 9])
+  programDurationMonths?: 3 | 6 | 9;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], {
+    each: true,
+  })
+  preferredLearningDays?: Array<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>;
+
+  @IsOptional()
+  @IsDateString()
+  registrationStartDate?: string;
 }

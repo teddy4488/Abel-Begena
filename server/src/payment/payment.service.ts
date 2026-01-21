@@ -121,6 +121,24 @@ export class PaymentService {
           { status: 'active', note: dto.reason },
           adminUserId,
         );
+
+        // If enrollment has conversionData, trigger user-to-student conversion
+        if (payment.conversionData) {
+          try {
+            const conversionPayload = JSON.parse(payment.conversionData);
+            await this.attendanceService.convertUserToStudent(
+              payment.userId.toString(),
+              conversionPayload,
+            );
+          } catch (conversionError) {
+            // eslint-disable-next-line no-console
+            console.error(
+              'Failed to convert user to student after enrollment approval:',
+              conversionError,
+            );
+            // Don't throw - enrollment is approved, conversion can be done manually
+          }
+        }
       } catch (error) {
         // Log error but don't fail the payment update
         // The enrollment might not exist or might already be active

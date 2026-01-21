@@ -3,13 +3,15 @@
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Loader2, Users, X } from "lucide-react";
+import { CalendarDays, Loader2, Users, X, Building2, Music } from "lucide-react";
 import {
   useEnrollInClassMutation,
   useEnrollInClassWithReceiptMutation,
   useGetPublicClassesQuery,
   type ClassSummary,
 } from "@/store/api/classApi";
+import { useGetBranchesQuery } from "@/store/api/branchApi";
+import type { InstrumentType } from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
@@ -32,6 +34,27 @@ const isCurrencyCode = (code: string): code is CurrencyCode =>
 const resolveCurrency = (code?: string | null): CurrencyCode =>
   code && isCurrencyCode(code) ? code : currencyOptions[0];
 
+type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+const INSTRUMENTS: InstrumentType[] = [
+  "Begena",
+  "Masinko",
+  "Kirar",
+  "Washint",
+  "Kebero",
+  "Other",
+];
+
+const DAYS_OF_WEEK: { value: DayOfWeek; label: string }[] = [
+  { value: "monday", label: "Monday" },
+  { value: "tuesday", label: "Tuesday" },
+  { value: "wednesday", label: "Wednesday" },
+  { value: "thursday", label: "Thursday" },
+  { value: "friday", label: "Friday" },
+  { value: "saturday", label: "Saturday" },
+  { value: "sunday", label: "Sunday" },
+];
+
 type EnrollmentForm = {
   amount: string;
   currency: CurrencyCode;
@@ -52,12 +75,20 @@ type EnrollmentForm = {
   preferredSchedule: string;
   learningGoals: string;
   notesForTeacher: string;
+  // Student conversion fields
+  learningType: 'physical' | 'online';
+  branchId: string;
+  instrumentType: InstrumentType;
+  programDurationMonths: '3' | '6' | '9';
+  preferredLearningDays: DayOfWeek[];
+  registrationStartDate: string;
 };
 
 export default function ClassesPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const { data: classes, isLoading } = useGetPublicClassesQuery();
+  const { data: branches = [] } = useGetBranchesQuery();
   const [selectedClass, setSelectedClass] = useState<ClassSummary | null>(null);
   const [form, setForm] = useState<EnrollmentForm>({
     amount: "",
@@ -77,6 +108,12 @@ export default function ClassesPage() {
     preferredSchedule: "",
     learningGoals: "",
     notesForTeacher: "",
+    learningType: "online",
+    branchId: "",
+    instrumentType: "Begena",
+    programDurationMonths: "6",
+    preferredLearningDays: [],
+    registrationStartDate: "",
   });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const { pushToast } = useToast();
@@ -97,6 +134,7 @@ export default function ClassesPage() {
       router.push("/register");
       return;
     }
+    const today = new Date().toISOString().split("T")[0];
     setSelectedClass(klass);
     setForm({
       amount: (klass.tuition ?? 0).toString(),
@@ -116,6 +154,12 @@ export default function ClassesPage() {
       preferredSchedule: "",
       learningGoals: "",
       notesForTeacher: "",
+      learningType: "online",
+      branchId: "",
+      instrumentType: "Begena",
+      programDurationMonths: "6",
+      preferredLearningDays: [],
+      registrationStartDate: today,
     });
     setReceiptFile(null);
   };
@@ -140,6 +184,12 @@ export default function ClassesPage() {
       preferredSchedule: "",
       learningGoals: "",
       notesForTeacher: "",
+      learningType: "online",
+      branchId: "",
+      instrumentType: "Begena",
+      programDurationMonths: "6",
+      preferredLearningDays: [],
+      registrationStartDate: "",
     });
     setReceiptFile(null);
   };
@@ -147,6 +197,37 @@ export default function ClassesPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedClass) return;
+
+    // Validate conversion fields
+    if (!form.fullName.trim() || !form.phone.trim()) {
+      pushToast({
+        title: t("classes.modal.validationError", "Missing required fields"),
+        description: t("classes.modal.validationErrorDesc", "Full name and phone are required."),
+        variant: "error",
+      });
+      return;
+    }
+    if (form.learningType === "physical" && !form.branchId) {
+      pushToast({
+        title: t("classes.modal.branchRequired", "Branch required"),
+        description: t("classes.modal.branchRequiredDesc", "Please select a branch for physical learning."),
+        variant: "error",
+      });
+      return;
+    }
+    const expectedDays = form.programDurationMonths === "3" ? 5 : form.programDurationMonths === "6" ? 3 : 2;
+    if (form.preferredLearningDays.length !== expectedDays) {
+      pushToast({
+        title: t("classes.modal.daysError", "Incorrect learning days"),
+        description: t(
+          "classes.modal.daysErrorDesc",
+          `Program duration of ${form.programDurationMonths} months requires exactly ${expectedDays} learning days.`,
+        ),
+        variant: "error",
+      });
+      return;
+    }
+
     const basePayload = {
       amount: Number(form.amount) || 0,
       currency: form.currency,
@@ -154,8 +235,8 @@ export default function ClassesPage() {
         form.paymentOption === "Telebirr" ? ("Telebirr" as PaymentMethod) : ("BankTransfer" as PaymentMethod),
       paymentReference: form.paymentReference.trim(),
       note: form.note?.trim() || undefined,
-      fullName: form.fullName.trim() || undefined,
-      phone: form.phone.trim() || undefined,
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim(),
       emergencyContactName: form.emergencyContactName.trim() || undefined,
       emergencyContactPhone: form.emergencyContactPhone.trim() || undefined,
       occupation: form.occupation.trim() || undefined,
@@ -167,6 +248,12 @@ export default function ClassesPage() {
       preferredSchedule: form.preferredSchedule.trim() || undefined,
       learningGoals: form.learningGoals.trim() || undefined,
       notesForTeacher: form.notesForTeacher.trim() || undefined,
+      learningType: form.learningType,
+      branchId: form.learningType === "physical" ? form.branchId : undefined,
+      instrumentType: form.instrumentType,
+      programDurationMonths: Number(form.programDurationMonths) as 3 | 6 | 9,
+      preferredLearningDays: form.preferredLearningDays,
+      registrationStartDate: form.registrationStartDate,
     };
     try {
       if (form.paymentOption === "BankWithReceipt" && receiptFile) {
@@ -187,7 +274,7 @@ export default function ClassesPage() {
           title: t("classes.modal.successTitlePending", "Enrollment submitted"),
           description: t(
             "classes.modal.successDescriptionPending",
-            "Your enrollment request with receipt has been submitted. An admin will review your payment and activate your enrollment soon.",
+            "Your enrollment request with receipt has been submitted. An admin will review your payment and convert you to a student soon.",
           ),
           variant: "success",
         });
@@ -528,6 +615,191 @@ export default function ClassesPage() {
                   placeholder="CHAPA-XXXX"
                 />
               </label>
+
+              {/* Student Conversion Section */}
+              <div className="rounded-2xl border border-secondary/30 bg-secondary/5 p-4 space-y-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("classes.modal.studentInfo", "Student Information (for conversion to student account)")}
+                </p>
+
+                {/* Learning Type */}
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("classes.modal.learningType", "Learning Type")} *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label
+                      className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-4 py-3 text-sm transition ${
+                        form.learningType === "online"
+                          ? "border-secondary bg-secondary/10 text-secondary"
+                          : "border-border bg-background/60 hover:border-secondary/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="learningType"
+                        value="online"
+                        checked={form.learningType === "online"}
+                        onChange={(e) =>
+                          setForm({ ...form, learningType: e.target.value as "physical" | "online" })
+                        }
+                        className="sr-only"
+                      />
+                      <span>{t("classes.modal.online", "Online")}</span>
+                    </label>
+                    <label
+                      className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-4 py-3 text-sm transition ${
+                        form.learningType === "physical"
+                          ? "border-secondary bg-secondary/10 text-secondary"
+                          : "border-border bg-background/60 hover:border-secondary/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="learningType"
+                        value="physical"
+                        checked={form.learningType === "physical"}
+                        onChange={(e) =>
+                          setForm({ ...form, learningType: e.target.value as "physical" | "online" })
+                        }
+                        className="sr-only"
+                      />
+                      <span>{t("classes.modal.physical", "Physical")}</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Branch (only for physical) */}
+                {form.learningType === "physical" && (
+                  <div>
+                    <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-secondary">
+                      <Building2 className="h-4 w-4" />
+                      {t("classes.modal.branch", "Branch")} *
+                    </label>
+                    <select
+                      required
+                      value={form.branchId}
+                      onChange={(e) => setForm({ ...form, branchId: e.target.value })}
+                      className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    >
+                      <option value="">{t("classes.modal.selectBranch", "Select a branch")}</option>
+                      {branches.map((branch) => (
+                        <option key={branch._id} value={branch._id}>
+                          {branch.name} - {branch.city || branch.region}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Instrument Type */}
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-secondary">
+                    <Music className="h-4 w-4" />
+                    {t("classes.modal.instrument", "Instrument")} *
+                  </label>
+                  <select
+                    required
+                    value={form.instrumentType}
+                    onChange={(e) =>
+                      setForm({ ...form, instrumentType: e.target.value as InstrumentType })
+                    }
+                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  >
+                    {INSTRUMENTS.map((instrument) => (
+                      <option key={instrument} value={instrument}>
+                        {instrument}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Program Duration */}
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("classes.modal.programDuration", "Program Duration")} *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["3", "6", "9"] as const).map((duration) => (
+                      <label
+                        key={duration}
+                        className={`flex cursor-pointer flex-col items-center gap-1 rounded-2xl border px-3 py-3 text-sm transition ${
+                          form.programDurationMonths === duration
+                            ? "border-secondary bg-secondary/10 text-secondary"
+                            : "border-border bg-background/60 hover:border-secondary/50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="programDurationMonths"
+                          value={duration}
+                          checked={form.programDurationMonths === duration}
+                          onChange={(e) =>
+                            setForm({ ...form, programDurationMonths: e.target.value as "3" | "6" | "9", preferredLearningDays: [] })
+                          }
+                          className="sr-only"
+                        />
+                        <span className="text-lg font-bold">{duration}</span>
+                        <span className="text-xs">{t("classes.modal.months", "months")}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preferred Learning Days */}
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("classes.modal.learningDays", "Learning Days")} *
+                    <span className="ml-2 text-xs font-normal text-foreground/60">
+                      ({form.programDurationMonths === "3" ? "5 days" : form.programDurationMonths === "6" ? "3 days" : "2 days"} required)
+                    </span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {DAYS_OF_WEEK.map((day) => {
+                      const isSelected = form.preferredLearningDays.includes(day.value);
+                      return (
+                        <label
+                          key={day.value}
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs transition ${
+                            isSelected
+                              ? "border-secondary bg-secondary/10 text-secondary"
+                              : "border-border bg-background/60 hover:border-secondary/50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                                ? [...form.preferredLearningDays, day.value]
+                                : form.preferredLearningDays.filter((d) => d !== day.value);
+                              setForm({ ...form, preferredLearningDays: next });
+                            }}
+                            className="sr-only"
+                          />
+                          <span>{day.label.slice(0, 3)}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Registration Start Date */}
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("classes.modal.startDate", "Registration Start Date")} *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={form.registrationStartDate}
+                    onChange={(e) =>
+                      setForm({ ...form, registrationStartDate: e.target.value })
+                    }
+                    className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
+                </div>
+              </div>
 
               {/* Student intake fields */}
               <div className="grid gap-3 md:grid-cols-2">

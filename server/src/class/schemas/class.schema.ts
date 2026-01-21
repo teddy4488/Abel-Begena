@@ -79,6 +79,28 @@ export class ClassEnrollment {
 
   @Prop()
   approvedAt?: Date;
+
+  // Student conversion fields (for migrating user to student upon approval)
+  @Prop({ type: String, enum: ['physical', 'online'] })
+  learningType?: 'physical' | 'online';
+
+  @Prop({ type: Types.ObjectId, ref: 'Branch' })
+  branchId?: Types.ObjectId;
+
+  @Prop({ trim: true, maxlength: 40 })
+  instrumentType?: string;
+
+  @Prop({ type: Number, enum: [3, 6, 9] })
+  programDurationMonths?: 3 | 6 | 9;
+
+  @Prop({
+    type: [String],
+    enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+  })
+  preferredLearningDays?: Array<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>;
+
+  @Prop({ type: Date })
+  registrationStartDate?: Date;
 }
 
 export const ClassEnrollmentSchema =

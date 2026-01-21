@@ -445,6 +445,14 @@ export class ClassService {
       learningGoals: dto.learningGoals,
       notesForTeacher: dto.notesForTeacher,
       receiptUrl: dto.receiptUrl,
+      learningType: dto.learningType,
+      branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
+      instrumentType: dto.instrumentType,
+      programDurationMonths: dto.programDurationMonths,
+      preferredLearningDays: dto.preferredLearningDays,
+      registrationStartDate: dto.registrationStartDate
+        ? new Date(dto.registrationStartDate)
+        : undefined,
     };
 
     if (existingIndex >= 0) {
@@ -485,6 +493,39 @@ export class ClassService {
       receiptUrl,
     };
 
+    // Build conversion data if the user provided student conversion fields
+    let conversionData: string | undefined;
+    if (
+      dto.learningType &&
+      dto.instrumentType &&
+      dto.programDurationMonths &&
+      dto.preferredLearningDays &&
+      dto.fullName
+    ) {
+      const conversionPayload = {
+        fullName: dto.fullName,
+        learningType: dto.learningType,
+        branchId: dto.branchId,
+        instrumentType: dto.instrumentType,
+        programDurationMonths: dto.programDurationMonths,
+        preferredLearningDays: dto.preferredLearningDays,
+        registrationStartDate: dto.registrationStartDate ?? new Date().toISOString(),
+        phone: dto.phone,
+        emergencyContactName: dto.emergencyContactName,
+        emergencyContactPhone: dto.emergencyContactPhone,
+        occupation: dto.occupation,
+        city: dto.city,
+        address: dto.address,
+        preferredSchedule: dto.preferredSchedule,
+        amount: dto.amount,
+        currency: dto.currency ?? 'ETB',
+        paymentMethod: dto.paymentMethod ?? ClassPaymentMethod.BANK,
+        paymentReference: dto.paymentReference,
+        note: dto.note,
+      };
+      conversionData = JSON.stringify(conversionPayload);
+    }
+
     // Create a pending payment request for admin verification
     await this.paymentService.create(
       {
@@ -496,6 +537,7 @@ export class ClassService {
         reference: enrichedDto.paymentReference,
         receiptUrl,
         reviewNote: enrichedDto.note,
+        conversionData,
       },
       studentId,
     );
