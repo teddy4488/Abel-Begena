@@ -411,7 +411,7 @@ const OrderSchema = new mongoose.Schema(
     items: {
       type: [
         {
-          _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+          _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
           productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
           quantity: { type: Number, required: true, min: 1 },
           priceAtCheckout: { type: Number, required: true, min: 0 },
@@ -454,7 +454,7 @@ const OrderSchema = new mongoose.Schema(
 // Cart Schema (aligned with src/order/schemas/cart.schema.ts)
 const CartItemSchema = new mongoose.Schema(
   {
-    _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+    _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     quantity: { type: Number, required: true, min: 1 },
     priceAtCheckout: { type: Number, required: true, min: 0 },

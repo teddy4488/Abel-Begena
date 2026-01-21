@@ -119,8 +119,17 @@ export class OrderService {
       }
       return;
     }
-    cart.markModified('items');
-    await cart.save();
+    // Avoid nested subdocument save edge-cases by using an atomic update.
+    // This also ensures _id values in items are persisted exactly as provided.
+    if (cart.isNew) {
+      await cart.save();
+      return;
+    }
+    await this.cartModel.updateOne(
+      { _id: cart._id },
+      { $set: { items: cart.items } },
+      { runValidators: true },
+    );
   }
 
   async getCartSummary(userId: string) {

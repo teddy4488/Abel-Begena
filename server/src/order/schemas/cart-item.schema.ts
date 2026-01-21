@@ -1,11 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Types } from 'mongoose';
 
-export type CartItemDocument = CartItem & Document;
-
+/**
+ * Embedded item schema used by both Cart and Order.
+ * We explicitly provide an _id default to avoid "document must have an _id before saving"
+ * errors with certain nested-array save paths.
+ */
 @Schema({ _id: true })
 export class CartItem {
-  @Prop({ type: Types.ObjectId, auto: true })
+  @Prop({ type: Types.ObjectId, default: () => new Types.ObjectId() })
   _id: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
