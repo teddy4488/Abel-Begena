@@ -34,6 +34,14 @@ export class OrderService {
       cart = new this.cartModel({ user: userObjectId, items: [] });
     }
 
+    // Ensure all existing items have an _id to prevent subdocument save errors
+    cart.items = (cart.items ?? []).map((item) => {
+      if (!(item as any)._id) {
+        (item as any)._id = new Types.ObjectId();
+      }
+      return item;
+    });
+
     const cartItems = cart.items ?? [];
     const existingItemIndex = cartItems.findIndex(
       (item) => item.productId.toString() === productId,
@@ -71,6 +79,7 @@ export class OrderService {
         cartItems[existingItemIndex].priceAtCheckout = unitPrice;
       } else {
         cartItems.push({
+          _id: new Types.ObjectId(),
           productId: new Types.ObjectId(productId),
           quantity,
           priceAtCheckout: unitPrice,
@@ -196,7 +205,7 @@ export class OrderService {
 
     // Create order with plain objects to avoid subdoc _id issues
     const normalizedItems = cartItems.map((item) => ({
-      _id: new Types.ObjectId(),
+      _id: (item as any)._id ? new Types.ObjectId((item as any)._id) : new Types.ObjectId(),
       productId: new Types.ObjectId(item.productId),
       quantity: item.quantity,
       priceAtCheckout: item.priceAtCheckout,

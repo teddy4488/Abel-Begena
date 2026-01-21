@@ -5,6 +5,9 @@ export type CartItemDocument = CartItem & Document;
 
 @Schema()
 export class CartItem {
+  @Prop({ type: Types.ObjectId, default: () => new Types.ObjectId() })
+  _id?: Types.ObjectId;
+
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId: Types.ObjectId;
 
