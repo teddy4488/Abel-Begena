@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { CartItem, CartItemSchema } from './cart-item.schema';
 
 export type OrderDocument = Order & Document;
 
@@ -27,13 +26,30 @@ export enum OrderStatus {
   CANCELLED = 'Cancelled',
 }
 
+@Schema({ _id: true })
+export class OrderItem {
+  @Prop({ type: Types.ObjectId, default: () => new Types.ObjectId() })
+  _id: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
+  productId: Types.ObjectId;
+
+  @Prop({ required: true, min: 1 })
+  quantity: number;
+
+  @Prop({ required: true, min: 0 })
+  priceAtCheckout: number;
+}
+
+export const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
+
 @Schema({ timestamps: true })
 export class Order {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   user: Types.ObjectId;
 
-  @Prop({ type: [CartItemSchema], required: true })
-  items: CartItem[];
+  @Prop({ type: [OrderItemSchema], required: true })
+  items: OrderItem[];
 
   @Prop({ required: true, min: 0 })
   totalAmount: number;
