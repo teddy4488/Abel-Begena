@@ -36,6 +36,7 @@ const links = [
   { href: "/admin/store", labelKey: "admin.sidebar.store", icon: Package2 },
   { href: "/admin/orders", labelKey: "admin.sidebar.orders", icon: Receipt },
   { href: "/admin/attendance", labelKey: "admin.sidebar.attendance", icon: CalendarDays },
+  { href: "/admin/monthly-payments", labelKey: "admin.sidebar.monthlyPayments", icon: Receipt },
   { href: "/admin/faq", labelKey: "admin.sidebar.faq", icon: HelpCircle },
   { href: "/admin/comments", labelKey: "admin.sidebar.comments", icon: MessageSquare },
 ];
