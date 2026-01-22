@@ -241,7 +241,7 @@ export default function StudentPaymentsPage() {
                   {t("student.payments.overdue", "Overdue Payments")}
                 </h3>
                 <p className="text-sm text-foreground/80 mb-3">
-                  {t("student.payments.overdueDescription", "You have {count} overdue payment(s). Please submit your receipts as soon as possible.", { count: overduePayments.length })}
+                  {t("student.payments.overdueDescription", "You have overdue payment(s). Please submit your receipts as soon as possible.").replace("overdue payment(s)", `${overduePayments.length} overdue payment(s)`)}
                 </p>
                 <div className="space-y-2">
                   {overduePayments.slice(0, 3).map((payment) => {
@@ -293,7 +293,7 @@ export default function StudentPaymentsPage() {
                   {t("student.payments.upcoming", "Upcoming Payments")}
                 </h3>
                 <p className="text-sm text-foreground/80 mb-3">
-                  {t("student.payments.upcomingDescription", "You have {count} upcoming payment(s).", { count: upcomingPayments.length })}
+                  {t("student.payments.upcomingDescription", "You have upcoming payment(s).").replace("upcoming payment(s)", `${upcomingPayments.length} upcoming payment(s)`)}
                 </p>
                 <div className="space-y-2">
                   {upcomingPayments.slice(0, 3).map((payment) => (

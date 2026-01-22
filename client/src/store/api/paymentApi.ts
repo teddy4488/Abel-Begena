@@ -20,6 +20,7 @@ export type PaymentRequest = {
   reviewedAt?: string;
   reviewedBy?: string;
   reviewNote?: string;
+  conversionData?: string; // JSON string for storing metadata (e.g., month/year for student monthly fees)
   createdAt: string;
   updatedAt?: string;
 };

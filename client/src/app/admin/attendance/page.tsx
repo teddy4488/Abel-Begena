@@ -955,7 +955,7 @@ export default function AdminAttendancePage() {
                         {t("attendance.billing.overdueTitle", "Overdue Payments Alert")}
                       </h2>
                       <p className="mt-1 text-sm text-foreground/80">
-                        {t("attendance.billing.overdueUrgent", "{count} payment(s) are overdue and require immediate attention", { count: overduePayments.length })}
+                        {`${overduePayments.length} ${t("attendance.billing.overdueUrgent", "payment(s) are overdue and require immediate attention")}`}
                       </p>
                     </div>
                   </div>
@@ -1016,7 +1016,7 @@ export default function AdminAttendancePage() {
                 </div>
                 {overduePayments.length > 5 && (
                   <p className="mt-3 text-xs text-foreground/60 text-center">
-                    {t("attendance.billing.moreOverdue", "+ {count} more overdue payments", { count: overduePayments.length - 5 })}
+                    {`+ ${overduePayments.length - 5} ${t("attendance.billing.moreOverdue", "more overdue payments")}`}
                   </p>
                 )}
               </div>
