@@ -101,7 +101,7 @@ const StudentAttendanceParticipantSchema = new mongoose.Schema(
     password: { type: String },
     fullName: { type: String, required: true, trim: true, maxlength: 120 },
     attendanceNumber: { type: String, required: true, unique: true, trim: true, index: true, maxlength: 20 },
-    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: false },
     learningType: { type: String, enum: ['physical', 'online'], required: true },
     instrumentType: { type: String, enum: Object.values(InstrumentType), required: true },
     programDurationMonths: { type: Number, enum: [3, 6, 9], required: true },
@@ -128,6 +128,9 @@ const StudentAttendanceParticipantSchema = new mongoose.Schema(
 // TeacherAttendanceParticipant Schema
 const TeacherAttendanceParticipantSchema = new mongoose.Schema(
   {
+    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true, index: true },
+    password: { type: String },
+    isVerified: { type: Boolean, default: false },
     fullName: { type: String, required: true, trim: true, maxlength: 120 },
     instruments: {
       type: [String],
@@ -513,7 +516,7 @@ async function seed() {
     // Hash password
     const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // Create Admin User in AdminUser table (verified & active)
+    // Create Admin User in AdminUser table (verified & active, ready for testing)
     const admin = await AdminUser.create({
       email: 'admin@abelbegena.com',
       password: hashedPassword,
@@ -521,10 +524,14 @@ async function seed() {
       lastName: 'User',
       isActive: true,
       isVerified: true,
+      verificationCode: null,
+      verificationCodeExpiresAt: null,
+      passwordResetCode: null,
+      passwordResetCodeExpiresAt: null,
     });
-    console.log('✅ Created Admin user:', admin.email);
+    console.log('✅ Created Admin user (verified & ready for testing):', admin.email);
 
-    // Create Teacher User in Teacher table (verified, active, approved)
+    // Create Teacher User in Teacher table (verified, active, approved, ready for testing)
     const teacher = await Teacher.create({
       email: 'teacher@abelbegena.com',
       password: hashedPassword,
@@ -534,8 +541,12 @@ async function seed() {
       isVerified: true,
       teacherStatus: 'approved',
       bio: 'Experienced Begena master with 20+ years of teaching experience.',
+      verificationCode: null,
+      verificationCodeExpiresAt: null,
+      passwordResetCode: null,
+      passwordResetCodeExpiresAt: null,
     });
-    console.log('✅ Created Teacher user:', teacher.email);
+    console.log('✅ Created Teacher user (verified & ready for testing):', teacher.email);
 
     // Create sample branches in Addis Ababa (must be created before student)
     const branches = await Branch.insertMany([
@@ -609,8 +620,15 @@ async function seed() {
 
     console.log('✅ Created instrument lessons for all instrument types');
 
-    // Create Teacher Attendance Participant
+    // Create Teacher Attendance Participant (with email to match new requirements - verified & ready for testing)
     const teacherParticipant = await TeacherAttendanceParticipant.create({
+      email: 'teacher@abelbegena.com', // Same email as Teacher account
+      password: hashedPassword,
+      isVerified: true,
+      verificationCode: null,
+      verificationCodeExpiresAt: null,
+      passwordResetCode: null,
+      passwordResetCodeExpiresAt: null,
       fullName: 'Master Instructor',
       instruments: [InstrumentType.BEGENA, InstrumentType.MASINKO],
       teachingDays: ['monday', 'wednesday', 'friday'],
@@ -621,15 +639,16 @@ async function seed() {
       ],
       isActive: true,
     });
-    console.log('✅ Created Teacher Attendance Participant');
+    console.log('✅ Created Teacher Attendance Participant (verified & active)');
 
     // Create a Test Student for testing (after branches are created)
+    // Use sequential attendance number starting from 1 - verified & ready for testing
     const firstBranch = branches[0];
     const student = await StudentAttendanceParticipant.create({
       email: 'student@abelbegena.com',
       password: hashedPassword,
       fullName: 'Test Student',
-      attendanceNumber: 'STU001',
+      attendanceNumber: '1', // Sequential number starting from 1
       branchId: firstBranch._id,
       learningType: 'physical',
       instrumentType: InstrumentType.BEGENA,
@@ -641,8 +660,12 @@ async function seed() {
       city: 'Addis Ababa',
       isActive: true,
       isVerified: true,
+      verificationCode: null,
+      verificationCodeExpiresAt: null,
+      passwordResetCode: null,
+      passwordResetCodeExpiresAt: null,
     });
-    console.log('✅ Created Student:', student.email);
+    console.log('✅ Created Student (verified & active):', student.email, 'with attendance number:', student.attendanceNumber);
 
     // Create Sample Class taught by the teacher
     const sampleClass = await Class.create({
@@ -665,7 +688,7 @@ async function seed() {
     });
     console.log('✅ Created sample class:', sampleClass.title);
 
-    // Create a Standard Website User for testing
+    // Create a Standard Website User for testing (verified & ready for testing)
     const websiteUser = await User.create({
       email: 'user@abelbegena.com',
       password: hashedPassword,
@@ -674,8 +697,12 @@ async function seed() {
       role: 'User',
       isActive: true,
       isVerified: true,
+      verificationCode: null,
+      verificationCodeExpiresAt: null,
+      passwordResetCode: null,
+      passwordResetCodeExpiresAt: null,
     });
-    console.log('✅ Created Website user:', websiteUser.email);
+    console.log('✅ Created Website user (verified & active):', websiteUser.email);
 
     // Create Sample Blog Posts
     const blogPost1 = await BlogPost.create({
@@ -815,11 +842,12 @@ async function seed() {
     console.log('✅ Created sample student attendance record and payment');
 
     console.log('\n🎉 Seed completed successfully!');
-    console.log('\n📋 Test Credentials (all verified & active):');
-    console.log('   Admin:   admin@abelbegena.com / password123');
-    console.log('   Teacher: teacher@abelbegena.com / password123');
-    console.log('   Website User: user@abelbegena.com / password123');
-    console.log('   Student: student@abelbegena.com / password123');
+    console.log('\n📋 Test Credentials (ALL VERIFIED & ACTIVE - Ready for Testing):');
+    console.log('   ✅ Admin:   admin@abelbegena.com / password123');
+    console.log('   ✅ Teacher: teacher@abelbegena.com / password123');
+    console.log('   ✅ Website User: user@abelbegena.com / password123');
+    console.log('   ✅ Student: student@abelbegena.com / password123');
+    console.log('\n💡 All accounts are verified and active - no verification needed for testing!');
     console.log('\n📚 Created Data:');
     console.log(`   - ${begenaLessons.length} Begena lessons`);
     console.log(`   - ${masinkoLessons.length} Masinko lessons`);
