@@ -19,6 +19,34 @@ export type AnalyticsKpi = {
     total: number;
     active: number;
   };
+  teachers: {
+    total: number;
+    active: number;
+    approved: number;
+  };
+  attendance: {
+    studentRecords: {
+      total: number;
+      thisMonth: number;
+      today: number;
+    };
+    teacherRecords: {
+      total: number;
+      thisMonth: number;
+      today: number;
+    };
+  };
+  payments: {
+    studentPayments: {
+      total: number;
+      totalAmount: number;
+      thisMonth: number;
+      thisMonthAmount: number;
+      paid: number;
+      unpaid: number;
+      partial: number;
+    };
+  };
   orders: {
     total: number;
     statusBreakdown: Record<string, number>;

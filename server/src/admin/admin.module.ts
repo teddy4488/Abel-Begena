@@ -5,10 +5,27 @@ import { AdminController } from './admin.controller';
 import { Order, OrderSchema } from '../order/schemas/order.schema';
 import { User, UserSchema } from '../user/schemas/user.schema';
 import { Class, ClassSchema } from '../class/schemas/class.schema';
+import { Teacher, TeacherSchema } from '../teacher/schemas/teacher.schema';
 import {
   StudentAttendanceParticipant,
   StudentAttendanceParticipantSchema,
 } from '../attendance/schemas/student-attendance-participant.schema';
+import {
+  TeacherAttendanceParticipant,
+  TeacherAttendanceParticipantSchema,
+} from '../attendance/schemas/teacher-attendance-participant.schema';
+import {
+  StudentAttendance,
+  StudentAttendanceSchema,
+} from '../attendance/schemas/student-attendance.schema';
+import {
+  TeacherAttendance,
+  TeacherAttendanceSchema,
+} from '../attendance/schemas/teacher-attendance.schema';
+import {
+  StudentPayment,
+  StudentPaymentSchema,
+} from '../attendance/schemas/student-payment.schema';
 
 @Module({
   imports: [
@@ -16,10 +33,18 @@ import {
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },
       { name: Class.name, schema: ClassSchema },
+      { name: Teacher.name, schema: TeacherSchema },
       {
         name: StudentAttendanceParticipant.name,
         schema: StudentAttendanceParticipantSchema,
       },
+      {
+        name: TeacherAttendanceParticipant.name,
+        schema: TeacherAttendanceParticipantSchema,
+      },
+      { name: StudentAttendance.name, schema: StudentAttendanceSchema },
+      { name: TeacherAttendance.name, schema: TeacherAttendanceSchema },
+      { name: StudentPayment.name, schema: StudentPaymentSchema },
     ]),
   ],
   controllers: [AdminController],

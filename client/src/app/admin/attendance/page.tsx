@@ -26,7 +26,6 @@ import {
   type GraduationEligibilityItem,
 } from "@/store/api/attendanceApi";
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
-import { attendanceApi } from "@/store/api/attendanceApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import {

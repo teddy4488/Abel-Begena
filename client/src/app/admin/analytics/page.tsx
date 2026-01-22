@@ -21,7 +21,18 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, Users, ShoppingBag, DollarSign, BookOpen, GraduationCap } from "lucide-react";
+import {
+  TrendingUp,
+  Users,
+  ShoppingBag,
+  DollarSign,
+  BookOpen,
+  GraduationCap,
+  UserCheck,
+  Clock,
+  CreditCard,
+  School,
+} from "lucide-react";
 
 const COLORS = {
   active: "#10b981",
@@ -107,13 +118,13 @@ export default function AdminAnalyticsPage() {
         <p className="mt-2 text-sm text-foreground/70">
           {t(
             "admin.analytics.subtitle",
-            "Monitor revenue, user growth, enrollments, and order fulfillment.",
+            "Monitor revenue, user growth, enrollments, attendance, payments, and order fulfillment.",
           )}
         </p>
       </motion.div>
 
       {/* Key Metrics Cards */}
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -131,6 +142,21 @@ export default function AdminAnalyticsPage() {
               ((data.revenue.monthly[data.revenue.monthly.length - 1]?.total || 0) - 
                (data.revenue.monthly[data.revenue.monthly.length - 2]?.total || 0)) : 0
             }
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <AnalyticsStat
+            label={t("admin.analytics.studentPayments", "Student Payments")}
+            value={data.payments?.studentPayments?.totalAmount?.toLocaleString("en-US", {
+              style: "currency",
+              currency: "ETB",
+            }) || "0 ETB"}
+            icon={<CreditCard className="w-5 h-5" />}
+            color="#10b981"
           />
         </motion.div>
         <motion.div
@@ -167,6 +193,42 @@ export default function AdminAnalyticsPage() {
           transition={{ delay: 0.3 }}
         >
           <AnalyticsStat
+            label={t("admin.analytics.teachers", "Teachers")}
+            value={data.teachers?.approved ?? 0}
+            icon={<School className="w-5 h-5" />}
+            color="#8b5cf6"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <AnalyticsStat
+            label={t("admin.analytics.studentAttendance", "Student Attendance")}
+            value={data.attendance?.studentRecords?.total ?? 0}
+            icon={<UserCheck className="w-5 h-5" />}
+            color="#3b82f6"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <AnalyticsStat
+            label={t("admin.analytics.teacherAttendance", "Teacher Attendance")}
+            value={data.attendance?.teacherRecords?.total ?? 0}
+            icon={<Clock className="w-5 h-5" />}
+            color="#f59e0b"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.45 }}
+        >
+          <AnalyticsStat
             label={ordersLabel}
             value={data.orders.total}
             icon={<ShoppingBag className="w-5 h-5" />}
@@ -176,13 +238,25 @@ export default function AdminAnalyticsPage() {
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.5 }}
         >
           <AnalyticsStat
             label={t("admin.analytics.totalEnrollments", "Total Enrollments")}
             value={enrollments.length}
             icon={<BookOpen className="w-5 h-5" />}
             color={COLORS.active}
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.55 }}
+        >
+          <AnalyticsStat
+            label={t("admin.analytics.classes", "Classes")}
+            value={data.classes?.total ?? 0}
+            icon={<BookOpen className="w-5 h-5" />}
+            color="#ec4899"
           />
         </motion.div>
       </div>
@@ -307,18 +381,113 @@ export default function AdminAnalyticsPage() {
         </motion.div>
       </div>
 
-      {/* Status Breakdown Cards */}
+      {/* Attendance & Payments Section */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="rounded-3xl  surface-elevated p-6 shadow-lg"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <UserCheck className="w-5 h-5 text-secondary" />
+            <h2 className="text-lg font-serif text-primary">
+              {t("admin.analytics.attendanceOverview", "Attendance Overview")}
+            </h2>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl card-elevated p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary/80 mb-2">
+                  {t("admin.analytics.studentRecords", "Student Records")}
+                </p>
+                <p className="text-2xl font-bold text-primary">{data.attendance?.studentRecords?.total ?? 0}</p>
+                <p className="text-xs text-foreground/60 mt-1">
+                  {t("admin.analytics.thisMonth", "This month")}: {data.attendance?.studentRecords?.thisMonth ?? 0}
+                </p>
+                <p className="text-xs text-foreground/60">
+                  {t("admin.analytics.today", "Today")}: {data.attendance?.studentRecords?.today ?? 0}
+                </p>
+              </div>
+              <div className="rounded-xl card-elevated p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary/80 mb-2">
+                  {t("admin.analytics.teacherRecords", "Teacher Records")}
+                </p>
+                <p className="text-2xl font-bold text-primary">{data.attendance?.teacherRecords?.total ?? 0}</p>
+                <p className="text-xs text-foreground/60 mt-1">
+                  {t("admin.analytics.thisMonth", "This month")}: {data.attendance?.teacherRecords?.thisMonth ?? 0}
+                </p>
+                <p className="text-xs text-foreground/60">
+                  {t("admin.analytics.today", "Today")}: {data.attendance?.teacherRecords?.today ?? 0}
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="rounded-3xl  surface-elevated p-6 shadow-lg"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard className="w-5 h-5 text-secondary" />
+            <h2 className="text-lg font-serif text-primary">
+              {t("admin.analytics.studentPaymentsOverview", "Student Payments Overview")}
+            </h2>
+          </div>
+          <div className="space-y-4">
+            <div className="rounded-xl card-elevated p-4">
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary/80 mb-2">
+                {t("admin.analytics.totalPayments", "Total Payments")}
+              </p>
+              <p className="text-2xl font-bold text-primary">
+                {data.payments?.studentPayments?.totalAmount?.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "ETB",
+                }) || "0 ETB"}
+              </p>
+              <p className="text-xs text-foreground/60 mt-1">
+                {t("admin.analytics.totalRecords", "Total records")}: {data.payments?.studentPayments?.total ?? 0}
+              </p>
+              <p className="text-xs text-foreground/60">
+                {t("admin.analytics.thisMonth", "This month")}: {data.payments?.studentPayments?.thisMonthAmount?.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "ETB",
+                }) || "0 ETB"}
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg bg-green-500/10 p-3 text-center">
+                <p className="text-xs text-foreground/60 mb-1">{t("admin.analytics.paid", "Paid")}</p>
+                <p className="text-lg font-bold text-green-600">{data.payments?.studentPayments?.paid ?? 0}</p>
+              </div>
+              <div className="rounded-lg bg-yellow-500/10 p-3 text-center">
+                <p className="text-xs text-foreground/60 mb-1">{t("admin.analytics.partial", "Partial")}</p>
+                <p className="text-lg font-bold text-yellow-600">{data.payments?.studentPayments?.partial ?? 0}</p>
+              </div>
+              <div className="rounded-lg bg-red-500/10 p-3 text-center">
+                <p className="text-xs text-foreground/60 mb-1">{t("admin.analytics.unpaid", "Unpaid")}</p>
+                <p className="text-lg font-bold text-red-600">{data.payments?.studentPayments?.unpaid ?? 0}</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Detailed Stats Grid */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="grid gap-4 md:grid-cols-3"
+        transition={{ delay: 0.8 }}
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
         <div className="rounded-3xl  surface-elevated p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
-              {t("classes.status.active", "Active")}
+              {t("classes.status.active", "Active Enrollments")}
             </h3>
           </div>
           <p className="text-3xl font-bold text-primary">
@@ -329,7 +498,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-center gap-2 mb-3">
             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
-              {t("classes.status.pending", "Pending")}
+              {t("classes.status.pending", "Pending Enrollments")}
             </h3>
           </div>
           <p className="text-3xl font-bold text-primary">
@@ -338,13 +507,26 @@ export default function AdminAnalyticsPage() {
         </div>
         <div className="rounded-3xl  surface-elevated p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <School className="w-4 h-4 text-secondary" />
             <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
-              {t("classes.status.withdrawn", "Withdrawn")}
+              {t("admin.analytics.totalTeachers", "Total Teachers")}
             </h3>
           </div>
-          <p className="text-3xl font-bold text-primary">
-            {enrollmentStatusData.find((e) => e.name === t("classes.status.withdrawn", "Withdrawn"))?.value || 0}
+          <p className="text-3xl font-bold text-primary">{data.teachers?.total ?? 0}</p>
+          <p className="text-xs text-foreground/60 mt-1">
+            {t("admin.analytics.approved", "Approved")}: {data.teachers?.approved ?? 0}
+          </p>
+        </div>
+        <div className="rounded-3xl  surface-elevated p-6 shadow-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <BookOpen className="w-4 h-4 text-secondary" />
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
+              {t("admin.analytics.liveClasses", "Live Classes")}
+            </h3>
+          </div>
+          <p className="text-3xl font-bold text-primary">{data.classes?.live ?? 0}</p>
+          <p className="text-xs text-foreground/60 mt-1">
+            {t("admin.analytics.total", "Total")}: {data.classes?.total ?? 0}
           </p>
         </div>
       </motion.div>
