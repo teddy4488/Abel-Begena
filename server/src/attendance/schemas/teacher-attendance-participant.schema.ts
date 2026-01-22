@@ -15,6 +15,22 @@ export interface TeachingTimeRange {
 
 @Schema({ timestamps: true })
 export class TeacherAttendanceParticipant {
+  // Authentication fields (for teachers who want to access portal)
+  @Prop({
+    unique: true,
+    sparse: true,
+    lowercase: true,
+    trim: true,
+    index: true,
+  })
+  email?: string;
+
+  @Prop()
+  password?: string;
+
+  @Prop({ default: false })
+  isVerified: boolean;
+
   // Independent teacher information - no reference to User table
   @Prop({ required: true, trim: true, maxlength: 120 })
   fullName: string;

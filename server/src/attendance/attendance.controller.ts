@@ -72,6 +72,20 @@ export class AttendanceController {
     return this.attendanceService.getStudentByAttendanceNumber(attendanceNumber);
   }
 
+  @Get('students/search')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  searchStudents(@Query('q') query: string) {
+    return this.attendanceService.searchStudents(query);
+  }
+
+  @Get('students/:id/details')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getStudentDetails(@Param('id') id: string) {
+    return this.attendanceService.getStudentDetails(id);
+  }
+
   @Patch('students/participants/:id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
@@ -243,5 +257,33 @@ export class AttendanceController {
       throw new BadRequestException('Invalid daysAhead parameter');
     }
     return this.attendanceService.getUpcomingPayments(req.user.sub, days);
+  }
+
+  // Report generation
+  @Get('reports/student/:id/attendance')
+  @Roles('Admin', 'Student', 'Teacher')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  generateStudentAttendanceReport(@Param('id') studentId: string) {
+    return this.attendanceService.generateStudentAttendanceReport(studentId);
+  }
+
+  @Get('reports/student/:id/payments')
+  @Roles('Admin', 'Student')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  generateStudentPaymentReport(@Param('id') studentId: string) {
+    return this.attendanceService.generateStudentPaymentReport(studentId);
+  }
+
+  @Get('reports/teacher/:id/attendance')
+  @Roles('Admin', 'Teacher')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  generateTeacherAttendanceReport(
+    @Param('id') teacherId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.attendanceService.generateTeacherAttendanceReport(teacherId, start, end);
   }
 }

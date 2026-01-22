@@ -75,6 +75,7 @@ export type TeacherAttendanceRecord = {
 
 export type RegisterTeacherParticipantBody = {
   fullName: string;
+  email: string;
   instruments: InstrumentType[];
   teachingDays: DayOfWeek[];
   timeRanges: TeachingTimeRange[];
@@ -174,6 +175,28 @@ export const attendanceApi = createApi({
     }),
     getStudentByAttendanceNumber: builder.query<StudentParticipant, string>({
       query: (attendanceNumber) => `/attendance/students/lookup/${attendanceNumber}`,
+    }),
+    searchStudents: builder.query<StudentParticipant[], string>({
+      query: (query) => ({
+        url: "/attendance/students/search",
+        params: { q: query },
+      }),
+      providesTags: ["StudentParticipants"],
+    }),
+    getStudentDetails: builder.query<
+      StudentParticipant & {
+        lastAttendance?: any;
+        totalAttendance: number;
+        paidMonths: number;
+        unpaidMonths: number;
+        totalPayments: number;
+      },
+      string
+    >({
+      query: (id) => ({
+        url: `/attendance/students/${id}/details`,
+      }),
+      providesTags: ["StudentParticipants"],
     }),
     registerTeacherParticipant: builder.mutation<
       TeacherParticipant,
@@ -429,6 +452,8 @@ export const {
   useGetTeacherParticipantsQuery,
   useGetStudentParticipantsQuery,
   useGetStudentByAttendanceNumberQuery,
+  useSearchStudentsQuery,
+  useGetStudentDetailsQuery,
   useRegisterTeacherParticipantMutation,
   useRegisterStudentParticipantMutation,
   useTeacherCheckInMutation,
@@ -448,5 +473,6 @@ export const {
   useGetOverduePaymentsQuery,
   useGetStudentAttendanceReportQuery,
   useGetStudentPaymentReportQuery,
+  useGetTeacherAttendanceReportQuery,
   useGetMyUpcomingPaymentsQuery,
 } = attendanceApi;

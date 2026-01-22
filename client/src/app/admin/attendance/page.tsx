@@ -6,6 +6,10 @@ import {
   useGetTeacherParticipantsQuery,
   useGetStudentParticipantsQuery,
   useGetStudentByAttendanceNumberQuery,
+  useSearchStudentsQuery,
+  useGetStudentDetailsQuery,
+  useGetStudentAttendanceReportQuery,
+  useGetStudentPaymentReportQuery,
   useTeacherCheckInMutation,
   useTeacherCheckOutMutation,
   useGetTodayTeacherAttendanceQuery,
@@ -14,6 +18,7 @@ import {
   useRegisterTeacherParticipantMutation,
   useRegisterStudentParticipantMutation,
   useGetGraduationEligibilityQuery,
+  attendanceApi,
   type DayOfWeek,
   type LearningType,
   type AttendanceStatus,
@@ -21,6 +26,7 @@ import {
   type GraduationEligibilityItem,
 } from "@/store/api/attendanceApi";
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
+import { attendanceApi } from "@/store/api/attendanceApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import {
@@ -90,15 +96,36 @@ export default function AdminAttendancePage() {
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [revisedLessonId, setRevisedLessonId] = useState<string>("");
   const [status, setStatus] = useState<AttendanceStatus>("present");
+  const [selectedStudentForDetails, setSelectedStudentForDetails] = useState<string | null>(null);
 
-  // Student lookup
+  // Student search - works with name or attendance number
   const {
-    data: lookedUpStudent,
-    isLoading: lookingUpStudent,
-    refetch: refetchStudentLookup,
-  } = useGetStudentByAttendanceNumberQuery(studentCode.trim(), {
-    skip: !studentCode.trim() || studentCode.trim().length < 3,
+    data: searchResults = [],
+    isLoading: searchingStudents,
+  } = useSearchStudentsQuery(studentCode.trim(), {
+    skip: !studentCode.trim() || studentCode.trim().length < 2,
   });
+
+  // Get student details when one is selected
+  const {
+    data: studentDetails,
+    isLoading: loadingDetails,
+  } = useGetStudentDetailsQuery(selectedStudentForDetails || "", {
+    skip: !selectedStudentForDetails,
+  });
+
+  // For backward compatibility, also try exact attendance number lookup
+  const {
+    data: lookedUpStudentByNumber,
+    isLoading: lookingUpStudentByNumber,
+  } = useGetStudentByAttendanceNumberQuery(studentCode.trim(), {
+    skip: !studentCode.trim() || studentCode.trim().length < 2 || searchResults.length > 0,
+  });
+
+  // Use search results if available, otherwise use exact lookup
+  const lookedUpStudent = searchResults.length === 1 ? searchResults[0] : 
+    (searchResults.length === 0 && lookedUpStudentByNumber ? lookedUpStudentByNumber : null);
+  const lookingUpStudent = searchingStudents || lookingUpStudentByNumber;
 
   // Get lessons filtered by instrument
   const { data: allLessons = [] } = useGetInstrumentLessonsQuery(undefined);
@@ -126,6 +153,7 @@ export default function AdminAttendancePage() {
   // Teacher registration form state
   const [teacherForm, setTeacherForm] = useState({
     fullName: "",
+    email: "",
     instruments: [] as InstrumentType[],
     teachingDays: [] as DayOfWeek[],
     timeRanges: [] as TeachingTimeRange[],
@@ -189,10 +217,24 @@ export default function AdminAttendancePage() {
   const handleStudentCodeChange = (value: string) => {
     const cleaned = value.replace(/\s+/g, "");
     setStudentCode(cleaned);
-    if (cleaned && lookedUpStudent?._id) {
+    // Auto-select if only one result
+    if (cleaned && searchResults.length === 1) {
+      setSelectedStudentId(searchResults[0]._id);
+    } else if (cleaned && lookedUpStudent?._id) {
       setSelectedStudentId(lookedUpStudent._id);
     } else {
       setSelectedStudentId("");
+    }
+  };
+
+  const handleSelectStudent = (studentId: string) => {
+    setSelectedStudentId(studentId);
+    setSelectedStudentForDetails(studentId);
+    // Find the student in search results or participants to set the code
+    const student = searchResults.find(s => s._id === studentId) ||
+      studentParticipants.find(s => s._id === studentId);
+    if (student) {
+      setStudentCode(student.attendanceNumber);
     }
   };
 
@@ -300,6 +342,7 @@ export default function AdminAttendancePage() {
     try {
       await registerTeacher({
         fullName: teacherForm.fullName.trim(),
+        email: teacherForm.email.trim(),
         instruments: teacherForm.instruments,
         teachingDays: teacherForm.teachingDays,
         timeRanges: teacherForm.timeRanges,
@@ -313,6 +356,7 @@ export default function AdminAttendancePage() {
       setShowAddTeacherModal(false);
       setTeacherForm({
         fullName: "",
+        email: "",
         instruments: [],
         teachingDays: [],
         timeRanges: [],
@@ -554,7 +598,7 @@ export default function AdminAttendancePage() {
                 {/* Attendance number input */}
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
-                    {t("attendance.students.code", "Attendance Number")}
+                    {t("attendance.students.search", "Search by Name or Attendance Number")}
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground/30" />
@@ -563,8 +607,8 @@ export default function AdminAttendancePage() {
                       value={studentCode}
                       onChange={(e) => handleStudentCodeChange(e.target.value)}
                       autoFocus
-                      placeholder={t("attendance.students.codePlaceholder", "Enter attendance number")}
-                      className="w-full rounded-2xl card-elevated pl-10 pr-4 py-3 text-lg font-mono tracking-[0.25em] outline-none focus:ring-2 focus:ring-secondary/30"
+                      placeholder={t("attendance.students.searchPlaceholder", "Enter name or attendance number")}
+                      className="w-full rounded-2xl card-elevated pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
                     />
                   </div>
                   {lookingUpStudent && (
@@ -572,24 +616,139 @@ export default function AdminAttendancePage() {
                       {t("attendance.students.lookingUp", "Looking up student...")}
                     </p>
                   )}
+                  
+                  {/* Search results dropdown */}
+                  {studentCode.trim().length >= 2 && searchResults.length > 1 && (
+                    <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-border bg-background">
+                      {searchResults.map((student) => {
+                        const branchName =
+                          typeof student.branchId === "object" && student.branchId !== null
+                            ? student.branchId.name
+                            : "";
+                        return (
+                          <button
+                            key={student._id}
+                            type="button"
+                            onClick={() => handleSelectStudent(student._id)}
+                            className="w-full px-4 py-3 text-left hover:bg-secondary/5 transition"
+                          >
+                            <p className="font-semibold text-primary">{student.fullName}</p>
+                            <p className="text-xs text-foreground/60">
+                              {t("attendance.students.code", "Attendance #")}: {student.attendanceNumber} • {student.instrumentType}
+                              {branchName ? ` • ${branchName}` : ""}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
-                {/* Student confirmation */}
+                {/* Student confirmation and details */}
                 {lookedUpStudent && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl card-elevated p-4"
+                    className="rounded-xl card-elevated p-4 space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold text-primary">{lookedUpStudent.fullName}</p>
                         <p className="text-xs text-foreground/60">
-                          {lookedUpStudent.instrumentType} • {lookedUpStudent.attendanceNumber}
+                          {t("attendance.students.code", "Attendance #")}: {lookedUpStudent.attendanceNumber} • {lookedUpStudent.instrumentType}
                         </p>
+                        {lookedUpStudent.registrationStartDate && (
+                          <p className="text-xs text-foreground/50 mt-1">
+                            {t("attendance.students.registeredOn", "Registered")}: {new Date(lookedUpStudent.registrationStartDate).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
                     </div>
+                    {studentDetails && (
+                      <div className="pt-3 border-t border-border/50 space-y-2">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="text-foreground/60">{t("attendance.students.totalAttendance", "Total Sessions")}</p>
+                            <p className="font-semibold text-primary">{studentDetails.totalAttendance}</p>
+                          </div>
+                          {studentDetails.lastAttendance && (
+                            <div>
+                              <p className="text-foreground/60">{t("attendance.students.lastAttendance", "Last Attendance")}</p>
+                              <p className="font-semibold text-primary">
+                                {new Date(studentDetails.lastAttendance.sessionDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const result = await attendanceApi.endpoints.getStudentAttendanceReport.initiate(lookedUpStudent._id);
+                                if ('data' in result) {
+                                  const report = result.data;
+                                  // Create downloadable JSON file
+                                  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `attendance-report-${lookedUpStudent.attendanceNumber}-${new Date().toISOString().split('T')[0]}.json`;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                  pushToast({
+                                    title: t("attendance.students.downloadSuccess", "Report Downloaded"),
+                                    variant: "success",
+                                  });
+                                }
+                              } catch (error) {
+                                pushToast({
+                                  title: t("attendance.students.downloadError", "Download Error"),
+                                  description: t("attendance.students.downloadErrorDesc", "Failed to download report"),
+                                  variant: "error",
+                                });
+                              }
+                            }}
+                            className="flex-1 rounded-full bg-secondary/10 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/20 transition"
+                          >
+                            {t("attendance.students.downloadAttendance", "Download Attendance Report")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const result = await attendanceApi.endpoints.getStudentPaymentReport.initiate(lookedUpStudent._id);
+                                if ('data' in result) {
+                                  const report = result.data;
+                                  // Create downloadable JSON file
+                                  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `payment-report-${lookedUpStudent.attendanceNumber}-${new Date().toISOString().split('T')[0]}.json`;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                  pushToast({
+                                    title: t("attendance.students.downloadSuccess", "Report Downloaded"),
+                                    variant: "success",
+                                  });
+                                }
+                              } catch (error) {
+                                pushToast({
+                                  title: t("attendance.students.downloadError", "Download Error"),
+                                  description: t("attendance.students.downloadErrorDesc", "Failed to download report"),
+                                  variant: "error",
+                                });
+                              }
+                            }}
+                            className="flex-1 rounded-full bg-secondary/10 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/20 transition"
+                          >
+                            {t("attendance.students.downloadPayments", "Download Payment Report")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -998,6 +1157,392 @@ export default function AdminAttendancePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Add Student Modal */}
+      {showAddStudentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-serif text-primary">
+                {t("attendance.addStudent", "Add Student")}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddStudentModal(false)}
+                className="rounded-full p-1 hover:bg-background/60"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleRegisterStudent(); }} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.students.fullName", "Full Name")} *
+                </label>
+                <input
+                  type="text"
+                  value={studentForm.fullName}
+                  onChange={(e) => setStudentForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.students.email", "Email")} *
+                </label>
+                <input
+                  type="email"
+                  value={studentForm.email}
+                  onChange={(e) => setStudentForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.instrumentType", "Instrument")} *
+                  </label>
+                  <select
+                    value={studentForm.instrumentType}
+                    onChange={(e) => setStudentForm((prev) => ({ ...prev, instrumentType: e.target.value as InstrumentType }))}
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    required
+                  >
+                    {INSTRUMENTS.map((inst) => (
+                      <option key={inst} value={inst}>{inst}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.learningType", "Learning Type")} *
+                  </label>
+                  <select
+                    value={studentForm.learningType}
+                    onChange={(e) => setStudentForm((prev) => ({ ...prev, learningType: e.target.value as LearningType }))}
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    required
+                  >
+                    <option value="physical">{t("attendance.learningType.physical", "Physical")}</option>
+                    <option value="online">{t("attendance.learningType.online", "Online")}</option>
+                  </select>
+                </div>
+              </div>
+
+              {studentForm.learningType === "physical" && (
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.branch", "Branch")} *
+                  </label>
+                  <select
+                    value={studentForm.branchId}
+                    onChange={(e) => setStudentForm((prev) => ({ ...prev, branchId: e.target.value }))}
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    required
+                  >
+                    <option value="">{t("attendance.selectBranch", "Select branch")}</option>
+                    {branches.map((branch) => (
+                      <option key={branch._id} value={branch._id}>{branch.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.programDuration", "Program Duration")} *
+                </label>
+                <select
+                  value={studentForm.programDurationMonths}
+                  onChange={(e) => setStudentForm((prev) => ({ ...prev, programDurationMonths: Number(e.target.value) as 3 | 6 | 9 }))}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  required
+                >
+                  <option value={3}>3 {t("attendance.students.months", "months")}</option>
+                  <option value={6}>6 {t("attendance.students.months", "months")}</option>
+                  <option value={9}>9 {t("attendance.students.months", "months")}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.students.preferredDays", "Preferred Learning Days")} * ({expectedDaysPerWeek} {t("attendance.students.daysRequired", "days required")})
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {DAYS_OF_WEEK.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        const current = studentForm.preferredLearningDays;
+                        const newDays = current.includes(day)
+                          ? current.filter((d) => d !== day)
+                          : current.length < expectedDaysPerWeek
+                            ? [...current, day]
+                            : current;
+                        setStudentForm((prev) => ({ ...prev, preferredLearningDays: newDays }));
+                      }}
+                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                        studentForm.preferredLearningDays.includes(day)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background/60 text-foreground/70 hover:bg-background/80"
+                      }`}
+                    >
+                      {DAY_LABELS[day]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.attendanceNumber", "Attendance Number (optional)")}
+                </label>
+                <input
+                  type="text"
+                  value={studentForm.attendanceNumber}
+                  onChange={(e) => setStudentForm((prev) => ({ ...prev, attendanceNumber: e.target.value }))}
+                  placeholder={t("attendance.registry.manualCode", "Leave empty for auto-generation")}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.students.registrationDate", "Registration Start Date")} *
+                </label>
+                <input
+                  type="date"
+                  value={studentForm.registrationStartDate}
+                  onChange={(e) => setStudentForm((prev) => ({ ...prev, registrationStartDate: e.target.value }))}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStudentModal(false)}
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60"
+                >
+                  {t("common.cancel", "Cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={registeringStudent}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                >
+                  {registeringStudent && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {t("attendance.add", "Register")}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Teacher Modal */}
+      {showAddTeacherModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-serif text-primary">
+                {t("attendance.addTeacher", "Add Teacher")}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddTeacherModal(false)}
+                className="rounded-full p-1 hover:bg-background/60"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleRegisterTeacher(); }} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.teachers.fullName", "Full Name")} *
+                </label>
+                <input
+                  type="text"
+                  value={teacherForm.fullName}
+                  onChange={(e) => setTeacherForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.teachers.email", "Email")} *
+                </label>
+                <input
+                  type="email"
+                  value={teacherForm.email}
+                  onChange={(e) => setTeacherForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  required
+                />
+                <p className="mt-1 text-xs text-foreground/60">
+                  {t("attendance.teachers.emailHint", "An account will be created and credentials will be sent to this email")}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.teachers.instruments", "Instruments")} *
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {INSTRUMENTS.map((instrument) => (
+                    <button
+                      key={instrument}
+                      type="button"
+                      onClick={() => {
+                        const current = teacherForm.instruments;
+                        const newInstruments = current.includes(instrument)
+                          ? current.filter((i) => i !== instrument)
+                          : [...current, instrument];
+                        setTeacherForm((prev) => ({ ...prev, instruments: newInstruments }));
+                      }}
+                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                        teacherForm.instruments.includes(instrument)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background/60 text-foreground/70 hover:bg-background/80"
+                      }`}
+                    >
+                      {instrument}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.teachers.teachingDays", "Teaching Days")} *
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {DAYS_OF_WEEK.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        const current = teacherForm.teachingDays;
+                        const newDays = current.includes(day)
+                          ? current.filter((d) => d !== day)
+                          : [...current, day];
+                        setTeacherForm((prev) => {
+                          const newRanges = prev.timeRanges.filter((tr) => newDays.includes(tr.day));
+                          return { ...prev, teachingDays: newDays, timeRanges: newRanges };
+                        });
+                      }}
+                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                        teacherForm.teachingDays.includes(day)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background/60 text-foreground/70 hover:bg-background/80"
+                      }`}
+                    >
+                      {DAY_LABELS[day]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {teacherForm.teachingDays.length > 0 && (
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.teachers.timeRanges", "Time Ranges")} *
+                  </label>
+                  <div className="space-y-3">
+                    {teacherForm.teachingDays.map((day) => {
+                      const range = teacherForm.timeRanges.find((r) => r.day === day);
+                      if (!range) {
+                        const newRange = { day, startTime: "09:00", endTime: "17:00" };
+                        setTeacherForm((prev) => ({
+                          ...prev,
+                          timeRanges: [...prev.timeRanges, newRange],
+                        }));
+                        return null;
+                      }
+                      return (
+                        <div key={day} className="rounded-xl card-elevated p-3">
+                          <p className="mb-2 text-xs font-semibold text-secondary">{DAY_LABELS[day]}</p>
+                          <div className="grid gap-2 md:grid-cols-2">
+                            <div>
+                              <label className="mb-1 block text-xs text-foreground/70">
+                                {t("attendance.teachers.startTime", "Start Time")}
+                              </label>
+                              <input
+                                type="time"
+                                value={range.startTime}
+                                onChange={(e) => {
+                                  const newRanges = teacherForm.timeRanges.map((r) =>
+                                    r.day === day ? { ...r, startTime: e.target.value } : r,
+                                  );
+                                  setTeacherForm((prev) => ({ ...prev, timeRanges: newRanges }));
+                                }}
+                                className="w-full rounded-xl bg-background/60 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs text-foreground/70">
+                                {t("attendance.teachers.endTime", "End Time")}
+                              </label>
+                              <input
+                                type="time"
+                                value={range.endTime}
+                                onChange={(e) => {
+                                  const newRanges = teacherForm.timeRanges.map((r) =>
+                                    r.day === day ? { ...r, endTime: e.target.value } : r,
+                                  );
+                                  setTeacherForm((prev) => ({ ...prev, timeRanges: newRanges }));
+                                }}
+                                className="w-full rounded-xl bg-background/60 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTeacherModal(false)}
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60"
+                >
+                  {t("common.cancel", "Cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={registeringTeacher}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                >
+                  {registeringTeacher && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {t("attendance.add", "Register")}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
       </section>
     );
   }

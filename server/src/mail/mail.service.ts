@@ -82,6 +82,26 @@ export class MailService {
     });
   }
 
+  async sendTeacherCredentialsEmail(
+    email: string,
+    password: string,
+    fullName: string,
+  ) {
+    await this.sendMail({
+      to: email,
+      subject: 'Welcome to Abel Begena Conservatory - Your Teacher Account',
+      html: this.renderCredentialsTemplate({
+        greeting: `Peace be with you, ${fullName}`,
+        intro:
+          'Your teacher account has been created. Please use the following credentials to log in. You will be required to change your password on first login.',
+        email,
+        password,
+        outro:
+          'Please keep these credentials secure. You will be prompted to change your password when you first log in.',
+      }),
+    });
+  }
+
   private async sendMail(options: {
     to: string;
     subject: string;

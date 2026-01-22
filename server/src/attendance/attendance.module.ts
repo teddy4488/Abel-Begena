@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
 import { UserModule } from '../user/user.module';
+import { TeacherModule } from '../teacher/teacher.module';
 import { MailModule } from '../mail/mail.module';
 import { StudentModule } from '../student/student.module';
 import {
@@ -33,6 +34,7 @@ import {
 @Module({
   imports: [
     UserModule,
+    TeacherModule,
     MailModule,
     StudentModule,
     MongooseModule.forFeature([

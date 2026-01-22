@@ -7,6 +7,7 @@ import {
   ValidateNested,
   IsNotEmpty,
   Matches,
+  IsEmail,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { InstrumentType } from '../../product/schemas/product.schema';
@@ -35,6 +36,11 @@ export class RegisterTeacherParticipantDto {
   @MaxLength(120)
   @MinLength(2)
   fullName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  email: string;
 
   @IsArray()
   @IsEnum(Object.values(InstrumentType), { each: true })

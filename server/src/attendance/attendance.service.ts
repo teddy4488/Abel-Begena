@@ -8,6 +8,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { UserService } from '../user/user.service';
+import { TeacherService } from '../teacher/teacher.service';
 import {
   TeacherAttendanceParticipant,
   TeacherAttendanceParticipantDocument,
@@ -56,14 +57,33 @@ export class AttendanceService {
     private readonly studentPaymentModel: Model<StudentPaymentDocument>,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
+    private readonly teacherService: TeacherService,
     private readonly mailService: MailService,
     private readonly studentService: StudentService,
   ) {}
 
   // Helpers
-  private generateAttendanceNumber(): string {
-    // Generate 5-digit numeric code
-    return Math.floor(10000 + Math.random() * 90000).toString();
+  private async generateAttendanceNumber(): Promise<string> {
+    // Generate sequential number starting from 1
+    // Find the highest existing attendance number
+    const lastStudent = await this.studentParticipantModel
+      .findOne()
+      .sort({ attendanceNumber: -1 })
+      .select('attendanceNumber')
+      .lean()
+      .exec();
+    
+    if (!lastStudent || !lastStudent.attendanceNumber) {
+      return '1';
+    }
+    
+    // Extract numeric part and increment
+    const lastNumber = parseInt(lastStudent.attendanceNumber, 10);
+    if (isNaN(lastNumber)) {
+      return '1';
+    }
+    
+    return (lastNumber + 1).toString();
   }
 
   private generateRandomPassword(): string {
@@ -121,14 +141,69 @@ export class AttendanceService {
       }
     }
 
+    // Email is required - validate it
+    const email = dto.email.trim().toLowerCase();
+    if (!email) {
+      throw new BadRequestException('Email is required for teacher registration');
+    }
+    
+    // Check if email already exists
+    const existing = await this.teacherParticipantModel.findOne({ email }).lean().exec();
+    if (existing) {
+      throw new BadRequestException('Email already in use');
+    }
+
+    // Generate password
+    const generatedPassword = this.generateRandomPassword();
+    const hashedPassword = await this.studentService.hashPassword(generatedPassword);
+
+    // Create teacher account
+    try {
+      const nameParts = dto.fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      await this.teacherService.create({
+        email,
+        password: generatedPassword,
+        firstName,
+        lastName,
+        teacherStatus: 'approved',
+        isVerified: true,
+      });
+    } catch (error) {
+      // If teacher creation fails, log but continue with teacher participant creation
+      console.error('Failed to create teacher account:', error);
+    }
+
     const created = await this.teacherParticipantModel.create({
       fullName: dto.fullName.trim(),
+      email,
+      password: hashedPassword,
       instruments: dto.instruments,
       teachingDays: dto.teachingDays,
       timeRanges: dto.timeRanges,
       isActive: true,
+      isVerified: true, // Auto-verify since admin is creating
     });
-    return created.toObject();
+
+    // Send credentials email
+    try {
+      await this.mailService.sendTeacherCredentialsEmail(
+        email,
+        generatedPassword,
+        dto.fullName,
+      );
+    } catch (error) {
+      // Log error but don't fail registration
+      console.error('Failed to send credentials email:', error);
+    }
+
+    return {
+      ...created.toObject(),
+      password: undefined, // Don't return password in response
+      generatedPassword: process.env.NODE_ENV !== 'production' ? generatedPassword : undefined, // Only in dev
+    };
   }
 
   async registerStudentParticipant(dto: RegisterStudentParticipantDto) {
@@ -149,7 +224,7 @@ export class AttendanceService {
     // Generate or validate attendance number
     let attendanceNumber = dto.attendanceNumber?.trim();
     if (!attendanceNumber) {
-      attendanceNumber = this.generateAttendanceNumber();
+      attendanceNumber = await this.generateAttendanceNumber();
     }
 
     const conflict = await this.studentParticipantModel
@@ -262,7 +337,7 @@ export class AttendanceService {
     }
 
     // Generate attendance number
-    const attendanceNumber = this.generateAttendanceNumber();
+    const attendanceNumber = await this.generateAttendanceNumber();
     const learningDaysPerWeek = this.calculateLearningDaysPerWeek(
       dto.programDurationMonths,
     );
@@ -317,12 +392,81 @@ export class AttendanceService {
       .populate('branchId', 'name slug')
       .lean()
       .exec();
-    
+
     if (!student) {
       throw new NotFoundException('Student not found with this attendance number');
     }
-    
+
     return student;
+  }
+
+  async searchStudents(query: string) {
+    const searchTerm = query.trim();
+    if (!searchTerm || searchTerm.length < 2) {
+      return [];
+    }
+
+    // Search by attendance number (exact match) or name (partial match)
+    const students = await this.studentParticipantModel
+      .find({
+        isActive: true,
+        $or: [
+          { attendanceNumber: searchTerm },
+          { fullName: { $regex: searchTerm, $options: 'i' } },
+        ],
+      })
+      .populate('branchId', 'name slug')
+      .sort({ fullName: 1 })
+      .limit(20)
+      .lean()
+      .exec();
+
+    return students;
+  }
+
+  async getStudentDetails(studentId: string) {
+    const student = await this.studentParticipantModel
+      .findById(studentId)
+      .populate('branchId', 'name slug')
+      .lean()
+      .exec();
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Get last attendance record
+    const lastAttendance = await this.studentAttendanceModel
+      .findOne({ participantId: student._id })
+      .populate('lessonId', 'title code order')
+      .populate('revisedLessonId', 'title code order')
+      .sort({ sessionDate: -1 })
+      .lean()
+      .exec();
+
+    // Get total attendance count
+    const totalAttendance = await this.studentAttendanceModel
+      .countDocuments({ participantId: student._id })
+      .exec();
+
+    // Get payment summary
+    const payments = await this.studentPaymentModel
+      .find({ participantId: student._id })
+      .sort({ year: -1, month: -1 })
+      .lean()
+      .exec();
+
+    const paidMonths = payments.filter(p => p.status === 'paid').length;
+    const unpaidMonths = payments.filter(p => p.status === 'unpaid').length;
+
+    return {
+      ...student,
+      lastAttendance: lastAttendance || null,
+      totalAttendance,
+      paidMonths,
+      unpaidMonths,
+      totalPayments: payments.length,
+    };
   }
 
   async updateStudentParticipant(
@@ -1082,5 +1226,150 @@ export class AttendanceService {
     upcomingPayments.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
 
     return upcomingPayments;
+  }
+
+  // Report generation
+  async generateStudentAttendanceReport(studentId: string) {
+    const student = await this.studentParticipantModel
+      .findById(studentId)
+      .populate('branchId', 'name slug')
+      .lean()
+      .exec();
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const attendanceRecords = await this.studentAttendanceModel
+      .find({ participantId: student._id })
+      .populate('lessonId', 'title code order instrumentType')
+      .populate('revisedLessonId', 'title code order instrumentType')
+      .populate('recordedBy', 'firstName lastName email')
+      .sort({ sessionDate: -1 })
+      .lean()
+      .exec();
+
+    return {
+      student: {
+        fullName: student.fullName,
+        attendanceNumber: student.attendanceNumber,
+        instrumentType: student.instrumentType,
+        registrationStartDate: student.registrationStartDate,
+        branch: student.branchId,
+        learningType: student.learningType,
+        programDurationMonths: student.programDurationMonths,
+      },
+      attendanceRecords: attendanceRecords.map((record) => ({
+        date: record.sessionDate,
+        lesson: record.lessonId,
+        revisedLesson: record.revisedLessonId,
+        status: record.status,
+        recordedBy: record.recordedBy,
+      })),
+      totalSessions: attendanceRecords.length,
+      generatedAt: new Date(),
+    };
+  }
+
+  async generateStudentPaymentReport(studentId: string) {
+    const student = await this.studentParticipantModel
+      .findById(studentId)
+      .populate('branchId', 'name slug')
+      .lean()
+      .exec();
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const payments = await this.studentPaymentModel
+      .find({ participantId: student._id })
+      .populate('recordedBy', 'firstName lastName email')
+      .sort({ year: -1, month: -1 })
+      .lean()
+      .exec();
+
+    const totalPaid = payments
+      .filter((p) => p.status === 'paid')
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    return {
+      student: {
+        fullName: student.fullName,
+        attendanceNumber: student.attendanceNumber,
+        instrumentType: student.instrumentType,
+        registrationStartDate: student.registrationStartDate,
+        branch: student.branchId,
+      },
+      payments: payments.map((payment) => ({
+        month: payment.month,
+        year: payment.year,
+        amount: payment.amount,
+        status: payment.status,
+        paidAt: payment.paidAt,
+        note: payment.note,
+        recordedBy: payment.recordedBy,
+      })),
+      totalPaid,
+      totalPayments: payments.length,
+      paidCount: payments.filter((p) => p.status === 'paid').length,
+      unpaidCount: payments.filter((p) => p.status === 'unpaid').length,
+      generatedAt: new Date(),
+    };
+  }
+
+  async generateTeacherAttendanceReport(teacherId: string, startDate?: Date, endDate?: Date) {
+    const teacher = await this.teacherParticipantModel
+      .findById(teacherId)
+      .lean()
+      .exec();
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    const query: any = { participantId: teacher._id };
+    if (startDate || endDate) {
+      query.checkInAt = {};
+      if (startDate) {
+        query.checkInAt.$gte = startDate;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.checkInAt.$lte = end;
+      }
+    }
+
+    const attendanceRecords = await this.teacherAttendanceModel
+      .find(query)
+      .populate('recordedBy', 'firstName lastName email')
+      .sort({ checkInAt: -1 })
+      .lean()
+      .exec();
+
+    const totalHours = attendanceRecords.reduce((sum, record) => {
+      if (record.checkOutAt && record.durationMinutes) {
+        return sum + record.durationMinutes / 60;
+      }
+      return sum;
+    }, 0);
+
+    return {
+      teacher: {
+        fullName: teacher.fullName,
+        instruments: teacher.instruments,
+        teachingDays: teacher.teachingDays,
+      },
+      attendanceRecords: attendanceRecords.map((record) => ({
+        checkInAt: record.checkInAt,
+        checkOutAt: record.checkOutAt,
+        durationMinutes: record.durationMinutes,
+        recordedBy: record.recordedBy,
+      })),
+      totalSessions: attendanceRecords.length,
+      totalHours: Math.round(totalHours * 100) / 100,
+      generatedAt: new Date(),
+    };
   }
 }
