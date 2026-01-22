@@ -997,4 +997,7 @@ export default function AdminAttendancePage() {
             </div>
           </motion.div>
         )}
-    </section>
+      </AnimatePresence>
+      </section>
+    );
+  }

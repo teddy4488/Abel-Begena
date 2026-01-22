@@ -615,7 +615,7 @@ export default function AdminMonthlyPaymentsPage() {
                               </div>
                             )}
                           </div>
-                          <div className="flex flex-col gap-2 flex-shrink-0">
+                          <div className="flex flex-col gap-2 shrink-0">
                             {paymentRequest ? (
                               <>
                                 <button
@@ -682,7 +682,7 @@ export default function AdminMonthlyPaymentsPage() {
       {/* Payment Recording Modal */}
       <AnimatePresence>
         {showPaymentModal && billingSummary && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+          <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -798,7 +798,7 @@ export default function AdminMonthlyPaymentsPage() {
       {/* Payment Request Review Modal */}
       <AnimatePresence>
         {selectedPaymentRequest && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+          <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
