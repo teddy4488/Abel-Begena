@@ -81,6 +81,7 @@ const navConfig: Record<
       { labelKey: "nav.payments", href: "/student/payments" },
       { labelKey: "nav.classes", href: "/classes" },
       { labelKey: "nav.store", href: "/store" },
+      { labelKey: "nav.orders", href: "/student/orders" },
     ],
   },
 };
@@ -98,6 +99,8 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
     { labelKey: "nav.studentDashboard", href: "/student" },
     { labelKey: "nav.attendance", href: "/student/attendance" },
     { labelKey: "nav.payments", href: "/student/payments" },
+    { labelKey: "nav.orders", href: "/student/orders" },
+    { labelKey: "nav.store", href: "/store" },
   ],
   Teacher: [
     { labelKey: "nav.profile", href: "/profile" },

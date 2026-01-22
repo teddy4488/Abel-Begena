@@ -71,8 +71,6 @@ type EnrollmentForm = {
   occupation: string;
   city: string;
   address: string;
-  preferredDaysPerWeek: string;
-  preferredSchedule: string;
   learningGoals: string;
   notesForTeacher: string;
   // Student conversion fields
@@ -101,14 +99,12 @@ export default function ClassesPage() {
     phone: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
-    occupation: "",
-    city: "",
-    address: "",
-    preferredDaysPerWeek: "",
-    preferredSchedule: "",
-    learningGoals: "",
-    notesForTeacher: "",
-    learningType: "online",
+      occupation: "",
+      city: "",
+      address: "",
+      learningGoals: "",
+      notesForTeacher: "",
+      learningType: "online",
     branchId: "",
     instrumentType: "Begena",
     programDurationMonths: "6",
@@ -150,8 +146,6 @@ export default function ClassesPage() {
       occupation: "",
       city: "",
       address: "",
-      preferredDaysPerWeek: "",
-      preferredSchedule: "",
       learningGoals: "",
       notesForTeacher: "",
       learningType: "online",
@@ -180,8 +174,6 @@ export default function ClassesPage() {
       occupation: "",
       city: "",
       address: "",
-      preferredDaysPerWeek: "",
-      preferredSchedule: "",
       learningGoals: "",
       notesForTeacher: "",
       learningType: "online",
@@ -242,10 +234,6 @@ export default function ClassesPage() {
       occupation: form.occupation.trim() || undefined,
       city: form.city.trim() || undefined,
       address: form.address.trim() || undefined,
-      preferredDaysPerWeek: form.preferredDaysPerWeek
-        ? Number(form.preferredDaysPerWeek)
-        : undefined,
-      preferredSchedule: form.preferredSchedule.trim() || undefined,
       learningGoals: form.learningGoals.trim() || undefined,
       notesForTeacher: form.notesForTeacher.trim() || undefined,
       learningType: form.learningType,
@@ -629,9 +617,9 @@ export default function ClassesPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <label
-                      className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-4 py-3 text-sm transition ${
+                      className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                         form.learningType === "online"
-                          ? "border-secondary bg-secondary/10 text-secondary"
+                          ? "border-secondary bg-secondary/10 text-secondary shadow-sm ring-2 ring-secondary/20"
                           : "border-border bg-background/60 hover:border-secondary/50"
                       }`}
                     >
@@ -645,12 +633,17 @@ export default function ClassesPage() {
                         }
                         className="sr-only"
                       />
+                      {form.learningType === "online" && (
+                        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] text-primary-foreground">
+                          ✓
+                        </span>
+                      )}
                       <span>{t("classes.modal.online", "Online")}</span>
                     </label>
                     <label
-                      className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-4 py-3 text-sm transition ${
+                      className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                         form.learningType === "physical"
-                          ? "border-secondary bg-secondary/10 text-secondary"
+                          ? "border-secondary bg-secondary/10 text-secondary shadow-sm ring-2 ring-secondary/20"
                           : "border-border bg-background/60 hover:border-secondary/50"
                       }`}
                     >
@@ -664,6 +657,11 @@ export default function ClassesPage() {
                         }
                         className="sr-only"
                       />
+                      {form.learningType === "physical" && (
+                        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] text-primary-foreground">
+                          ✓
+                        </span>
+                      )}
                       <span>{t("classes.modal.physical", "Physical")}</span>
                     </label>
                   </div>
@@ -720,29 +718,37 @@ export default function ClassesPage() {
                     {t("classes.modal.programDuration", "Program Duration")} *
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {(["3", "6", "9"] as const).map((duration) => (
-                      <label
-                        key={duration}
-                        className={`flex cursor-pointer flex-col items-center gap-1 rounded-2xl border px-3 py-3 text-sm transition ${
-                          form.programDurationMonths === duration
-                            ? "border-secondary bg-secondary/10 text-secondary"
-                            : "border-border bg-background/60 hover:border-secondary/50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="programDurationMonths"
-                          value={duration}
-                          checked={form.programDurationMonths === duration}
-                          onChange={(e) =>
-                            setForm({ ...form, programDurationMonths: e.target.value as "3" | "6" | "9", preferredLearningDays: [] })
-                          }
-                          className="sr-only"
-                        />
-                        <span className="text-lg font-bold">{duration}</span>
-                        <span className="text-xs">{t("classes.modal.months", "months")}</span>
-                      </label>
-                    ))}
+                    {(["3", "6", "9"] as const).map((duration) => {
+                      const isSelected = form.programDurationMonths === duration;
+                      return (
+                        <label
+                          key={duration}
+                          className={`flex cursor-pointer flex-col items-center gap-1 rounded-2xl border px-3 py-3 text-sm transition ${
+                            isSelected
+                              ? "border-secondary bg-secondary/10 text-secondary shadow-sm ring-2 ring-secondary/20"
+                              : "border-border bg-background/60 hover:border-secondary/50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="programDurationMonths"
+                            value={duration}
+                            checked={isSelected}
+                            onChange={(e) =>
+                              setForm({ ...form, programDurationMonths: e.target.value as "3" | "6" | "9", preferredLearningDays: [] })
+                            }
+                            className="sr-only"
+                          />
+                          {isSelected && (
+                            <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-primary-foreground">
+                              ✓
+                            </span>
+                          )}
+                          <span className="text-lg font-bold">{duration}</span>
+                          <span className="text-xs">{t("classes.modal.months", "months")}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -760,9 +766,9 @@ export default function ClassesPage() {
                       return (
                         <label
                           key={day.value}
-                          className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs transition ${
+                          className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                             isSelected
-                              ? "border-secondary bg-secondary/10 text-secondary"
+                              ? "border-secondary bg-secondary/10 text-secondary shadow-sm ring-2 ring-secondary/20"
                               : "border-border bg-background/60 hover:border-secondary/50"
                           }`}
                         >
@@ -777,6 +783,11 @@ export default function ClassesPage() {
                             }}
                             className="sr-only"
                           />
+                          {isSelected && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[10px] text-primary-foreground">
+                              ✓
+                            </span>
+                          )}
                           <span>{day.label.slice(0, 3)}</span>
                         </label>
                       );
@@ -905,48 +916,6 @@ export default function ClassesPage() {
                   className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 />
               </label>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                  {t(
-                    "classes.modal.preferredDaysPerWeek",
-                    "Preferred days per week",
-                  )}
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.preferredDaysPerWeek}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        preferredDaysPerWeek: e.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
-                  />
-                </label>
-                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                  {t(
-                    "classes.modal.preferredSchedule",
-                    "Preferred schedule (days & times)",
-                  )}
-                  <input
-                    type="text"
-                    value={form.preferredSchedule}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        preferredSchedule: e.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
-                    placeholder={t(
-                      "classes.modal.preferredSchedulePlaceholder",
-                      "e.g. Mon/Wed/Fri evenings, or Sat/Sun mornings",
-                    )}
-                  />
-                </label>
-              </div>
 
               <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t(
