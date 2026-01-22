@@ -27,6 +27,9 @@ import {
   type GraduationEligibilityItem,
 } from "@/store/api/attendanceApi";
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
+import { useGetPendingPaymentRequestsQuery, useUpdatePaymentStatusMutation, type PaymentRequest } from "@/store/api/paymentApi";
+import { attendanceApi } from "@/store/api/attendanceApi";
+import { useDispatch } from "react-redux";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import {
@@ -44,6 +47,12 @@ import {
   Trash2,
   Loader2,
   AlertTriangle,
+  Filter,
+  Calendar,
+  FileText,
+  ExternalLink,
+  Check,
+  XCircle,
 } from "lucide-react";
 import type { InstrumentType } from "@/store/api/storeApi";
 
@@ -72,6 +81,7 @@ const DAY_LABELS: Record<DayOfWeek, string> = {
 const INSTRUMENTS: InstrumentType[] = ["Begena", "Kirar", "Masinko", "Washint", "Kebero", "Other"];
 
 export default function AdminAttendancePage() {
+  const dispatch = useDispatch();
   const { t } = useI18n();
   const { pushToast } = useToast();
   const [mode, setMode] = useState<AttendanceMode>("student");
@@ -84,6 +94,11 @@ export default function AdminAttendancePage() {
   const [paymentAmount, setPaymentAmount] = useState<string>("0");
   const [paymentStatus, setPaymentStatus] = useState<"paid" | "partial" | "unpaid">("paid");
   const [paymentNote, setPaymentNote] = useState<string>("");
+  const [overdueSearch, setOverdueSearch] = useState<string>("");
+  const [overdueDaysFilter, setOverdueDaysFilter] = useState<string>("all");
+  const [overdueDateFilter, setOverdueDateFilter] = useState<string>("");
+  const [selectedPaymentRequest, setSelectedPaymentRequest] = useState<PaymentRequest | null>(null);
+  const [reviewNote, setReviewNote] = useState<string>("");
 
   // Data queries
   const { data: branches = [] } = useGetBranchesAdminQuery();
@@ -95,6 +110,10 @@ export default function AdminAttendancePage() {
   const { data: overduePayments = [] } = useGetOverduePaymentsQuery();
   const { data: eligibility = [], isLoading: eligibilityLoading } =
     useGetGraduationEligibilityQuery();
+  const { data: pendingPaymentRequests = [] } = useGetPendingPaymentRequestsQuery({
+    type: "student_monthly_fee",
+  });
+  const [updatePaymentStatus, { isLoading: isUpdatingPayment }] = useUpdatePaymentStatusMutation();
   const [recordStudentAttendance, { isLoading: recordingStudent }] =
     useRecordStudentAttendanceMutation();
   const [registerTeacher, { isLoading: registeringTeacher }] =
@@ -469,6 +488,71 @@ export default function AdminAttendancePage() {
       setSelectedStudentId("");
     }
   }, [lookedUpStudent]);
+
+  // Payment request handlers
+  const handleApprovePaymentRequest = async (request: PaymentRequest) => {
+    try {
+      await updatePaymentStatus({
+        id: request._id,
+        body: { status: "approved", reason: reviewNote || undefined },
+      }).unwrap();
+      pushToast({
+        title: t("attendance.billing.paymentApproved", "Payment Approved"),
+        description: t("attendance.billing.paymentApprovedDesc", "The payment has been approved and recorded."),
+        variant: "success",
+      });
+      // Invalidate attendance queries to refresh payment data
+      dispatch(attendanceApi.util.invalidateTags(["StudentPayments", "Billing"]));
+      setSelectedPaymentRequest(null);
+      setReviewNote("");
+    } catch (error: any) {
+      pushToast({
+        title: t("attendance.billing.paymentError", "Error"),
+        description: error?.data?.message || t("attendance.billing.paymentErrorDesc", "Failed to update payment status."),
+        variant: "error",
+      });
+    }
+  };
+
+  const handleRejectPaymentRequest = async (request: PaymentRequest) => {
+    if (!reviewNote.trim()) {
+      pushToast({
+        title: t("attendance.billing.reasonRequired", "Reason Required"),
+        description: t("attendance.billing.reasonRequiredDesc", "Please provide a reason for rejection."),
+        variant: "error",
+      });
+      return;
+    }
+    try {
+      await updatePaymentStatus({
+        id: request._id,
+        body: { status: "rejected", reason: reviewNote },
+      }).unwrap();
+      pushToast({
+        title: t("attendance.billing.paymentRejected", "Payment Rejected"),
+        description: t("attendance.billing.paymentRejectedDesc", "The payment has been rejected."),
+        variant: "success",
+      });
+      // Invalidate attendance queries to refresh payment data
+      dispatch(attendanceApi.util.invalidateTags(["StudentPayments", "Billing"]));
+      setSelectedPaymentRequest(null);
+      setReviewNote("");
+    } catch (error: any) {
+      pushToast({
+        title: t("attendance.billing.paymentError", "Error"),
+        description: error?.data?.message || t("attendance.billing.paymentErrorDesc", "Failed to update payment status."),
+        variant: "error",
+      });
+    }
+  };
+
+  const getUserDisplayName = (userId: PaymentRequest["userId"]) => {
+    if (typeof userId === "object" && userId !== null) {
+      const parts = [userId.firstName, userId.lastName].filter(Boolean);
+      return parts.length > 0 ? parts.join(" ") : userId.email || "Unknown";
+    }
+    return "Unknown";
+  };
 
   return (
     <section className="space-y-6">
@@ -1125,80 +1209,272 @@ export default function AdminAttendancePage() {
               </div>
             </div>
 
-            {/* Overdue Payments Section */}
+            {/* Enhanced Overdue Payments Section */}
             <div className="rounded-2xl surface-elevated p-6">
-              <div className="mb-4">
-                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                  {t("attendance.billing.overdue", "Overdue Payments")}
-                </p>
-                <h2 className="text-xl font-serif text-primary">
-                  {t("attendance.billing.overdueTitle", "Students with overdue payments")}
-                </h2>
-                <p className="mt-1 text-xs text-foreground/60">
-                  {overduePayments.length > 0
-                    ? `${overduePayments.length} ${t("attendance.billing.overdueCount", "payment(s) overdue")}`
-                    : t("attendance.billing.noOverdue", "No overdue payments")}
-                </p>
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.billing.overdue", "Overdue Payments")}
+                  </p>
+                  <h2 className="text-xl font-serif text-primary">
+                    {t("attendance.billing.overdueTitle", "All Overdue Payments")}
+                  </h2>
+                  <p className="mt-1 text-xs text-foreground/60">
+                    {overduePayments.length > 0
+                      ? `${overduePayments.length} ${t("attendance.billing.overdueCount", "payment(s) overdue")}`
+                      : t("attendance.billing.noOverdue", "No overdue payments")}
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                {overduePayments.length > 0 ? (
-                  overduePayments.map((payment) => {
-                    const daysColor =
-                      payment.daysOverdue > 30
-                        ? "bg-red-500/10 text-red-600"
-                        : payment.daysOverdue > 14
-                          ? "bg-orange-500/10 text-orange-600"
-                          : "bg-yellow-500/10 text-yellow-600";
-                    return (
-                      <div
-                        key={`${payment.participantId}-${payment.year}-${payment.month}`}
-                        className="flex items-center justify-between rounded-xl card-elevated px-4 py-3"
-                      >
-                        <div>
-                          <p className="font-semibold text-primary">{payment.fullName}</p>
-                          <p className="text-xs text-foreground/60">
-                            {payment.attendanceNumber} • {payment.instrumentType} •{" "}
-                            {new Date(payment.dueDate).toLocaleDateString()} •{" "}
-                            {payment.year}-{String(payment.month).padStart(2, "0")}
-                          </p>
-                          {payment.amount && (
-                            <p className="mt-1 text-sm font-semibold text-primary">
-                              {payment.amount.toLocaleString("en-US", {
-                                style: "currency",
-                                currency: "ETB",
-                              })}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${daysColor}`}>
-                            {payment.daysOverdue}{" "}
-                            {t("attendance.billing.daysOverdue", "day(s) overdue")}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPaymentStudentId(payment.participantId);
-                              setPaymentStatus(payment.status || "unpaid");
-                              setPaymentAmount(payment.amount?.toString() || "0");
-                              setPaymentNote("");
-                              setShowPaymentModal(true);
-                            }}
-                            className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90"
-                          >
-                            {t("attendance.billing.record", "Record Payment")}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="py-8 text-center text-sm text-foreground/60">
-                    {t("attendance.billing.noOverdue", "No overdue payments")}
-                  </p>
-                )}
+              {/* Filters */}
+              <div className="mb-6 flex flex-wrap gap-3">
+                <div className="flex-1 min-w-[200px]">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/30" />
+                    <input
+                      type="text"
+                      value={overdueSearch}
+                      onChange={(e) => setOverdueSearch(e.target.value)}
+                      placeholder={t("attendance.billing.searchOverdue", "Search by student name, attendance number...")}
+                      className="w-full rounded-2xl card-elevated pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-secondary" />
+                  <select
+                    value={overdueDaysFilter}
+                    onChange={(e) => setOverdueDaysFilter(e.target.value)}
+                    className="rounded-2xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  >
+                    <option value="all">{t("attendance.billing.allDays", "All Days")}</option>
+                    <option value="0-7">{t("attendance.billing.week1", "1-7 days")}</option>
+                    <option value="8-14">{t("attendance.billing.week2", "8-14 days")}</option>
+                    <option value="15-30">{t("attendance.billing.month1", "15-30 days")}</option>
+                    <option value="30+">{t("attendance.billing.monthPlus", "30+ days")}</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-secondary" />
+                  <input
+                    type="date"
+                    value={overdueDateFilter}
+                    onChange={(e) => setOverdueDateFilter(e.target.value)}
+                    className="rounded-2xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    placeholder={t("attendance.billing.filterByDate", "Filter by due date")}
+                  />
+                </div>
               </div>
+
+              {/* Filtered Overdue Payments */}
+              {(() => {
+                // Helper to get payment request for an overdue payment
+                const getPaymentRequestForOverdue = (payment: typeof overduePayments[0]) => {
+                  return pendingPaymentRequests.find((pr) => {
+                    if (pr.type !== "student_monthly_fee" || pr.status !== "pending") return false;
+                    try {
+                      const metadata = JSON.parse(pr.conversionData || "{}");
+                      return (
+                        metadata.month === payment.month &&
+                        metadata.year === payment.year &&
+                        pr.targetId === payment.participantId
+                      );
+                    } catch {
+                      return false;
+                    }
+                  });
+                };
+
+                // Filter overdue payments
+                const filteredOverdue = overduePayments.filter((payment) => {
+                  // Search filter
+                  if (overdueSearch.trim()) {
+                    const searchLower = overdueSearch.toLowerCase();
+                    const matchesSearch =
+                      payment.fullName.toLowerCase().includes(searchLower) ||
+                      payment.attendanceNumber.toLowerCase().includes(searchLower) ||
+                      payment.instrumentType.toLowerCase().includes(searchLower);
+                    if (!matchesSearch) return false;
+                  }
+
+                  // Days overdue filter
+                  if (overdueDaysFilter !== "all") {
+                    if (overdueDaysFilter === "0-7" && (payment.daysOverdue < 0 || payment.daysOverdue > 7))
+                      return false;
+                    if (overdueDaysFilter === "8-14" && (payment.daysOverdue < 8 || payment.daysOverdue > 14))
+                      return false;
+                    if (overdueDaysFilter === "15-30" && (payment.daysOverdue < 15 || payment.daysOverdue > 30))
+                      return false;
+                    if (overdueDaysFilter === "30+" && payment.daysOverdue <= 30) return false;
+                  }
+
+                  // Date filter
+                  if (overdueDateFilter) {
+                    const filterDate = new Date(overdueDateFilter);
+                    const dueDate = new Date(payment.dueDate);
+                    if (
+                      dueDate.getFullYear() !== filterDate.getFullYear() ||
+                      dueDate.getMonth() !== filterDate.getMonth() ||
+                      dueDate.getDate() !== filterDate.getDate()
+                    )
+                      return false;
+                  }
+
+                  return true;
+                });
+
+                return (
+                  <div className="space-y-3">
+                    {filteredOverdue.length > 0 ? (
+                      filteredOverdue.map((payment) => {
+                        const daysColor =
+                          payment.daysOverdue > 30
+                            ? "bg-red-600 text-white"
+                            : payment.daysOverdue > 14
+                              ? "bg-orange-600 text-white"
+                              : "bg-yellow-600 text-white";
+                        const paymentRequest = getPaymentRequestForOverdue(payment);
+                        const formatAmount = (amount: number) => {
+                          return new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency: "ETB",
+                            minimumFractionDigits: 2,
+                          }).format(amount);
+                        };
+
+                        return (
+                          <div
+                            key={`${payment.participantId}-${payment.year}-${payment.month}`}
+                            className="rounded-xl card-elevated p-4 border border-border/50 hover:border-secondary/50 transition"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <p className="font-semibold text-primary">{payment.fullName}</p>
+                                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${daysColor}`}>
+                                    {payment.daysOverdue} {t("attendance.billing.daysOverdue", "days")}
+                                  </span>
+                                  {paymentRequest && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-600">
+                                      <Clock className="h-3 w-3" />
+                                      {t("attendance.billing.receiptPending", "Receipt Pending")}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="grid gap-1 text-xs text-foreground/60 sm:grid-cols-2">
+                                  <p>
+                                    <span className="font-semibold">{t("attendance.billing.attendanceNumber", "Attendance #")}:</span>{" "}
+                                    {payment.attendanceNumber}
+                                  </p>
+                                  <p>
+                                    <span className="font-semibold">{t("attendance.billing.instrument", "Instrument")}:</span>{" "}
+                                    {payment.instrumentType}
+                                  </p>
+                                  <p>
+                                    <span className="font-semibold">{t("attendance.billing.period", "Period")}:</span>{" "}
+                                    {payment.year}-{String(payment.month).padStart(2, "0")}
+                                  </p>
+                                  <p>
+                                    <span className="font-semibold">{t("attendance.billing.dueDate", "Due Date")}:</span>{" "}
+                                    {new Date(payment.dueDate).toLocaleDateString("en-US", {
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </p>
+                                </div>
+                                {payment.amount && (
+                                  <p className="mt-2 text-sm font-bold text-primary">
+                                    {formatAmount(payment.amount)}
+                                  </p>
+                                )}
+                                {paymentRequest && (
+                                  <div className="mt-3 rounded-lg bg-amber-500/10 p-2 border border-amber-500/20">
+                                    <p className="text-xs font-semibold text-amber-700 mb-1">
+                                      {t("attendance.billing.receiptSubmitted", "Receipt Submitted")}
+                                    </p>
+                                    {paymentRequest.receiptUrl && (
+                                      <a
+                                        href={paymentRequest.receiptUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 transition"
+                                      >
+                                        <FileText className="h-3 w-3" />
+                                        {t("attendance.billing.viewReceipt", "View Receipt")}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    )}
+                                    {paymentRequest.reference && (
+                                      <p className="text-xs text-foreground/60 mt-1">
+                                        {t("attendance.billing.reference", "Reference")}: {paymentRequest.reference}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-2 flex-shrink-0">
+                                {paymentRequest ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedPaymentRequest(paymentRequest);
+                                        setReviewNote("");
+                                      }}
+                                      className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90 transition"
+                                    >
+                                      <FileText className="h-3 w-3" />
+                                      {t("attendance.billing.reviewReceipt", "Review Receipt")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setPaymentStudentId(payment.participantId);
+                                        setPaymentStatus(payment.status || "unpaid");
+                                        setPaymentAmount(payment.amount?.toString() || "0");
+                                        setPaymentNote("");
+                                        setShowPaymentModal(true);
+                                      }}
+                                      className="inline-flex items-center justify-center gap-2 rounded-full bg-background/60 px-4 py-2 text-xs font-semibold text-foreground/70 hover:bg-background/80 transition"
+                                    >
+                                      {t("attendance.billing.recordManually", "Record Manually")}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPaymentStudentId(payment.participantId);
+                                      setPaymentStatus(payment.status || "unpaid");
+                                      setPaymentAmount(payment.amount?.toString() || "0");
+                                      setPaymentNote("");
+                                      setShowPaymentModal(true);
+                                    }}
+                                    className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90 transition"
+                                  >
+                                    {t("attendance.billing.record", "Record Payment")}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="rounded-xl surface-elevated p-8 text-center">
+                        <AlertTriangle className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
+                        <p className="text-sm text-foreground/70">
+                          {overduePayments.length === 0
+                            ? t("attendance.billing.noOverdue", "No overdue payments")
+                            : t("attendance.billing.noMatchingOverdue", "No overdue payments match your filters")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </motion.div>
         )}
@@ -2198,6 +2474,181 @@ export default function AdminAttendancePage() {
                     : t("attendance.add", "Create")}
                 </button>
               </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Payment Request Review Modal */}
+      {selectedPaymentRequest && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 p-6 shadow-2xl"
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-serif text-primary">
+                  {t("attendance.billing.reviewReceiptTitle", "Review Payment Receipt")}
+                </h3>
+                <p className="mt-1 text-sm text-foreground/70">
+                  {t("attendance.billing.reviewReceiptSubtitle", "Review the payment receipt and approve or reject the payment.")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPaymentRequest(null);
+                  setReviewNote("");
+                }}
+                className="rounded-full p-2 text-foreground/70 transition hover:bg-secondary/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 space-y-3 rounded-2xl border border-border bg-background/50 p-4">
+              <div className="grid gap-2 text-sm md:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-secondary/70">
+                    {t("attendance.billing.student", "Student")}
+                  </p>
+                  <p className="mt-1 font-semibold text-primary">
+                    {getUserDisplayName(selectedPaymentRequest.userId)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-secondary/70">
+                    {t("attendance.billing.amount", "Amount")}
+                  </p>
+                  <p className="mt-1 font-semibold text-primary">
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: selectedPaymentRequest.currency || "ETB",
+                      minimumFractionDigits: 2,
+                    }).format(selectedPaymentRequest.amount)}
+                  </p>
+                </div>
+                {selectedPaymentRequest.reference && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("attendance.billing.reference", "Reference")}
+                    </p>
+                    <p className="mt-1 text-foreground/80">{selectedPaymentRequest.reference}</p>
+                  </div>
+                )}
+                {selectedPaymentRequest.createdAt && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("attendance.billing.submitted", "Submitted")}
+                    </p>
+                    <p className="mt-1 text-foreground/80">
+                      {new Date(selectedPaymentRequest.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                )}
+                {selectedPaymentRequest.conversionData && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("attendance.billing.paymentPeriod", "Payment Period")}
+                    </p>
+                    <p className="mt-1 text-foreground/80">
+                      {(() => {
+                        try {
+                          const metadata = JSON.parse(selectedPaymentRequest.conversionData);
+                          const months = [
+                            t("months.january", "January"),
+                            t("months.february", "February"),
+                            t("months.march", "March"),
+                            t("months.april", "April"),
+                            t("months.may", "May"),
+                            t("months.june", "June"),
+                            t("months.july", "July"),
+                            t("months.august", "August"),
+                            t("months.september", "September"),
+                            t("months.october", "October"),
+                            t("months.november", "November"),
+                            t("months.december", "December"),
+                          ];
+                          return `${months[metadata.month - 1]} ${metadata.year}`;
+                        } catch {
+                          return selectedPaymentRequest.conversionData;
+                        }
+                      })()}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {selectedPaymentRequest.receiptUrl && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs uppercase tracking-wide text-secondary/70">
+                    {t("attendance.billing.receipt", "Payment Receipt")}
+                  </p>
+                  <a
+                    href={selectedPaymentRequest.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold transition hover:border-secondary"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {t("attendance.billing.viewReceipt", "View Receipt")}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t("attendance.billing.reviewNote", "Review Note (Optional)")}
+              </label>
+              <textarea
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                rows={3}
+                placeholder={t("attendance.billing.reviewNotePlaceholder", "Add any notes about this review...")}
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => handleRejectPaymentRequest(selectedPaymentRequest)}
+                disabled={isUpdatingPayment}
+                className="flex-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-50"
+              >
+                {isUpdatingPayment ? (
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <XCircle className="mr-2 inline h-4 w-4" />
+                    {t("attendance.billing.reject", "Reject")}
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApprovePaymentRequest(selectedPaymentRequest)}
+                disabled={isUpdatingPayment}
+                className="flex-1 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
+              >
+                {isUpdatingPayment ? (
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="mr-2 inline h-4 w-4" />
+                    {t("attendance.billing.approve", "Approve")}
+                  </>
+                )}
+              </button>
             </div>
           </motion.div>
         </div>
