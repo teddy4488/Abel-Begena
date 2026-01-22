@@ -13,7 +13,7 @@ export class CreatePaymentRequestDto {
   @IsMongoId()
   userId: string;
 
-  @IsEnum(['enrollment', 'order', 'tuition', 'student_conversion'])
+  @IsEnum(['enrollment', 'order', 'tuition', 'student_conversion', 'student_monthly_fee'])
   type: PaymentRequestType;
 
   @IsOptional()

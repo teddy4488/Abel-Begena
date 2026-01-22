@@ -43,6 +43,7 @@ import {
   Edit,
   Trash2,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import type { InstrumentType } from "@/store/api/storeApi";
 
@@ -943,6 +944,84 @@ export default function AdminAttendancePage() {
             exit={{ opacity: 0, x: 20 }}
             className="space-y-6"
           >
+            {/* Overdue Payments Alert - Prominent Display */}
+            {overduePayments.length > 0 && (
+              <div className="rounded-2xl bg-red-500/10 border-2 border-red-500/30 p-6 shadow-lg">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                    <div>
+                      <h2 className="text-xl font-serif text-red-600">
+                        {t("attendance.billing.overdueTitle", "Overdue Payments Alert")}
+                      </h2>
+                      <p className="mt-1 text-sm text-foreground/80">
+                        {t("attendance.billing.overdueUrgent", "{count} payment(s) are overdue and require immediate attention", { count: overduePayments.length })}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white">
+                    {overduePayments.length}
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {overduePayments.slice(0, 5).map((payment) => {
+                    const daysColor =
+                      payment.daysOverdue > 30
+                        ? "bg-red-600 text-white"
+                        : payment.daysOverdue > 14
+                          ? "bg-orange-600 text-white"
+                          : "bg-yellow-600 text-white";
+                    return (
+                      <div
+                        key={`${payment.participantId}-${payment.year}-${payment.month}`}
+                        className="flex items-center justify-between rounded-xl bg-background/60 p-3 border border-red-500/20"
+                      >
+                        <div className="flex-1">
+                          <p className="font-semibold text-primary">{payment.fullName}</p>
+                          <p className="text-xs text-foreground/60">
+                            {payment.attendanceNumber} • {payment.instrumentType} •{" "}
+                            {new Date(payment.dueDate).toLocaleDateString()} •{" "}
+                            {payment.year}-{String(payment.month).padStart(2, "0")}
+                          </p>
+                          {payment.amount && (
+                            <p className="mt-1 text-sm font-semibold text-primary">
+                              {payment.amount.toLocaleString("en-US", {
+                                style: "currency",
+                                currency: "ETB",
+                              })}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`rounded-full px-3 py-1 text-xs font-bold ${daysColor}`}>
+                            {payment.daysOverdue} {t("attendance.billing.daysOverdue", "days")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentStudentId(payment.participantId);
+                              setPaymentStatus(payment.status || "unpaid");
+                              setPaymentAmount(payment.amount?.toString() || "0");
+                              setPaymentNote("");
+                              setShowPaymentModal(true);
+                            }}
+                            className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90"
+                          >
+                            {t("attendance.billing.record", "Record Payment")}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {overduePayments.length > 5 && (
+                  <p className="mt-3 text-xs text-foreground/60 text-center">
+                    {t("attendance.billing.moreOverdue", "+ {count} more overdue payments", { count: overduePayments.length - 5 })}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="rounded-2xl surface-elevated p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div>

@@ -71,6 +71,71 @@ export class PaymentService {
     return created.toObject();
   }
 
+  async submitStudentMonthlyPayment(
+    dto: import('./dto/submit-student-monthly-payment.dto').SubmitStudentMonthlyPaymentDto,
+    studentParticipantId: string,
+  ) {
+    // Verify student exists by checking if they have payment records
+    // (this validates the student participant ID)
+    let existingPayments;
+    try {
+      existingPayments = await this.attendanceService.getStudentPayments(studentParticipantId);
+    } catch (error) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Check if payment already exists and is paid for this month/year
+    const hasPaidPaymentForMonth = existingPayments.some(
+      (p) => p.year === dto.year && p.month === dto.month && p.status === 'paid',
+    );
+
+    if (hasPaidPaymentForMonth) {
+      throw new BadRequestException(
+        'Payment for this month has already been recorded as paid',
+      );
+    }
+
+    // Check for existing pending payment request
+    const existingRequest = await this.paymentModel
+      .findOne({
+        userId: new Types.ObjectId(studentParticipantId),
+        type: 'student_monthly_fee',
+        targetId: new Types.ObjectId(studentParticipantId),
+        status: 'pending' as PaymentRequestStatus,
+        conversionData: JSON.stringify({ month: dto.month, year: dto.year }),
+      })
+      .lean()
+      .exec();
+
+    if (existingRequest) {
+      throw new BadRequestException(
+        'A pending payment request already exists for this month',
+      );
+    }
+
+    // Create payment request
+    const conversionData = JSON.stringify({
+      month: dto.month,
+      year: dto.year,
+    });
+
+    const created = await this.paymentModel.create({
+      userId: new Types.ObjectId(studentParticipantId),
+      type: 'student_monthly_fee',
+      targetId: new Types.ObjectId(studentParticipantId),
+      amount: dto.amount,
+      currency: 'ETB',
+      method: 'offline',
+      reference: dto.reference,
+      receiptUrl: dto.receiptUrl,
+      status: 'pending' as PaymentRequestStatus,
+      reviewNote: dto.reviewNote,
+      conversionData,
+    });
+
+    return created.toObject();
+  }
+
   async listForUser(userId: string) {
     return this.paymentModel
       .find({ userId: new Types.ObjectId(userId) })
@@ -224,6 +289,83 @@ export class PaymentService {
           error,
         );
         // Don't throw - payment is already approved, conversion can be done manually
+      }
+    }
+
+    // If approved and type is student_monthly_fee, update student payment record
+    if (
+      dto.status === 'approved' &&
+      payment.type === 'student_monthly_fee' &&
+      payment.targetId
+    ) {
+      try {
+        // Parse payment metadata from conversionData (stored as JSON string)
+        let month: number;
+        let year: number;
+        if (payment.conversionData) {
+          const metadata = JSON.parse(payment.conversionData);
+          month = metadata.month;
+          year = metadata.year;
+        } else {
+          // Fallback: use current month/year if not provided
+          const now = new Date();
+          month = now.getMonth() + 1;
+          year = now.getFullYear();
+        }
+
+        // Update student payment record
+        await this.attendanceService.recordStudentPayment(
+          {
+            participantId: payment.targetId.toString(),
+            amount: payment.amount,
+            month,
+            year,
+            status: 'paid',
+            note: `Payment approved via receipt submission. ${payment.reviewNote || ''}`.trim(),
+          },
+          adminUserId,
+        );
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          'Failed to update student payment after monthly fee approval:',
+          error,
+        );
+        // Don't throw - payment is already approved, can be updated manually
+      }
+    }
+
+    // If rejected and type is student_monthly_fee, optionally mark payment as unpaid
+    if (
+      dto.status === 'rejected' &&
+      payment.type === 'student_monthly_fee' &&
+      payment.targetId
+    ) {
+      try {
+        let month: number;
+        let year: number;
+        if (payment.conversionData) {
+          const metadata = JSON.parse(payment.conversionData);
+          month = metadata.month;
+          year = metadata.year;
+        } else {
+          const now = new Date();
+          month = now.getMonth() + 1;
+          year = now.getFullYear();
+        }
+
+        // Optionally update payment status to unpaid (or leave as is)
+        // For now, we'll just log it - the admin can manually update if needed
+        // eslint-disable-next-line no-console
+        console.log(
+          `Student monthly payment rejected for participant ${payment.targetId}, month ${month}/${year}`,
+        );
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          'Failed to process student monthly fee rejection:',
+          error,
+        );
       }
     }
 

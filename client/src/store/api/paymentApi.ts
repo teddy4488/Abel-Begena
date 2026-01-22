@@ -3,7 +3,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
 
-export type PaymentRequestType = "enrollment" | "order" | "tuition" | "student_conversion";
+export type PaymentRequestType = "enrollment" | "order" | "tuition" | "student_conversion" | "student_monthly_fee";
 export type PaymentRequestStatus = "pending" | "approved" | "rejected";
 
 export type PaymentRequest = {
@@ -79,6 +79,24 @@ export const paymentApi = createApi({
       }),
       invalidatesTags: ["PaymentRequests"],
     }),
+    submitStudentMonthlyPayment: builder.mutation<
+      PaymentRequest,
+      {
+        month: number;
+        year: number;
+        amount: number;
+        receiptUrl?: string;
+        reference?: string;
+        reviewNote?: string;
+      }
+    >({
+      query: (body) => ({
+        url: "/payments/student/monthly",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["PaymentRequests"],
+    }),
   }),
 });
 
@@ -87,4 +105,5 @@ export const {
   useGetPendingPaymentRequestsQuery,
   useCreatePaymentRequestMutation,
   useUpdatePaymentStatusMutation,
+  useSubmitStudentMonthlyPaymentMutation,
 } = paymentApi;

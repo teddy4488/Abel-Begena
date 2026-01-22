@@ -14,6 +14,7 @@ import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
+import { SubmitStudentMonthlyPaymentDto } from './dto/submit-student-monthly-payment.dto';
 
 @Controller('payments')
 @UseGuards(JwtAuthGuard)
@@ -61,6 +62,20 @@ export class PaymentController {
   ) {
     return this.paymentService.updateStatus(
       { ...body, id },
+      req.user.sub,
+    );
+  }
+
+  // Student: submit monthly payment receipt
+  @Post('student/monthly')
+  @UseGuards(JwtAuthGuard)
+  submitStudentMonthlyPayment(
+    @Body() dto: SubmitStudentMonthlyPaymentDto,
+    @Request() req: { user: { sub: string; userType?: string } },
+  ) {
+    // For students, req.user.sub is their student participant ID
+    return this.paymentService.submitStudentMonthlyPayment(
+      dto,
       req.user.sub,
     );
   }

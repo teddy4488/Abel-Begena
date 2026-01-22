@@ -410,6 +410,8 @@ export default function AdminPaymentsPage() {
                           ? t("payments.filters.enrollments", "Enrollment")
                           : request.type === "order"
                           ? t("payments.filters.orders", "Order")
+                          : request.type === "student_monthly_fee"
+                          ? t("payments.type.studentMonthlyFee", "Student Monthly Fee")
                           : t("payments.type.tuition", "Tuition")}
                       </p>
                       <p className="mt-1 font-semibold text-primary">
@@ -715,6 +717,8 @@ export default function AdminPaymentsPage() {
                       ? t("payments.filters.enrollments", "Enrollment")
                       : selectedRequest.type === "order"
                       ? t("payments.filters.orders", "Order")
+                      : selectedRequest.type === "student_monthly_fee"
+                      ? t("payments.type.studentMonthlyFee", "Student Monthly Fee")
                       : t("payments.type.tuition", "Tuition")}
                   </p>
                 </div>
