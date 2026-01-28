@@ -12,7 +12,7 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export enum ClassPaymentMethod {
   CHAPA = 'Chapa',
@@ -134,6 +134,25 @@ export class EnrollClassDto {
 
   @IsOptional()
   @IsArray()
+  @Transform(({ value }) => {
+    // Normalize multipart/form-data and JSON payloads:
+    // - If value is already an array, keep it
+    // - If value is a comma-separated string, split into an array
+    // - Otherwise, wrap single value in an array
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+    }
+    if (value == null) {
+      return [];
+    }
+    return [value];
+  })
   @IsEnum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], {
     each: true,
   })

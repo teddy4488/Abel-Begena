@@ -770,10 +770,26 @@ export default function ClassesPage() {
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
                     {t("classes.modal.learningDays", "Learning Days")} *
-                    <span className="ml-2 text-xs font-normal text-foreground/60">
-                      ({form.programDurationMonths === "3" ? "5 days" : form.programDurationMonths === "6" ? "3 days" : "2 days"} required)
-                    </span>
+                  <span className="ml-2 text-xs font-normal text-foreground/60">
+                    ({form.programDurationMonths === "3" ? "5 days" : form.programDurationMonths === "6" ? "3 days" : "2 days"} {t("classes.modal.daysRequired", "required")})
+                  </span>
                   </label>
+                {(() => {
+                  const expectedDays =
+                    form.programDurationMonths === "3"
+                      ? 5
+                      : form.programDurationMonths === "6"
+                        ? 3
+                        : 2;
+                  return (
+                    <p className="mb-2 text-xs text-foreground/60">
+                      {t(
+                        "classes.modal.daysSelected",
+                        `${form.preferredLearningDays.length} of ${expectedDays} days selected`,
+                      )}
+                    </p>
+                  );
+                })()}
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {DAYS_OF_WEEK.map((day) => {
                       const isSelected = form.preferredLearningDays.includes(day.value);
