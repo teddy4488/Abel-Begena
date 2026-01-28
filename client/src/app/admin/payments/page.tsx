@@ -89,6 +89,15 @@ export default function AdminPaymentsPage() {
     }
   };
 
+  const parseConversionData = (request: PaymentRequest | null) => {
+    if (!request?.conversionData) return null;
+    try {
+      return JSON.parse(request.conversionData as unknown as string) as Record<string, any>;
+    } catch {
+      return null;
+    }
+  };
+
   const handleRejectPayment = async (request: PaymentRequest) => {
     if (!reviewNote.trim()) {
       pushToast({
@@ -414,9 +423,16 @@ export default function AdminPaymentsPage() {
                           ? t("payments.type.studentMonthlyFee", "Student Monthly Fee")
                           : t("payments.type.tuition", "Tuition")}
                       </p>
-                      <p className="mt-1 font-semibold text-primary">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setReviewNote("");
+                        }}
+                        className="mt-1 font-semibold text-primary hover:underline text-left"
+                      >
                         {getUserDisplayName(request.userId)}
-                      </p>
+                      </button>
                     </div>
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-600">
                       <Clock className="h-3 w-3" />
@@ -674,6 +690,25 @@ export default function AdminPaymentsPage() {
       {selectedRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur">
           <div className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 p-6 shadow-2xl">
+            {(() => {
+              const details = parseConversionData(selectedRequest);
+              const isEnrollment = selectedRequest.type === "enrollment";
+              const isMonthly = selectedRequest.type === "student_monthly_fee";
+              const hasStudentProfile =
+                details &&
+                (details.fullName ||
+                  details.phone ||
+                  details.emergencyContactName ||
+                  details.city ||
+                  details.address);
+              return (
+                <>
+                  {/* header will render below as-is */}
+                  {/* extra blocks are rendered later using details */}
+                  <span className="hidden">{String(isEnrollment && isMonthly && hasStudentProfile)}</span>
+                </>
+              );
+            })()}
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <h3 className="text-xl font-serif text-primary">
@@ -773,6 +808,147 @@ export default function AdminPaymentsPage() {
                 </div>
               )}
             </div>
+
+            {/* Enrollment / payment form details from conversionData */}
+            {(() => {
+              const details = parseConversionData(selectedRequest);
+              if (!details) return null;
+              const isEnrollment = selectedRequest.type === "enrollment";
+              const isMonthly = selectedRequest.type === "student_monthly_fee";
+
+              return (
+                <div className="mb-4 space-y-3 rounded-2xl border border-border bg-background/40 p-4">
+                  {isEnrollment && (
+                    <>
+                      <p className="text-xs uppercase tracking-wide text-secondary/70">
+                        {t(
+                          "admin.payments.review.enrollmentDetails",
+                          "Enrollment details from student form",
+                        )}
+                      </p>
+                      <div className="grid gap-2 text-sm md:grid-cols-2">
+                        {details.fullName && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t("classes.modal.fullName", "Full name")}
+                            </p>
+                            <p className="font-semibold text-primary">{details.fullName}</p>
+                          </div>
+                        )}
+                        {details.phone && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t("classes.modal.phone", "Phone number")}
+                            </p>
+                            <p className="text-foreground/80">{details.phone}</p>
+                          </div>
+                        )}
+                        {details.emergencyContactName && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "classes.modal.emergencyContactName",
+                                "Emergency contact name",
+                              )}
+                            </p>
+                            <p className="text-foreground/80">
+                              {details.emergencyContactName}
+                            </p>
+                          </div>
+                        )}
+                        {details.emergencyContactPhone && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "classes.modal.emergencyContactPhone",
+                                "Emergency contact phone",
+                              )}
+                            </p>
+                            <p className="text-foreground/80">
+                              {details.emergencyContactPhone}
+                            </p>
+                          </div>
+                        )}
+                        {details.city && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t("classes.modal.city", "City")}
+                            </p>
+                            <p className="text-foreground/80">{details.city}</p>
+                          </div>
+                        )}
+                        {details.address && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t("classes.modal.address", "Address / location")}
+                            </p>
+                            <p className="text-foreground/80">{details.address}</p>
+                          </div>
+                        )}
+                        {details.preferredLearningDays && Array.isArray(details.preferredLearningDays) && (
+                          <div className="md:col-span-2">
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "attendance.students.preferredDays",
+                                "Preferred learning days",
+                              )}
+                            </p>
+                            <p className="text-foreground/80">
+                              {details.preferredLearningDays.join(", ")}
+                            </p>
+                          </div>
+                        )}
+                        {details.learningGoals && (
+                          <div className="md:col-span-2">
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "classes.modal.learningGoals",
+                                "What are your learning goals?",
+                              )}
+                            </p>
+                            <p className="text-foreground/80">{details.learningGoals}</p>
+                          </div>
+                        )}
+                        {details.notesForTeacher && (
+                          <div className="md:col-span-2">
+                            <p className="text-xs text-foreground/60">
+                              {t(
+                                "teacher.students.notesForTeacher",
+                                "Notes for teacher",
+                              )}
+                            </p>
+                            <p className="text-foreground/80">{details.notesForTeacher}</p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {isMonthly && (
+                    <>
+                      <p className="text-xs uppercase tracking-wide text-secondary/70">
+                        {t(
+                          "admin.payments.review.tuitionDetails",
+                          "Monthly tuition period",
+                        )}
+                      </p>
+                      <div className="grid gap-2 text-sm md:grid-cols-2">
+                        {details.month && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t("monthlyPayments.period", "Period")}
+                            </p>
+                            <p className="text-foreground/80">
+                              {details.month}/{details.year}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="mb-4">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">

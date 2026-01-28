@@ -276,7 +276,9 @@ input[type="date"],
 input[type="time"],
 textarea,
 select {
-  background: var(--color-card-gradient);
+  background: var(--color-card-gradient) !important;
+  color: var(--color-foreground) !important;
+  border-color: var(--color-border) !important;
   box-shadow: var(--color-shadow-sm);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

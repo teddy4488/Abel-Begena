@@ -54,6 +54,25 @@ export class StudentAttendanceParticipant {
   @Prop({ required: true, trim: true, maxlength: 120 })
   fullName: string;
 
+  // Contact and profile fields filled by admin at registration
+  @Prop({ required: false, trim: true, maxlength: 40 })
+  phone?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 120 })
+  emergencyContactName?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 40 })
+  emergencyContactPhone?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 120 })
+  occupation?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  city?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 200 })
+  address?: string;
+
   @Prop({
     required: true,
     trim: true,

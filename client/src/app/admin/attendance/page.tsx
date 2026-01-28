@@ -140,6 +140,12 @@ export default function AdminAttendancePage() {
   const [studentForm, setStudentForm] = useState({
     fullName: "",
     email: "",
+    phone: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    occupation: "",
+    city: "",
+    address: "",
     branchId: "",
     learningType: "physical" as LearningType,
     instrumentType: "Begena" as InstrumentType,
@@ -289,6 +295,12 @@ export default function AdminAttendancePage() {
       await registerStudent({
         fullName: studentForm.fullName.trim(),
         email: studentForm.email.trim(),
+        phone: studentForm.phone.trim(),
+        emergencyContactName: studentForm.emergencyContactName.trim() || undefined,
+        emergencyContactPhone: studentForm.emergencyContactPhone.trim() || undefined,
+        occupation: studentForm.occupation.trim() || undefined,
+        city: studentForm.city.trim() || undefined,
+        address: studentForm.address.trim() || undefined,
         branchId: studentForm.branchId,
         learningType: studentForm.learningType,
         instrumentType: studentForm.instrumentType,
@@ -307,6 +319,12 @@ export default function AdminAttendancePage() {
       setStudentForm({
         fullName: "",
         email: "",
+        phone: "",
+        emergencyContactName: "",
+        emergencyContactPhone: "",
+        occupation: "",
+        city: "",
+        address: "",
         branchId: "",
         learningType: "physical",
         instrumentType: "Begena",
@@ -1183,6 +1201,113 @@ export default function AdminAttendancePage() {
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); handleRegisterStudent(); }} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.students.phone", "Phone Number")} *
+                  </label>
+                  <input
+                    type="tel"
+                    value={studentForm.phone ?? ""}
+                    onChange={(e) =>
+                      setStudentForm((prev) => ({ ...prev, phone: e.target.value }))
+                    }
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t(
+                      "attendance.students.city",
+                      "City",
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    value={studentForm.city ?? ""}
+                    onChange={(e) =>
+                      setStudentForm((prev) => ({ ...prev, city: e.target.value }))
+                    }
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t(
+                    "attendance.students.address",
+                    "Address / location",
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={studentForm.address ?? ""}
+                  onChange={(e) =>
+                    setStudentForm((prev) => ({ ...prev, address: e.target.value }))
+                  }
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t(
+                      "attendance.students.emergencyContactName",
+                      "Emergency contact name",
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    value={studentForm.emergencyContactName ?? ""}
+                    onChange={(e) =>
+                      setStudentForm((prev) => ({
+                        ...prev,
+                        emergencyContactName: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t(
+                      "attendance.students.emergencyContactPhone",
+                      "Emergency phone",
+                    )}
+                  </label>
+                  <input
+                    type="tel"
+                    value={studentForm.emergencyContactPhone ?? ""}
+                    onChange={(e) =>
+                      setStudentForm((prev) => ({
+                        ...prev,
+                        emergencyContactPhone: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                  {t("attendance.students.occupation", "Occupation")}
+                </label>
+                <input
+                  type="text"
+                  value={studentForm.occupation ?? ""}
+                  onChange={(e) =>
+                    setStudentForm((prev) => ({ ...prev, occupation: e.target.value }))
+                  }
+                  className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                />
+              </div>
+
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
                   {t("attendance.students.fullName", "Full Name")} *
@@ -1295,13 +1420,16 @@ export default function AdminAttendancePage() {
                             : current;
                         setStudentForm((prev) => ({ ...prev, preferredLearningDays: newDays }));
                       }}
-                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                      className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         studentForm.preferredLearningDays.includes(day)
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-primary text-primary-foreground ring-2 ring-offset-2 ring-offset-background ring-primary/70"
                           : "bg-background/60 text-foreground/70 hover:bg-background/80"
                       }`}
                     >
-                      {DAY_LABELS[day]}
+                      {studentForm.preferredLearningDays.includes(day) && (
+                        <span className="inline-block h-3 w-3 rounded-full bg-primary-foreground" />
+                      )}
+                      <span>{DAY_LABELS[day]}</span>
                     </button>
                   ))}
                 </div>
@@ -1426,13 +1554,16 @@ export default function AdminAttendancePage() {
                           : [...current, instrument];
                         setTeacherForm((prev) => ({ ...prev, instruments: newInstruments }));
                       }}
-                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                      className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         teacherForm.instruments.includes(instrument)
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-primary text-primary-foreground ring-2 ring-offset-2 ring-offset-background ring-primary/70"
                           : "bg-background/60 text-foreground/70 hover:bg-background/80"
                       }`}
                     >
-                      {instrument}
+                      {teacherForm.instruments.includes(instrument) && (
+                        <span className="inline-block h-3 w-3 rounded-full bg-primary-foreground" />
+                      )}
+                      <span>{instrument}</span>
                     </button>
                   ))}
                 </div>
@@ -1457,13 +1588,16 @@ export default function AdminAttendancePage() {
                           return { ...prev, teachingDays: newDays, timeRanges: newRanges };
                         });
                       }}
-                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                      className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         teacherForm.teachingDays.includes(day)
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-primary text-primary-foreground ring-2 ring-offset-2 ring-offset-background ring-primary/70"
                           : "bg-background/60 text-foreground/70 hover:bg-background/80"
                       }`}
                     >
-                      {DAY_LABELS[day]}
+                      {teacherForm.teachingDays.includes(day) && (
+                        <span className="inline-block h-3 w-3 rounded-full bg-primary-foreground" />
+                      )}
+                      <span>{DAY_LABELS[day]}</span>
                     </button>
                   ))}
                 </div>
