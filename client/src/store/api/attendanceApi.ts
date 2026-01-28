@@ -84,6 +84,12 @@ export type RegisterTeacherParticipantBody = {
 export type RegisterStudentParticipantBody = {
   fullName: string;
   email: string;
+  phone?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  occupation?: string;
+  city?: string;
+  address?: string;
   branchId?: string;
   learningType: LearningType;
   instrumentType: InstrumentType;
