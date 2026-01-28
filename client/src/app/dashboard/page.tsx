@@ -83,9 +83,29 @@ export default function DashboardPage() {
                 headers,
               },
             );
+
+            // If access is forbidden but the enrollment is pending, treat it as "no access yet"
+            // instead of failing the whole dashboard. Show the class card with a pending badge,
+            // but without materials or live link.
             if (!accessResponse.ok) {
+              if (
+                accessResponse.status === 403 &&
+                classItem.myEnrollment?.status === "pending"
+              ) {
+                const fallback: ClassAccess = {
+                  class: { _id: classItem._id, title: classItem.title },
+                  materials: [],
+                  liveLink: null,
+                  isLive: false,
+                };
+                return {
+                  ...fallback,
+                  enrollment: classItem.myEnrollment ?? null,
+                };
+              }
               throw new Error("Unable to load class access data");
             }
+
             const payload = (await accessResponse.json()) as ClassAccess;
             return {
               ...payload,
@@ -357,6 +377,14 @@ export default function DashboardPage() {
                     <h3 className="text-xl font-serif text-primary sm:text-2xl">
                       {classAccess.class.title}
                     </h3>
+                    {classAccess.enrollment?.status === "pending" && (
+                      <p className="text-xs text-amber-700">
+                        {t(
+                          "dashboard.card.pendingExplanation",
+                          "Your enrollment is awaiting admin approval. Materials and live access will unlock once your payment is confirmed.",
+                        )}
+                      </p>
+                    )}
                     {classAccess.enrollment?.paymentReference && (
                       <p className="text-xs text-foreground/60">
                         {t(

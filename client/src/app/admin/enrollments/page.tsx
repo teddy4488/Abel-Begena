@@ -200,17 +200,28 @@ export default function AdminEnrollmentsPage() {
                     return (
                       <tr key={`${enrollment.classId}-${enrollment.student.id}-${enrollment.paymentReference ?? ""}`}>
                         <td className="px-4 py-4">
-                          <div className="font-semibold text-primary">
-                            {[
-                              enrollment.student.firstName,
-                              enrollment.student.lastName,
-                            ]
-                              .filter(Boolean)
-                              .join(" ") || enrollment.student.email}
-                          </div>
-                          <p className="text-xs text-foreground/60">
-                            {enrollment.student.email}
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedEnrollment(enrollment);
+                              if (enrollment.receiptUrl) {
+                                setSelectedReceipt(enrollment.receiptUrl);
+                              }
+                            }}
+                            className="text-left"
+                          >
+                            <div className="font-semibold text-primary">
+                              {[
+                                enrollment.student.firstName,
+                                enrollment.student.lastName,
+                              ]
+                                .filter(Boolean)
+                                .join(" ") || enrollment.student.email}
+                            </div>
+                            <p className="text-xs text-foreground/60">
+                              {enrollment.student.email}
+                            </p>
+                          </button>
                         </td>
                         <td className="px-4 py-4">
                           <p className="font-semibold text-foreground">
@@ -524,19 +535,30 @@ export default function AdminEnrollmentsPage() {
                       {t("admin.enrollments.paymentDetails", "Payment Details")}
                     </p>
                     <div className="space-y-1 text-sm">
-                      {formatAmount(selectedEnrollment.amountPaid, selectedEnrollment.currency) && (
+                      {formatAmount(
+                        selectedEnrollment.amountPaid,
+                        selectedEnrollment.currency,
+                      ) && (
                         <p className="font-semibold text-primary">
-                          {formatAmount(selectedEnrollment.amountPaid, selectedEnrollment.currency)}
+                          {formatAmount(
+                            selectedEnrollment.amountPaid,
+                            selectedEnrollment.currency,
+                          )}
                         </p>
                       )}
                       {selectedEnrollment.paymentMethod && (
                         <p className="text-foreground/70 capitalize">
-                          {t("admin.enrollments.method", "Method")}: {selectedEnrollment.paymentMethod}
+                          {t("admin.enrollments.method", "Method")}:{" "}
+                          {selectedEnrollment.paymentMethod}
                         </p>
                       )}
                       {selectedEnrollment.paymentReference && (
                         <p className="text-foreground/70 font-mono text-xs">
-                          {t("admin.enrollments.reference", "Reference")}: {selectedEnrollment.paymentReference}
+                          {t(
+                            "admin.enrollments.reference",
+                            "Reference",
+                          )}:{" "}
+                          {selectedEnrollment.paymentReference}
                         </p>
                       )}
                     </div>
@@ -547,11 +569,119 @@ export default function AdminEnrollmentsPage() {
                     </p>
                     <span
                       className={`inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                        statusPalette[selectedEnrollment.status ?? "pending"] ?? "bg-secondary/20 text-secondary"
+                        statusPalette[selectedEnrollment.status ?? "pending"] ??
+                        "bg-secondary/20 text-secondary"
                       }`}
                     >
-                      {t(`classes.status.${selectedEnrollment.status ?? "pending"}`, selectedEnrollment.status ?? "pending")}
+                      {t(
+                        `classes.status.${selectedEnrollment.status ?? "pending"}`,
+                        selectedEnrollment.status ?? "pending",
+                      )}
                     </span>
+                  </div>
+                </div>
+
+                {/* Enrollment intake details from enrollment form */}
+                <div className="mb-4 rounded-2xl border border-border bg-background/60 p-4">
+                  <p className="mb-2 text-xs uppercase tracking-[0.3em] text-secondary/70">
+                    {t(
+                      "admin.enrollments.intakeDetails",
+                      "Enrollment details from student form",
+                    )}
+                  </p>
+                  <div className="grid gap-2 text-sm md:grid-cols-2">
+                    {selectedEnrollment.fullName && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t("classes.modal.fullName", "Full name")}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.fullName}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.phone && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t("classes.modal.phone", "Phone number")}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.phone}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.emergencyContactName && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t(
+                            "classes.modal.emergencyContactName",
+                            "Emergency contact name",
+                          )}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.emergencyContactName}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.emergencyContactPhone && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t(
+                            "classes.modal.emergencyContactPhone",
+                            "Emergency contact phone",
+                          )}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.emergencyContactPhone}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.city && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t("classes.modal.city", "City")}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.city}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.address && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t("classes.modal.address", "Address / location")}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.address}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.learningGoals && (
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-foreground/60">
+                          {t(
+                            "classes.modal.learningGoals",
+                            "What are your learning goals?",
+                          )}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.learningGoals}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.notesForTeacher && (
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-foreground/60">
+                          {t(
+                            "teacher.students.notesForTeacher",
+                            "Notes for teacher",
+                          )}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.notesForTeacher}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
