@@ -101,7 +101,12 @@ type EnrollmentRequest = {
   amount: number;
   currency?: string;
   paymentMethod: string;
-  paymentReference: string;
+  /**
+   * Optional text reference for the payment (CHAPA/Telebirr/bank ref).
+   * For paid classes without a receipt, the backend enforces that this is present.
+   * For receipt-based flows, this may be omitted.
+   */
+  paymentReference?: string;
   note?: string;
   // optional intake profile
   fullName?: string;

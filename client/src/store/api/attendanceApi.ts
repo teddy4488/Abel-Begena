@@ -473,6 +473,5 @@ export const {
   useGetOverduePaymentsQuery,
   useGetStudentAttendanceReportQuery,
   useGetStudentPaymentReportQuery,
-  useGetTeacherAttendanceReportQuery,
   useGetMyUpcomingPaymentsQuery,
 } = attendanceApi;
