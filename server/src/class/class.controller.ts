@@ -113,6 +113,7 @@ export class ClassController {
   @UseInterceptors(
     FileInterceptor('receipt', {
       storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     }),
   )
   async enrollInClassWithReceipt(
@@ -123,6 +124,11 @@ export class ClassController {
   ) {
     if (!file) {
       throw new BadRequestException('Receipt file is required');
+    }
+    const isAllowedType =
+      file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf';
+    if (!isAllowedType) {
+      throw new BadRequestException('Receipt must be an image or PDF');
     }
     return this.classService.enrollStudentWithReceipt(
       id,

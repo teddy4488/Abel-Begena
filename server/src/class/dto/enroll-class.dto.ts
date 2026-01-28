@@ -4,7 +4,6 @@ import {
   IsEnum,
   IsIn,
   IsMongoId,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -37,10 +36,12 @@ export class EnrollClassDto {
   @IsEnum(ClassPaymentMethod)
   paymentMethod: ClassPaymentMethod;
 
+  // For receipt-based payments, paymentReference may be omitted.
+  // For reference-based payments, the service will enforce it.
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(120)
-  paymentReference: string;
+  paymentReference?: string;
 
   @IsOptional()
   @IsString()

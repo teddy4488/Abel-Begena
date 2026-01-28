@@ -543,7 +543,7 @@ export default function AdminAttendancePage() {
                 <button
                   type="button"
                   onClick={() => setShowAddStudentModal(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg hover:opacity-90"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg hover:opacity-90"
                 >
                   <UserPlus className="h-4 w-4" />
                   {t("attendance.addStudent", "Add Student")}
@@ -662,7 +662,7 @@ export default function AdminAttendancePage() {
                           </p>
                         )}
                       </div>
-                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
                     </div>
                     {studentDetails && (
                       <div className="pt-3 border-t border-border/50 space-y-2">
@@ -856,7 +856,7 @@ export default function AdminAttendancePage() {
                 <button
                   type="button"
                   onClick={() => setShowAddTeacherModal(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg hover:opacity-90"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg hover:opacity-90"
                 >
                   <UserPlus className="h-4 w-4" />
                   {t("attendance.addTeacher", "Add Teacher")}
@@ -1159,11 +1159,15 @@ export default function AdminAttendancePage() {
 
       {/* Add Student Modal */}
       {showAddStudentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur"
+          onClick={() => setShowAddStudentModal(false)}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-serif text-primary">
@@ -1172,7 +1176,7 @@ export default function AdminAttendancePage() {
               <button
                 type="button"
                 onClick={() => setShowAddStudentModal(false)}
-                className="rounded-full p-1 hover:bg-background/60"
+                className="cursor-pointer rounded-full p-1 hover:bg-background/60"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1353,11 +1357,15 @@ export default function AdminAttendancePage() {
 
       {/* Add Teacher Modal */}
       {showAddTeacherModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur"
+          onClick={() => setShowAddTeacherModal(false)}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-serif text-primary">
@@ -1366,7 +1374,7 @@ export default function AdminAttendancePage() {
               <button
                 type="button"
                 onClick={() => setShowAddTeacherModal(false)}
-                className="rounded-full p-1 hover:bg-background/60"
+                className="cursor-pointer rounded-full p-1 hover:bg-background/60"
               >
                 <X className="h-5 w-5" />
               </button>

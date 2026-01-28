@@ -371,11 +371,15 @@ const InstrumentMaterialSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// PaymentRequest Schema
+// PaymentRequest Schema (keep this aligned with src/payment/schemas/payment-request.schema.ts)
 const PaymentRequestSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    type: { type: String, enum: ['enrollment', 'order', 'tuition', 'student_conversion'], required: true },
+    type: {
+      type: String,
+      enum: ['enrollment', 'order', 'tuition', 'student_conversion', 'student_monthly_fee'],
+      required: true,
+    },
     targetId: { type: mongoose.Schema.Types.ObjectId },
     amount: { type: Number, min: 0, required: true },
     currency: { type: String, trim: true, maxlength: 12, default: 'ETB' },

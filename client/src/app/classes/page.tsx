@@ -22,7 +22,12 @@ const paymentMethods = ["Chapa", "Telebirr", "Stripe", "BankTransfer", "Manual",
 
 type PaymentMethod = (typeof paymentMethods)[number];
 
-type PaymentOption = "BankWithReceipt" | "Telebirr" | "BankNoReceipt";
+/**
+ * High-level UI choice for how the student confirms payment.
+ * For now we only support receipt-based confirmation so that
+ * EVERY tuition payment has an image/PDF the admin can review.
+ */
+type PaymentOption = "BankWithReceipt";
 
 const currencyOptions = ["ETB", "USD", "EUR"] as const;
 
@@ -82,6 +87,8 @@ type EnrollmentForm = {
   registrationStartDate: string;
 };
 
+const ETHIOPIA_PHONE_REGEX = /^(?:\+251|0)?(?:9|7)\d{8}$/;
+
 export default function ClassesPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
@@ -112,6 +119,8 @@ export default function ClassesPage() {
     registrationStartDate: "",
   });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState<string | null>(null);
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [enroll, { isLoading: isSubmitting }] = useEnrollInClassMutation();
@@ -199,6 +208,28 @@ export default function ClassesPage() {
       });
       return;
     }
+    if (!ETHIOPIA_PHONE_REGEX.test(form.phone.trim())) {
+      pushToast({
+        title: t("classes.modal.validationError", "Missing required fields"),
+        description: t(
+          "classes.modal.phoneInvalid",
+          "Please enter a valid Ethiopian phone number (e.g. +2519XXXXXXXX or 09XXXXXXXX).",
+        ),
+        variant: "error",
+      });
+      return;
+    }
+    if (form.emergencyContactPhone.trim() && !ETHIOPIA_PHONE_REGEX.test(form.emergencyContactPhone.trim())) {
+      pushToast({
+        title: t("classes.modal.validationError", "Missing required fields"),
+        description: t(
+          "classes.modal.emergencyPhoneInvalid",
+          "Please enter a valid emergency phone number (e.g. +2519XXXXXXXX or 09XXXXXXXX).",
+        ),
+        variant: "error",
+      });
+      return;
+    }
     if (form.learningType === "physical" && !form.branchId) {
       pushToast({
         title: t("classes.modal.branchRequired", "Branch required"),
@@ -207,7 +238,12 @@ export default function ClassesPage() {
       });
       return;
     }
-    const expectedDays = form.programDurationMonths === "3" ? 5 : form.programDurationMonths === "6" ? 3 : 2;
+    const expectedDays =
+      form.programDurationMonths === "3"
+        ? 5
+        : form.programDurationMonths === "6"
+          ? 3
+          : 2;
     if (form.preferredLearningDays.length !== expectedDays) {
       pushToast({
         title: t("classes.modal.daysError", "Incorrect learning days"),
@@ -220,12 +256,27 @@ export default function ClassesPage() {
       return;
     }
 
+    const isPaidClass = (selectedClass.tuition ?? 0) > 0;
+
+    // For paid cohorts we ALWAYS require a receipt image/PDF that admins can review.
+    if (isPaidClass && !receiptFile) {
+      pushToast({
+        title: t("classes.modal.receiptRequiredTitle", "Receipt required"),
+        description: t(
+          "classes.modal.receiptRequiredDesc",
+          "Please upload a clear photo or PDF of your payment receipt so an admin can verify your tuition.",
+        ),
+        variant: "error",
+      });
+      return;
+    }
+
     const basePayload = {
       amount: Number(form.amount) || 0,
       currency: form.currency,
-      paymentMethod:
-        form.paymentOption === "Telebirr" ? ("Telebirr" as PaymentMethod) : ("BankTransfer" as PaymentMethod),
-      paymentReference: form.paymentReference.trim(),
+      paymentMethod: "BankTransfer" as PaymentMethod,
+      // Reference is optional and can hold CHAPA / Telebirr / bank reference text.
+      paymentReference: form.paymentReference.trim() || undefined,
       note: form.note?.trim() || undefined,
       fullName: form.fullName.trim(),
       phone: form.phone.trim(),
@@ -244,29 +295,30 @@ export default function ClassesPage() {
       registrationStartDate: form.registrationStartDate,
     };
     try {
-      if (form.paymentOption === "BankWithReceipt" && receiptFile) {
+      if (isPaidClass && receiptFile) {
+        // Paid cohort: always go through the receipt-based path so a PaymentRequest
+        // is created for admins to review and approve.
         await enrollWithReceipt({
           classId: selectedClass._id,
           payload: basePayload,
           receipt: receiptFile,
         }).unwrap();
-      } else {
-        await enroll({
-          classId: selectedClass._id,
-          payload: basePayload,
-        }).unwrap();
-      }
-      const isPaidClass = (selectedClass.tuition ?? 0) > 0;
-      if ((form.paymentOption === "BankWithReceipt" && receiptFile) || isPaidClass) {
+
         pushToast({
           title: t("classes.modal.successTitlePending", "Enrollment submitted"),
           description: t(
             "classes.modal.successDescriptionPending",
-            "Your enrollment request with receipt has been submitted. An admin will review your payment and convert you to a student soon.",
+            "Your enrollment request and receipt have been submitted. An admin will review your payment and convert you to a student soon.",
           ),
           variant: "success",
         });
       } else {
+        // Free cohort: no payment verification required; enroll immediately.
+        await enroll({
+          classId: selectedClass._id,
+          payload: basePayload,
+        }).unwrap();
+
         pushToast({
           title: t("classes.modal.successTitle", "Enrollment received"),
           description: t(
@@ -477,7 +529,7 @@ export default function ClassesPage() {
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* Payment option selection */}
+              {/* Payment option selection (single receipt-based option for now) */}
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                 <button
                   type="button"
@@ -487,7 +539,7 @@ export default function ClassesPage() {
                       paymentOption: "BankWithReceipt",
                     }))
                   }
-                  className={`rounded-2xl px-3 py-2 text-xs font-semibold transition shadow-sm ${
+                  className={`rounded-2xl px-3 py-2 text-xs font-semibold transition shadow-sm cursor-pointer ${
                     form.paymentOption === "BankWithReceipt"
                       ? "bg-secondary/10 text-secondary"
                       : "bg-surface-elevated text-foreground/80"
@@ -496,44 +548,6 @@ export default function ClassesPage() {
                   {t(
                     "classes.modal.option.bankWithReceipt",
                     "Bank transfer + upload receipt (recommended)",
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      paymentOption: "Telebirr",
-                    }))
-                  }
-                  className={`rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
-                    form.paymentOption === "Telebirr"
-                      ? "border-secondary bg-secondary/10 text-secondary"
-                      : "border-border bg-background/60 text-foreground/80"
-                  }`}
-                >
-                  {t(
-                    "classes.modal.option.telebirr",
-                    "Telebirr transfer (future-ready)",
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      paymentOption: "BankNoReceipt",
-                    }))
-                  }
-                  className={`rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
-                    form.paymentOption === "BankNoReceipt"
-                      ? "border-secondary bg-secondary/10 text-secondary"
-                      : "border-border bg-background/60 text-foreground/80"
-                  }`}
-                >
-                  {t(
-                    "classes.modal.option.bankNoReceipt",
-                    "Bank transfer (reference only)",
                   )}
                 </button>
               </div>
@@ -549,7 +563,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, amount: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full cursor-text rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -560,7 +574,7 @@ export default function ClassesPage() {
                       const nextCurrency = resolveCurrency(e.target.value);
                       setForm((prev) => ({ ...prev, currency: nextCurrency }));
                     }}
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full cursor-pointer rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
                   >
                     {currencyOptions.map((option) => (
                       <option key={option} value={option}>
@@ -571,7 +585,7 @@ export default function ClassesPage() {
                 </label>
               </div>
 
-              {/* When paymentOption is BankWithReceipt, allow receipt upload */}
+              {/* Upload receipt (required for paid cohorts) */}
               {form.paymentOption === "BankWithReceipt" && (
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
                   {t("classes.modal.receipt", "Upload payment receipt")}
@@ -582,16 +596,16 @@ export default function ClassesPage() {
                       const file = e.target.files?.[0] ?? null;
                       setReceiptFile(file);
                     }}
-                    className="mt-2 w-full text-xs text-foreground/80"
+                    className="mt-2 w-full cursor-pointer text-xs text-foreground/80"
                   />
                 </label>
               )}
 
+              {/* Optional reference for CHAPA / Telebirr / bank transfer number */}
               <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                {t("classes.modal.paymentReference", "Transaction reference")}
+                {t("classes.modal.paymentReference", "Transaction reference (optional)")}
                 <input
                   type="text"
-                  required
                   value={form.paymentReference}
                   onChange={(e) =>
                     setForm((prev) => ({
@@ -599,8 +613,8 @@ export default function ClassesPage() {
                       paymentReference: e.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                  placeholder="CHAPA-XXXX"
+                  className="mt-2 w-full cursor-text rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  placeholder={t("classes.modal.referencePlaceholder", "e.g. CHAPA-XXXX / Telebirr / bank ref")}
                 />
               </label>
 
@@ -678,7 +692,7 @@ export default function ClassesPage() {
                       required
                       value={form.branchId}
                       onChange={(e) => setForm({ ...form, branchId: e.target.value })}
-                      className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                      className="mt-2 w-full cursor-pointer rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                     >
                       <option value="">{t("classes.modal.selectBranch", "Select a branch")}</option>
                       {branches.map((branch) => (
@@ -702,7 +716,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm({ ...form, instrumentType: e.target.value as InstrumentType })
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full cursor-pointer rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                   >
                     {INSTRUMENTS.map((instrument) => (
                       <option key={instrument} value={instrument}>
@@ -763,23 +777,50 @@ export default function ClassesPage() {
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {DAYS_OF_WEEK.map((day) => {
                       const isSelected = form.preferredLearningDays.includes(day.value);
+                      const expectedDays =
+                        form.programDurationMonths === "3"
+                          ? 5
+                          : form.programDurationMonths === "6"
+                            ? 3
+                            : 2;
+                      const atLimit = !isSelected && form.preferredLearningDays.length >= expectedDays;
                       return (
                         <label
                           key={day.value}
                           className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                             isSelected
                               ? "border-secondary bg-secondary/10 text-secondary shadow-sm ring-2 ring-secondary/20"
-                              : "border-border bg-background/60 hover:border-secondary/50"
+                              : atLimit
+                                ? "border-border/60 bg-background/40 text-foreground/40"
+                                : "border-border bg-background/60 hover:border-secondary/50"
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={(e) => {
-                              const next = e.target.checked
-                                ? [...form.preferredLearningDays, day.value]
-                                : form.preferredLearningDays.filter((d) => d !== day.value);
-                              setForm({ ...form, preferredLearningDays: next });
+                              if (e.target.checked) {
+                                if (form.preferredLearningDays.length >= expectedDays) {
+                                  pushToast({
+                                    title: t("classes.modal.daysError", "Incorrect learning days"),
+                                    description: t(
+                                      "classes.modal.daysErrorDesc",
+                                      `Program duration of ${form.programDurationMonths} months requires exactly ${expectedDays} learning days.`,
+                                    ),
+                                    variant: "error",
+                                  });
+                                  return;
+                                }
+                                setForm({
+                                  ...form,
+                                  preferredLearningDays: [...form.preferredLearningDays, day.value],
+                                });
+                                return;
+                              }
+                              setForm({
+                                ...form,
+                                preferredLearningDays: form.preferredLearningDays.filter((d) => d !== day.value),
+                              });
                             }}
                             className="sr-only"
                           />
@@ -835,8 +876,23 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, phone: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    onBlur={() => {
+                      const v = form.phone.trim();
+                      setPhoneError(v && !ETHIOPIA_PHONE_REGEX.test(v) ? "invalid" : null);
+                    }}
+                    className={`mt-2 w-full cursor-text rounded-2xl border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm ${
+                      phoneError ? "border-red-500/60" : "border-border"
+                    }`}
+                    placeholder={t("classes.modal.phonePlaceholder", "e.g. +2519XXXXXXXX or 09XXXXXXXX")}
                   />
+                  {phoneError && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {t(
+                        "classes.modal.phoneInvalid",
+                        "Please enter a valid Ethiopian phone number (e.g. +2519XXXXXXXX or 09XXXXXXXX).",
+                      )}
+                    </p>
+                  )}
                 </label>
               </div>
 
@@ -872,8 +928,23 @@ export default function ClassesPage() {
                         emergencyContactPhone: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    onBlur={() => {
+                      const v = form.emergencyContactPhone.trim();
+                      setEmergencyPhoneError(v && !ETHIOPIA_PHONE_REGEX.test(v) ? "invalid" : null);
+                    }}
+                    className={`mt-2 w-full cursor-text rounded-2xl border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm ${
+                      emergencyPhoneError ? "border-red-500/60" : "border-border"
+                    }`}
+                    placeholder={t("classes.modal.phonePlaceholder", "e.g. +2519XXXXXXXX or 09XXXXXXXX")}
                   />
+                  {emergencyPhoneError && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {t(
+                        "classes.modal.emergencyPhoneInvalid",
+                        "Please enter a valid emergency phone number (e.g. +2519XXXXXXXX or 09XXXXXXXX).",
+                      )}
+                    </p>
+                  )}
                 </label>
               </div>
 
@@ -954,7 +1025,7 @@ export default function ClassesPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || isSubmittingWithReceipt}
-                className="w-full rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-[0_20px_30px_var(--color-primary-glow)] transition hover:brightness-95 disabled:opacity-60"
+                className="w-full cursor-pointer rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-[0_20px_30px_var(--color-primary-glow)] transition hover:brightness-95 disabled:opacity-60"
               >
                 {isSubmitting || isSubmittingWithReceipt
                   ? t("classes.modal.submitting", "Submitting...")

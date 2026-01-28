@@ -401,6 +401,19 @@ export class ClassService {
     const enrollmentStatus: 'active' | 'pending' =
       options?.statusOverride ?? (requiresVerification ? 'pending' : 'active');
 
+    // If payment requires verification AND no receipt is provided, enforce a reference.
+    // (Receipt-based path uses `enrollStudentWithReceipt`, which enriches dto.receiptUrl.)
+    if (
+      requiresVerification &&
+      enrollmentStatus === 'pending' &&
+      !dto.receiptUrl &&
+      (!dto.paymentReference || !dto.paymentReference.trim())
+    ) {
+      throw new BadRequestException(
+        'Payment reference is required when no receipt is uploaded',
+      );
+    }
+
     // For paid classes, always create a pending payment request (even if no receipt is uploaded)
     // so admins can verify and activate the enrollment.
     if (
@@ -416,7 +429,7 @@ export class ClassService {
           amount: dto.amount,
           currency,
           method: dto.paymentMethod ?? ClassPaymentMethod.BANK,
-          reference: dto.paymentReference,
+          reference: dto.paymentReference?.trim(),
           receiptUrl: undefined,
           reviewNote: dto.note,
         },
@@ -431,7 +444,7 @@ export class ClassService {
       amountPaid: dto.amount,
       currency,
       paymentMethod: dto.paymentMethod ?? ClassPaymentMethod.MANUAL,
-      paymentReference: dto.paymentReference,
+      paymentReference: dto.paymentReference?.trim(),
       note: dto.note,
       fullName: dto.fullName,
       phone: dto.phone,
@@ -534,7 +547,7 @@ export class ClassService {
         amount: enrichedDto.amount,
         currency: enrichedDto.currency ?? 'ETB',
         method: enrichedDto.paymentMethod ?? ClassPaymentMethod.BANK,
-        reference: enrichedDto.paymentReference,
+        reference: enrichedDto.paymentReference?.trim(),
         receiptUrl,
         reviewNote: enrichedDto.note,
         conversionData,

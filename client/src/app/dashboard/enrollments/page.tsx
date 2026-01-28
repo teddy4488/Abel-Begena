@@ -169,6 +169,22 @@ export default function MyEnrollmentsPage() {
                         {t("enrollments.note", "Note")}: {enrollment.note}
                       </p>
                     )}
+                    {status === "pending" && (
+                      <p className="md:col-span-2 text-xs text-amber-700">
+                        {t(
+                          "enrollments.pendingExplanation",
+                          "Your enrollment and receipt have been submitted. Admin is reviewing your payment; access will unlock once it is approved.",
+                        )}
+                      </p>
+                    )}
+                    {status === "active" && (
+                      <p className="md:col-span-2 text-xs text-emerald-700">
+                        {t(
+                          "enrollments.activeExplanation",
+                          "Your payment has been approved and this class is fully unlocked in your dashboard.",
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-3">
                     {enrollment.classId ? (
