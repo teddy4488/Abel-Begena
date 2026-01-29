@@ -46,7 +46,6 @@ export default function AdminEnrollmentsPage() {
     "all" | "active" | "pending" | "withdrawn"
   >("pending");
   const [search, setSearch] = useState("");
-  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
   const [selectedEnrollment, setSelectedEnrollment] = useState<AdminEnrollment | null>(null);
 
   const { data = [], isLoading, isError, refetch, isFetching } =
@@ -204,9 +203,6 @@ export default function AdminEnrollmentsPage() {
                             type="button"
                             onClick={() => {
                               setSelectedEnrollment(enrollment);
-                              if (enrollment.receiptUrl) {
-                                setSelectedReceipt(enrollment.receiptUrl);
-                              }
                             }}
                             className="text-left"
                           >
@@ -262,7 +258,6 @@ export default function AdminEnrollmentsPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setSelectedReceipt(enrollment.receiptUrl!);
                                 setSelectedEnrollment(enrollment);
                               }}
                               className="mt-1 inline-flex items-center gap-1 text-xs text-secondary hover:underline"
@@ -399,7 +394,6 @@ export default function AdminEnrollmentsPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSelectedReceipt(enrollment.receiptUrl!);
                               setSelectedEnrollment(enrollment);
                             }}
                             className="mt-1 inline-flex items-center gap-1 text-xs text-secondary hover:underline"
@@ -456,7 +450,7 @@ export default function AdminEnrollmentsPage() {
 
       {/* Receipt Viewer Modal */}
       <AnimatePresence>
-        {selectedReceipt && selectedEnrollment && (
+        {selectedEnrollment && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
@@ -482,7 +476,6 @@ export default function AdminEnrollmentsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedReceipt(null);
                     setSelectedEnrollment(null);
                   }}
                   className="rounded-full p-2 text-foreground/70 hover:bg-secondary/10 transition"
@@ -492,40 +485,76 @@ export default function AdminEnrollmentsPage() {
                 </button>
               </div>
 
-              {/* Receipt Image */}
-              <div className="relative bg-background p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                <div className="flex items-center justify-center min-h-[400px]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={selectedReceipt}
-                    alt="Payment receipt"
-                    className="max-w-full max-h-[70vh] rounded-lg shadow-lg object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = "none";
-                      const errorDiv = target.nextElementSibling as HTMLElement;
-                      if (errorDiv) errorDiv.style.display = "flex";
-                    }}
-                  />
-                  <div className="hidden flex-col items-center justify-center gap-4 text-center p-8">
-                    <FileText className="h-16 w-16 text-foreground/30" />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground/70">
-                        {t("admin.enrollments.receiptError", "Unable to load receipt image")}
-                      </p>
-                      <a
-                        href={selectedReceipt}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-2 text-xs text-secondary hover:underline"
-                      >
-                        {t("admin.enrollments.openInNewTab", "Open in new tab")}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+              {/* Receipt / details */}
+              {(() => {
+                const receiptUrl = selectedEnrollment.receiptUrl ?? null;
+                const isPdf = receiptUrl ? /\.pdf(\?|$)/i.test(receiptUrl) : false;
+                return (
+                  <div className="relative bg-background p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                    <div className="flex items-center justify-center min-h-[320px]">
+                      {!receiptUrl ? (
+                        <div className="flex flex-col items-center justify-center gap-3 text-center p-8">
+                          <FileText className="h-14 w-14 text-foreground/30" />
+                          <p className="text-sm font-semibold text-foreground/70">
+                            {t("admin.enrollments.noReceipt", "No receipt uploaded for this enrollment.")}
+                          </p>
+                        </div>
+                      ) : isPdf ? (
+                        <iframe
+                          title="Payment receipt"
+                          src={receiptUrl}
+                          className="h-[70vh] w-full rounded-lg border border-border bg-background shadow-lg"
+                        />
+                      ) : (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={receiptUrl}
+                            alt="Payment receipt"
+                            className="max-w-full max-h-[70vh] rounded-lg shadow-lg object-contain"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const errorDiv = target.nextElementSibling as HTMLElement;
+                              if (errorDiv) errorDiv.style.display = "flex";
+                            }}
+                          />
+                          <div className="hidden flex-col items-center justify-center gap-4 text-center p-8">
+                            <FileText className="h-16 w-16 text-foreground/30" />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground/70">
+                                {t("admin.enrollments.receiptError", "Unable to load receipt")}
+                              </p>
+                              <a
+                                href={receiptUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex items-center gap-2 text-xs text-secondary hover:underline"
+                              >
+                                {t("admin.enrollments.openInNewTab", "Open in new tab")}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
+                    {receiptUrl && (
+                      <div className="mt-4 flex justify-center">
+                        <a
+                          href={receiptUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold transition hover:border-secondary"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          {t("admin.enrollments.openInNewTab", "Open in new tab")}
+                        </a>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Payment Details & Actions */}
               <div className="border-t border-border p-4 bg-background/50">
@@ -692,7 +721,6 @@ export default function AdminEnrollmentsPage() {
                       type="button"
                       onClick={async () => {
                         await handleStatusChange(selectedEnrollment, "active");
-                        setSelectedReceipt(null);
                         setSelectedEnrollment(null);
                       }}
                       disabled={isUpdating}
@@ -705,7 +733,6 @@ export default function AdminEnrollmentsPage() {
                       type="button"
                       onClick={async () => {
                         await handleStatusChange(selectedEnrollment, "withdrawn");
-                        setSelectedReceipt(null);
                         setSelectedEnrollment(null);
                       }}
                       disabled={isUpdating}

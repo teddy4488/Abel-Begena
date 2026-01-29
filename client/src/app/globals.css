@@ -283,6 +283,22 @@ select {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Native select dropdown menu (option list) needs explicit colors in dark mode */
+select option,
+select optgroup {
+  background-color: var(--color-background-elevated);
+  color: var(--color-foreground);
+}
+
+/* Pointer cursor for interactive controls */
+button:not(:disabled),
+select:not(:disabled),
+summary,
+a[href],
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="number"]:focus,

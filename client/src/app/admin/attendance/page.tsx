@@ -1420,7 +1420,7 @@ export default function AdminAttendancePage() {
                             : current;
                         setStudentForm((prev) => ({ ...prev, preferredLearningDays: newDays }));
                       }}
-                      className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         studentForm.preferredLearningDays.includes(day)
                           ? "bg-primary text-primary-foreground ring-2 ring-offset-2 ring-offset-background ring-primary/70"
                           : "bg-background/60 text-foreground/70 hover:bg-background/80"
@@ -1554,7 +1554,7 @@ export default function AdminAttendancePage() {
                           : [...current, instrument];
                         setTeacherForm((prev) => ({ ...prev, instruments: newInstruments }));
                       }}
-                      className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         teacherForm.instruments.includes(instrument)
                           ? "bg-primary text-primary-foreground ring-2 ring-offset-2 ring-offset-background ring-primary/70"
                           : "bg-background/60 text-foreground/70 hover:bg-background/80"
@@ -1588,7 +1588,7 @@ export default function AdminAttendancePage() {
                           return { ...prev, teachingDays: newDays, timeRanges: newRanges };
                         });
                       }}
-                      className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         teacherForm.teachingDays.includes(day)
                           ? "bg-primary text-primary-foreground ring-2 ring-offset-2 ring-offset-background ring-primary/70"
                           : "bg-background/60 text-foreground/70 hover:bg-background/80"
