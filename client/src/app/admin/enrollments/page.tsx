@@ -456,7 +456,7 @@ export default function AdminEnrollmentsPage() {
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+              className="relative z-10 flex w-full max-w-4xl max-h-[90vh] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border p-4">
@@ -485,12 +485,14 @@ export default function AdminEnrollmentsPage() {
                 </button>
               </div>
 
+              {/* Scrollable body (receipt + all details) */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
               {/* Receipt / details */}
               {(() => {
                 const receiptUrl = selectedEnrollment.receiptUrl ?? null;
                 const isPdf = receiptUrl ? /\.pdf(\?|$)/i.test(receiptUrl) : false;
                 return (
-                  <div className="relative bg-background p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                  <div className="relative bg-background p-6">
                     <div className="flex items-center justify-center min-h-[320px]">
                       {!receiptUrl ? (
                         <div className="flex flex-col items-center justify-center gap-3 text-center p-8">
@@ -503,7 +505,7 @@ export default function AdminEnrollmentsPage() {
                         <iframe
                           title="Payment receipt"
                           src={receiptUrl}
-                          className="h-[70vh] w-full rounded-lg border border-border bg-background shadow-lg"
+                          className="h-[60vh] w-full rounded-lg border border-border bg-background shadow-lg"
                         />
                       ) : (
                         <>
@@ -511,7 +513,7 @@ export default function AdminEnrollmentsPage() {
                           <img
                             src={receiptUrl}
                             alt="Payment receipt"
-                            className="max-w-full max-h-[70vh] rounded-lg shadow-lg object-contain"
+                            className="max-w-full max-h-[60vh] rounded-lg shadow-lg object-contain"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.style.display = "none";
@@ -596,17 +598,25 @@ export default function AdminEnrollmentsPage() {
                     <p className="text-xs uppercase tracking-[0.3em] text-secondary/70 mb-1">
                       {t("admin.enrollments.currentStatus", "Current Status")}
                     </p>
-                    <span
-                      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                        statusPalette[selectedEnrollment.status ?? "pending"] ??
-                        "bg-secondary/20 text-secondary"
-                      }`}
-                    >
-                      {t(
-                        `classes.status.${selectedEnrollment.status ?? "pending"}`,
-                        selectedEnrollment.status ?? "pending",
+                    <div className="space-y-1">
+                      <span
+                        className={`inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                          statusPalette[selectedEnrollment.status ?? "pending"] ??
+                          "bg-secondary/20 text-secondary"
+                        }`}
+                      >
+                        {t(
+                          `classes.status.${selectedEnrollment.status ?? "pending"}`,
+                          selectedEnrollment.status ?? "pending",
+                        )}
+                      </span>
+                      {selectedEnrollment.enrolledAt && (
+                        <p className="text-xs text-foreground/60">
+                          {t("admin.enrollments.submittedAt", "Submitted")}:{" "}
+                          {new Date(selectedEnrollment.enrolledAt).toLocaleString()}
+                        </p>
                       )}
-                    </span>
+                    </div>
                   </div>
                 </div>
 
@@ -685,6 +695,50 @@ export default function AdminEnrollmentsPage() {
                         </p>
                       </div>
                     )}
+                    {selectedEnrollment.preferredLearningDays &&
+                      Array.isArray(selectedEnrollment.preferredLearningDays) && (
+                        <div className="md:col-span-2">
+                          <p className="text-xs text-foreground/60">
+                            {t(
+                              "attendance.students.preferredDays",
+                              "Preferred learning days",
+                            )}
+                          </p>
+                          <p className="text-foreground/80">
+                            {selectedEnrollment.preferredLearningDays.join(", ")}
+                          </p>
+                        </div>
+                      )}
+                    {selectedEnrollment.preferredTime && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t("classes.modal.preferredTime", "Preferred time of learning")}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.preferredTime}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.preferredSchedule && (
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-foreground/60">
+                          {t("becomeStudent.timePreferences", "Time preferences")}
+                        </p>
+                        <p className="text-foreground/80">
+                          {selectedEnrollment.preferredSchedule}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEnrollment.registrationStartDate && (
+                      <div>
+                        <p className="text-xs text-foreground/60">
+                          {t("classes.modal.startDate", "Registration Start Date")}
+                        </p>
+                        <p className="text-foreground/80">
+                          {new Date(selectedEnrollment.registrationStartDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
                     {selectedEnrollment.learningGoals && (
                       <div className="md:col-span-2">
                         <p className="text-xs text-foreground/60">
@@ -743,6 +797,7 @@ export default function AdminEnrollmentsPage() {
                     </button>
                   </div>
                 )}
+              </div>
               </div>
             </motion.div>
           </div>

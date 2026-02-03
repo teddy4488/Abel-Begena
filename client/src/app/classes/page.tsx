@@ -78,6 +78,7 @@ type EnrollmentForm = {
   address: string;
   learningGoals: string;
   notesForTeacher: string;
+  preferredTime: string;
   // Student conversion fields
   learningType: 'physical' | 'online';
   branchId: string;
@@ -111,6 +112,7 @@ export default function ClassesPage() {
       address: "",
       learningGoals: "",
       notesForTeacher: "",
+      preferredTime: "",
       learningType: "online",
     branchId: "",
     instrumentType: "Begena",
@@ -157,6 +159,7 @@ export default function ClassesPage() {
       address: "",
       learningGoals: "",
       notesForTeacher: "",
+      preferredTime: "",
       learningType: "online",
       branchId: "",
       instrumentType: "Begena",
@@ -185,6 +188,7 @@ export default function ClassesPage() {
       address: "",
       learningGoals: "",
       notesForTeacher: "",
+      preferredTime: "",
       learningType: "online",
       branchId: "",
       instrumentType: "Begena",
@@ -287,6 +291,7 @@ export default function ClassesPage() {
       address: form.address.trim() || undefined,
       learningGoals: form.learningGoals.trim() || undefined,
       notesForTeacher: form.notesForTeacher.trim() || undefined,
+      preferredTime: form.preferredTime.trim() || undefined,
       learningType: form.learningType,
       branchId: form.learningType === "physical" ? form.branchId : undefined,
       instrumentType: form.instrumentType,
@@ -850,6 +855,22 @@ export default function ClassesPage() {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Preferred time of learning (e.g. 12:00 PM LT) */}
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("classes.modal.preferredTime", "Preferred time of learning")}
+                  </label>
+                  <input
+                    type="text"
+                    value={form.preferredTime}
+                    onChange={(e) =>
+                      setForm({ ...form, preferredTime: e.target.value })
+                    }
+                    placeholder={t("classes.modal.preferredTimePlaceholder", "e.g. 12:00 PM LT")}
+                    className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  />
                 </div>
 
                 {/* Registration Start Date */}

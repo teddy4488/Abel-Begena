@@ -37,21 +37,37 @@ export class StudentPayment {
   @Prop({ type: Date })
   dueDate?: Date;
 
+  // Array of next scheduled due dates (30-day rolling schedule) starting from paidAt
+  @Prop({ type: [Date] })
+  duedate?: Date[];
+
   // When the payment was actually received
   @Prop({ type: Date })
   paidAt?: Date;
+
+  // Enrollment period (1..24) indicating which month of enrollment this payment represents
+  @Prop({ type: Number, min: 1 })
+  period?: number;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   recordedBy: Types.ObjectId;
 
   @Prop({ trim: true, maxlength: 240 })
   note?: string;
+
+  // Optional URL to a receipt image/file
+  @Prop({ type: String })
+  receiptUrl?: string;
 }
 
 export const StudentPaymentSchema =
   SchemaFactory.createForClass(StudentPayment);
 
-StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 }, { unique: true });
+// 30-day rolling: multiple payments per month possible (e.g. due March 1 and March 31)
+StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 });
+StudentPaymentSchema.index({ participantId: 1, dueDate: 1 });
 StudentPaymentSchema.index({ year: 1, month: 1 });
 StudentPaymentSchema.index({ status: 1 });
+// Index for quick lookup by enrollment period
+StudentPaymentSchema.index({ participantId: 1, period: 1 });
 

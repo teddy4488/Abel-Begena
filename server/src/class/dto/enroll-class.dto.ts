@@ -96,6 +96,12 @@ export class EnrollClassDto {
   @MaxLength(240)
   preferredSchedule?: string;
 
+  /** Preferred time of learning (e.g. "12:00 PM LT") */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  preferredTime?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(240)

@@ -58,14 +58,23 @@ export default function StudentPaymentsPage() {
     return null;
   }
 
-  // Calculate overdue payments
+  // Calculate overdue payments (30-day rolling: use payment.duedate/period when set)
   const overduePayments = useMemo(() => {
     const now = new Date();
-    return payments.filter((p) => {
-      if (p.status === "paid") return false;
-      const dueDate = new Date(p.year, p.month - 1, 5); // 5th of each month
-      return dueDate < now;
-    });
+    return payments
+      .filter((p) => {
+        if (p.status === "paid") return false;
+        const dueDate = getEffectiveDueDate(p) || new Date(p.year, p.month - 1, 5);
+        return dueDate < now;
+      })
+      .map((p) => {
+        const dueDate = getEffectiveDueDate(p) || new Date(p.year, p.month - 1, 5);
+        const daysOverdue = Math.floor(
+          (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        return { ...p, dueDate, daysOverdue };
+      })
+      .sort((a, b) => b.daysOverdue - a.daysOverdue);
   }, [payments]);
 
   // Get pending payment requests by month/year
@@ -136,6 +145,22 @@ export default function StudentPaymentsPage() {
     }
   };
 
+  // Helper to determine effective due date for a payment (supports new `duedate` arrays and `period`).
+  function getEffectiveDueDate(payment: any): Date | null {
+    try {
+      if (payment?.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
+        const idx = payment?.period && Number.isInteger(payment.period) && payment.period >= 1 && payment.period <= payment.duedate.length
+          ? payment.period - 1
+          : 0;
+        return new Date(payment.duedate[idx]);
+      }
+      if (payment?.dueDate) return new Date(payment.dueDate);
+      if (payment?.year && payment?.month) return new Date(payment.year, payment.month - 1, 5);
+    } catch (e) {
+      // ignore parse errors
+    }
+    return null;
+  }
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -162,8 +187,8 @@ export default function StudentPaymentsPage() {
     return months[month - 1] || `Month ${month}`;
   };
 
-  const handleOpenReceiptModal = (payment: { month: number; year: number; amount: number }) => {
-    setSelectedPayment(payment);
+  const handleOpenReceiptModal = (payment: { month: number; year: number; amount?: number }) => {
+    setSelectedPayment({ month: payment.month, year: payment.year, amount: payment.amount ?? 0 });
     setReceiptFile(null);
     setReceiptUrl("");
     setReference("");
@@ -247,13 +272,13 @@ export default function StudentPaymentsPage() {
                   {overduePayments.slice(0, 3).map((payment) => {
                     const pendingRequest = getPendingRequest(payment.month, payment.year);
                     return (
-                      <div key={`${payment.year}-${payment.month}`} className="flex items-center justify-between rounded-xl bg-background/40 p-3">
+                      <div key={payment._id} className="flex items-center justify-between rounded-xl bg-background/40 p-3">
                         <div>
                           <p className="font-semibold text-primary">
                             {getMonthName(payment.month)} {payment.year}
                           </p>
                           <p className="text-xs text-foreground/60">
-                            {formatAmount(payment.amount)}
+                            {formatAmount(payment.amount)} • {t("student.payments.dueDate", "Due")}: {payment.dueDate.toLocaleDateString()} • {payment.daysOverdue} {t("student.payments.daysOverdue", "days overdue")}
                           </p>
                         </div>
                         {pendingRequest ? (
@@ -296,21 +321,39 @@ export default function StudentPaymentsPage() {
                   {t("student.payments.upcomingDescription", "You have upcoming payment(s).").replace("upcoming payment(s)", `${upcomingPayments.length} upcoming payment(s)`)}
                 </p>
                 <div className="space-y-2">
-                  {upcomingPayments.slice(0, 3).map((payment) => (
-                    <div key={`${payment.year}-${payment.month}`} className="flex items-center justify-between rounded-xl bg-background/40 p-3">
-                      <div>
-                        <p className="font-semibold text-primary">
-                          {getMonthName(payment.month)} {payment.year}
-                        </p>
-                        <p className="text-xs text-foreground/60">
-                          {formatAmount(payment.amount || 0)} • {t("student.payments.dueIn", "Due in")} {payment.daysUntilDue} {t("student.payments.days", "days")}
-                        </p>
+                  {upcomingPayments.slice(0, 3).map((payment) => {
+                    const pendingRequest = getPendingRequest(payment.month, payment.year);
+                    return (
+                      <div key={`${payment.year}-${payment.month}`} className="flex items-center justify-between rounded-xl bg-background/40 p-3">
+                        <div>
+                          <p className="font-semibold text-primary">
+                            {getMonthName(payment.month)} {payment.year}
+                          </p>
+                          <p className="text-xs text-foreground/60">
+                            {formatAmount(payment.amount || 0)} • {t("student.payments.dueIn", "Due in")} {payment.daysUntilDue} {t("student.payments.days", "days")}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-semibold text-blue-600 bg-blue-500/10 px-3 py-1 rounded-full">
+                            {(() => { const d = getEffectiveDueDate(payment); return d ? d.toLocaleDateString() : "-" })()}
+                          </span>
+                          {pendingRequest ? (
+                            <span className="text-xs font-semibold text-yellow-600 bg-yellow-500/10 px-3 py-1 rounded-full">
+                              {t("student.payments.pendingReview", "Pending Review")}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenReceiptModal({ month: payment.month, year: payment.year, amount: payment.amount ?? 0 })}
+                              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700 transition"
+                            >
+                              <Upload className="h-3 w-3" />
+                              {t("student.payments.submitReceipt", "Submit Receipt")}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-xs font-semibold text-blue-600 bg-blue-500/10 px-3 py-1 rounded-full">
-                        {new Date(payment.dueDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

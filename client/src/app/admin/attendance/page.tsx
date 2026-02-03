@@ -9,7 +9,6 @@ import {
   useSearchStudentsQuery,
   useGetStudentDetailsQuery,
   useGetStudentAttendanceReportQuery,
-  useGetStudentPaymentReportQuery,
   useTeacherCheckInMutation,
   useTeacherCheckOutMutation,
   useGetTodayTeacherAttendanceQuery,
@@ -26,6 +25,7 @@ import {
   type GraduationEligibilityItem,
 } from "@/store/api/attendanceApi";
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
+import { useAppDispatch } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import {
@@ -71,6 +71,7 @@ export default function AdminAttendancePage() {
   const [mode, setMode] = useState<AttendanceMode>("student");
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
+  const [showRecordAttendanceModal, setShowRecordAttendanceModal] = useState(false);
 
   // Data queries
   const { data: branches = [] } = useGetBranchesAdminQuery();
@@ -92,18 +93,32 @@ export default function AdminAttendancePage() {
   // Student attendance recording state
   const [studentCode, setStudentCode] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [selectedStudentSnapshot, setSelectedStudentSnapshot] = useState<any>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [revisedLessonId, setRevisedLessonId] = useState<string>("");
   const [status, setStatus] = useState<AttendanceStatus>("present");
   const [selectedStudentForDetails, setSelectedStudentForDetails] = useState<string | null>(null);
 
-  // Student search - works with name or attendance number
+  // Attendance history modal state
+  const [showAttendanceHistoryModal, setShowAttendanceHistoryModal] = useState(false);
+  const [attendanceHistoryStudentId, setAttendanceHistoryStudentId] = useState<string | null>(null);
   const {
-    data: searchResults = [],
-    isLoading: searchingStudents,
-  } = useSearchStudentsQuery(studentCode.trim(), {
-    skip: !studentCode.trim() || studentCode.trim().length < 2,
+    data: attendanceHistoryRes,
+    isLoading: loadingAttendanceHistory,
+  } = useGetStudentAttendanceReportQuery(attendanceHistoryStudentId || "", {
+    skip: !attendanceHistoryStudentId,
   });
+  const attendanceHistory = attendanceHistoryRes?.attendanceRecords ?? [];
+  const attendanceHistoryStudent = attendanceHistoryRes?.student ?? null;
+
+
+  // Student search - performed only when the user clicks the search button
+  const dispatch = useAppDispatch();
+  const [searchingStudents, setSearchingStudents] = useState(false);
+  const [lookingUpStudentByNumber, setLookingUpStudentByNumber] = useState(false);
+
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchExecuted, setSearchExecuted] = useState(false);
 
   // Get student details when one is selected
   const {
@@ -113,28 +128,69 @@ export default function AdminAttendancePage() {
     skip: !selectedStudentForDetails,
   });
 
-  // For backward compatibility, also try exact attendance number lookup
-  const {
-    data: lookedUpStudentByNumber,
-    isLoading: lookingUpStudentByNumber,
-  } = useGetStudentByAttendanceNumberQuery(studentCode.trim(), {
-    skip: !studentCode.trim() || studentCode.trim().length < 2 || searchResults.length > 0,
-  });
-
-  // Use search results if available, otherwise use exact lookup
-  const lookedUpStudent = searchResults.length === 1 ? searchResults[0] : 
-    (searchResults.length === 0 && lookedUpStudentByNumber ? lookedUpStudentByNumber : null);
   const lookingUpStudent = searchingStudents || lookingUpStudentByNumber;
+
+  const handleSearchClick = async () => {
+    const query = studentCode.trim();
+    if (!query) return;
+
+    // Reset prior selection/flags
+    setSearchExecuted(true);
+    setSelectedStudentId("");
+    setSelectedStudentSnapshot(null);
+    setSelectedStudentForDetails(null);
+    setSelectedLessonId("");
+    setRevisedLessonId("");
+    setStatus("present");
+    setShowRecordAttendanceModal(false);
+    setSearchResults([]);
+    try {
+      // Prefer text search for queries >= 2 characters
+      if (query.length >= 2) {
+        setSearchingStudents(true);
+        const res: any = await dispatch(attendanceApi.endpoints.searchStudents.initiate(query));
+        setSearchingStudents(false);
+        const data = res?.data ?? res;
+        if (Array.isArray(data) && data.length > 0) {
+          setSearchResults(data);
+          return;
+        }
+      }
+
+      // Fallback to exact attendance number lookup (useful for single-digit codes)
+      setLookingUpStudentByNumber(true);
+      const lookupRes: any = await dispatch(attendanceApi.endpoints.getStudentByAttendanceNumber.initiate(query));
+      setLookingUpStudentByNumber(false);
+      const lookup = lookupRes?.data ?? lookupRes;
+      if (lookup) setSearchResults([lookup]);
+      else setSearchResults([]);
+    } catch (err) {
+      setSearchingStudents(false);
+      setLookingUpStudentByNumber(false);
+      setSearchResults([]);
+    }
+  };
+
+  // Selected student (works for multi-result selection too)
+  const selectedStudent = useMemo(() => {
+    if (selectedStudentSnapshot) return selectedStudentSnapshot;
+    if (!selectedStudentId) return null;
+    return (
+      searchResults.find((s) => s._id === selectedStudentId) ||
+      studentParticipants.find((s) => s._id === selectedStudentId) ||
+      null
+    );
+  }, [selectedStudentSnapshot, selectedStudentId, searchResults, studentParticipants]);
 
   // Get lessons filtered by instrument
   const { data: allLessons = [] } = useGetInstrumentLessonsQuery(undefined);
   const eligibleLessons = useMemo(() => {
-    if (!lookedUpStudent) return [];
+    if (!selectedStudent) return [];
     return allLessons.filter(
       (lesson) =>
-        lesson.instrumentType === lookedUpStudent.instrumentType && lesson.isActive,
+        lesson.instrumentType === selectedStudent.instrumentType && lesson.isActive,
     );
-  }, [allLessons, lookedUpStudent]);
+  }, [allLessons, selectedStudent]);
 
   // Student registration form state
   const [studentForm, setStudentForm] = useState({
@@ -173,6 +229,14 @@ export default function AdminAttendancePage() {
         ? 3
         : 2;
   }, [studentForm.programDurationMonths]);
+
+  const formatAmount = (amount?: number | null) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "ETB",
+      minimumFractionDigits: 2,
+    }).format(amount ?? 0);
+  };
 
   // Teacher status tracking
   const currentTeacherStatus = useMemo(() => {
@@ -222,25 +286,35 @@ export default function AdminAttendancePage() {
   const handleStudentCodeChange = (value: string) => {
     const cleaned = value.replace(/\s+/g, "");
     setStudentCode(cleaned);
-    // Auto-select if only one result
-    if (cleaned && searchResults.length === 1) {
-      setSelectedStudentId(searchResults[0]._id);
-    } else if (cleaned && lookedUpStudent?._id) {
-      setSelectedStudentId(lookedUpStudent._id);
-    } else {
-      setSelectedStudentId("");
-    }
+    // Reset selection while typing; selection happens via dropdown or auto-resolve effect
+    setSelectedStudentId("");
+    setSelectedStudentSnapshot(null);
+    setSelectedStudentForDetails(null);
+    setSelectedLessonId("");
+    setRevisedLessonId("");
+    setStatus("present");
+    setShowRecordAttendanceModal(false);
   };
 
   const handleSelectStudent = (studentId: string) => {
     setSelectedStudentId(studentId);
     setSelectedStudentForDetails(studentId);
+    setSelectedLessonId("");
+    setRevisedLessonId("");
+    setStatus("present");
+    setShowRecordAttendanceModal(true);
     // Find the student in search results or participants to set the code
     const student = searchResults.find(s => s._id === studentId) ||
       studentParticipants.find(s => s._id === studentId);
     if (student) {
+      setSelectedStudentSnapshot(student);
       setStudentCode(student.attendanceNumber);
     }
+  };
+
+  const handleShowAttendanceHistory = (studentId: string) => {
+    setAttendanceHistoryStudentId(studentId);
+    setShowAttendanceHistoryModal(true);
   };
 
   const handleStudentSubmit = async (e: React.FormEvent) => {
@@ -272,6 +346,8 @@ export default function AdminAttendancePage() {
       setSelectedLessonId("");
       setRevisedLessonId("");
       setStatus("present");
+      setSelectedStudentForDetails(null);
+      setShowRecordAttendanceModal(false);
     } catch (error: any) {
       pushToast({
         title: t("attendance.error", "Unable to record attendance"),
@@ -414,14 +490,17 @@ export default function AdminAttendancePage() {
   };
 
 
-  // Update student selection when lookup resolves
+  // Update student snapshot based on search results; do NOT auto-open the modal
   useEffect(() => {
-    if (lookedUpStudent) {
-      setSelectedStudentId(lookedUpStudent._id);
+    if (searchResults.length === 1) {
+      // Populate snapshot so it appears in results; selection/modal should only occur on explicit click
+      setSelectedStudentSnapshot(searchResults[0]);
+      // Do not auto-select or auto-open modal here—let the user click the result to open
     } else {
       setSelectedStudentId("");
+      setSelectedStudentSnapshot(null);
     }
-  }, [lookedUpStudent]);
+  }, [searchResults]);
 
   return (
     <section className="space-y-6">
@@ -580,11 +659,23 @@ export default function AdminAttendancePage() {
                         key={p._id}
                         className="flex items-center justify-between rounded-xl card-elevated px-4 py-3 transition-all hover:shadow-md"
                       >
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-primary">{p.fullName}</span>
-                          <span className="text-xs text-foreground/60">
-                            {p.attendanceNumber} • {p.instrumentType} • {branchName}
-                          </span>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-primary">{p.fullName}</span>
+                            <span className="text-xs text-foreground/60">
+                              {p.attendanceNumber} • {p.instrumentType} • {branchName}
+                            </span>
+                          </div>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => handleShowAttendanceHistory(p._id)}
+                              className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold bg-background/60 hover:bg-background/80"
+                              aria-label={t("attendance.history.view", "View history")}
+                            >
+                              <Clock className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -611,21 +702,28 @@ export default function AdminAttendancePage() {
                 </h2>
               </div>
 
-              <form onSubmit={handleStudentSubmit} className="space-y-6">
+              <div className="space-y-6">
                 {/* Attendance number input */}
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
                     {t("attendance.students.search", "Search by Name or Attendance Number")}
                   </label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground/30" />
+                    <button
+                      type="button"
+                      onClick={handleSearchClick}
+                      aria-label="Search"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 p-2 text-foreground/60 hover:text-foreground/80 z-20"
+                    >
+                      <Search className="h-5 w-5" />
+                    </button>
                     <input
                       type="text"
                       value={studentCode}
                       onChange={(e) => handleStudentCodeChange(e.target.value)}
                       autoFocus
                       placeholder={t("attendance.students.searchPlaceholder", "Enter name or attendance number")}
-                      className="w-full rounded-2xl card-elevated pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      className="w-full rounded-2xl card-elevated pl-14 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
                     />
                   </div>
                   {lookingUpStudent && (
@@ -634,8 +732,8 @@ export default function AdminAttendancePage() {
                     </p>
                   )}
                   
-                  {/* Search results dropdown */}
-                  {studentCode.trim().length >= 2 && searchResults.length > 1 && (
+                  {/* Search results dropdown (show single or multiple matches) */}
+                  {studentCode.trim().length >= 1 && searchExecuted && searchResults.length > 0 && (
                     <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-border bg-background">
                       {searchResults.map((student) => {
                         const branchName =
@@ -661,193 +759,246 @@ export default function AdminAttendancePage() {
                   )}
                 </div>
 
-                {/* Student confirmation and details */}
-                {lookedUpStudent && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl card-elevated p-4 space-y-3"
+                <p className="text-xs text-foreground/60">
+                  {t(
+                    "attendance.students.searchHint",
+                    "Select a student from the results to record attendance.",
+                  )}
+                </p>
+              </div>
+
+              {/* Record attendance modal */}
+              <AnimatePresence>
+                {showRecordAttendanceModal && selectedStudent && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur"
+                    onClick={() => setShowRecordAttendanceModal(false)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-primary">{lookedUpStudent.fullName}</p>
-                        <p className="text-xs text-foreground/60">
-                          {t("attendance.students.code", "Attendance #")}: {lookedUpStudent.attendanceNumber} • {lookedUpStudent.instrumentType}
-                        </p>
-                        {lookedUpStudent.registrationStartDate && (
-                          <p className="text-xs text-foreground/50 mt-1">
-                            {t("attendance.students.registeredOn", "Registered")}: {new Date(lookedUpStudent.registrationStartDate).toLocaleDateString()}
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      className="relative flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl surface-elevated shadow-[0_20px_60px_var(--color-primary-glow)]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-start justify-between border-b border-border p-5">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                            {t("attendance.students.record", "Record Student Attendance")}
                           </p>
-                        )}
+                          <h3 className="text-xl font-serif text-primary">
+                            {selectedStudent.fullName}
+                          </h3>
+                          <p className="mt-1 text-xs text-foreground/60">
+                            {t("attendance.students.code", "Attendance #")}:{" "}
+                            {selectedStudent.attendanceNumber} •{" "}
+                            {selectedStudent.instrumentType}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowRecordAttendanceModal(false)}
+                          className="rounded-full p-2 text-foreground/70 hover:bg-secondary/10 transition"
+                          aria-label="Close"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
                       </div>
-                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                    </div>
-                    {studentDetails && (
-                      <div className="pt-3 border-t border-border/50 space-y-2">
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <p className="text-foreground/60">{t("attendance.students.totalAttendance", "Total Sessions")}</p>
-                            <p className="font-semibold text-primary">{studentDetails.totalAttendance}</p>
-                          </div>
-                          {studentDetails.lastAttendance && (
-                            <div>
-                              <p className="text-foreground/60">{t("attendance.students.lastAttendance", "Last Attendance")}</p>
-                              <p className="font-semibold text-primary">
-                                {new Date(studentDetails.lastAttendance.sessionDate).toLocaleDateString()}
-                              </p>
+
+                      <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+                        {studentDetails && (
+                          <div className="rounded-xl card-elevated p-4">
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <p className="text-foreground/60">
+                                  {t("attendance.students.totalAttendance", "Total Sessions")}
+                                </p>
+                                <p className="font-semibold text-primary">
+                                  {studentDetails.totalAttendance}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-foreground/60">
+                                  {t("attendance.students.lastAttendance", "Last Attendance")}
+                                </p>
+                                <p className="font-semibold text-primary">
+                                  {studentDetails.lastAttendance
+                                    ? new Date(studentDetails.lastAttendance.sessionDate).toLocaleDateString()
+                                    : t("attendance.students.none", "—")}
+                                </p>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                const result = await attendanceApi.endpoints.getStudentAttendanceReport.initiate(lookedUpStudent._id);
-                                if ('data' in result) {
-                                  const report = result.data;
-                                  // Create downloadable JSON file
-                                  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = `attendance-report-${lookedUpStudent.attendanceNumber}-${new Date().toISOString().split('T')[0]}.json`;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                  pushToast({
-                                    title: t("attendance.students.downloadSuccess", "Report Downloaded"),
-                                    variant: "success",
-                                  });
-                                }
-                              } catch (error) {
-                                pushToast({
-                                  title: t("attendance.students.downloadError", "Download Error"),
-                                  description: t("attendance.students.downloadErrorDesc", "Failed to download report"),
-                                  variant: "error",
-                                });
-                              }
-                            }}
-                            className="flex-1 rounded-full bg-secondary/10 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/20 transition"
-                          >
-                            {t("attendance.students.downloadAttendance", "Download Attendance Report")}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                const result = await attendanceApi.endpoints.getStudentPaymentReport.initiate(lookedUpStudent._id);
-                                if ('data' in result) {
-                                  const report = result.data;
-                                  // Create downloadable JSON file
-                                  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = `payment-report-${lookedUpStudent.attendanceNumber}-${new Date().toISOString().split('T')[0]}.json`;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                  pushToast({
-                                    title: t("attendance.students.downloadSuccess", "Report Downloaded"),
-                                    variant: "success",
-                                  });
-                                }
-                              } catch (error) {
-                                pushToast({
-                                  title: t("attendance.students.downloadError", "Download Error"),
-                                  description: t("attendance.students.downloadErrorDesc", "Failed to download report"),
-                                  variant: "error",
-                                });
-                              }
-                            }}
-                            className="flex-1 rounded-full bg-secondary/10 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/20 transition"
-                          >
-                            {t("attendance.students.downloadPayments", "Download Payment Report")}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
+                          </div>
+                        )}
 
-                {/* Lesson selection */}
-                {lookedUpStudent && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
-                        {t("attendance.students.lesson", "Today's Lesson")}
-                      </label>
-                      <select
-                        value={selectedLessonId}
-                        onChange={(e) => setSelectedLessonId(e.target.value)}
-                        className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                        required
-                      >
-                        <option value="">
-                          {t("attendance.students.chooseLesson", "Select lesson")}
-                        </option>
-                        {eligibleLessons.map((lesson) => (
-                          <option key={lesson._id} value={lesson._id}>
-                            {lesson.title} {lesson.code ? `(${lesson.code})` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        <form onSubmit={handleStudentSubmit} className="space-y-4">
+                          <div>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                              {t("attendance.students.lesson", "Today's Lesson")}
+                            </label>
+                            <select
+                              value={selectedLessonId}
+                              onChange={(e) => setSelectedLessonId(e.target.value)}
+                              className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                              required
+                            >
+                              <option value="">
+                                {t("attendance.students.chooseLesson", "Select lesson")}
+                              </option>
+                              {eligibleLessons.map((lesson) => (
+                                <option key={lesson._id} value={lesson._id}>
+                                  {lesson.title} {lesson.code ? `(${lesson.code})` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
-                          {t("attendance.students.revisedLesson", "Revised (optional)")}
-                        </label>
-                        <select
-                          value={revisedLessonId}
-                          onChange={(e) => setRevisedLessonId(e.target.value)}
-                          className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                        >
-                          <option value="">
-                            {t("attendance.students.chooseRevised", "None")}
-                          </option>
-                          {eligibleLessons.map((lesson) => (
-                            <option key={lesson._id} value={lesson._id}>
-                              {lesson.title} {lesson.code ? `(${lesson.code})` : ""}
-                            </option>
-                          ))}
-                        </select>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                                {t("attendance.students.revisedLesson", "Revised (optional)")}
+                              </label>
+                              <select
+                                value={revisedLessonId}
+                                onChange={(e) => setRevisedLessonId(e.target.value)}
+                                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                              >
+                                <option value="">
+                                  {t("attendance.students.chooseRevised", "None")}
+                                </option>
+                                {eligibleLessons.map((lesson) => (
+                                  <option key={lesson._id} value={lesson._id}>
+                                    {lesson.title} {lesson.code ? `(${lesson.code})` : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                                {t("attendance.students.status", "Status")}
+                              </label>
+                              <select
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value as AttendanceStatus)}
+                                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                              >
+                                <option value="present">
+                                  {t("attendance.status.present", "Present")}
+                                </option>
+                                <option value="late">
+                                  {t("attendance.status.late", "Late")}
+                                </option>
+                                <option value="excused">
+                                  {t("attendance.status.excused", "Excused")}
+                                </option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowRecordAttendanceModal(false)}
+                              className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60"
+                            >
+                              {t("common.cancel", "Cancel")}
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={recordingStudent || !selectedLessonId}
+                              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg disabled:opacity-60"
+                            >
+                              {recordingStudent && (
+                                <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
+                              )}
+                              {t("attendance.students.save", "Register attendance")}
+                            </button>
+                          </div>
+                        </form>
                       </div>
-                      <div>
-                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
-                          {t("attendance.students.status", "Status")}
-                        </label>
-                        <select
-                          value={status}
-                          onChange={(e) => setStatus(e.target.value as AttendanceStatus)}
-                          className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                        >
-                          <option value="present">
-                            {t("attendance.status.present", "Present")}
-                          </option>
-                          <option value="late">{t("attendance.status.late", "Late")}</option>
-                          <option value="excused">
-                            {t("attendance.status.excused", "Excused")}
-                          </option>
-                        </select>
-                      </div>
-                    </div>
+                    </motion.div>
                   </div>
                 )}
+              </AnimatePresence>
 
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="submit"
-                    disabled={recordingStudent || !selectedStudentId || !selectedLessonId}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg disabled:opacity-60"
+              {/* Attendance History Modal */}
+              <AnimatePresence>
+                {showAttendanceHistoryModal && attendanceHistoryStudentId && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur"
+                    onClick={() => {
+                      setShowAttendanceHistoryModal(false);
+                      setAttendanceHistoryStudentId(null);
+                    }}
                   >
-                    {recordingStudent && (
-                      <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
-                    )}
-                    {t("attendance.students.save", "Save & Next")}
-                  </button>
-                </div>
-              </form>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      className="relative flex w-full max-w-3xl max-h-[80vh] flex-col overflow-hidden rounded-2xl surface-elevated shadow-[0_20px_60px_var(--color-primary-glow)]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-start justify-between border-b border-border p-5">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.3em] text-secondary">{t("attendance.history.title", "Attendance History")}</p>
+                          <h3 className="text-xl font-serif text-primary">{attendanceHistoryStudent?.fullName ?? t("attendance.history.unknown", "Student")}</h3>
+                          <p className="mt-1 text-xs text-foreground/60">{t("attendance.students.code", "Attendance #")}: {attendanceHistoryStudent?.attendanceNumber ?? "—"}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button type="button" onClick={() => { setShowAttendanceHistoryModal(false); setAttendanceHistoryStudentId(null); }} className="rounded-full p-2 text-foreground/70 hover:bg-secondary/10 transition" aria-label="Close">
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-h-0 overflow-y-auto p-5">
+                        {/* Attendance list */}
+                        {loadingAttendanceHistory ? (
+                          <p className="py-6 text-sm text-foreground/60 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> {t("attendance.history.loading", "Loading records...")}</p>
+                        ) : attendanceHistory.length === 0 ? (
+                          <p className="py-6 text-sm text-foreground/60">{t("attendance.history.empty", "No attendance records found.")}</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                              <thead>
+                                <tr className="text-xs uppercase tracking-[0.25em] text-secondary/70">
+                                  <th className="px-3 py-2">#</th>
+                                  <th className="px-3 py-2">{t("attendance.history.table.date", "Date")}</th>
+                                  <th className="px-3 py-2">{t("attendance.history.table.time", "Time")}</th>
+                                  <th className="px-3 py-2">{t("attendance.history.table.day", "Day")}</th>
+                                  <th className="px-3 py-2">{t("attendance.history.table.lesson", "Lesson")}</th>
+                                  <th className="px-3 py-2">{t("attendance.history.table.revised", "Revised")}</th>
+                                  <th className="px-3 py-2">{t("attendance.history.table.status", "Status")}</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border/60">
+                                {attendanceHistory.map((rec: any, idx: number) => {
+                                  const dt = new Date(rec.date);
+                                  return (
+                                    <tr key={rec._id ?? `${rec.date}-${rec.status}`}>
+                                      <td className="px-3 py-3 align-top text-xs text-foreground/70">{idx + 1}</td>
+                                      <td className="px-3 py-3 align-top">{dt.toLocaleDateString()}</td>
+                                      <td className="px-3 py-3 align-top">{dt.toLocaleTimeString()}</td>
+                                      <td className="px-3 py-3 align-top text-xs text-foreground/70">{dt.toLocaleDateString(undefined, { weekday: 'long' })}</td>
+                                      <td className="px-3 py-3 align-top text-xs text-foreground/70">{rec.lesson?.title ?? '—'}</td>
+                                      <td className="px-3 py-3 align-top text-xs text-foreground/70">{rec.revisedLesson?.title ?? '—'}</td>
+                                      <td className="px-3 py-3 align-top"><span className="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold bg-foreground/5 text-foreground/80">{rec.status}</span></td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3 border-t border-border p-4">
+                        <button type="button" onClick={() => { setShowAttendanceHistoryModal(false); setAttendanceHistoryStudentId(null); }} className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60">{t("common.close", "Close")}</button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}

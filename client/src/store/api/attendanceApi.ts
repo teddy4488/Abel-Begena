@@ -129,6 +129,7 @@ export type RecordStudentPaymentBody = {
   year: number;
   status: "paid" | "partial" | "unpaid";
   note?: string;
+  receiptUrl?: string;
 };
 
 export type GraduationEligibilityStatus =
@@ -349,6 +350,10 @@ export const attendanceApi = createApi({
         month: number;
         amount: number;
         status: "paid" | "partial" | "unpaid";
+        dueDate?: string;
+        duedate?: string[];
+        period?: number;
+        dueDateInferred?: boolean;
         note?: string;
         createdAt?: string;
       }>,
@@ -397,6 +402,9 @@ export const attendanceApi = createApi({
         year: number;
         month: number;
         dueDate: string;
+        duedate?: string[];
+        period?: number;
+        dueDateInferred?: boolean;
         daysOverdue: number;
         amount?: number;
         status?: "paid" | "partial" | "unpaid";
@@ -407,31 +415,62 @@ export const attendanceApi = createApi({
       providesTags: ["StudentPayments"],
     }),
     getStudentAttendanceReport: builder.query<
-      Array<{
-        _id: string;
-        sessionDate: string;
-        status: AttendanceStatus;
-        lessonId: { _id: string; title: string; code?: string };
-        revisedLessonId?: { _id: string; title: string; code?: string };
-      }>,
+      {
+        student: {
+          fullName: string;
+          attendanceNumber?: string;
+          instrumentType: InstrumentType;
+          registrationStartDate: string;
+          branch?: { _id: string; name: string } | string;
+          learningType: LearningType;
+          programDurationMonths: 3 | 6 | 9;
+        };
+        attendanceRecords: Array<{
+          _id?: string;
+          date: string;
+          lesson?: { _id?: string; title?: string; code?: string } | null;
+          revisedLesson?: { _id?: string; title?: string; code?: string } | null;
+          status: AttendanceStatus;
+          recordedBy?: { _id?: string; firstName?: string; lastName?: string; email?: string } | null;
+        }>;
+        totalSessions: number;
+        generatedAt: string;
+      },
       string
     >({
-      query: (studentId) => `/attendance/admin/students/${studentId}/attendance-report`,
+      // Backend endpoint: GET /attendance/reports/student/:id/attendance
+      query: (studentId) => `/attendance/reports/student/${studentId}/attendance`,
       providesTags: ["StudentAttendance"],
     }),
     getStudentPaymentReport: builder.query<
-      Array<{
-        _id: string;
-        year: number;
-        month: number;
-        amount: number;
-        status: "paid" | "partial" | "unpaid";
-        note?: string;
-        createdAt?: string;
-      }>,
+      {
+        student: {
+          fullName: string;
+          attendanceNumber?: string;
+          instrumentType?: string;
+          registrationStartDate?: string;
+          branch?: any;
+        };
+        payments: Array<{
+          month: number;
+          year: number;
+          amount?: number;
+          status: "paid" | "partial" | "unpaid";
+          dueDate?: string | null;
+          dueDateInferred?: boolean;
+          duedate?: string[];
+          period?: number;
+          paidAt?: string;
+          note?: string;
+          recordedBy?: any;
+        }>;
+        totalPaid: number;
+        totalPayments: number;
+      },
       string
     >({
-      query: (studentId) => `/attendance/admin/students/${studentId}/payment-report`,
+      // Server route: GET /attendance/reports/student/:id/payments
+      query: (studentId) => `/attendance/reports/student/${studentId}/payments`,
       providesTags: ["StudentPayments"],
     }),
     getMyUpcomingPayments: builder.query<
@@ -439,6 +478,9 @@ export const attendanceApi = createApi({
         year: number;
         month: number;
         dueDate: string;
+        duedate?: string[];
+        period?: number;
+        dueDateInferred?: boolean;
         daysUntilDue: number;
         amount?: number;
         status?: "paid" | "partial" | "unpaid";
@@ -448,6 +490,28 @@ export const attendanceApi = createApi({
       query: (params) => ({
         url: "/attendance/students/me/upcoming-payments",
         params: params ?? {},
+      }),
+      providesTags: ["StudentPayments"],
+    }),
+
+    // Admin: upcoming payments for a given student id (look ahead in days)
+    getStudentUpcomingPayments: builder.query<
+      Array<{
+        year: number;
+        month: number;
+        dueDate: string;
+        duedate?: string[];
+        period?: number;
+        dueDateInferred?: boolean;
+        daysUntilDue: number;
+        amount?: number;
+        status?: "paid" | "partial" | "unpaid";
+      }>,
+      { id: string; daysAhead?: number }
+    >({
+      query: ({ id, daysAhead }) => ({
+        url: `/attendance/students/${id}/upcoming-payments`,
+        params: daysAhead ? { daysAhead } : {},
       }),
       providesTags: ["StudentPayments"],
     }),
@@ -479,5 +543,6 @@ export const {
   useGetOverduePaymentsQuery,
   useGetStudentAttendanceReportQuery,
   useGetStudentPaymentReportQuery,
+  useGetStudentUpcomingPaymentsQuery,
   useGetMyUpcomingPaymentsQuery,
 } = attendanceApi;

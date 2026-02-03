@@ -238,6 +238,18 @@ export default function StudentDashboardPage() {
                       : t("student.dashboard.upcomingPayments.dueInDays", `Due in ${payment.daysUntilDue} days`);
 
                 const monthName = new Date(payment.year, payment.month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const getEffectiveDueDate = (payment: any): Date | null => {
+                  try {
+                    if (payment?.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
+                      const idx = payment?.period && Number.isInteger(payment.period) && payment.period >= 1 && payment.period <= payment.duedate.length ? payment.period - 1 : 0;
+                      return new Date(payment.duedate[idx]);
+                    }
+                    if (payment?.dueDate) return new Date(payment.dueDate);
+                    return null;
+                  } catch {
+                    return null;
+                  }
+                };
 
                 return (
                   <motion.div
@@ -254,7 +266,7 @@ export default function StudentDashboardPage() {
                           {monthName}
                         </p>
                         <p className="text-xs text-foreground/70">
-                          {new Date(payment.dueDate).toLocaleDateString()} • {urgencyText}
+                          {(() => { const d = getEffectiveDueDate(payment); return d ? d.toLocaleDateString() : "-" })()} • {urgencyText}
                         </p>
                         {payment.amount && (
                           <p className="mt-1 text-sm font-semibold">
