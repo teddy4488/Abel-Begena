@@ -337,8 +337,8 @@ export default function AdminClassesPage() {
       setShowLessonModal(false);
       setEditingLessonId(null);
       setLessonForm({
-        instrumentType: selectedInstrument,
-        level: selectedLevel,
+        instrumentType: selectedTrack?.instrumentType ?? "Begena",
+        level: selectedTrack?.level ?? "beginner",
         title: "",
         code: "",
         order: 0,
@@ -881,7 +881,20 @@ export default function AdminClassesPage() {
             </div>
           ) : filteredLessons.length === 0 ? (
             <div className="rounded-3xl bg-surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg">
-              {t("admin.lessons.empty", `No lessons found for ${selectedInstrument}.`)}
+              {selectedTrack
+                ? t("admin.lessons.emptyForTrack", {
+                    defaultValue:
+                      "No lessons found for {{instrument}} {{level}} yet.",
+                    instrument: selectedTrack.instrumentType,
+                    level:
+                      selectedTrack.level === "beginner"
+                        ? t("admin.lessons.level.beginner", "Beginner")
+                        : t("admin.lessons.level.advanced", "Advanced"),
+                  })
+                : t(
+                    "admin.lessons.emptyNoTrack",
+                    "Select a course track above to view or create its lessons.",
+                  )}
             </div>
           ) : (
             <>
