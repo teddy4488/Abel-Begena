@@ -25,7 +25,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <span className="absolute bottom-20 right-8 text-5xl text-secondary/5">✝</span>
       </div>
       <AdminSidebar />
-      <div className="relative z-10 flex flex-1 flex-col">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <main className="flex-1 overflow-y-auto bg-background px-4 py-6 md:px-8">
           {children}
         </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Edit, Loader2, Trash2, Plus, Music, X } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ import {
 import type { InstrumentType } from "@/store/api/storeApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import Pagination from "@/components/ui/Pagination";
 
 const emptyForm = {
   title: "",
@@ -50,6 +51,10 @@ export default function AdminClassesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewFilter, setViewFilter] = useState<"all" | "unassigned" | "live">("all");
   const [activeTab, setActiveTab] = useState<"classes" | "lessons">("classes");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [lessonsCurrentPage, setLessonsCurrentPage] = useState(1);
+  const [lessonsItemsPerPage, setLessonsItemsPerPage] = useState(10);
   
   // Lessons management
   // Keep this in sync with backend InstrumentType (Begena, Kirar, Masinko, Washint, Kebero, Other)
@@ -331,6 +336,27 @@ export default function AdminClassesPage() {
     return lessons.filter((lesson) => lesson.instrumentType === selectedInstrument);
   }, [lessons, selectedInstrument]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, viewFilter]);
+
+  useEffect(() => {
+    setLessonsCurrentPage(1);
+  }, [selectedInstrument]);
+
+  // Calculate pagination for classes
+  const classesTotalPages = Math.ceil(filteredClasses.length / itemsPerPage);
+  const classesStartIndex = (currentPage - 1) * itemsPerPage;
+  const classesEndIndex = classesStartIndex + itemsPerPage;
+  const paginatedClasses = filteredClasses.slice(classesStartIndex, classesEndIndex);
+
+  // Calculate pagination for lessons
+  const lessonsTotalPages = Math.ceil(filteredLessons.length / lessonsItemsPerPage);
+  const lessonsStartIndex = (lessonsCurrentPage - 1) * lessonsItemsPerPage;
+  const lessonsEndIndex = lessonsStartIndex + lessonsItemsPerPage;
+  const paginatedLessons = filteredLessons.slice(lessonsStartIndex, lessonsEndIndex);
+
   return (
     <section className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -463,8 +489,27 @@ export default function AdminClassesPage() {
                 {t("admin.classes.empty", "No classes found.")}
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredClasses.map((klass) => (
+              <>
+                <div className="mb-4 flex items-center justify-end gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                    {t("pagination.itemsPerPage", "Items per page")}:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  {paginatedClasses.map((klass) => (
                   <motion.div
                     key={klass._id}
                     initial={{ opacity: 0, y: 10 }}
@@ -516,8 +561,20 @@ export default function AdminClassesPage() {
                       </motion.button>
                     </div>
                   </motion.div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {classesTotalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={classesTotalPages}
+                      totalItems={filteredClasses.length}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </motion.div>
@@ -599,10 +656,29 @@ export default function AdminClassesPage() {
               {t("admin.lessons.empty", `No lessons found for ${selectedInstrument}.`)}
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredLessons
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map((lesson) => (
+            <>
+              <div className="mb-4 flex items-center justify-end gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                  {t("pagination.itemsPerPage", "Items per page")}:
+                </label>
+                <select
+                  value={lessonsItemsPerPage}
+                  onChange={(e) => {
+                    setLessonsItemsPerPage(Number(e.target.value));
+                    setLessonsCurrentPage(1);
+                  }}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className="space-y-3">
+                {paginatedLessons
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((lesson) => (
                   <motion.div
                     key={lesson._id}
                     initial={{ opacity: 0, y: 10 }}
@@ -647,8 +723,20 @@ export default function AdminClassesPage() {
                       </motion.button>
                     </div>
                   </motion.div>
-                ))}
-            </div>
+                  ))}
+              </div>
+              {lessonsTotalPages > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={lessonsCurrentPage}
+                    totalPages={lessonsTotalPages}
+                    totalItems={filteredLessons.length}
+                    itemsPerPage={lessonsItemsPerPage}
+                    onPageChange={setLessonsCurrentPage}
+                  />
+                </div>
+              )}
+            </>
           )}
 
           {/* Lesson Modal */}
@@ -1057,8 +1145,27 @@ export default function AdminClassesPage() {
               <Loader2 className="h-6 w-6 animate-spin text-secondary" />
             </div>
           ) : filteredClasses.length ? (
-            <div className="mt-4 space-y-3">
-              {filteredClasses.map((klass, index) => (
+            <>
+              <div className="mt-4 mb-4 flex items-center justify-end gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                  {t("pagination.itemsPerPage", "Items per page")}:
+                </label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className="mt-4 space-y-3">
+                {paginatedClasses.map((klass, index) => (
               <motion.div
                 key={klass._id}
                 initial={{ opacity: 0, y: 20 }}
@@ -1142,6 +1249,18 @@ export default function AdminClassesPage() {
               </motion.div>
               ))}
             </div>
+            {classesTotalPages > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={classesTotalPages}
+                  totalItems={filteredClasses.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+            </>
           ) : (
             <div className="mt-6 rounded-3xl  card-elevated70 p-6 text-center text-sm text-foreground/70">
               {searchTerm || viewFilter !== "all"

@@ -10,6 +10,7 @@ import {
   type PaymentRequest,
 } from "@/store/api/paymentApi";
 import { useToast } from "@/components/providers/ToastProvider";
+import Pagination from "@/components/ui/Pagination";
 import {
   AlertCircle,
   BookOpen,
@@ -58,6 +59,8 @@ export default function AdminPaymentsPage() {
     "all",
   );
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const isLoading = enrollmentsLoading || ordersLoading || pendingRequestsLoading;
 
@@ -220,18 +223,26 @@ export default function AdminPaymentsPage() {
   );
 
   const normalizedSearch = search.trim().toLowerCase();
-  const filteredRecords = allRecords.filter((record) => {
-    if (filterType !== "all" && record.type !== filterType) return false;
-    if (filterStatus !== "all" && record.status !== filterStatus) return false;
-    if (normalizedSearch) {
-      const haystack = `${record.title} ${record.studentOrCustomer} ${
-        record.method
-      } ${record.reference ?? ""}`
-        .toLowerCase();
-      if (!haystack.includes(normalizedSearch)) return false;
-    }
-    return true;
-  });
+  const filteredRecords = useMemo(() => {
+    return allRecords.filter((record) => {
+      if (filterType !== "all" && record.type !== filterType) return false;
+      if (filterStatus !== "all" && record.status !== filterStatus) return false;
+      if (normalizedSearch) {
+        const haystack = `${record.title} ${record.studentOrCustomer} ${
+          record.method
+        } ${record.reference ?? ""}`
+          .toLowerCase();
+        if (!haystack.includes(normalizedSearch)) return false;
+      }
+      return true;
+    });
+  }, [allRecords, filterType, filterStatus, normalizedSearch]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRecords = filteredRecords.slice(startIndex, endIndex);
 
   const totalCompleted = filteredRecords
     .filter((r) => r.status === "completed")
@@ -524,7 +535,10 @@ export default function AdminPaymentsPage() {
               <div className="flex flex-1 items-center rounded-full  bg-background px-3 py-2 sm:px-4">
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder={t(
                     "admin.payments.searchPlaceholder",
                     "Search by student, class, reference, or method",
@@ -537,11 +551,10 @@ export default function AdminPaymentsPage() {
                   <Filter className="h-4 w-4" />
                   <select
                     value={filterType}
-                    onChange={(e) =>
-                      setFilterType(
-                        e.target.value as AdminPaymentType | "all",
-                      )
-                    }
+                    onChange={(e) => {
+                      setFilterType(e.target.value as AdminPaymentType | "all");
+                      setCurrentPage(1);
+                    }}
                     className="bg-transparent text-xs font-semibold uppercase tracking-widest outline-none"
                   >
                     <option value="all">
@@ -559,11 +572,12 @@ export default function AdminPaymentsPage() {
                   <Filter className="h-4 w-4" />
                   <select
                     value={filterStatus}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFilterStatus(
                         e.target.value as AdminPaymentStatus | "all",
-                      )
-                    }
+                      );
+                      setCurrentPage(1);
+                    }}
                     className="bg-transparent text-xs font-semibold uppercase tracking-widest outline-none"
                   >
                     <option value="all">
@@ -603,84 +617,117 @@ export default function AdminPaymentsPage() {
                 )}
               </div>
             ) : (
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.type", "Type")}
-                    </th>
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.person", "Student / customer")}
-                    </th>
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.title", "Class / order")}
-                    </th>
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.amount", "Amount")}
-                    </th>
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.method", "Method")}
-                    </th>
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.reference", "Reference")}
-                    </th>
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.status", "Status")}
-                    </th>
-                    <th className="px-4 py-3">
-                      {t("admin.payments.table.date", "Date")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/70">
-                  {filteredRecords.map((record) => (
-                    <tr key={record.id}>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 rounded-full /70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70">
-                          {record.type === "enrollment" ? (
-                            <BookOpen className="h-3 w-3" />
-                          ) : (
-                            <ShoppingBag className="h-3 w-3" />
-                          )}
-                          {record.type === "enrollment"
-                            ? t(
-                                "payments.filters.enrollments",
-                                "Enrollments",
-                              )
-                            : t("payments.filters.orders", "Orders")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-primary">
-                          {record.studentOrCustomer}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-foreground/80">
-                          {record.title}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-primary">
-                          {formatAmount(record.amount, record.currency)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-foreground/70">
-                        {record.method}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-foreground/70">
-                        {record.reference ?? "-"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {getStatusBadge(record.status)}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-foreground/70">
-                        {formatDate(record.date)}
-                      </td>
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                      {t("pagination.itemsPerPage", "Items per page")}:
+                    </label>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.type", "Type")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.person", "Student / customer")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.title", "Class / order")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.amount", "Amount")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.method", "Method")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.reference", "Reference")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.status", "Status")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("admin.payments.table.date", "Date")}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border/70">
+                    {paginatedRecords.map((record) => (
+                      <tr key={record.id}>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 rounded-full /70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70">
+                            {record.type === "enrollment" ? (
+                              <BookOpen className="h-3 w-3" />
+                            ) : (
+                              <ShoppingBag className="h-3 w-3" />
+                            )}
+                            {record.type === "enrollment"
+                              ? t(
+                                  "payments.filters.enrollments",
+                                  "Enrollments",
+                                )
+                              : t("payments.filters.orders", "Orders")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-primary">
+                            {record.studentOrCustomer}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-foreground/80">
+                            {record.title}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-primary">
+                            {formatAmount(record.amount, record.currency)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-foreground/70">
+                          {record.method}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-foreground/70">
+                          {record.reference ?? "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          {getStatusBadge(record.status)}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-foreground/70">
+                          {formatDate(record.date)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {totalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={filteredRecords.length}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

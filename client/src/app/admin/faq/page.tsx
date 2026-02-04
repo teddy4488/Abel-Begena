@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Loader2, Plus, Save, Trash2, X, CheckCircle, Circle } from "lucide-react";
+import Pagination from "@/components/ui/Pagination";
 
 const emptyFaq: Omit<FaqItem, "_id"> = {
   question: "",
@@ -30,6 +31,8 @@ export default function AdminFaqPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyFaq);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     if (!editingId) return;
@@ -57,6 +60,10 @@ export default function AdminFaqPage() {
       }),
     [faqs],
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [faqs.length]);
 
   const reset = () => {
     setEditingId(null);
@@ -202,7 +209,12 @@ export default function AdminFaqPage() {
             </p>
           ) : (
             <div className="divide-y divide-border/70">
-              {sortedFaqs.map((faq) => (
+              {sortedFaqs
+                .slice(
+                  (currentPage - 1) * itemsPerPage,
+                  (currentPage - 1) * itemsPerPage + itemsPerPage,
+                )
+                .map((faq) => (
                 <div
                   key={faq._id}
                   className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
@@ -243,7 +255,37 @@ export default function AdminFaqPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+                ))}
+              {sortedFaqs.length > 0 &&
+                Math.ceil(sortedFaqs.length / itemsPerPage) > 1 && (
+                  <div className="pt-4 mt-4 border-t border-border/60">
+                    <div className="mb-3 flex items-center justify-end gap-2">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                        {t("pagination.itemsPerPage", "Items per page")}:
+                      </label>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(sortedFaqs.length / itemsPerPage)}
+                      totalItems={sortedFaqs.length}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
             </div>
           )}
         </motion.div>

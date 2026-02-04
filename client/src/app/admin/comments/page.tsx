@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useGetManageCommentsQuery,
   useDeleteCommentMutation,
@@ -8,6 +8,7 @@ import {
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Loader2, Trash2, RefreshCw } from "lucide-react";
+import Pagination from "@/components/ui/Pagination";
 
 export default function AdminCommentsPage() {
   const { t } = useI18n();
@@ -17,6 +18,18 @@ export default function AdminCommentsPage() {
   const [deleteComment, { isLoading: isDeleting }] =
     useDeleteCommentMutation();
   const { pushToast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const totalPages =
+    comments.length > 0 ? Math.ceil(comments.length / itemsPerPage) : 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginated = comments.slice(startIndex, endIndex);
 
   const handleDelete = async (id: string) => {
     if (
@@ -90,7 +103,7 @@ export default function AdminCommentsPage() {
           </p>
         ) : (
           <div className="divide-y divide-border/70">
-            {comments.map((c) => {
+            {paginated.map((c) => {
               const postMeta =
                 typeof c.postId === "object" && c.postId !== null
                   ? c.postId
@@ -132,6 +145,35 @@ export default function AdminCommentsPage() {
                 </div>
               );
             })}
+            {comments.length > 0 && totalPages > 1 && (
+              <div className="pt-4 mt-4 border-t border-border/60">
+                <div className="mb-3 flex items-center justify-end gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                    {t("pagination.itemsPerPage", "Items per page")}:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={comments.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

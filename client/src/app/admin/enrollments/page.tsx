@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Clock, Filter, Loader2, RefreshCcw, Search, X, Eye, Check, XCircle, FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import {
 import { useUpdateEnrollmentStatusMutation } from "@/store/api/classApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import Pagination from "@/components/ui/Pagination";
 
 const statusPalette: Record<string, string> = {
   active: "bg-emerald-500/10 text-emerald-600",
@@ -47,6 +48,8 @@ export default function AdminEnrollmentsPage() {
   >("pending");
   const [search, setSearch] = useState("");
   const [selectedEnrollment, setSelectedEnrollment] = useState<AdminEnrollment | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { data = [], isLoading, isError, refetch, isFetching } =
     useGetAllEnrollmentsQuery(
@@ -71,6 +74,17 @@ export default function AdminEnrollmentsPage() {
       );
     });
   }, [data, search]);
+
+  // Reset pagination when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+  const totalPages =
+    filtered.length > 0 ? Math.ceil(filtered.length / itemsPerPage) : 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginated = filtered.slice(startIndex, endIndex);
 
   const handleStatusChange = async (
     enrollment: AdminEnrollment,
@@ -190,7 +204,7 @@ export default function AdminEnrollmentsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/70">
-                  {filtered.map((enrollment) => {
+                  {paginated.map((enrollment) => {
                     const amountLabel = formatAmount(
                       enrollment.amountPaid,
                       enrollment.currency,
@@ -319,7 +333,7 @@ export default function AdminEnrollmentsPage() {
 
             {/* Mobile Cards */}
             <div className="mt-6 lg:hidden space-y-4">
-              {filtered.map((enrollment) => {
+              {paginated.map((enrollment) => {
                 const amountLabel = formatAmount(
                   enrollment.amountPaid,
                   enrollment.currency,
@@ -443,6 +457,36 @@ export default function AdminEnrollmentsPage() {
                 </div>
               )}
             </div>
+
+            {filtered.length > 0 && totalPages > 1 && (
+              <div className="mt-6 flex flex-col gap-3">
+                <div className="flex items-center justify-end gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                    {t("pagination.itemsPerPage", "Items per page")}:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filtered.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
             </>
           )}
         </div>

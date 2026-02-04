@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Plus, Upload, X, Package, TrendingDown, AlertTriangle, Loader2 } from "lucide-react";
+import Pagination from "@/components/ui/Pagination";
 
 const productFormDefaults = {
   name: "",
@@ -45,11 +46,17 @@ export default function AdminStorePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { pushToast } = useToast();
   const { t } = useI18n();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(8);
 
   const sortedProducts = useMemo(
     () => [...(products ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [products],
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortedProducts.length]);
 
   // Stock overview statistics
   const stockStats = useMemo(() => {
@@ -760,8 +767,32 @@ export default function AdminStorePage() {
         {isLoading ? (
           <p className="text-sm text-foreground/60">Loading products...</p>
         ) : sortedProducts.length ? (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {sortedProducts.map((product) => (
+          <>
+            <div className="mt-4 mb-4 flex items-center justify-end gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                {t("pagination.itemsPerPage", "Items per page")}:
+              </label>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              >
+                <option value={8}>8</option>
+                <option value={16}>16</option>
+                <option value={32}>32</option>
+                <option value={64}>64</option>
+              </select>
+            </div>
+            <div className="mt-2 grid gap-4 md:grid-cols-2">
+              {sortedProducts
+                .slice(
+                  (currentPage - 1) * itemsPerPage,
+                  (currentPage - 1) * itemsPerPage + itemsPerPage,
+                )
+                .map((product) => (
               <div
                 key={product._id}
                 className="rounded-2xl /70 p-4"
@@ -963,8 +994,20 @@ export default function AdminStorePage() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            {sortedProducts.length > 0 && Math.ceil(sortedProducts.length / itemsPerPage) > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(sortedProducts.length / itemsPerPage)}
+                  totalItems={sortedProducts.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </>
         ) : (
           <div className="mt-6 rounded-3xl  card-elevated70 p-6 text-center text-sm text-foreground/70">
             No products yet. Add your first instrument above.

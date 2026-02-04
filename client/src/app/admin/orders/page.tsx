@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetAllOrdersQuery,
@@ -13,6 +13,7 @@ import {
 } from "@/store/api/paymentApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import Pagination from "@/components/ui/Pagination";
 import {
   Package,
   ShoppingBag,
@@ -96,6 +97,8 @@ export default function AdminOrdersPage() {
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [reviewNote, setReviewNote] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const filtered = useMemo(() => {
     return (orders ?? [])
@@ -119,6 +122,17 @@ export default function AdminOrdersPage() {
         return matchesSearch && matchesStatus && matchesPayment;
       });
   }, [orders, search, statusFilter, paymentFilter]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, paymentFilter]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = filtered.slice(startIndex, endIndex);
 
   const handleStatusChange = async (
     orderId: string,
@@ -468,7 +482,7 @@ export default function AdminOrdersPage() {
             </thead>
             <tbody className="divide-y divide-border/70">
               <AnimatePresence>
-                {filtered.map((order, index) => {
+                {paginatedOrders.map((order, index) => {
                   const pendingReq = pendingByOrderId.get(order._id);
                   return (
                     <motion.tr
@@ -603,6 +617,35 @@ export default function AdminOrdersPage() {
               </AnimatePresence>
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="border-t border-border/70 p-4">
+              <div className="mb-4 flex items-center justify-end gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                  {t("pagination.itemsPerPage", "Items per page")}:
+                </label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -615,7 +658,7 @@ export default function AdminOrdersPage() {
           className="lg:hidden space-y-4"
         >
           <AnimatePresence>
-            {filtered.map((order, index) => {
+            {paginatedOrders.map((order, index) => {
               const statusInfo = statusConfig[order.status] || statusConfig.Pending;
               const StatusIcon = statusInfo.icon;
               const pendingReq = pendingByOrderId.get(order._id);
@@ -764,6 +807,35 @@ export default function AdminOrdersPage() {
               );
             })}
           </AnimatePresence>
+          {totalPages > 1 && (
+            <div className="border-t border-border/70 p-4 mt-4">
+              <div className="mb-4 flex items-center justify-end gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                  {t("pagination.itemsPerPage", "Items per page")}:
+                </label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </motion.div>
       )}
 

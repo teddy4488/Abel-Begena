@@ -197,7 +197,7 @@ export function AdminSidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden h-screen w-72 flex-col overflow-y-auto bg-[var(--color-background-soft)] p-6 text-sm lg:flex shadow-[2px_0_8px_var(--color-primary-glow)] dark:bg-[var(--color-background-soft)]">
+      <aside className="hidden h-screen w-72 flex-shrink-0 flex-col overflow-y-auto bg-[var(--color-background-soft)] p-6 text-sm lg:flex shadow-[2px_0_8px_var(--color-primary-glow)] dark:bg-[var(--color-background-soft)]">
         {sidebarContent}
       </aside>
     </>

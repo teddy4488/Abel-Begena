@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useGetBranchesAdminQuery,
   useCreateBranchMutation,
@@ -15,6 +15,7 @@ import { extractErrorMessage } from "@/lib/errors";
 import { motion } from "framer-motion";
 import { Loader2, MapPin, Plus, Trash2, Save, Globe2, X } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import Pagination from "@/components/ui/Pagination";
 
 const BranchMap = dynamic(
   () => import("@/components/branches/BranchAdminMap"),
@@ -59,6 +60,8 @@ export default function AdminBranchesPage() {
 
   const [form, setForm] = useState<BranchFormState>(emptyForm);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const isEditing = Boolean(form.id);
 
@@ -193,6 +196,10 @@ export default function AdminBranchesPage() {
     () => branches ?? [],
     [branches],
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [mapBranches.length]);
 
   const stats = useMemo(() => {
     const total = mapBranches.length;
@@ -354,7 +361,30 @@ export default function AdminBranchesPage() {
           </p>
         ) : (
           <div className="space-y-2">
-            {mapBranches.map((branch) => (
+            <div className="mb-3 flex items-center justify-end gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                {t("pagination.itemsPerPage", "Items per page")}:
+              </label>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            {mapBranches
+              .slice(
+                (currentPage - 1) * itemsPerPage,
+                (currentPage - 1) * itemsPerPage + itemsPerPage,
+              )
+              .map((branch) => (
               <div
                 key={branch._id}
                 className="flex items-center justify-between gap-3 rounded-2xl card-elevated80 px-3 py-2 text-xs"
@@ -386,7 +416,18 @@ export default function AdminBranchesPage() {
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>
-            ))}
+              ))}
+            {mapBranches.length > 0 && Math.ceil(mapBranches.length / itemsPerPage) > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(mapBranches.length / itemsPerPage)}
+                  totalItems={mapBranches.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </div>
         )}
       </motion.section>

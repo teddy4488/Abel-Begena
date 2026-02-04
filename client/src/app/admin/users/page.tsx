@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useAdminDeleteUserMutation,
@@ -20,6 +20,7 @@ import type { Teacher, AdminUser, Student } from "@/store/api/adminApi";
 import Image from "next/image";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import Pagination from "@/components/ui/Pagination";
 import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap } from "lucide-react";
 
 type UserTab = "website" | "teachers" | "admins" | "students";
@@ -30,6 +31,8 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { pushToast } = useToast();
   const { t } = useI18n();
 
@@ -89,6 +92,17 @@ export default function AdminUsersPage() {
       }) ?? []
     );
   }, [currentData, search, filterStatus]);
+
+  // Reset to page 1 when filters or tab change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, activeTab]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filtered.slice(startIndex, endIndex);
 
   const stats = useMemo(() => {
     return {
@@ -388,7 +402,7 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y divide-border/70">
             <AnimatePresence>
-              {filtered.map((item: UserItem, index: number) => {
+              {paginatedData.map((item: UserItem, index: number) => {
                 // Safely access properties that may not exist on all types
                 const fullName = 'fullName' in item ? item.fullName : undefined;
                 const firstName = 'firstName' in item ? item.firstName : undefined;
@@ -507,6 +521,35 @@ export default function AdminUsersPage() {
             )}
           </tbody>
         </table>
+        {totalPages > 1 && filtered.length > 0 && (
+          <div className="border-t border-border/70 p-4">
+            <div className="mb-4 flex items-center justify-end gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                {t("pagination.itemsPerPage", "Items per page")}:
+              </label>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </motion.div>
     </section>
   );

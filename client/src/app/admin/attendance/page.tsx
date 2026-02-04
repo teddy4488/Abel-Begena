@@ -28,6 +28,7 @@ import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
 import { useAppDispatch } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import Pagination from "@/components/ui/Pagination";
 import {
   Users,
   Clock,
@@ -72,6 +73,14 @@ export default function AdminAttendancePage() {
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
   const [showRecordAttendanceModal, setShowRecordAttendanceModal] = useState(false);
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [studentsItemsPerPage, setStudentsItemsPerPage] = useState(10);
+  const [teachersPage, setTeachersPage] = useState(1);
+  const [teachersItemsPerPage, setTeachersItemsPerPage] = useState(10);
+  const [todayPage, setTodayPage] = useState(1);
+  const [todayItemsPerPage, setTodayItemsPerPage] = useState(10);
+  const [eligibilityPage, setEligibilityPage] = useState(1);
+  const [eligibilityItemsPerPage, setEligibilityItemsPerPage] = useState(10);
 
   // Data queries
   const { data: branches = [] } = useGetBranchesAdminQuery();
@@ -81,6 +90,16 @@ export default function AdminAttendancePage() {
     useGetTodayTeacherAttendanceQuery();
   const { data: eligibility = [], isLoading: eligibilityLoading } =
     useGetGraduationEligibilityQuery();
+
+  useEffect(() => {
+    // reset per-mode pagination when switching modes
+    if (mode === "student") setStudentsPage(1);
+    if (mode === "teacher") {
+      setTeachersPage(1);
+      setTodayPage(1);
+    }
+    if (mode === "eligibility") setEligibilityPage(1);
+  }, [mode]);
   const [recordStudentAttendance, { isLoading: recordingStudent }] =
     useRecordStudentAttendanceMutation();
   const [registerTeacher, { isLoading: registeringTeacher }] =
@@ -649,7 +668,31 @@ export default function AdminAttendancePage() {
 
               <div className="space-y-3">
                 {studentParticipants.length > 0 ? (
-                  studentParticipants.map((p) => {
+                  <>
+                    <div className="mb-3 flex items-center justify-end gap-2">
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
+                        {t("pagination.itemsPerPage", "Items per page")}:
+                      </label>
+                      <select
+                        value={studentsItemsPerPage}
+                        onChange={(e) => {
+                          setStudentsItemsPerPage(Number(e.target.value));
+                          setStudentsPage(1);
+                        }}
+                        className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    {studentParticipants
+                      .slice(
+                        (studentsPage - 1) * studentsItemsPerPage,
+                        (studentsPage - 1) * studentsItemsPerPage + studentsItemsPerPage,
+                      )
+                      .map((p) => {
                     const branchName =
                       typeof p.branchId === "object" && p.branchId !== null
                         ? p.branchId.name
@@ -679,7 +722,22 @@ export default function AdminAttendancePage() {
                         </div>
                       </div>
                     );
-                  })
+                      })}
+                    {studentParticipants.length > 0 &&
+                      Math.ceil(studentParticipants.length / studentsItemsPerPage) > 1 && (
+                        <div className="mt-6">
+                          <Pagination
+                            currentPage={studentsPage}
+                            totalPages={Math.ceil(
+                              studentParticipants.length / studentsItemsPerPage,
+                            )}
+                            totalItems={studentParticipants.length}
+                            itemsPerPage={studentsItemsPerPage}
+                            onPageChange={setStudentsPage}
+                          />
+                        </div>
+                      )}
+                  </>
                 ) : (
                   <p className="py-8 text-center text-sm text-foreground/60">
                     {t(
@@ -1034,7 +1092,31 @@ export default function AdminAttendancePage() {
 
               <div className="space-y-3">
                 {teacherParticipants.length > 0 ? (
-                  teacherParticipants.map((p) => {
+                  <>
+                    <div className="mb-3 flex items-center justify-end gap-2">
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
+                        {t("pagination.itemsPerPage", "Items per page")}:
+                      </label>
+                      <select
+                        value={teachersItemsPerPage}
+                        onChange={(e) => {
+                          setTeachersItemsPerPage(Number(e.target.value));
+                          setTeachersPage(1);
+                        }}
+                        className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    {teacherParticipants
+                      .slice(
+                        (teachersPage - 1) * teachersItemsPerPage,
+                        (teachersPage - 1) * teachersItemsPerPage + teachersItemsPerPage,
+                      )
+                      .map((p) => {
                     const open = currentTeacherStatus.get(p._id) === true;
                     return (
                       <div
@@ -1071,7 +1153,23 @@ export default function AdminAttendancePage() {
                         </button>
                       </div>
                     );
-                  })
+                      })}
+                    {teacherParticipants.length > 0 &&
+                      Math.ceil(teacherParticipants.length / teachersItemsPerPage) >
+                        1 && (
+                        <div className="mt-6">
+                          <Pagination
+                            currentPage={teachersPage}
+                            totalPages={Math.ceil(
+                              teacherParticipants.length / teachersItemsPerPage,
+                            )}
+                            totalItems={teacherParticipants.length}
+                            itemsPerPage={teachersItemsPerPage}
+                            onPageChange={setTeachersPage}
+                          />
+                        </div>
+                      )}
+                  </>
                 ) : (
                   <p className="py-8 text-center text-sm text-foreground/60">
                     {t(
@@ -1090,7 +1188,30 @@ export default function AdminAttendancePage() {
                   {t("attendance.teachers.today", "Today's Attendance")}
                 </h3>
                 <div className="space-y-3">
-                  {todayAttendance.map((rec) => {
+                  <div className="mb-3 flex items-center justify-end gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
+                      {t("pagination.itemsPerPage", "Items per page")}:
+                    </label>
+                    <select
+                      value={todayItemsPerPage}
+                      onChange={(e) => {
+                        setTodayItemsPerPage(Number(e.target.value));
+                        setTodayPage(1);
+                      }}
+                      className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                  {todayAttendance
+                    .slice(
+                      (todayPage - 1) * todayItemsPerPage,
+                      (todayPage - 1) * todayItemsPerPage + todayItemsPerPage,
+                    )
+                    .map((rec) => {
                     const participant =
                       typeof rec.participantId === "object" && rec.participantId !== null
                         ? rec.participantId
@@ -1122,6 +1243,20 @@ export default function AdminAttendancePage() {
                       </div>
                     );
                   })}
+                  {todayAttendance.length > 0 &&
+                    Math.ceil(todayAttendance.length / todayItemsPerPage) > 1 && (
+                      <div className="mt-6">
+                        <Pagination
+                          currentPage={todayPage}
+                          totalPages={Math.ceil(
+                            todayAttendance.length / todayItemsPerPage,
+                          )}
+                          totalItems={todayAttendance.length}
+                          itemsPerPage={todayItemsPerPage}
+                          onPageChange={setTodayPage}
+                        />
+                      </div>
+                    )}
                 </div>
               </div>
             )}
@@ -1221,7 +1356,13 @@ export default function AdminAttendancePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
-                      {eligibility.map((item: GraduationEligibilityItem) => {
+                      {eligibility
+                        .slice(
+                          (eligibilityPage - 1) * eligibilityItemsPerPage,
+                          (eligibilityPage - 1) * eligibilityItemsPerPage +
+                            eligibilityItemsPerPage,
+                        )
+                        .map((item: GraduationEligibilityItem) => {
                         const branchName =
                           typeof item.branchId === "object" && item.branchId !== null
                             ? item.branchId.name
@@ -1319,6 +1460,38 @@ export default function AdminAttendancePage() {
                       })}
                     </tbody>
                   </table>
+                  {eligibility.length > 0 &&
+                    Math.ceil(eligibility.length / eligibilityItemsPerPage) > 1 && (
+                      <div className="pt-4 mt-4 border-t border-border/60">
+                        <div className="mb-3 flex items-center justify-end gap-2">
+                          <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
+                            {t("pagination.itemsPerPage", "Items per page")}:
+                          </label>
+                          <select
+                            value={eligibilityItemsPerPage}
+                            onChange={(e) => {
+                              setEligibilityItemsPerPage(Number(e.target.value));
+                              setEligibilityPage(1);
+                            }}
+                            className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                          >
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+                        <Pagination
+                          currentPage={eligibilityPage}
+                          totalPages={Math.ceil(
+                            eligibility.length / eligibilityItemsPerPage,
+                          )}
+                          totalItems={eligibility.length}
+                          itemsPerPage={eligibilityItemsPerPage}
+                          onPageChange={setEligibilityPage}
+                        />
+                      </div>
+                    )}
                 </div>
               )}
             </div>

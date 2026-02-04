@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetBillingSummaryQuery,
@@ -15,6 +15,7 @@ import { useUploadReceiptMutation } from "@/store/api/storeApi";
 import { useDispatch } from "react-redux";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import Pagination from "@/components/ui/Pagination";
 import {
   AlertTriangle,
   Search,
@@ -50,6 +51,10 @@ export default function AdminMonthlyPaymentsPage() {
   const [reviewNote, setReviewNote] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [billingPage, setBillingPage] = useState(1);
+  const [billingItemsPerPage, setBillingItemsPerPage] = useState(10);
+  const [overduePage, setOverduePage] = useState(1);
+  const [overdueItemsPerPage, setOverdueItemsPerPage] = useState(10);
 
   const { data: billingSummary } = useGetBillingSummaryQuery({ year: selectedYear, month: selectedMonth });
   const { data: overduePayments = [] } = useGetOverduePaymentsQuery();
@@ -70,6 +75,14 @@ export default function AdminMonthlyPaymentsPage() {
   const unpaidCount = billingSummary?.unpaidCount ?? 0;
   const partialCount = billingSummary?.partialCount ?? 0;
   const paidCount = billingSummary?.paidCount ?? 0;
+
+  useEffect(() => {
+    setBillingPage(1);
+  }, [selectedYear, selectedMonth, billingItems.length]);
+
+  useEffect(() => {
+    setOverduePage(1);
+  }, [overdueSearch, overdueDaysFilter, overdueDateFilter, overduePayments.length]);
 
   // Payment request handlers
   const handleApprovePaymentRequest = async (request: PaymentRequest) => {
@@ -465,7 +478,31 @@ export default function AdminMonthlyPaymentsPage() {
 
           <div className="space-y-2">
             {billingItems.length > 0 ? (
-              billingItems.map((item) => {
+              <>
+                <div className="mb-4 flex items-center justify-end gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
+                    {t("pagination.itemsPerPage", "Items per page")}:
+                  </label>
+                  <select
+                    value={billingItemsPerPage}
+                    onChange={(e) => {
+                      setBillingItemsPerPage(Number(e.target.value));
+                      setBillingPage(1);
+                    }}
+                    className="rounded-2xl surface-elevated px-4 py-2 text-sm outline-none transition focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+                {billingItems
+                  .slice(
+                    (billingPage - 1) * billingItemsPerPage,
+                    (billingPage - 1) * billingItemsPerPage + billingItemsPerPage,
+                  )
+                  .map((item) => {
                 const statusColor =
                   item.status === "paid"
                     ? "bg-green-500/10 text-green-600"
@@ -541,7 +578,20 @@ export default function AdminMonthlyPaymentsPage() {
                       </button>                    </div>
                   </div>
                 );
-              })
+                })}
+                {billingItems.length > 0 &&
+                  Math.ceil(billingItems.length / billingItemsPerPage) > 1 && (
+                    <div className="mt-6">
+                      <Pagination
+                        currentPage={billingPage}
+                        totalPages={Math.ceil(billingItems.length / billingItemsPerPage)}
+                        totalItems={billingItems.length}
+                        itemsPerPage={billingItemsPerPage}
+                        onPageChange={setBillingPage}
+                      />
+                    </div>
+                  )}
+              </>
             ) : (
               <p className="py-8 text-center text-sm text-foreground/60">
                 {t("monthlyPayments.noStudents", "No active students in attendance registry for this month.")}
@@ -671,10 +721,38 @@ export default function AdminMonthlyPaymentsPage() {
               return true;
             });
 
+            // Pagination for overdue list
+            const overdueTotalPages =
+              filteredOverdue.length > 0
+                ? Math.ceil(filteredOverdue.length / overdueItemsPerPage)
+                : 1;
+            const overdueStart = (overduePage - 1) * overdueItemsPerPage;
+            const overdueEnd = overdueStart + overdueItemsPerPage;
+            const paginatedOverdue = filteredOverdue.slice(overdueStart, overdueEnd);
+
             return (
               <div className="space-y-3">
                 {filteredOverdue.length > 0 ? (
-                  filteredOverdue.map((payment) => {
+                  <>
+                    <div className="mb-4 flex items-center justify-end gap-2">
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
+                        {t("pagination.itemsPerPage", "Items per page")}:
+                      </label>
+                      <select
+                        value={overdueItemsPerPage}
+                        onChange={(e) => {
+                          setOverdueItemsPerPage(Number(e.target.value));
+                          setOverduePage(1);
+                        }}
+                        className="rounded-2xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    {paginatedOverdue.map((payment) => {
                     const daysColor =
                       payment.daysOverdue > 30
                         ? "bg-red-600 text-white"
@@ -797,7 +875,19 @@ export default function AdminMonthlyPaymentsPage() {
                         </div>
                       </div>
                     );
-                  })
+                    })}
+                    {filteredOverdue.length > 0 && overdueTotalPages > 1 && (
+                      <div className="mt-6">
+                        <Pagination
+                          currentPage={overduePage}
+                          totalPages={overdueTotalPages}
+                          totalItems={filteredOverdue.length}
+                          itemsPerPage={overdueItemsPerPage}
+                          onPageChange={setOverduePage}
+                        />
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="rounded-xl surface-elevated p-8 text-center">
                     <AlertTriangle className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
