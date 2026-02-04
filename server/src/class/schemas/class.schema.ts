@@ -99,6 +99,10 @@ export class ClassEnrollment {
   })
   preferredLearningDays?: Array<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>;
 
+  /** Preferred time of learning (e.g. "12:00 PM LT") */
+  @Prop({ trim: true, maxlength: 40 })
+  preferredTime?: string;
+
   @Prop({ type: Date })
   registrationStartDate?: Date;
 }

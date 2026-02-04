@@ -91,7 +91,7 @@ export class AttendanceService {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
     for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+      password += chars.charAt(Math.floor(Math.random() * chars.length));//a simple comment
     }
     return password;
   }
@@ -408,17 +408,22 @@ export class AttendanceService {
 
   async searchStudents(query: string) {
     const searchTerm = query.trim();
-    if (!searchTerm || searchTerm.length < 2) {
+    // Allow 1-character searches (some attendance numbers can be single-digit)
+    if (!searchTerm || searchTerm.length < 1) {
       return [];
     }
 
-    // Search by attendance number (exact match) or name (partial match)
+    // Search by attendance number (prefix/partial match) or name (partial match)
+    // Note: attendance numbers are typically compact codes, so prefix matching is useful.
+    const escapeRegExp = (value: string) =>
+      value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const safe = escapeRegExp(searchTerm);
     const students = await this.studentParticipantModel
       .find({
         isActive: true,
         $or: [
-          { attendanceNumber: searchTerm },
-          { fullName: { $regex: searchTerm, $options: 'i' } },
+          { attendanceNumber: { $regex: safe, $options: 'i' } },
+          { fullName: { $regex: safe, $options: 'i' } },
         ],
       })
       .populate('branchId', 'name slug')
@@ -908,10 +913,85 @@ export class AttendanceService {
     });
   }
 
-  // Billing / payments
+  // Billing / payments — 30-day rolling schedule from registration (approval) date
   private getCurrentYearMonth() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const out = new Date(date);
+    out.setDate(out.getDate() + days);
+    return out;
+  }
+
+  /** Due dates for periods 1, 2, 3, ...: reg+30, reg+60, reg+90, ... (start of day). */
+  private getDueDatesFromRegistration(regDate: Date, maxCount: number): Date[] {
+    const dates: Date[] = [];
+    for (let n = 1; n <= maxCount; n += 1) {
+      const d = this.addDays(regDate, n * 30);
+      dates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+    }
+    return dates;
+  }
+
+  private sameDay(a: Date, b: Date): boolean {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  }
+
+  /**
+   * Returns the first unpaid due date that falls in the given month/year, for 30-day rolling schedule.
+   * Used when approving a monthly payment so we can set dueDate on the record.
+   */
+  async getNextUnpaidDueDateInMonthYear(
+    participantId: string,
+    month: number,
+    year: number,
+  ): Promise<{ dueDate: Date; period: number } | null> {
+    const participant = await this.studentParticipantModel
+      .findById(participantId)
+      .select('registrationStartDate')
+      .lean()
+      .exec();
+    if (!participant) return null;
+
+    const regDate = new Date(participant.registrationStartDate || new Date());
+    const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+    const dueDates = this.getDueDatesFromRegistration(regStartOfDay, 24);
+
+    const payments = await this.studentPaymentModel
+      .find({ participantId: new Types.ObjectId(participantId) })
+      .select('duedate status period month year paidAt')
+      .lean()
+      .exec();
+
+    for (let i = 0; i < dueDates.length; i += 1) {
+      const dueDate = dueDates[i];
+      const period = i + 1;
+      if (dueDate.getMonth() + 1 !== month || dueDate.getFullYear() !== year) continue;
+
+      const paid = payments.some((p: any) => {
+        if (p.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
+          if (p.period && p.period >= 1 && p.period <= p.duedate.length) {
+            return this.sameDay(new Date(p.duedate[p.period - 1]), dueDate) && p.status === 'paid';
+          }
+          if (p.duedate.some((d: Date) => this.sameDay(new Date(d), dueDate))) {
+            return (p.status === 'paid') && ((p.paidAt && this.sameDay(new Date(p.paidAt), dueDate)) || (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()));
+          }
+        }
+        if (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()) {
+          return p.status === 'paid';
+        }
+        return false;
+      });
+
+      if (!paid) return { dueDate, period };
+    }
+    return null;
   }
 
   async recordStudentPayment(
@@ -926,21 +1006,23 @@ export class AttendanceService {
       throw new NotFoundException('Student participant not found or inactive');
     }
 
-    const month = dto.month;
-    const year = dto.year;
+    let month = dto.month;
+    let year = dto.year;
 
     if (month < 1 || month > 12) {
       throw new BadRequestException('Month must be between 1 and 12');
     }
 
-    // Upsert-style: if a record exists for this participant/month/year, update it
-    const existing = await this.studentPaymentModel
-      .findOne({
-        participantId: participant._id,
-        month,
-        year,
-      })
-      .exec();
+    // Normalize input and find any existing payment for the same participant/month/year/period
+    // Note: we no longer rely on per-record `dueDate` (single date); scheduling is kept in `duedate` array
+
+    const existingQuery: any = {
+      participantId: participant._id,
+      month,
+      year,
+    };
+    if (dto.period) existingQuery.period = dto.period;
+    const existing = await this.studentPaymentModel.findOne(existingQuery).exec();
 
     if (existing) {
       existing.amount = dto.amount;
@@ -950,9 +1032,96 @@ export class AttendanceService {
         dto.status === 'paid' || dto.status === 'partial'
           ? new Date()
           : undefined;
+      // If an existing record was updated to paid and has no duedate array, generate it
+      if ((dto.status === 'paid' || dto.status === 'partial') && (!existing.duedate || existing.duedate.length === 0)) {
+        let duedates: Date[] = [];
+        // If admin provided a period, generate schedule from registration so it aligns with enrollment schedule
+        if (dto.period) {
+          const regDate = new Date(participant.registrationStartDate || new Date());
+          const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+          duedates = this.getDueDatesFromRegistration(regStartOfDay, 24);
+          existing.period = dto.period;
+        } else {
+          // fallback: generate from paidAt
+          const baseDate = existing.paidAt ?? new Date();
+          duedates = (() => {
+            const arr: Date[] = [];
+            for (let i = 1; i <= 24; i += 1) {
+              arr.push(this.addDays(baseDate, i * 30));
+            }
+            return arr;
+          })();
+          // set period if missing
+          if (!existing.period) {
+            const lastPeriod = await this.studentPaymentModel
+              .find({ participantId: participant._id })
+              .sort({ period: -1 })
+              .limit(1)
+              .select('period')
+              .lean()
+              .exec();
+            existing.period = (lastPeriod[0]?.period ?? 0) + 1 || 1;
+          }
+        }
+        existing.duedate = duedates;
+      }
       existing.recordedBy = new Types.ObjectId(adminUserId);
+      // attach receipt if provided
+      if (dto.receiptUrl) {
+        existing.receiptUrl = dto.receiptUrl;
+      }
       await existing.save();
       return existing.toObject();
+    }
+
+    // Determine enrollment period automatically if not provided
+    let periodToSet: number | undefined = dto.period;
+    if (!periodToSet) {
+      const lastPeriod = await this.studentPaymentModel
+        .find({ participantId: participant._id })
+        .sort({ period: -1 })
+        .limit(1)
+        .select('period')
+        .lean()
+        .exec();
+      periodToSet = (lastPeriod[0]?.period ?? 0) + 1 || 1;
+    }
+
+    const paidAtDate = (dto.status === 'paid' || dto.status === 'partial') ? new Date() : undefined;
+
+    // Build duedate schedule:
+    // - If a period is provided (admin-approved monthly payment), derive the 24-item schedule from registrationStartDate so entries align with enrollment schedule.
+    // - Otherwise, if paid right now, generate a schedule from paidAt as a fallback (existing behavior).
+    let duedates: Date[] | undefined = undefined;
+    if (dto.status === 'paid' || dto.status === 'partial') {
+      if (periodToSet) {
+        const regDate = new Date(participant.registrationStartDate || new Date());
+        const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+        duedates = this.getDueDatesFromRegistration(regStartOfDay, 24);
+      } else {
+        const baseDateForDues = paidAtDate ?? new Date();
+        duedates = (() => {
+          const arr: Date[] = [];
+          for (let i = 1; i <= 24; i += 1) {
+            arr.push(this.addDays(baseDateForDues, i * 30));
+          }
+          return arr;
+        })();
+      }
+    }
+
+    // Normalize scalar `dueDate` if provided; otherwise, prefer duedates[period-1] when available
+    let dueDateNormalized: Date | undefined = undefined;
+    if (dto.dueDate) {
+      const parsed = new Date(dto.dueDate);
+      if (!isNaN(parsed.getTime())) {
+        dueDateNormalized = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+      }
+    } else if (duedates && periodToSet && Number.isInteger(periodToSet) && periodToSet >= 1 && periodToSet <= duedates.length) {
+      dueDateNormalized = new Date(duedates[periodToSet - 1]);
+    } else if (duedates && duedates.length > 0) {
+      // fallback to first scheduled date if nothing else
+      dueDateNormalized = new Date(duedates[0]);
     }
 
     const created = await this.studentPaymentModel.create({
@@ -961,13 +1130,13 @@ export class AttendanceService {
       month,
       year,
       status: dto.status,
-      paidAt:
-        dto.status === 'paid' || dto.status === 'partial'
-          ? new Date()
-          : undefined,
+      dueDate: dueDateNormalized,
+      duedate: duedates,
+      period: periodToSet,
+      paidAt: paidAtDate,
       recordedBy: new Types.ObjectId(adminUserId),
-      // dueDate could be derived from registration date + month; keep empty for now
       note: dto.note,
+      receiptUrl: dto.receiptUrl,
     });
 
     return created.toObject();
@@ -1076,15 +1245,36 @@ export class AttendanceService {
   }
 
   async getOverduePayments() {
-    const current = this.getCurrentYearMonth();
     const currentDate = new Date();
-    
-    // Get all active students
+
     const students = await this.studentParticipantModel
       .find({ isActive: true })
       .select('_id fullName attendanceNumber instrumentType registrationStartDate')
       .lean()
       .exec();
+
+    const studentIds = students.map((s) => s._id);
+    // include duedate array and other metadata in the payments map so overdue logic can match by period/index
+    const paymentsByParticipant = new Map<string, Array<{ dueDate?: Date; duedate?: Date[]; period?: number; month?: number; year?: number; paidAt?: Date; status: string; amount?: number }>>();
+    const allPayments = await this.studentPaymentModel
+      .find({ participantId: { $in: studentIds } })
+      .select('participantId dueDate status amount duedate period month year paidAt')
+      .lean()
+      .exec();
+    allPayments.forEach((p) => {
+      const key = String(p.participantId);
+      if (!paymentsByParticipant.has(key)) paymentsByParticipant.set(key, []);
+      paymentsByParticipant.get(key)!.push({
+        dueDate: p.dueDate,
+        duedate: p.duedate,
+        period: p.period,
+        month: p.month,
+        year: p.year,
+        paidAt: p.paidAt,
+        status: p.status,
+        amount: p.amount,
+      });
+    });
 
     const overduePayments: Array<{
       participantId: string;
@@ -1100,62 +1290,62 @@ export class AttendanceService {
     }> = [];
 
     for (const student of students) {
-      // Calculate expected payments from registration date
-      const registrationDate = new Date(student.registrationStartDate || new Date());
-      let checkYear = registrationDate.getFullYear();
-      let checkMonth = registrationDate.getMonth() + 1;
+      const regDate = new Date(student.registrationStartDate || new Date());
+      const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+      const dueDates = this.getDueDatesFromRegistration(regStartOfDay, 24);
+      const payments = paymentsByParticipant.get(String(student._id)) ?? [];
 
-      // Check payments up to current month
-      while (
-        checkYear < current.year ||
-        (checkYear === current.year && checkMonth <= current.month)
-      ) {
-        const payment = await this.studentPaymentModel
-          .findOne({
-            participantId: student._id,
-            year: checkYear,
-            month: checkMonth,
-          })
-          .lean()
-          .exec();
+      for (const dueDate of dueDates) {
+        if (dueDate >= currentDate) break;
 
-        // Calculate due date (typically 5th of each month)
-        const dueDate = new Date(checkYear, checkMonth - 1, 5);
-        
-        // If payment is unpaid or partial, and due date has passed
-        if (!payment || payment.status === 'unpaid' || payment.status === 'partial') {
-          if (dueDate < currentDate) {
-            const daysOverdue = Math.floor(
-              (currentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
-            );
-            
-            overduePayments.push({
-              participantId: String(student._id),
-              fullName: student.fullName,
-              attendanceNumber: student.attendanceNumber,
-              instrumentType: student.instrumentType,
-              year: checkYear,
-              month: checkMonth,
-              dueDate,
-              daysOverdue,
-              amount: payment?.amount,
-              status: payment?.status || 'unpaid',
-            });
+        // Find a payment that maps to this dueDate (prefer period-indexed matches)
+        let matchedPayment: any = null;
+        let matchedIndex: number | null = null;
+        for (const p of payments) {
+          if (p.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
+            const idx = p.duedate.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
+            if (idx >= 0) {
+              matchedPayment = p;
+              matchedIndex = idx;
+              break;
+            }
+          }
+          if (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()) {
+            matchedPayment = p;
+            matchedIndex = null;
+            break;
           }
         }
 
-        // Move to next month
-        checkMonth += 1;
-        if (checkMonth > 12) {
-          checkMonth = 1;
-          checkYear += 1;
+        const paidForThisDue = matchedPayment ? (
+          matchedPayment.period && matchedIndex !== null
+            ? (matchedPayment.period - 1 === matchedIndex && matchedPayment.status === 'paid')
+            : (matchedPayment.status === 'paid' && ((matchedPayment.paidAt && this.sameDay(new Date(matchedPayment.paidAt), dueDate)) || (matchedPayment.month === dueDate.getMonth() + 1 && matchedPayment.year === dueDate.getFullYear())))
+        ) : false;
+
+        const partialOrUnpaid = matchedPayment && (matchedPayment.status === 'partial' || matchedPayment.status === 'unpaid') ? matchedPayment : undefined;
+
+        if (!paidForThisDue) {
+          const daysOverdue = Math.floor(
+            (currentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
+          );
+          overduePayments.push({
+            participantId: String(student._id),
+            fullName: student.fullName,
+            attendanceNumber: student.attendanceNumber,
+            instrumentType: student.instrumentType,
+            year: dueDate.getFullYear(),
+            month: dueDate.getMonth() + 1,
+            dueDate,
+            daysOverdue,
+            amount: partialOrUnpaid?.amount,
+            status: (partialOrUnpaid?.status as 'unpaid' | 'partial') || 'unpaid',
+          });
         }
       }
     }
 
-    // Sort by days overdue (most overdue first)
     overduePayments.sort((a, b) => b.daysOverdue - a.daysOverdue);
-
     return overduePayments;
   }
 
@@ -1165,72 +1355,86 @@ export class AttendanceService {
       throw new NotFoundException('Student participant not found');
     }
 
-    const current = this.getCurrentYearMonth();
     const currentDate = new Date();
     const futureDate = new Date();
     futureDate.setDate(currentDate.getDate() + daysAhead);
 
-    // Calculate expected payments from registration date up to future date
-    const registrationDate = new Date(participant.registrationStartDate || new Date());
-    let checkYear = registrationDate.getFullYear();
-    let checkMonth = registrationDate.getMonth() + 1;
+    const regDate = new Date(participant.registrationStartDate || new Date());
+    const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+    const dueDates = this.getDueDatesFromRegistration(regStartOfDay, 24);
+
+    const payments = await this.studentPaymentModel
+      .find({ participantId: participant._id })
+      .select('duedate status amount period month year paidAt')
+      .lean()
+      .exec();
 
     const upcomingPayments: Array<{
       year: number;
       month: number;
       dueDate: Date;
+      duedate?: Date[];
+      period?: number;
+      dueDateInferred?: boolean;
       daysUntilDue: number;
       amount?: number;
       status?: 'paid' | 'partial' | 'unpaid';
     }> = [];
 
-    // Check payments up to future date
-    while (
-      checkYear < futureDate.getFullYear() ||
-      (checkYear === futureDate.getFullYear() && checkMonth <= futureDate.getMonth() + 1)
-    ) {
-      // Calculate due date (typically 5th of each month)
-      const dueDate = new Date(checkYear, checkMonth - 1, 5);
-      
-      // Only include if due date is in the future (up to daysAhead)
-      if (dueDate >= currentDate && dueDate <= futureDate) {
-        const payment = await this.studentPaymentModel
-          .findOne({
-            participantId: participant._id,
-            year: checkYear,
-            month: checkMonth,
-          })
-          .lean()
-          .exec();
+    for (const dueDate of dueDates) {
+      if (dueDate < currentDate) continue;
+      if (dueDate > futureDate) break;
 
-        // Only include if payment is unpaid or doesn't exist yet
-        if (!payment || payment.status === 'unpaid' || payment.status === 'partial') {
-          const daysUntilDue = Math.floor(
-            (dueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          
-          upcomingPayments.push({
-            year: checkYear,
-            month: checkMonth,
-            dueDate,
-            daysUntilDue,
-            amount: payment?.amount,
-            status: payment?.status || 'unpaid',
-          });
+      // Try to find a payment that specifically maps this dueDate (prefer period-indexed match)
+      let matchedPayment: any = null;
+      let matchedIndex: number | null = null;
+
+      for (const p of payments) {
+        if (p.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
+          const idx = p.duedate.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
+          if (idx >= 0) {
+            matchedPayment = p;
+            matchedIndex = idx;
+            break;
+          }
+        }
+        // fallback: month/year match
+        if (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()) {
+          matchedPayment = p;
+          matchedIndex = null;
+          break;
         }
       }
 
-      // Move to next month
-      checkMonth += 1;
-      if (checkMonth > 12) {
-        checkMonth = 1;
-        checkYear += 1;
+      const paidForThisDue = matchedPayment ? (
+        // If the matched payment specifies a period, require that its period points to this index
+        (matchedPayment.period && matchedIndex !== null)
+          ? (matchedPayment.period - 1 === matchedIndex && matchedPayment.status === 'paid')
+          // otherwise, consider it paid only if its status is paid and paidAt or month/year aligns
+          : (matchedPayment.status === 'paid' && ((matchedPayment.paidAt && this.sameDay(new Date(matchedPayment.paidAt), dueDate)) || (matchedPayment.month === dueDate.getMonth() + 1 && matchedPayment.year === dueDate.getFullYear())))
+      ) : false;
+
+      const partialOrUnpaid = matchedPayment && (matchedPayment.status === 'partial' || matchedPayment.status === 'unpaid') ? matchedPayment : undefined;
+
+      if (!paidForThisDue) {
+        const daysUntilDue = Math.floor(
+          (dueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        upcomingPayments.push({
+          year: dueDate.getFullYear(),
+          month: dueDate.getMonth() + 1,
+          dueDate,
+          duedate: matchedPayment?.duedate ?? undefined,
+          period: matchedPayment?.period ?? undefined,
+          dueDateInferred: !matchedPayment,
+          daysUntilDue,
+          amount: partialOrUnpaid?.amount,
+          status: (partialOrUnpaid?.status as 'unpaid' | 'partial') || 'unpaid',
+        });
       }
     }
 
-    // Sort by due date (soonest first)
     upcomingPayments.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
-
     return upcomingPayments;
   }
 
@@ -1299,6 +1503,113 @@ export class AttendanceService {
       .filter((p) => p.status === 'paid')
       .reduce((sum, p) => sum + (p.amount || 0), 0);
 
+    // If some payments do not have dueDate, attempt to infer from registrationStartDate + 30-day schedule
+    const regDate = student.registrationStartDate ? new Date(student.registrationStartDate) : new Date();
+    const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+    const candidateDueDates = this.getDueDatesFromRegistration(regStartOfDay, 36); // look ahead up to 36 months
+
+    // Prepare paid-at ordered list for paidAt-based inference
+    const paidPaymentsSorted = payments
+      .filter((p) => p.paidAt)
+      .sort((a, b) => {
+        const at = a.paidAt ? new Date(a.paidAt as Date).getTime() : 0;
+        const bt = b.paidAt ? new Date(b.paidAt as Date).getTime() : 0;
+        return at - bt;
+      });
+
+    const paymentsWithDue = payments.map((payment) => {
+      let inferredDue: Date | null = null;
+      let dueDateInferred = false;
+
+      // 0) If a duedate array is present on the record, prefer the entry for its period (or fallback to first)
+      if (payment.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
+        if (payment.period && payment.period >= 1 && payment.period <= payment.duedate.length) {
+          inferredDue = payment.duedate[payment.period - 1];
+        } else {
+          inferredDue = payment.duedate[0];
+        }
+        // persisted `duedate` array is canonical — not an inferred value
+        dueDateInferred = false;
+      }
+
+      // 1) If dueDate is already recorded on the payment, prefer that — except when it equals paidAt (likely set to approval date)
+      if (!inferredDue && payment.dueDate) {
+        if (payment.paidAt && this.sameDay(payment.dueDate, new Date(payment.paidAt))) {
+          // treat as missing and fall through to inference logic below
+          // (this helps when dueDate was set to approval/paidAt and we want the scheduled due)
+        } else {
+          inferredDue = payment.dueDate;
+          dueDateInferred = false;
+        }
+      }
+
+      // 2) If we still don't have a due date, try month/year -> registration-derived schedule
+      if (!inferredDue && payment.month && payment.year) {
+        const match = candidateDueDates.find((d) => d.getFullYear() === payment.year && d.getMonth() + 1 === payment.month);
+        if (match) {
+          inferredDue = match;
+          dueDateInferred = true;
+
+        // 3) If still missing, but we have paidAt timestamps, infer from the earliest paidAt + 30-day multiples
+        } else if (payment.paidAt) {
+          const idx = paidPaymentsSorted.findIndex((pp) => String(pp._id) === String(payment._id));
+          if (idx >= 0 && paidPaymentsSorted.length > 0) {
+            if (paidPaymentsSorted.length > 0 && paidPaymentsSorted[0].paidAt) {
+            const basePaidAt = new Date(paidPaymentsSorted[0].paidAt as Date);
+            const inferred = new Date(basePaidAt);
+            // Add 30 days per payment index (first paid = index 0 => base date, second = +30 days, etc.)
+            inferred.setDate(inferred.getDate() + idx * 30);
+            inferredDue = inferred;
+            dueDateInferred = true;
+          } else {
+            inferredDue = null;
+            dueDateInferred = false;
+          }
+          } else {
+            inferredDue = null;
+            dueDateInferred = false;
+          }
+        } else {
+          inferredDue = null;
+          dueDateInferred = false;
+        }
+      }
+
+      // 4) No month/year and no match above - try paidAt series directly
+      if (!inferredDue && payment.paidAt) {
+        const idx = paidPaymentsSorted.findIndex((pp) => String(pp._id) === String(payment._id));
+        if (idx >= 0 && paidPaymentsSorted.length > 0 && paidPaymentsSorted[0].paidAt) {
+          const basePaidAt = new Date(paidPaymentsSorted[0].paidAt as Date);
+          const inferred = new Date(basePaidAt);
+          inferred.setDate(inferred.getDate() + idx * 30);
+          inferredDue = inferred;
+          dueDateInferred = true;
+        } else {
+          inferredDue = null;
+          dueDateInferred = false;
+        }
+      }
+
+      // 5) Nothing matched
+      if (!inferredDue) {
+        inferredDue = null;
+        dueDateInferred = false;
+      }
+      return {
+        month: payment.month,
+        year: payment.year,
+        amount: payment.amount,
+        status: payment.status,
+        dueDate: inferredDue ?? null,
+        dueDateInferred,
+        duedate: payment.duedate ?? undefined,
+        period: payment.period ?? undefined,
+        paidAt: payment.paidAt,
+        note: payment.note,
+        recordedBy: payment.recordedBy,
+      };
+    });
+
     return {
       student: {
         fullName: student.fullName,
@@ -1307,15 +1618,7 @@ export class AttendanceService {
         registrationStartDate: student.registrationStartDate,
         branch: student.branchId,
       },
-      payments: payments.map((payment) => ({
-        month: payment.month,
-        year: payment.year,
-        amount: payment.amount,
-        status: payment.status,
-        paidAt: payment.paidAt,
-        note: payment.note,
-        recordedBy: payment.recordedBy,
-      })),
+      payments: paymentsWithDue,
       totalPaid,
       totalPayments: payments.length,
       paidCount: payments.filter((p) => p.status === 'paid').length,

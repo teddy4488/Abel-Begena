@@ -126,6 +126,7 @@ export class AdminService {
 
     const [
       revenueAgg,
+      studentPaymentMonthlyAgg,
       userAgg,
       statusAgg,
       totalRevenueAgg,
@@ -166,6 +167,20 @@ export class AdminService {
               month: { $month: '$createdAt' },
             },
             total: { $sum: '$totalAmount' },
+          },
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+      ]),
+      this.studentPaymentModel.aggregate<MonthlyAggregate>([
+        {
+          $match: {
+            status: { $in: ['paid', 'partial'] },
+          },
+        },
+        {
+          $group: {
+            _id: { year: '$year', month: '$month' },
+            total: { $sum: '$amount' },
           },
         },
         { $sort: { '_id.year': 1, '_id.month': 1 } },
@@ -244,9 +259,8 @@ export class AdminService {
       this.studentPaymentModel.countDocuments({ status: 'partial' }),
     ]);
 
-    const totalRevenue =
+    const orderRevenue =
       totalRevenueAgg.length > 0 ? totalRevenueAgg[0].total : 0;
-
     const totalStudentPaymentsAmount =
       studentPaymentsAgg.length > 0 ? studentPaymentsAgg[0].total : 0;
 
@@ -255,7 +269,14 @@ export class AdminService {
         ? thisMonthStudentPaymentsAmount[0].total
         : 0;
 
-    const revenueMonthly = this.fillMonthlySeries(revenueAgg, sixMonthsAgo);
+    const totalRevenue =
+      orderRevenue + (totalStudentPaymentsAmount ?? 0);
+
+    const revenueMonthly = this.fillMonthlySeriesCombined(
+      revenueAgg,
+      studentPaymentMonthlyAgg,
+      sixMonthsAgo,
+    );
     const userMonthly = this.fillMonthlySeries(userAgg, sixMonthsAgo);
 
     const statusBreakdown = Object.values(OrderStatus).reduce(
@@ -336,6 +357,34 @@ export class AdminService {
           month: 'short',
         }),
         total: entry?.total ?? 0,
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return series;
+  }
+
+  /** Combines order revenue and student payment revenue by month for dashboard revenue trend. */
+  private fillMonthlySeriesCombined(
+    orderData: MonthlyAggregate[],
+    studentPaymentData: MonthlyAggregate[],
+    startDate: Date,
+  ): MonthlyValue[] {
+    const series: MonthlyValue[] = [];
+    const cursor = new Date(startDate);
+    for (let i = 0; i < 6; i += 1) {
+      const year = cursor.getFullYear();
+      const month = cursor.getMonth() + 1;
+      const orderEntry = orderData.find(
+        (item) => item._id.year === year && item._id.month === month,
+      );
+      const studentEntry = studentPaymentData.find(
+        (item) => item._id.year === year && item._id.month === month,
+      );
+      series.push({
+        label: cursor.toLocaleDateString(undefined, {
+          month: 'short',
+        }),
+        total: (orderEntry?.total ?? 0) + (studentEntry?.total ?? 0),
       });
       cursor.setMonth(cursor.getMonth() + 1);
     }

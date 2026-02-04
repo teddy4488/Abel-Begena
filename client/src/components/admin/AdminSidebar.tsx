@@ -33,6 +33,7 @@ const links = [
   { href: "/admin/users", labelKey: "admin.sidebar.users", icon: Users },
   { href: "/admin/classes", labelKey: "admin.sidebar.classes", icon: GraduationCap },
   { href: "/admin/enrollments", labelKey: "admin.sidebar.enrollments", icon: GraduationCap },
+  { href: "/admin/payments", labelKey: "admin.sidebar.payments", icon: Receipt },
   { href: "/admin/branches", labelKey: "admin.sidebar.branches", icon: MapPin },
   { href: "/admin/store", labelKey: "admin.sidebar.store", icon: Package2 },
   { href: "/admin/orders", labelKey: "admin.sidebar.orders", icon: Receipt },

@@ -259,6 +259,21 @@ export class AttendanceController {
     return this.attendanceService.getUpcomingPayments(req.user.sub, days);
   }
 
+  // Admin: upcoming payments for a specific student (useful for admin dashboards)
+  @Get('students/:id/upcoming-payments')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getStudentUpcomingPayments(
+    @Param('id') studentId: string,
+    @Query('daysAhead') daysAhead?: string,
+  ) {
+    const days = daysAhead ? parseInt(daysAhead, 10) : 365; // default look ahead 1 year for admins
+    if (isNaN(days) || days < 0) {
+      throw new BadRequestException('Invalid daysAhead parameter');
+    }
+    return this.attendanceService.getUpcomingPayments(studentId, days);
+  }
+
   // Report generation
   @Get('reports/student/:id/attendance')
   @Roles('Admin', 'Student', 'Teacher')

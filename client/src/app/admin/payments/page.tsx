@@ -689,7 +689,7 @@ export default function AdminPaymentsPage() {
       {/* Review Modal */}
       {selectedRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur">
-          <div className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 p-6 shadow-2xl">
+          <div className="relative flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-3xl border border-border bg-surface/95 shadow-2xl">
             {(() => {
               const details = parseConversionData(selectedRequest);
               const isEnrollment = selectedRequest.type === "enrollment";
@@ -709,7 +709,8 @@ export default function AdminPaymentsPage() {
                 </>
               );
             })()}
-            <div className="mb-4 flex items-start justify-between">
+            {/* Header (fixed) */}
+            <div className="flex items-start justify-between border-b border-border p-6">
               <div>
                 <h3 className="text-xl font-serif text-primary">
                   {t("admin.payments.review.title", "Review Payment Request")}
@@ -728,86 +729,89 @@ export default function AdminPaymentsPage() {
                   setReviewNote("");
                 }}
                 className="rounded-full p-2 text-foreground/70 transition hover:bg-secondary/10"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mb-4 space-y-3 rounded-2xl border border-border bg-background/50 p-4">
-              <div className="grid gap-2 text-sm md:grid-cols-2">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-secondary/70">
-                    {t("admin.payments.review.user", "User")}
-                  </p>
-                  <p className="mt-1 font-semibold text-primary">
-                    {getUserDisplayName(selectedRequest.userId)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-secondary/70">
-                    {t("admin.payments.review.type", "Type")}
-                  </p>
-                  <p className="mt-1 font-semibold text-primary">
-                    {selectedRequest.type === "enrollment"
-                      ? t("payments.filters.enrollments", "Enrollment")
-                      : selectedRequest.type === "order"
-                      ? t("payments.filters.orders", "Order")
-                      : selectedRequest.type === "student_monthly_fee"
-                      ? t("payments.type.studentMonthlyFee", "Student Monthly Fee")
-                      : t("payments.type.tuition", "Tuition")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-secondary/70">
-                    {t("admin.payments.review.amount", "Amount")}
-                  </p>
-                  <p className="mt-1 font-semibold text-primary">
-                    {formatAmount(selectedRequest.amount, selectedRequest.currency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-secondary/70">
-                    {t("admin.payments.review.method", "Payment Method")}
-                  </p>
-                  <p className="mt-1 text-foreground/80">{selectedRequest.method}</p>
-                </div>
-                {selectedRequest.reference && (
+            {/* Body (scrollable) */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-6">
+              <div className="mb-4 space-y-3 rounded-2xl border border-border bg-background/50 p-4">
+                <div className="grid gap-2 text-sm md:grid-cols-2">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-secondary/70">
-                      {t("admin.payments.review.reference", "Reference")}
+                      {t("admin.payments.review.user", "User")}
                     </p>
-                    <p className="mt-1 text-foreground/80">{selectedRequest.reference}</p>
+                    <p className="mt-1 font-semibold text-primary">
+                      {getUserDisplayName(selectedRequest.userId)}
+                    </p>
                   </div>
-                )}
-                {selectedRequest.createdAt && (
                   <div>
                     <p className="text-xs uppercase tracking-wide text-secondary/70">
-                      {t("admin.payments.review.submitted", "Submitted")}
+                      {t("admin.payments.review.type", "Type")}
                     </p>
-                    <p className="mt-1 text-foreground/80">
-                      {formatDate(selectedRequest.createdAt)}
+                    <p className="mt-1 font-semibold text-primary">
+                      {selectedRequest.type === "enrollment"
+                        ? t("payments.filters.enrollments", "Enrollment")
+                        : selectedRequest.type === "order"
+                        ? t("payments.filters.orders", "Order")
+                        : selectedRequest.type === "student_monthly_fee"
+                        ? t("payments.type.studentMonthlyFee", "Student Monthly Fee")
+                        : t("payments.type.tuition", "Tuition")}
                     </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("admin.payments.review.amount", "Amount")}
+                    </p>
+                    <p className="mt-1 font-semibold text-primary">
+                      {formatAmount(selectedRequest.amount, selectedRequest.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("admin.payments.review.method", "Payment Method")}
+                    </p>
+                    <p className="mt-1 text-foreground/80">{selectedRequest.method}</p>
+                  </div>
+                  {selectedRequest.reference && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-secondary/70">
+                        {t("admin.payments.review.reference", "Reference")}
+                      </p>
+                      <p className="mt-1 text-foreground/80">{selectedRequest.reference}</p>
+                    </div>
+                  )}
+                  {selectedRequest.createdAt && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-secondary/70">
+                        {t("admin.payments.review.submitted", "Submitted")}
+                      </p>
+                      <p className="mt-1 text-foreground/80">
+                        {formatDate(selectedRequest.createdAt)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {selectedRequest.receiptUrl && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs uppercase tracking-wide text-secondary/70">
+                      {t("admin.payments.review.receipt", "Payment Receipt")}
+                    </p>
+                    <a
+                      href={selectedRequest.receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold transition hover:border-secondary"
+                    >
+                      <FileText className="h-4 w-4" />
+                      {t("admin.payments.viewReceipt", "View Receipt")}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
                   </div>
                 )}
               </div>
-              {selectedRequest.receiptUrl && (
-                <div className="mt-4">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-secondary/70">
-                    {t("admin.payments.review.receipt", "Payment Receipt")}
-                  </p>
-                  <a
-                    href={selectedRequest.receiptUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold transition hover:border-secondary"
-                  >
-                    <FileText className="h-4 w-4" />
-                    {t("admin.payments.viewReceipt", "View Receipt")}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              )}
-            </div>
 
             {/* Enrollment / payment form details from conversionData */}
             {(() => {
@@ -898,6 +902,22 @@ export default function AdminPaymentsPage() {
                             </p>
                           </div>
                         )}
+                        {details.preferredTime && (
+                          <div>
+                            <p className="text-xs text-foreground/60">
+                              {t("classes.modal.preferredTime", "Preferred time of learning")}
+                            </p>
+                            <p className="text-foreground/80">{details.preferredTime}</p>
+                          </div>
+                        )}
+                        {details.preferredSchedule && (
+                          <div className="md:col-span-2">
+                            <p className="text-xs text-foreground/60">
+                              {t("becomeStudent.timePreferences", "Time preferences")}
+                            </p>
+                            <p className="text-foreground/80">{details.preferredSchedule}</p>
+                          </div>
+                        )}
                         {details.learningGoals && (
                           <div className="md:col-span-2">
                             <p className="text-xs text-foreground/60">
@@ -965,38 +985,42 @@ export default function AdminPaymentsPage() {
                 className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               />
             </div>
+            </div>
 
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => handleRejectPayment(selectedRequest)}
-                disabled={isUpdating}
-                className="flex-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-50"
-              >
-                {isUpdating ? (
-                  <Clock className="mx-auto h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <X className="mr-2 inline h-4 w-4" />
-                    {t("admin.payments.reject", "Reject")}
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApprovePayment(selectedRequest)}
-                disabled={isUpdating}
-                className="flex-1 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
-              >
-                {isUpdating ? (
-                  <Clock className="mx-auto h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Check className="mr-2 inline h-4 w-4" />
-                    {t("admin.payments.approve", "Approve")}
-                  </>
-                )}
-              </button>
+            {/* Footer actions (fixed) */}
+            <div className="border-t border-border bg-surface/80 p-6">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleRejectPayment(selectedRequest)}
+                  disabled={isUpdating}
+                  className="flex-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-50"
+                >
+                  {isUpdating ? (
+                    <Clock className="mx-auto h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <X className="mr-2 inline h-4 w-4" />
+                      {t("admin.payments.reject", "Reject")}
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApprovePayment(selectedRequest)}
+                  disabled={isUpdating}
+                  className="flex-1 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
+                >
+                  {isUpdating ? (
+                    <Clock className="mx-auto h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="mr-2 inline h-4 w-4" />
+                      {t("admin.payments.approve", "Approve")}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -89,6 +89,7 @@ export type AdminEnrollment = {
   paymentReference?: string | null;
   note?: string | null;
   enrolledAt?: string | null;
+  /** Intake / conversion fields captured during enrollment */
   fullName?: string | null;
   phone?: string | null;
   emergencyContactName?: string | null;
@@ -98,6 +99,9 @@ export type AdminEnrollment = {
   address?: string | null;
   preferredDaysPerWeek?: number | null;
   preferredSchedule?: string | null;
+  preferredTime?: string | null;
+  preferredLearningDays?: string[] | null;
+  registrationStartDate?: string | null;
   learningGoals?: string | null;
   notesForTeacher?: string | null;
   receiptUrl?: string | null;

@@ -212,7 +212,7 @@ const StudentPaymentSchema = new mongoose.Schema(
     month: { type: Number, min: 1, max: 12, required: true },
     year: { type: Number, min: 2000, max: 9999, required: true },
     status: { type: String, enum: ['paid', 'partial', 'unpaid'], default: 'paid' },
-    dueDate: { type: Date },
+
     paidAt: { type: Date },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     note: { type: String, trim: true, maxlength: 240 },

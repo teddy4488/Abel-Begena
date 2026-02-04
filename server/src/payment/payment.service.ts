@@ -191,10 +191,37 @@ export class PaymentService {
         if (payment.conversionData) {
           try {
             const conversionPayload = JSON.parse(payment.conversionData);
-            await this.attendanceService.convertUserToStudent(
-              payment.userId.toString(),
-              conversionPayload,
-            );
+            // Use approval date as student's registration start so due-date logic is correct
+            const approvedAt = payment.reviewedAt || new Date();
+            conversionPayload.registrationStartDate =
+              typeof approvedAt === 'string'
+                ? approvedAt
+                : new Date(approvedAt).toISOString().split('T')[0];
+
+            const conversionResult =
+              await this.attendanceService.convertUserToStudent(
+                payment.userId.toString(),
+                conversionPayload,
+              );
+
+            // Record the first (enrollment) payment as a StudentPayment so it appears in
+            // student payment history and in revenue. Due date = approval date (next due = +30 days).
+            if (conversionResult?.student?._id) {
+              const approvedAtDate = new Date(approvedAt);
+              const approvalYear = approvedAtDate.getFullYear();
+              const approvalMonth = approvedAtDate.getMonth() + 1;
+              await this.attendanceService.recordStudentPayment(
+                {
+                  participantId: conversionResult.student._id.toString(),
+                  amount: payment.amount,
+                  month: approvalMonth,
+                  year: approvalYear,
+                  status: 'paid',
+                  note: 'Initial enrollment payment (approved with receipt).',
+                },
+                adminUserId,
+              );
+            }
           } catch (conversionError) {
             // eslint-disable-next-line no-console
             console.error(
@@ -299,7 +326,6 @@ export class PaymentService {
       payment.targetId
     ) {
       try {
-        // Parse payment metadata from conversionData (stored as JSON string)
         let month: number;
         let year: number;
         if (payment.conversionData) {
@@ -307,13 +333,18 @@ export class PaymentService {
           month = metadata.month;
           year = metadata.year;
         } else {
-          // Fallback: use current month/year if not provided
           const now = new Date();
           month = now.getMonth() + 1;
           year = now.getFullYear();
         }
 
-        // Update student payment record
+        // Resolve due date for 30-day rolling schedule (next unpaid period in that month/year)
+        const next = await this.attendanceService.getNextUnpaidDueDateInMonthYear(
+          payment.targetId.toString(),
+          month,
+          year,
+        );
+
         await this.attendanceService.recordStudentPayment(
           {
             participantId: payment.targetId.toString(),
@@ -321,7 +352,9 @@ export class PaymentService {
             month,
             year,
             status: 'paid',
+            period: next?.period,
             note: `Payment approved via receipt submission. ${payment.reviewNote || ''}`.trim(),
+            receiptUrl: payment.receiptUrl,
           },
           adminUserId,
         );

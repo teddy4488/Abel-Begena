@@ -27,6 +27,7 @@ export type EnrollmentSnapshot = {
   address?: string | null;
   preferredDaysPerWeek?: number | null;
   preferredSchedule?: string | null;
+  preferredTime?: string | null;
   learningGoals?: string | null;
   notesForTeacher?: string | null;
   receiptUrl?: string | null;
@@ -74,6 +75,7 @@ export type ClassRosterResponse = {
     address?: string | null;
     preferredDaysPerWeek?: number | null;
     preferredSchedule?: string | null;
+    preferredTime?: string | null;
     learningGoals?: string | null;
     notesForTeacher?: string | null;
     receiptUrl?: string | null;
@@ -118,6 +120,7 @@ type EnrollmentRequest = {
   address?: string;
   preferredDaysPerWeek?: number;
   preferredSchedule?: string;
+  preferredTime?: string;
   learningGoals?: string;
   notesForTeacher?: string;
 };

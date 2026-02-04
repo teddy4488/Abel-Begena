@@ -6,9 +6,12 @@ import {
   useGetBillingSummaryQuery,
   useRecordStudentPaymentMutation,
   useGetOverduePaymentsQuery,
+  useGetStudentUpcomingPaymentsQuery,
+  useGetStudentPaymentReportQuery,
   attendanceApi,
 } from "@/store/api/attendanceApi";
 import { useGetPendingPaymentRequestsQuery, useUpdatePaymentStatusMutation, type PaymentRequest } from "@/store/api/paymentApi";
+import { useUploadReceiptMutation } from "@/store/api/storeApi";
 import { useDispatch } from "react-redux";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
@@ -29,6 +32,7 @@ import {
   Users,
   CheckCircle2,
 } from "lucide-react";
+import StudentPaymentsModal from "./components/StudentPaymentsModal";
 
 export default function AdminMonthlyPaymentsPage() {
   const dispatch = useDispatch();
@@ -52,8 +56,15 @@ export default function AdminMonthlyPaymentsPage() {
   const { data: pendingPaymentRequests = [] } = useGetPendingPaymentRequestsQuery({
     type: "student_monthly_fee",
   });
+  const [showNextDueModal, setShowNextDueModal] = useState(false);
+  const [nextDueStudentId, setNextDueStudentId] = useState<string>("");
+  const [showStudentPaymentsModal, setShowStudentPaymentsModal] = useState(false);
+  const [paymentsStudentId, setPaymentsStudentId] = useState<string>("");
+  const { t: tt } = useI18n(); // small alias for nested component use (avoid name shadowing)
   const [recordStudentPayment, { isLoading: recordingPayment }] = useRecordStudentPaymentMutation();
   const [updatePaymentStatus, { isLoading: isUpdatingPayment }] = useUpdatePaymentStatusMutation();
+  const [uploadReceipt, { isLoading: isUploadingReceipt }] = useUploadReceiptMutation();
+  const [paymentReceiptFile, setPaymentReceiptFile] = useState<File | null>(null);
 
   const billingItems = billingSummary?.items ?? [];
   const unpaidCount = billingSummary?.unpaidCount ?? 0;
@@ -148,6 +159,99 @@ export default function AdminMonthlyPaymentsPage() {
     ];
     return months[month - 1] || `Month ${month}`;
   };
+
+  // Helper to determine the effective due date for a payment record.
+  function getEffectiveDueDate(payment: any): Date | null {
+    try {
+      if (payment?.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
+        const idx = payment?.period && Number.isInteger(payment.period) && payment.period >= 1 && payment.period <= payment.duedate.length
+          ? payment.period - 1
+          : 0;
+        return new Date(payment.duedate[idx]);
+      }
+      if (payment?.dueDate) return new Date(payment.dueDate);
+      if (payment?.year && payment?.month) return new Date(payment.year, payment.month - 1, 5);
+    } catch (e) {
+      // ignore parse errors and fall through to null
+    }
+    return null;
+  }
+
+  function NextDueModal({
+    studentId,
+    onClose,
+    onViewPayments,
+  }: {
+    studentId: string;
+    onClose: () => void;
+    onViewPayments?: (id: string) => void;
+  }) {
+    const { data: upcoming = [], isFetching } = useGetStudentUpcomingPaymentsQuery({ id: studentId, daysAhead: 365 }, { skip: !studentId });
+    const next = upcoming && upcoming.length > 0 ? upcoming[0] : null;
+
+    return (
+      <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="w-full max-w-md rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-serif text-primary">{tt("monthlyPayments.nextDueTitle", "Next Due")}</h3>
+            <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-background/60">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {isFetching ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <p className="text-sm text-foreground/70">{tt("monthlyPayments.loading", "Loading...")}</p>
+              </div>
+            ) : next ? (
+              <div>
+                <p className="text-sm text-foreground/70">{tt("monthlyPayments.upcomingFor", "Upcoming payments for the student:")}</p>
+                                <div className="mt-2 rounded-xl bg-background/50 p-3">
+                      <p className="font-semibold text-primary">
+                        {(() => {
+                          const d = getEffectiveDueDate(next);
+                          return d ? (
+                            <div className="inline-flex items-center gap-2">
+                              <span>{d.toLocaleDateString()}</span>
+                              {next?.dueDateInferred && (
+                                <span title={t("monthlyPayments.payments.inferredTooltip", "Due date inferred from registration date")} className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                                  {t("monthlyPayments.payments.inferredBadge", "Inferred")}
+                                </span>
+                              )}
+                            </div>
+                          ) : "-";
+                        })()}
+                      </p>
+                      <p className="text-xs text-foreground/60">{next.year}-{String(next.month).padStart(2, "0")}</p>
+                      {next.amount && <p className="mt-2 text-sm font-bold text-primary">{formatAmount(next.amount)}</p>}
+                      <p className="mt-2 text-xs text-foreground/70">{next.status ?? tt("monthlyPayments.status.unpaid", "Unpaid")}</p>
+                    </div>
+
+                    <div className="mt-4 flex justify-end gap-3">
+                      <button type="button" onClick={() => { onViewPayments?.(studentId); onClose(); }} className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60">{tt("monthlyPayments.viewPayments", "View payment history")}</button>
+                    </div>
+              </div>
+            ) : (
+              <p className="text-sm text-foreground/70">{tt("monthlyPayments.noUpcoming", "No upcoming payments found in the next year.")}</p>
+            )}
+
+            <div className="flex justify-end">
+              <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60">
+                {tt("common.close", "Close")}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   // Calculate total revenue from paid payments
   const totalRevenue = useMemo(() => {
@@ -297,7 +401,7 @@ export default function AdminMonthlyPaymentsPage() {
                       <p className="font-semibold text-primary">{payment.fullName}</p>
                       <p className="text-xs text-foreground/60">
                         {payment.attendanceNumber} • {payment.instrumentType} •{" "}
-                        {new Date(payment.dueDate).toLocaleDateString()} •{" "}
+                        {(() => { const d = getEffectiveDueDate(payment); return d ? d.toLocaleDateString() : "-" })() } •{" "}
                         {payment.year}-{String(payment.month).padStart(2, "0")}
                       </p>
                       {payment.amount && (
@@ -400,7 +504,41 @@ export default function AdminMonthlyPaymentsPage() {
                       >
                         {t("monthlyPayments.record", "Record")}
                       </button>
-                    </div>
+                      {/* Overdue badge (if this student has an overdue payment for the selected period) */}
+                      {billingSummary && (
+                        (() => {
+                          const overdueEntry = overduePayments.find(
+                            (p) => p.participantId === item.participantId && p.year === billingSummary.year && p.month === billingSummary.month,
+                          );
+                          if (overdueEntry) {
+                            const daysColor =
+                              overdueEntry.daysOverdue > 30
+                                ? "bg-red-600 text-white"
+                                : overdueEntry.daysOverdue > 14
+                                  ? "bg-orange-600 text-white"
+                                  : "bg-yellow-600 text-white";
+                            return (
+                              <span className={`rounded-full px-3 py-1 text-xs font-bold ${daysColor}`}>
+                                {overdueEntry.daysOverdue} {t("monthlyPayments.daysOverdue", "days")}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()
+                      )}
+
+                      {/* Next due quick peek */}
+                      <button
+                        type="button"
+                        title={tt("monthlyPayments.nextDueTitle", "View next due dates")}
+                        onClick={() => {
+                          setNextDueStudentId(item.participantId);
+                          setShowNextDueModal(true);
+                        }}
+                        className="rounded-full bg-background/50 px-3 py-1 text-xs font-semibold text-foreground shadow-sm hover:opacity-90"
+                      >
+                        <Calendar className="h-4 w-4" />
+                      </button>                    </div>
                   </div>
                 );
               })
@@ -520,7 +658,8 @@ export default function AdminMonthlyPaymentsPage() {
               // Date filter
               if (overdueDateFilter) {
                 const filterDate = new Date(overdueDateFilter);
-                const dueDate = new Date(payment.dueDate);
+                const dueDate = getEffectiveDueDate(payment);
+                if (!dueDate) return false;
                 if (
                   dueDate.getFullYear() !== filterDate.getFullYear() ||
                   dueDate.getMonth() !== filterDate.getMonth() ||
@@ -578,11 +717,7 @@ export default function AdminMonthlyPaymentsPage() {
                               </p>
                               <p>
                                 <span className="font-semibold">{t("monthlyPayments.dueDate", "Due Date")}:</span>{" "}
-                                {new Date(payment.dueDate).toLocaleDateString("en-US", {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                })}
+                                {(() => { const d = getEffectiveDueDate(payment); return d ? d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "-" })()}
                               </p>
                             </div>
                             {payment.amount && (
@@ -749,10 +884,28 @@ export default function AdminMonthlyPaymentsPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t("monthlyPayments.receipt", "Payment Receipt")} ({t("common.optional", "optional")})
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => setPaymentReceiptFile(e.target.files?.[0] ?? null)}
+                    className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none"
+                  />
+                  {paymentReceiptFile && (
+                    <p className="mt-2 text-xs text-foreground/70">{paymentReceiptFile.name}</p>
+                  )}
+                </div>
+
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setShowPaymentModal(false)}
+                    onClick={() => {
+                      setShowPaymentModal(false);
+                      setPaymentReceiptFile(null);
+                    }}
                     className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60"
                   >
                     {t("common.cancel", "Cancel")}
@@ -762,6 +915,12 @@ export default function AdminMonthlyPaymentsPage() {
                     disabled={recordingPayment || !paymentStudentId}
                     onClick={async () => {
                       try {
+                        let receiptUrl: string | undefined = undefined;
+                        if (paymentReceiptFile) {
+                          const uploaded = await uploadReceipt({ file: paymentReceiptFile }).unwrap();
+                          receiptUrl = uploaded.url;
+                        }
+
                         await recordStudentPayment({
                           participantId: paymentStudentId,
                           amount: Number(paymentAmount) || 0,
@@ -769,12 +928,14 @@ export default function AdminMonthlyPaymentsPage() {
                           year: billingSummary.year,
                           status: paymentStatus,
                           note: paymentNote || undefined,
+                          receiptUrl,
                         }).unwrap();
                         pushToast({
                           title: t("monthlyPayments.saved", "Payment information saved"),
                           variant: "success",
                         });
                         setShowPaymentModal(false);
+                        setPaymentReceiptFile(null);
                       } catch (error: any) {
                         pushToast({
                           title: t("monthlyPayments.error", "Unable to record payment"),
@@ -785,7 +946,7 @@ export default function AdminMonthlyPaymentsPage() {
                     }}
                     className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
                   >
-                    {recordingPayment && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {(recordingPayment || isUploadingReceipt) && <Loader2 className="h-4 w-4 animate-spin" />}
                     {t("common.save", "Save")}
                   </button>
                 </div>
@@ -954,6 +1115,22 @@ export default function AdminMonthlyPaymentsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Next Due Modal (triggered from rows) */}
+      {showNextDueModal && (
+        <NextDueModal
+          studentId={nextDueStudentId}
+          onClose={() => setShowNextDueModal(false)}
+          onViewPayments={(id) => {
+            setPaymentsStudentId(id);
+            setShowStudentPaymentsModal(true);
+          }}
+        />
+      )}
+
+      {showStudentPaymentsModal && (
+        <StudentPaymentsModal studentId={paymentsStudentId} onClose={() => setShowStudentPaymentsModal(false)} />
+      )}
     </section>
   );
 }

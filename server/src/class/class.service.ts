@@ -455,6 +455,7 @@ export class ClassService {
       address: dto.address,
       preferredDaysPerWeek: dto.preferredDaysPerWeek,
       preferredSchedule: dto.preferredSchedule,
+      preferredTime: dto.preferredTime,
       learningGoals: dto.learningGoals,
       notesForTeacher: dto.notesForTeacher,
       receiptUrl: dto.receiptUrl,
@@ -530,6 +531,7 @@ export class ClassService {
         city: dto.city,
         address: dto.address,
         preferredSchedule: dto.preferredSchedule,
+        preferredTime: dto.preferredTime,
         amount: dto.amount,
         currency: dto.currency ?? 'ETB',
         paymentMethod: dto.paymentMethod ?? ClassPaymentMethod.BANK,
@@ -1152,6 +1154,32 @@ export class ClassService {
       preferredSchedule:
         (enrollment as { preferredSchedule?: string | null })
           .preferredSchedule ?? null,
+      preferredTime:
+        (enrollment as { preferredTime?: string | null }).preferredTime ?? null,
+      preferredLearningDays:
+        (enrollment as {
+          preferredLearningDays?:
+            | Array<
+                | 'monday'
+                | 'tuesday'
+                | 'wednesday'
+                | 'thursday'
+                | 'friday'
+                | 'saturday'
+                | 'sunday'
+              >
+            | null;
+        }).preferredLearningDays ?? null,
+      registrationStartDate:
+        (() => {
+          const value = (enrollment as {
+            registrationStartDate?: Date | string | null;
+          }).registrationStartDate;
+          if (!value) return null;
+          if (value instanceof Date) return value.toISOString();
+          if (typeof value === 'string') return value;
+          return null;
+        })(),
       learningGoals:
         (enrollment as { learningGoals?: string | null }).learningGoals ?? null,
       notesForTeacher:
