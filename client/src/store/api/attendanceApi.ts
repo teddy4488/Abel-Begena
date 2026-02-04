@@ -46,6 +46,7 @@ export type StudentParticipant = {
 export type InstrumentLesson = {
   _id: string;
   instrumentType: InstrumentType;
+  level?: "beginner" | "advanced";
   title: string;
   code?: string;
   order: number;
@@ -263,17 +264,22 @@ export const attendanceApi = createApi({
     }),
     getInstrumentLessons: builder.query<
       InstrumentLesson[],
-      string | undefined
+      { instrumentType?: string; level?: "beginner" | "advanced" } | string | undefined
     >({
-      query: (instrumentType) => ({
+      query: (arg) => ({
         url: "/classes/lessons",
-        params: instrumentType ? { instrumentType } : {},
+        params:
+          typeof arg === "string"
+            ? { instrumentType: arg }
+            : arg
+              ? { instrumentType: arg.instrumentType, level: arg.level }
+              : {},
       }),
       providesTags: ["Lessons"],
     }),
     createLesson: builder.mutation<
       InstrumentLesson,
-      { instrumentType: InstrumentType; title: string; code?: string; order?: number }
+      { instrumentType: InstrumentType; level?: "beginner" | "advanced"; title: string; code?: string; order?: number }
     >({
       query: (body) => ({
         url: "/classes/lessons",
@@ -284,7 +290,7 @@ export const attendanceApi = createApi({
     }),
     updateLesson: builder.mutation<
       InstrumentLesson,
-      { id: string; title?: string; code?: string; order?: number; isActive?: boolean }
+      { id: string; level?: "beginner" | "advanced"; title?: string; code?: string; order?: number; isActive?: boolean }
     >({
       query: ({ id, ...body }) => ({
         url: `/classes/lessons/${id}`,

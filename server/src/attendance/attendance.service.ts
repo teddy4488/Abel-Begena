@@ -703,10 +703,13 @@ export class AttendanceService {
     return payments;
   }
 
-  async listInstrumentLessons(instrumentType?: string) {
+  async listInstrumentLessons(instrumentType?: string, level?: string) {
     const filter: any = { isActive: true };
     if (instrumentType) {
       filter.instrumentType = instrumentType;
+    }
+    if (level) {
+      filter.level = level;
     }
     return this.lessonModel
       .find(filter)
@@ -718,12 +721,14 @@ export class AttendanceService {
   // Lessons management
   async createLesson(data: {
     instrumentType: string;
+    level?: string;
     title: string;
     code?: string;
     order?: number;
   }) {
     const created = await this.lessonModel.create({
       instrumentType: data.instrumentType,
+      level: data.level ?? 'beginner',
       title: data.title.trim(),
       code: data.code?.trim(),
       order: data.order ?? 0,
@@ -733,6 +738,7 @@ export class AttendanceService {
   }
 
   async updateLesson(lessonId: string, data: {
+    level?: string;
     title?: string;
     code?: string;
     order?: number;
@@ -743,6 +749,7 @@ export class AttendanceService {
       throw new NotFoundException('Lesson not found');
     }
 
+    if (data.level !== undefined) (lesson as any).level = data.level;
     if (data.title !== undefined) lesson.title = data.title.trim();
     if (data.code !== undefined) lesson.code = data.code?.trim();
     if (data.order !== undefined) lesson.order = data.order;

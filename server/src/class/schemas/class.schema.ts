@@ -141,6 +141,13 @@ export class Class {
   @Prop({ trim: true })
   description?: string;
 
+  @Prop({ type: Types.ObjectId, ref: 'CourseTrack', index: true })
+  courseTrackId?: Types.ObjectId;
+
+  // Physical cohorts can be tied to a branch
+  @Prop({ type: Types.ObjectId, ref: 'Branch', index: true })
+  branchId?: Types.ObjectId;
+
   @Prop({
     type: String,
     enum: ['online', 'physical', 'both'],

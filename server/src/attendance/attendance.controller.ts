@@ -186,15 +186,25 @@ export class AttendanceController {
   @Get('lessons')
   @Roles('Admin', 'Student', 'Teacher')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  listLessons(@Query('instrumentType') instrumentType?: string) {
-    return this.attendanceService.listInstrumentLessons(instrumentType);
+  listLessons(
+    @Query('instrumentType') instrumentType?: string,
+    @Query('level') level?: string,
+  ) {
+    return this.attendanceService.listInstrumentLessons(instrumentType, level);
   }
 
   @Post('lessons')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   createLesson(
-    @Body() body: { instrumentType: string; title: string; code?: string; order?: number },
+    @Body()
+    body: {
+      instrumentType: string;
+      level?: string;
+      title: string;
+      code?: string;
+      order?: number;
+    },
     @Request() req: { user: { sub: string } },
   ) {
     return this.attendanceService.createLesson(body);
@@ -205,7 +215,14 @@ export class AttendanceController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   updateLesson(
     @Param('id') id: string,
-    @Body() body: { title?: string; code?: string; order?: number; isActive?: boolean },
+    @Body()
+    body: {
+      level?: string;
+      title?: string;
+      code?: string;
+      order?: number;
+      isActive?: boolean;
+    },
   ) {
     return this.attendanceService.updateLesson(id, body);
   }

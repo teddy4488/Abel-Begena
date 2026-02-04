@@ -22,6 +22,14 @@ export class CreateClassDto {
   description?: string;
 
   @IsOptional()
+  @IsMongoId()
+  courseTrackId?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  branchId?: string;
+
+  @IsOptional()
   @IsEnum(['online', 'physical', 'both'])
   classType?: 'online' | 'physical' | 'both';
 

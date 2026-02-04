@@ -2,6 +2,7 @@
 
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
+import type { InstrumentType } from "./storeApi";
 import type { ClassSummary } from "./classApi";
 import type { AuthUser } from "../slices/authSlice";
 
@@ -63,6 +64,8 @@ export type ManagedClass = ClassSummary & {
   startDate?: string;
   endDate?: string;
   capacity?: number;
+  courseTrackId?: string | null;
+  branchId?: string | null;
   instructorId?: {
     _id: string;
     firstName?: string;
@@ -70,6 +73,18 @@ export type ManagedClass = ClassSummary & {
     email?: string;
     avatarUrl?: string;
   } | null;
+};
+
+export type CourseTrack = {
+  _id: string;
+  instrumentType: InstrumentType;
+  level: "beginner" | "advanced";
+  title: string;
+  description?: string;
+  lessonIds?: string[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type AdminEnrollment = {
@@ -155,7 +170,16 @@ export type Student = {
 export const adminApi = createApi({
   reducerPath: "adminApi",
   baseQuery: authorizedBaseQuery,
-  tagTypes: ["AdminAnalytics", "AdminClasses", "AdminEnrollments", "Teachers", "Admins", "Students", "WebsiteUsers"],
+  tagTypes: [
+    "AdminAnalytics",
+    "AdminClasses",
+    "AdminEnrollments",
+    "Teachers",
+    "Admins",
+    "Students",
+    "WebsiteUsers",
+    "CourseTracks",
+  ],
   endpoints: (builder) => ({
     getAnalyticsOverview: builder.query<AnalyticsKpi, void>({
       query: () => "/admin/dashboard/analytics",
@@ -200,6 +224,37 @@ export const adminApi = createApi({
         method: "PATCH",
       }),
       invalidatesTags: ["AdminClasses"],
+    }),
+
+    getManagedCourseTracks: builder.query<CourseTrack[], void>({
+      query: () => "/course-tracks/manage",
+      providesTags: ["CourseTracks"],
+    }),
+    createCourseTrack: builder.mutation<CourseTrack, Partial<CourseTrack>>({
+      query: (body) => ({
+        url: "/course-tracks",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["CourseTracks"],
+    }),
+    updateCourseTrack: builder.mutation<
+      CourseTrack,
+      { id: string; data: Partial<CourseTrack> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/course-tracks/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["CourseTracks"],
+    }),
+    deleteCourseTrack: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/course-tracks/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["CourseTracks"],
     }),
     getAllEnrollments: builder.query<
       AdminEnrollment[],
@@ -281,6 +336,10 @@ export const {
   useUpdateManagedClassMutation,
   useDeleteManagedClassMutation,
   useAssignClassInstructorMutation,
+  useGetManagedCourseTracksQuery,
+  useCreateCourseTrackMutation,
+  useUpdateCourseTrackMutation,
+  useDeleteCourseTrackMutation,
   useGetAllEnrollmentsQuery,
   useGetTeachersQuery,
   useGetAdminsQuery,

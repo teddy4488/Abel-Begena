@@ -1,5 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
+import type { InstrumentType } from "./storeApi";
 
 type ClassAccess = {
   class: { _id: string; title: string };
@@ -99,6 +100,15 @@ type SchedulePayload = {
   notes?: string;
 };
 
+export type PublicCourseTrack = {
+  _id: string;
+  instrumentType: InstrumentType;
+  level: "beginner" | "advanced";
+  title: string;
+  description?: string;
+  isActive: boolean;
+};
+
 type EnrollmentRequest = {
   amount: number;
   currency?: string;
@@ -130,8 +140,17 @@ export const classApi = createApi({
   baseQuery: authorizedBaseQuery,
   tagTypes: ["Classes", "ClassRoster", "ClassSchedule", "ClassEnrollment"],
   endpoints: (builder) => ({
+    getPublicCourseTracks: builder.query<PublicCourseTrack[], void>({
+      query: () => "/course-tracks/public",
+    }),
     getPublicClasses: builder.query<ClassSummary[], void>({
       query: () => "/classes/public",
+    }),
+    getPublicClassesByTrack: builder.query<ClassSummary[], string>({
+      query: (courseTrackId) => ({
+        url: "/classes/public",
+        params: { courseTrackId },
+      }),
     }),
     getClasses: builder.query<ClassSummary[], void>({
       query: () => "/classes",
@@ -278,7 +297,9 @@ export const classApi = createApi({
 });
 
 export const {
+  useGetPublicCourseTracksQuery,
   useGetPublicClassesQuery,
+  useGetPublicClassesByTrackQuery,
   useGetClassesQuery,
   useGetClassAccessQuery,
   useGetClassStudentsQuery,

@@ -8,6 +8,10 @@ import {
   useCreateManagedClassMutation,
   useDeleteManagedClassMutation,
   useGetManagedClassesQuery,
+  useGetManagedCourseTracksQuery,
+  useCreateCourseTrackMutation,
+  useUpdateCourseTrackMutation,
+  useDeleteCourseTrackMutation,
   useUpdateManagedClassMutation,
 } from "@/store/api/adminApi";
 import { useGetTeachersQuery } from "@/store/api/adminApi";
@@ -18,6 +22,7 @@ import {
   useDeleteLessonMutation,
 } from "@/store/api/attendanceApi";
 import type { InstrumentType } from "@/store/api/storeApi";
+import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
@@ -25,7 +30,9 @@ import Pagination from "@/components/ui/Pagination";
 const emptyForm = {
   title: "",
   description: "",
+  courseTrackId: "",
   classType: "online" as "online" | "physical" | "both",
+  branchId: "",
   instructorId: "",
   startDate: "",
   endDate: "",
@@ -38,10 +45,18 @@ const emptyForm = {
 export default function AdminClassesPage() {
   const { data: classes, isLoading } = useGetManagedClassesQuery();
   const { data: teachers = [] } = useGetTeachersQuery();
+  const { data: branches = [] } = useGetBranchesAdminQuery();
+  const { data: courseTracks = [] } = useGetManagedCourseTracksQuery();
   const [createClass] = useCreateManagedClassMutation();
   const [updateClass] = useUpdateManagedClassMutation();
   const [deleteClass] = useDeleteManagedClassMutation();
   const [assignInstructor] = useAssignClassInstructorMutation();
+  const [createCourseTrack, { isLoading: creatingCourseTrack }] =
+    useCreateCourseTrackMutation();
+  const [updateCourseTrack, { isLoading: updatingCourseTrack }] =
+    useUpdateCourseTrackMutation();
+  const [deleteCourseTrack, { isLoading: deletingCourseTrack }] =
+    useDeleteCourseTrackMutation();
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -50,11 +65,15 @@ export default function AdminClassesPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewFilter, setViewFilter] = useState<"all" | "unassigned" | "live">("all");
-  const [activeTab, setActiveTab] = useState<"classes" | "lessons">("classes");
+  const [activeTab, setActiveTab] = useState<"classes" | "lessons" | "tracks">(
+    "classes",
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [lessonsCurrentPage, setLessonsCurrentPage] = useState(1);
   const [lessonsItemsPerPage, setLessonsItemsPerPage] = useState(10);
+  const [tracksCurrentPage, setTracksCurrentPage] = useState(1);
+  const [tracksItemsPerPage, setTracksItemsPerPage] = useState(10);
   
   // Lessons management
   // Keep this in sync with backend InstrumentType (Begena, Kirar, Masinko, Washint, Kebero, Other)
@@ -67,7 +86,14 @@ export default function AdminClassesPage() {
     "Other",
   ];
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>("Begena");
-  const { data: lessons = [], isLoading: lessonsLoading } = useGetInstrumentLessonsQuery(selectedInstrument);
+  const [selectedLevel, setSelectedLevel] = useState<"beginner" | "advanced">(
+    "beginner",
+  );
+  const { data: lessons = [], isLoading: lessonsLoading } =
+    useGetInstrumentLessonsQuery({
+      instrumentType: selectedInstrument,
+      level: selectedLevel,
+    });
   const [createLesson, { isLoading: creatingLesson }] = useCreateLessonMutation();
   const [updateLesson, { isLoading: updatingLesson }] = useUpdateLessonMutation();
   const [deleteLesson, { isLoading: deletingLesson }] = useDeleteLessonMutation();
@@ -75,9 +101,21 @@ export default function AdminClassesPage() {
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [lessonForm, setLessonForm] = useState({
     instrumentType: "Begena" as InstrumentType,
+    level: "beginner" as "beginner" | "advanced",
     title: "",
     code: "",
     order: 0,
+    isActive: true,
+  });
+
+  // Course tracks management
+  const [showTrackModal, setShowTrackModal] = useState(false);
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [trackForm, setTrackForm] = useState({
+    instrumentType: "Begena" as InstrumentType,
+    level: "beginner" as "beginner" | "advanced",
+    title: "",
+    description: "",
     isActive: true,
   });
 
@@ -85,6 +123,15 @@ export default function AdminClassesPage() {
     const next: Record<string, string> = {};
     if (!form.title.trim()) {
       next.title = t("admin.classes.errors.titleRequired", "Class title is required.");
+    }
+    if (
+      (form.classType === "physical" || form.classType === "both") &&
+      !form.branchId
+    ) {
+      next.branchId = t(
+        "admin.classes.errors.branchRequired",
+        "Branch is required for physical classes.",
+      );
     }
     if (form.capacity && Number(form.capacity) < 0) {
       next.capacity = t("admin.classes.errors.capacityInvalid", "Capacity must be zero or higher.");
@@ -104,7 +151,9 @@ export default function AdminClassesPage() {
     const payload = {
       title: form.title,
       description: form.description || undefined,
+      courseTrackId: form.courseTrackId || undefined,
       classType: form.classType || "online",
+      branchId: form.branchId || undefined,
       instructorId: form.instructorId || undefined,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
@@ -147,7 +196,9 @@ export default function AdminClassesPage() {
     setForm({
       title: klass.title ?? "",
       description: klass.description ?? "",
+      courseTrackId: klass.courseTrackId ?? "",
       classType: klass.classType ?? "online",
+      branchId: klass.branchId ?? "",
       instructorId: klass.instructorId?._id ?? "",
       startDate: klass.startDate ? klass.startDate.slice(0, 10) : "",
       endDate: klass.endDate ? klass.endDate.slice(0, 10) : "",
@@ -262,6 +313,7 @@ export default function AdminClassesPage() {
       if (editingLessonId) {
         await updateLesson({
           id: editingLessonId,
+          level: lessonForm.level,
           title: lessonForm.title,
           code: lessonForm.code || undefined,
           order: lessonForm.order,
@@ -274,6 +326,7 @@ export default function AdminClassesPage() {
       } else {
         await createLesson({
           instrumentType: lessonForm.instrumentType,
+          level: lessonForm.level,
           title: lessonForm.title,
           code: lessonForm.code || undefined,
           order: lessonForm.order,
@@ -287,6 +340,7 @@ export default function AdminClassesPage() {
       setEditingLessonId(null);
       setLessonForm({
         instrumentType: selectedInstrument,
+        level: selectedLevel,
         title: "",
         code: "",
         order: 0,
@@ -305,6 +359,7 @@ export default function AdminClassesPage() {
     setEditingLessonId(lesson._id);
     setLessonForm({
       instrumentType: lesson.instrumentType,
+      level: lesson.level ?? selectedLevel,
       title: lesson.title,
       code: lesson.code || "",
       order: lesson.order || 0,
@@ -332,6 +387,107 @@ export default function AdminClassesPage() {
     }
   };
 
+  const handleTrackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trackForm.title.trim()) {
+      pushToast({
+        title: t("admin.tracks.error", "Error"),
+        description: t("admin.tracks.titleRequired", "Track title is required"),
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      if (editingTrackId) {
+        await updateCourseTrack({
+          id: editingTrackId,
+          data: {
+            instrumentType: trackForm.instrumentType,
+            level: trackForm.level,
+            title: trackForm.title,
+            description: trackForm.description || undefined,
+            isActive: trackForm.isActive,
+          },
+        }).unwrap();
+        pushToast({
+          title: t("admin.tracks.updated", "Course track updated"),
+          variant: "success",
+        });
+      } else {
+        await createCourseTrack({
+          instrumentType: trackForm.instrumentType,
+          level: trackForm.level,
+          title: trackForm.title,
+          description: trackForm.description || undefined,
+          isActive: trackForm.isActive,
+        }).unwrap();
+        pushToast({
+          title: t("admin.tracks.created", "Course track created"),
+          variant: "success",
+        });
+      }
+
+      setShowTrackModal(false);
+      setEditingTrackId(null);
+      setTrackForm({
+        instrumentType: "Begena",
+        level: "beginner",
+        title: "",
+        description: "",
+        isActive: true,
+      });
+    } catch (error: any) {
+      pushToast({
+        title: t("admin.tracks.error", "Error"),
+        description:
+          error?.data?.message ||
+          t("admin.tracks.errorDesc", "Unable to save course track"),
+        variant: "error",
+      });
+    }
+  };
+
+  const startEditTrack = (track: any) => {
+    setEditingTrackId(track._id);
+    setTrackForm({
+      instrumentType: track.instrumentType,
+      level: track.level ?? "beginner",
+      title: track.title ?? "",
+      description: track.description ?? "",
+      isActive: track.isActive !== false,
+    });
+    setShowTrackModal(true);
+  };
+
+  const handleDeleteTrack = async (trackId: string) => {
+    if (
+      !confirm(
+        t(
+          "admin.tracks.confirmDelete",
+          "Are you sure you want to delete this course track?",
+        ),
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteCourseTrack(trackId).unwrap();
+      pushToast({
+        title: t("admin.tracks.deleted", "Course track deleted"),
+        variant: "success",
+      });
+    } catch (error: any) {
+      pushToast({
+        title: t("admin.tracks.error", "Error"),
+        description:
+          error?.data?.message ||
+          t("admin.tracks.deleteError", "Unable to delete course track"),
+        variant: "error",
+      });
+    }
+  };
+
   const filteredLessons = useMemo(() => {
     return lessons.filter((lesson) => lesson.instrumentType === selectedInstrument);
   }, [lessons, selectedInstrument]);
@@ -343,7 +499,7 @@ export default function AdminClassesPage() {
 
   useEffect(() => {
     setLessonsCurrentPage(1);
-  }, [selectedInstrument]);
+  }, [selectedInstrument, selectedLevel]);
 
   // Calculate pagination for classes
   const classesTotalPages = Math.ceil(filteredClasses.length / itemsPerPage);
@@ -356,6 +512,19 @@ export default function AdminClassesPage() {
   const lessonsStartIndex = (lessonsCurrentPage - 1) * lessonsItemsPerPage;
   const lessonsEndIndex = lessonsStartIndex + lessonsItemsPerPage;
   const paginatedLessons = filteredLessons.slice(lessonsStartIndex, lessonsEndIndex);
+
+  const sortedTracks = useMemo(() => {
+    return [...courseTracks].sort((a, b) => {
+      const aKey = `${a.instrumentType}-${a.level}-${a.title}`.toLowerCase();
+      const bKey = `${b.instrumentType}-${b.level}-${b.title}`.toLowerCase();
+      return aKey.localeCompare(bKey);
+    });
+  }, [courseTracks]);
+
+  const tracksTotalPages = Math.ceil(sortedTracks.length / tracksItemsPerPage);
+  const tracksStartIndex = (tracksCurrentPage - 1) * tracksItemsPerPage;
+  const tracksEndIndex = tracksStartIndex + tracksItemsPerPage;
+  const paginatedTracks = sortedTracks.slice(tracksStartIndex, tracksEndIndex);
 
   return (
     <section className="space-y-4 sm:space-y-6">
@@ -402,6 +571,17 @@ export default function AdminClassesPage() {
           }`}
         >
           {t("admin.classes.tabs.lessons", "Instruments & Lessons")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("tracks")}
+          className={`px-4 py-2 text-sm font-semibold transition ${
+            activeTab === "tracks"
+              ? "border-b-2 border-primary text-primary"
+              : "text-foreground/60 hover:text-foreground"
+          }`}
+        >
+          {t("admin.classes.tabs.tracks", "Course Tracks")}
         </button>
       </div>
 
@@ -614,6 +794,33 @@ export default function AdminClassesPage() {
                 </button>
               ))}
             </div>
+
+            <div className="mt-4">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                {t("admin.lessons.selectLevel", "Select Level")}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(["beginner", "advanced"] as const).map((lvl) => (
+                  <button
+                    key={lvl}
+                    type="button"
+                    onClick={() => {
+                      setSelectedLevel(lvl);
+                      setLessonForm((prev) => ({ ...prev, level: lvl }));
+                    }}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      selectedLevel === lvl
+                        ? "bg-secondary text-secondary-foreground"
+                        : "bg-background text-foreground hover:bg-secondary/10"
+                    }`}
+                  >
+                    {lvl === "beginner"
+                      ? t("admin.lessons.level.beginner", "Beginner")
+                      : t("admin.lessons.level.advanced", "Advanced")}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Add Lesson Button */}
@@ -632,6 +839,7 @@ export default function AdminClassesPage() {
                 setEditingLessonId(null);
                 setLessonForm({
                   instrumentType: selectedInstrument,
+                  level: selectedLevel,
                   title: "",
                   code: "",
                   order: filteredLessons.length,
@@ -883,6 +1091,298 @@ export default function AdminClassesPage() {
         </motion.div>
       )}
 
+      {/* Course Tracks Tab */}
+      {activeTab === "tracks" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-serif text-primary">
+                {t("admin.tracks.title", "Course Tracks")}
+              </h2>
+              <p className="mt-1 text-xs text-foreground/70">
+                {t(
+                  "admin.tracks.subtitle",
+                  "Define instrument + level offerings (e.g. Begena Beginner).",
+                )}
+              </p>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                setEditingTrackId(null);
+                setTrackForm({
+                  instrumentType: "Begena",
+                  level: "beginner",
+                  title: "",
+                  description: "",
+                  isActive: true,
+                });
+                setShowTrackModal(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
+            >
+              <Plus className="h-4 w-4" />
+              {t("admin.tracks.add", "Add Track")}
+            </motion.button>
+          </div>
+
+          <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-foreground/70">
+                {t("admin.tracks.count", "Tracks")}:{" "}
+                <span className="font-semibold text-primary">
+                  {sortedTracks.length}
+                </span>
+              </p>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-foreground/60">
+                  {t("pagination.itemsPerPage", "Items per page")}
+                </label>
+                <select
+                  value={tracksItemsPerPage}
+                  onChange={(e) => {
+                    setTracksItemsPerPage(Number(e.target.value));
+                    setTracksCurrentPage(1);
+                  }}
+                  className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {paginatedTracks.map((track) => (
+                <div
+                  key={track._id}
+                  className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="truncate text-lg font-serif text-primary">
+                        {track.title}
+                      </h3>
+                      <span className="rounded-full bg-secondary/10 px-2 py-1 text-xs font-semibold text-secondary">
+                        {track.instrumentType} · {track.level}
+                      </span>
+                      {!track.isActive && (
+                        <span className="rounded-full bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-600">
+                          {t("admin.tracks.inactive", "Inactive")}
+                        </span>
+                      )}
+                    </div>
+                    {track.description ? (
+                      <p className="mt-1 line-clamp-2 text-xs text-foreground/70">
+                        {track.description}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => startEditTrack(track)}
+                      className="inline-flex items-center gap-2 rounded-full bg-secondary/10 px-4 py-2 text-xs font-semibold text-secondary transition hover:bg-secondary/20"
+                    >
+                      <Edit className="h-3 w-3" />
+                      {t("button.edit", "Edit")}
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleDeleteTrack(track._id)}
+                      className="inline-flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/20"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {t("button.delete", "Delete")}
+                    </motion.button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {tracksTotalPages > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={tracksCurrentPage}
+                  totalPages={tracksTotalPages}
+                  totalItems={sortedTracks.length}
+                  itemsPerPage={tracksItemsPerPage}
+                  onPageChange={setTracksCurrentPage}
+                />
+              </div>
+            )}
+          </div>
+
+          {showTrackModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setShowTrackModal(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative w-full max-w-xl rounded-3xl bg-surface-elevated p-6 shadow-2xl"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-serif text-primary">
+                    {editingTrackId
+                      ? t("admin.tracks.edit", "Edit track")
+                      : t("admin.tracks.create", "Create track")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowTrackModal(false)}
+                    className="rounded-full p-2 text-foreground/60 hover:bg-secondary/10 hover:text-foreground"
+                    aria-label={t("button.close", "Close")}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleTrackSubmit} className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                        {t("admin.tracks.form.instrument", "Instrument")}
+                      </label>
+                      <select
+                        value={trackForm.instrumentType}
+                        onChange={(e) =>
+                          setTrackForm((prev) => ({
+                            ...prev,
+                            instrumentType: e.target.value as InstrumentType,
+                          }))
+                        }
+                        className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      >
+                        {INSTRUMENTS.map((inst) => (
+                          <option key={inst} value={inst}>
+                            {inst}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                        {t("admin.tracks.form.level", "Level")}
+                      </label>
+                      <select
+                        value={trackForm.level}
+                        onChange={(e) =>
+                          setTrackForm((prev) => ({
+                            ...prev,
+                            level: e.target.value as "beginner" | "advanced",
+                          }))
+                        }
+                        className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      >
+                        <option value="beginner">
+                          {t("admin.lessons.level.beginner", "Beginner")}
+                        </option>
+                        <option value="advanced">
+                          {t("admin.lessons.level.advanced", "Advanced")}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("admin.tracks.form.title", "Title")} *
+                    </label>
+                    <input
+                      type="text"
+                      value={trackForm.title}
+                      onChange={(e) =>
+                        setTrackForm((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                      className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      required
+                      placeholder={t("admin.tracks.form.titlePlaceholder", "Track title")}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("admin.tracks.form.description", "Description")}
+                    </label>
+                    <textarea
+                      value={trackForm.description}
+                      onChange={(e) =>
+                        setTrackForm((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      rows={3}
+                      className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                      placeholder={t(
+                        "admin.tracks.form.descriptionPlaceholder",
+                        "Optional description",
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="trackIsActive"
+                      checked={trackForm.isActive}
+                      onChange={(e) =>
+                        setTrackForm((prev) => ({
+                          ...prev,
+                          isActive: e.target.checked,
+                        }))
+                      }
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <label htmlFor="trackIsActive" className="text-sm text-foreground/70">
+                      {t("admin.tracks.form.active", "Active")}
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <motion.button
+                      type="submit"
+                      whileTap={{ scale: 0.97 }}
+                      disabled={creatingCourseTrack || updatingCourseTrack}
+                      className="flex-1 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95 disabled:opacity-60"
+                    >
+                      {creatingCourseTrack || updatingCourseTrack ? (
+                        <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                      ) : editingTrackId ? (
+                        t("admin.tracks.form.update", "Update track")
+                      ) : (
+                        t("admin.tracks.form.create", "Create track")
+                      )}
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        setShowTrackModal(false);
+                        setEditingTrackId(null);
+                      }}
+                      className="flex-1 rounded-full border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-secondary/10"
+                    >
+                      {t("button.cancel", "Cancel")}
+                    </motion.button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Form View */}
       {(showForm || editingId) && (
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
@@ -957,6 +1457,51 @@ export default function AdminClassesPage() {
               <option value="physical">{t("admin.classes.form.physical", "Physical")}</option>
               <option value="both">{t("admin.classes.form.both", "Both (Online & Physical)")}</option>
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
+              {t("admin.classes.form.courseTrack", "Course Track")}
+            </label>
+            <select
+              value={form.courseTrackId}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, courseTrackId: e.target.value }))
+              }
+              className="w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+            >
+              <option value="">
+                {t("admin.classes.form.courseTrackOptional", "Select a track (optional)")}
+              </option>
+              {courseTracks.map((track) => (
+                <option key={track._id} value={track._id}>
+                  {track.instrumentType} · {track.level} · {track.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
+              {t("admin.classes.form.branch", "Branch")}
+            </label>
+            <select
+              value={form.branchId}
+              onChange={(e) => setForm((prev) => ({ ...prev, branchId: e.target.value }))}
+              className={`w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
+                fieldErrors.branchId ? "border border-red-400" : ""
+              }`}
+            >
+              <option value="">
+                {t("admin.classes.form.branchOptional", "Select a branch (optional)")}
+              </option>
+              {branches.map((branch) => (
+                <option key={branch._id} value={branch._id}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.branchId && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.branchId}</p>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">

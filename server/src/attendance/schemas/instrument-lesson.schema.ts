@@ -4,10 +4,20 @@ import { InstrumentType } from '../../product/schemas/product.schema';
 
 export type InstrumentLessonDocument = InstrumentLesson & Document;
 
+export type LessonLevel = 'beginner' | 'advanced';
+
 @Schema({ timestamps: true })
 export class InstrumentLesson {
   @Prop({ type: String, enum: Object.values(InstrumentType), required: true })
   instrumentType: InstrumentType;
+
+  @Prop({
+    type: String,
+    enum: ['beginner', 'advanced'],
+    default: 'beginner',
+    index: true,
+  })
+  level: LessonLevel;
 
   @Prop({ required: true, trim: true, maxlength: 120 })
   title: string;
@@ -24,4 +34,6 @@ export class InstrumentLesson {
 
 export const InstrumentLessonSchema =
   SchemaFactory.createForClass(InstrumentLesson);
+
+InstrumentLessonSchema.index({ instrumentType: 1, level: 1, order: 1 });
 

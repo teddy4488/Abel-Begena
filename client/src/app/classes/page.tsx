@@ -7,7 +7,8 @@ import { CalendarDays, Loader2, Users, X, Building2, Music } from "lucide-react"
 import {
   useEnrollInClassMutation,
   useEnrollInClassWithReceiptMutation,
-  useGetPublicClassesQuery,
+  useGetPublicCourseTracksQuery,
+  useGetPublicClassesByTrackQuery,
   type ClassSummary,
 } from "@/store/api/classApi";
 import { useGetBranchesQuery } from "@/store/api/branchApi";
@@ -93,7 +94,12 @@ const ETHIOPIA_PHONE_REGEX = /^(?:\+251|0)?(?:9|7)\d{8}$/;
 export default function ClassesPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
-  const { data: classes, isLoading } = useGetPublicClassesQuery();
+  const { data: tracks = [], isLoading: loadingTracks } = useGetPublicCourseTracksQuery();
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const { data: classes = [], isLoading: loadingCohorts } =
+    useGetPublicClassesByTrackQuery(selectedTrackId ?? "", {
+      skip: !selectedTrackId,
+    });
   const { data: branches = [] } = useGetBranchesQuery();
   const [selectedClass, setSelectedClass] = useState<ClassSummary | null>(null);
   const [form, setForm] = useState<EnrollmentForm>({
@@ -406,20 +412,77 @@ export default function ClassesPage() {
           </p>
         </div>
 
-        {isLoading ? (
+        {loadingTracks ? (
           <div className="flex min-h-[200px] items-center justify-center rounded-3xl surface-elevated shadow-lg">
             <Loader2 className="h-6 w-6 animate-spin text-secondary" />
           </div>
-        ) : formattedClasses.length === 0 ? (
+        ) : tracks.length === 0 ? (
           <div className="rounded-3xl surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg">
             {t(
-              "classes.empty",
-              "New cohorts are being prepared. Please check again soon.",
+              "classes.emptyTracks",
+              "New course tracks are being prepared. Please check again soon.",
             )}
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            {formattedClasses.map((klass) => {
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+            <div className="space-y-3">
+              <h2 className="text-left text-sm font-semibold uppercase tracking-[0.3em] text-secondary">
+                {t("classes.tracks.heading", "1. Choose a course track")}
+              </h2>
+              <div className="flex flex-wrap gap-3">
+                {tracks.map((track) => (
+                  <button
+                    key={track._id}
+                    type="button"
+                    onClick={() => setSelectedTrackId(track._id)}
+                    className={`flex min-w-[220px] flex-1 items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                      selectedTrackId === track._id
+                        ? "border-secondary bg-secondary/5 text-secondary-foreground"
+                        : "border-border bg-surface-elevated hover:border-secondary/60"
+                    }`}
+                  >
+                    <Music className="mt-1 h-4 w-4 text-secondary" />
+                    <div className="space-y-1">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-secondary/80">
+                        {track.instrumentType} · {track.level}
+                      </div>
+                      <div className="font-serif text-primary">{track.title}</div>
+                      {track.description && (
+                        <p className="text-[11px] text-foreground/70 line-clamp-2">
+                          {track.description}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-left text-sm font-semibold uppercase tracking-[0.3em] text-secondary">
+                {t("classes.cohorts.heading", "2. Choose a cohort")}
+              </h2>
+              {!selectedTrackId ? (
+                <div className="rounded-3xl surface-elevated p-8 text-center text-sm text-foreground/70 shadow-lg">
+                  {t(
+                    "classes.cohorts.noTrackSelected",
+                    "Select a course track on the left to see available cohorts.",
+                  )}
+                </div>
+              ) : loadingCohorts ? (
+                <div className="flex min-h-[200px] items-center justify-center rounded-3xl surface-elevated shadow-lg">
+                  <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+                </div>
+              ) : classes.length === 0 ? (
+                <div className="rounded-3xl surface-elevated p-8 text-center text-sm text-foreground/70 shadow-lg">
+                  {t(
+                    "classes.cohorts.empty",
+                    "No cohorts are currently open for this track. Please check again soon.",
+                  )}
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-1">
+                  {classes.map((klass) => {
               const seatsTaken = klass.enrollmentCount ?? 0;
               const capacityLabel =
                 klass.capacity && klass.capacity > 0
@@ -503,6 +566,9 @@ export default function ClassesPage() {
                 </motion.article>
               );
             })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

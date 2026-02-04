@@ -99,6 +99,24 @@ export class ClassService {
       capacity: dto.capacity,
     };
 
+    if (dto.classType) {
+      payload.classType = dto.classType;
+    }
+
+    if (dto.courseTrackId) {
+      if (!Types.ObjectId.isValid(dto.courseTrackId)) {
+        throw new BadRequestException('Invalid courseTrackId');
+      }
+      (payload as any).courseTrackId = new Types.ObjectId(dto.courseTrackId);
+    }
+
+    if (dto.branchId) {
+      if (!Types.ObjectId.isValid(dto.branchId)) {
+        throw new BadRequestException('Invalid branchId');
+      }
+      (payload as any).branchId = new Types.ObjectId(dto.branchId);
+    }
+
     if (dto.instructorId) {
       if (!Types.ObjectId.isValid(dto.instructorId)) {
         throw new BadRequestException('Invalid instructor id');
@@ -139,6 +157,32 @@ export class ClassService {
       ...(dto.title ? { title: dto.title } : {}),
       ...(dto.description ? { description: dto.description } : {}),
     };
+
+    if (dto.classType) {
+      update.classType = dto.classType;
+    }
+
+    if (dto.courseTrackId !== undefined) {
+      if (!dto.courseTrackId) {
+        (update as any).courseTrackId = undefined;
+      } else {
+        if (!Types.ObjectId.isValid(dto.courseTrackId)) {
+          throw new BadRequestException('Invalid courseTrackId');
+        }
+        (update as any).courseTrackId = new Types.ObjectId(dto.courseTrackId);
+      }
+    }
+
+    if (dto.branchId !== undefined) {
+      if (!dto.branchId) {
+        (update as any).branchId = undefined;
+      } else {
+        if (!Types.ObjectId.isValid(dto.branchId)) {
+          throw new BadRequestException('Invalid branchId');
+        }
+        (update as any).branchId = new Types.ObjectId(dto.branchId);
+      }
+    }
 
     if (typeof dto.capacity === 'number') {
       update.capacity = dto.capacity;
@@ -182,6 +226,57 @@ export class ClassService {
     }
 
     return updated;
+  }
+
+  async getPublicCohortsByCourseTrack(courseTrackId: string) {
+    if (!Types.ObjectId.isValid(courseTrackId)) {
+      throw new BadRequestException('Invalid courseTrackId');
+    }
+
+    const classes = await this.classModel
+      .find({ courseTrackId: new Types.ObjectId(courseTrackId) } as any)
+      .sort({ createdAt: -1 })
+      .select(
+        'title description startDate endDate tuition currency capacity enrollmentDeadline enrollments instructorId classType branchId courseTrackId createdAt',
+      )
+      .populate('instructorId', 'firstName lastName')
+      .lean()
+      .exec();
+
+    return classes.map((klass) => {
+      const enrollmentCount = (klass.enrollments ?? []).filter(
+        (enrollment) => enrollment.status !== 'withdrawn',
+      ).length;
+      const instructor = klass.instructorId as
+        | { firstName?: string; lastName?: string }
+        | undefined;
+      const instructorName = instructor
+        ? `${instructor.firstName ?? ''} ${instructor.lastName ?? ''}`.trim() ||
+          null
+        : null;
+      const enrollmentDeadline =
+        klass.enrollmentDeadline instanceof Date
+          ? klass.enrollmentDeadline.toISOString()
+          : null;
+      const createdAt =
+        klass.createdAt instanceof Date ? klass.createdAt.toISOString() : null;
+
+      return {
+        _id: klass._id?.toString(),
+        title: klass.title,
+        description: klass.description ?? null,
+        tuition: klass.tuition ?? 0,
+        currency: klass.currency ?? 'ETB',
+        capacity: klass.capacity ?? null,
+        enrollmentDeadline,
+        enrollmentCount,
+        instructorName,
+        createdAt,
+        classType: (klass as any).classType ?? 'online',
+        branchId: (klass as any).branchId?.toString?.() ?? null,
+        courseTrackId: (klass as any).courseTrackId?.toString?.() ?? null,
+      };
+    });
   }
 
   async removeClass(id: string) {
