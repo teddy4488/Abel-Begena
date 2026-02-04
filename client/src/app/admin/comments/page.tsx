@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   useGetManageCommentsQuery,
   useDeleteCommentMutation,
@@ -20,10 +20,6 @@ export default function AdminCommentsPage() {
   const { pushToast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
 
   const totalPages =
     comments.length > 0 ? Math.ceil(comments.length / itemsPerPage) : 1;
@@ -86,7 +82,10 @@ export default function AdminCommentsPage() {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder={t("admin.comments.search", "Search comments")}
             className="flex-1 min-w-[220px] rounded-2xl  card-elevated80 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />

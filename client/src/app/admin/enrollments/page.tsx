@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Clock, Filter, Loader2, RefreshCcw, Search, X, Eye, Check, XCircle, FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -75,11 +75,6 @@ export default function AdminEnrollmentsPage() {
     });
   }, [data, search]);
 
-  // Reset pagination when filters or search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter]);
-
   const totalPages =
     filtered.length > 0 ? Math.ceil(filtered.length / itemsPerPage) : 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -149,7 +144,10 @@ export default function AdminEnrollmentsPage() {
                 <Search className="h-4 w-4 text-secondary" />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder={t("admin.enrollments.search", "Search student or class")}
                   className="ml-2 flex-1 bg-transparent text-xs outline-none sm:text-sm"
                 />
@@ -158,7 +156,10 @@ export default function AdminEnrollmentsPage() {
                 <Filter className="h-4 w-4" />
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value as typeof statusFilter);
+                    setCurrentPage(1);
+                  }}
                   className="bg-transparent text-xs font-semibold uppercase tracking-widest outline-none"
                 >
                   <option value="all">{t("admin.enrollments.filter.all", "All statuses")}</option>

@@ -91,15 +91,8 @@ export default function AdminAttendancePage() {
   const { data: eligibility = [], isLoading: eligibilityLoading } =
     useGetGraduationEligibilityQuery();
 
-  useEffect(() => {
-    // reset per-mode pagination when switching modes
-    if (mode === "student") setStudentsPage(1);
-    if (mode === "teacher") {
-      setTeachersPage(1);
-      setTodayPage(1);
-    }
-    if (mode === "eligibility") setEligibilityPage(1);
-  }, [mode]);
+  // Note: avoid setState-in-effect (eslint). Page resets are handled in the
+  // mode-switch click handlers and list-size change effects below.
   const [recordStudentAttendance, { isLoading: recordingStudent }] =
     useRecordStudentAttendanceMutation();
   const [registerTeacher, { isLoading: registeringTeacher }] =

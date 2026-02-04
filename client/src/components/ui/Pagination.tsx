@@ -123,7 +123,7 @@ export default function Pagination({
                     ? "bg-primary text-primary-foreground shadow-md"
                     : "border border-border bg-background text-foreground hover:bg-secondary/10"
                 }`}
-                aria-label={t("pagination.page", "Page")} {pageNum}
+                aria-label={`${t("pagination.page", "Page")} ${pageNum}`}
                 aria-current={isActive ? "page" : undefined}
               >
                 {pageNum}
