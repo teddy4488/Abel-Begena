@@ -261,13 +261,12 @@ export default function AdminClassesPage() {
       if (viewFilter === "unassigned" && klass.instructorId) return false;
       if (viewFilter === "live" && !klass.isLive) return false;
       if (query) {
-        const instructorObj =
-          typeof klass.instructorId === "object" && klass.instructorId !== null
-            ? klass.instructorId
-            : null;
-        const instructor = instructorObj
-          ? `${instructorObj.firstName ?? ""} ${instructorObj.lastName ?? ""}`.trim()
-          : "";
+        const instructor =
+          klass.instructorId && typeof klass.instructorId === "object"
+            ? `${klass.instructorId.firstName ?? ""} ${
+                klass.instructorId.lastName ?? ""
+              }`.trim()
+            : "";
         const haystack = `${klass.title} ${instructor}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }

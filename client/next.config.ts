@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    turbopack: {
+      // Explicitly tell Next.js that the Turbopack workspace root
+      // is the repo root one level above this `client` folder.
+      root: "..",
+    },
+  },
   images: {
     remotePatterns: [
       {
