@@ -36,4 +36,3 @@ export const InstrumentLessonSchema =
   SchemaFactory.createForClass(InstrumentLesson);
 
 InstrumentLessonSchema.index({ instrumentType: 1, level: 1, order: 1 });
-
