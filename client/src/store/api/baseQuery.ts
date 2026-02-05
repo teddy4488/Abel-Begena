@@ -50,9 +50,13 @@ export const authorizedBaseQuery: BaseQueryFn<
         extraOptions,
       );
 
-      if (!refreshResult.error) {
+        if (!refreshResult.error) {
         const data = refreshResult.data as
-          | { accessToken?: string | null; expiresAt?: string | null; user?: unknown }
+          | {
+              accessToken?: string | null;
+              expiresAt?: string | null;
+              user?: import("../slices/authSlice").AuthUser | null;
+            }
           | undefined;
 
         api.dispatch(

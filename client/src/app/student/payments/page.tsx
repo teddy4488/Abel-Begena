@@ -17,7 +17,7 @@ type PaymentStatus = "paid" | "partial" | "unpaid";
 type PaymentRecord = {
   year: number;
   month: number;
-  status: string;
+  status?: string;
   amount?: number;
   duedate?: unknown;
   period?: number;
