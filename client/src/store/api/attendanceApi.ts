@@ -160,6 +160,22 @@ export type GraduationEligibilityItem = {
   reasons: string[];
 };
 
+export type OverduePaymentAdmin = {
+  participantId: string;
+  fullName: string;
+  attendanceNumber: string;
+  instrumentType: string;
+  year: number;
+  month: number;
+  dueDate: string;
+  duedate?: string[];
+  period?: number;
+  dueDateInferred?: boolean;
+  daysOverdue: number;
+  amount?: number;
+  status?: "paid" | "partial" | "unpaid";
+};
+
 export const attendanceApi = createApi({
   reducerPath: "attendanceApi",
   baseQuery: authorizedBaseQuery,
@@ -398,24 +414,7 @@ export const attendanceApi = createApi({
       }),
       invalidatesTags: ["StudentParticipants"],
     }),
-    getOverduePayments: builder.query<
-      Array<{
-        participantId: string;
-        fullName: string;
-        attendanceNumber: string;
-        instrumentType: string;
-        year: number;
-        month: number;
-        dueDate: string;
-        duedate?: string[];
-        period?: number;
-        dueDateInferred?: boolean;
-        daysOverdue: number;
-        amount?: number;
-        status?: "paid" | "partial" | "unpaid";
-      }>,
-      void
-    >({
+    getOverduePayments: builder.query<OverduePaymentAdmin[], void>({
       query: () => "/attendance/payments/overdue",
       providesTags: ["StudentPayments"],
     }),

@@ -30,6 +30,7 @@ import {
   StudentPayment,
   StudentPaymentSchema,
 } from './schemas/student-payment.schema';
+import { Class, ClassSchema } from '../class/schemas/class.schema';
 
 @Module({
   imports: [
@@ -50,6 +51,8 @@ import {
       { name: StudentAttendance.name, schema: StudentAttendanceSchema },
       { name: InstrumentLesson.name, schema: InstrumentLessonSchema },
       { name: StudentPayment.name, schema: StudentPaymentSchema },
+      // Register Class model so AttendanceService can inject it
+      { name: Class.name, schema: ClassSchema },
     ]),
   ],
   controllers: [AttendanceController],

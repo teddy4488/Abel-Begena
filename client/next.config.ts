@@ -1,13 +1,7 @@
 import type { NextConfig } from "next";
 
+// Production-safe Next.js configuration without unsupported experimental flags.
 const nextConfig: NextConfig = {
-  experimental: {
-    turbopack: {
-      // Explicitly tell Next.js that the Turbopack workspace root
-      // is the repo root one level above this `client` folder.
-      root: "..",
-    },
-  },
   images: {
     remotePatterns: [
       {
@@ -24,6 +18,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // React Compiler is an officially supported opt‑in feature in Next 16.
+  // Keeping it enabled for better performance and DX.
   reactCompiler: true,
 };
 

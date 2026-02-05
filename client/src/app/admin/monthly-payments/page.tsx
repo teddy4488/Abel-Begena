@@ -8,6 +8,7 @@ import {
   useGetOverduePaymentsQuery,
   useGetStudentUpcomingPaymentsQuery,
   attendanceApi,
+  type OverduePaymentAdmin,
 } from "@/store/api/attendanceApi";
 import { useGetPendingPaymentRequestsQuery, useUpdatePaymentStatusMutation, type PaymentRequest } from "@/store/api/paymentApi";
 import { useUploadReceiptMutation } from "@/store/api/storeApi";
@@ -58,6 +59,7 @@ export default function AdminMonthlyPaymentsPage() {
   const { data: pendingPaymentRequests = [] } = useGetPendingPaymentRequestsQuery({
     type: "student_monthly_fee",
   });
+  const { data: overduePayments = [] } = useGetOverduePaymentsQuery();
   const [showNextDueModal, setShowNextDueModal] = useState(false);
   const [nextDueStudentId, setNextDueStudentId] = useState<string>("");
   const [showStudentPaymentsModal, setShowStudentPaymentsModal] = useState(false);
@@ -78,8 +80,9 @@ export default function AdminMonthlyPaymentsPage() {
   }, [selectedYear, selectedMonth, billingItems.length]);
 
   useEffect(() => {
+    // Reset to the first overdue page whenever filters/search change.
     setOverduePage(1);
-  }, [overdueSearch, overdueDaysFilter, overdueDateFilter, overduePayments.length]);
+  }, [overdueSearch, overdueDaysFilter, overdueDateFilter]);
 
   // Payment request handlers
   const handleApprovePaymentRequest = async (request: PaymentRequest) => {
@@ -701,7 +704,7 @@ export default function AdminMonthlyPaymentsPage() {
           {/* Filtered Overdue Payments */}
           {(() => {
             // Helper to get payment request for an overdue payment
-            const getPaymentRequestForOverdue = (payment: typeof overduePayments[0]) => {
+            const getPaymentRequestForOverdue = (payment: OverduePaymentAdmin) => {
               return pendingPaymentRequests.find((pr) => {
                 if (pr.type !== "student_monthly_fee" || pr.status !== "pending") return false;
                 try {
@@ -718,7 +721,7 @@ export default function AdminMonthlyPaymentsPage() {
             };
 
             // Filter overdue payments
-            const filteredOverdue = overduePayments.filter((payment) => {
+            const filteredOverdue = overduePayments.filter((payment: OverduePaymentAdmin) => {
               // Search filter
               if (overdueSearch.trim()) {
                 const searchLower = overdueSearch.toLowerCase();

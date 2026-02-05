@@ -262,7 +262,7 @@ export default function AdminClassesPage() {
       if (viewFilter === "live" && !klass.isLive) return false;
       if (query) {
         const instructor =
-          klass.instructorId && typeof klass.instructorId === "object"
+          klass.instructorId
             ? `${klass.instructorId.firstName ?? ""} ${
                 klass.instructorId.lastName ?? ""
               }`.trim()
@@ -602,14 +602,13 @@ export default function AdminClassesPage() {
                       <p className="mt-1 text-xs text-foreground/70">{klass.description}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/60">
                         <span>{t("admin.classes.type", "Type")}: {klass.classType}</span>
-                        {klass.instructorId &&
-                          typeof klass.instructorId === "object" && (
-                            <span>
-                              {t("admin.classes.instructor", "Instructor")}:{" "}
-                              {klass.instructorId.firstName}{" "}
-                              {klass.instructorId.lastName}
-                            </span>
-                          )}
+                        {klass.instructorId && (
+                          <span>
+                            {t("admin.classes.instructor", "Instructor")}:{" "}
+                            {klass.instructorId.firstName ?? ""}{" "}
+                            {klass.instructorId.lastName ?? ""}
+                          </span>
+                        )}
                         {!klass.instructorId && (
                           <span className="text-amber-500">{t("admin.classes.noInstructor", "No instructor")}</span>
                         )}
