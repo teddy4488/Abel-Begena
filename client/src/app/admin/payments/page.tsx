@@ -92,12 +92,31 @@ export default function AdminPaymentsPage() {
     }
   };
 
-  const parseConversionData = (request: PaymentRequest | null) => {
+  type ConversionDetails = {
+    fullName?: string;
+    phone?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    city?: string;
+    address?: string;
+    preferredLearningDays?: string[];
+    preferredTime?: string;
+    preferredSchedule?: string;
+    learningGoals?: string;
+    notesForTeacher?: string;
+    month?: number;
+    year?: number;
+    [key: string]: unknown;
+  };
+
+  const parseConversionData = (
+    request: PaymentRequest | null,
+  ): ConversionDetails | null => {
     if (!request?.conversionData) return null;
     try {
       return JSON.parse(
         request.conversionData as unknown as string,
-      ) as Record<string, unknown>;
+      ) as ConversionDetails;
     } catch {
       return null;
     }
