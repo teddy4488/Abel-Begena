@@ -198,10 +198,10 @@ export default function Home() {
       <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
         <section className="relative overflow-hidden rounded-2xl bg-[var(--color-surface-elevated)] px-4 py-8 shadow-[0_8px_32px_var(--color-primary-glow)] transition-colors sm:rounded-[32px] sm:px-6 sm:py-12 md:px-12 md:py-14 lg:px-16 dark:bg-[var(--color-surface-elevated)]">
           <div className="absolute inset-0 bg-gradient-to-tr from-[var(--color-background)] via-[var(--color-surface)] to-[var(--color-secondary-soft)] opacity-60 dark:opacity-40" />
-          {/* Subtle Orthodox crosses in the hero background */}
+          {/* Subtle Orthodox cross lines in the hero background */}
           <div className="pointer-events-none absolute inset-0">
-            <span className="absolute left-6 top-10 text-6xl text-secondary/10">✝</span>
-            <span className="absolute right-10 bottom-8 text-7xl text-secondary/10">✝</span>
+            <span className="absolute left-6 top-10 text-5xl text-[#facc15] opacity-25">✝</span>
+            <span className="absolute right-10 bottom-8 text-6xl text-[#facc15] opacity-25">✝</span>
           </div>
           <div className="relative grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">

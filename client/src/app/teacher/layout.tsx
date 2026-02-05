@@ -27,12 +27,12 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background text-foreground">
-      {/* Subtle Orthodox cross decorations */}
+      {/* Subtle Orthodox cross line decorations */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <span className="absolute left-8 top-20 text-5xl text-secondary/5">✝</span>
-        <span className="absolute right-12 top-40 text-6xl text-secondary/5">✝</span>
-        <span className="absolute bottom-40 left-12 text-4xl text-secondary/5">✝</span>
-        <span className="absolute bottom-20 right-8 text-5xl text-secondary/5">✝</span>
+        <span className="absolute left-8 top-20 text-4xl text-[#facc15] opacity-20">✝</span>
+        <span className="absolute right-12 top-40 text-5xl text-[#facc15] opacity-20">✝</span>
+        <span className="absolute bottom-40 left-12 text-3xl text-[#facc15] opacity-20">✝</span>
+        <span className="absolute bottom-20 right-8 text-4xl text-[#facc15] opacity-20">✝</span>
       </div>
       <TeacherSidebar />
       <div className="relative z-10 flex flex-1 flex-col">

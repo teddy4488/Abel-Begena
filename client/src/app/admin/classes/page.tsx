@@ -529,7 +529,29 @@ export default function AdminClassesPage() {
             </div>
           </div>
 
-          {/* Action Buttons removed (not used) */}
+          {/* Actions */}
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-foreground/70">
+              {t(
+                "admin.classes.hint",
+                "Use the button on the right to create a new class.",
+              )}
+            </p>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                setEditingId(null);
+                setForm(emptyForm);
+                setFieldErrors({});
+                setShowForm(true);
+              }}
+              className="inline-flex items-center gap-2 self-start rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-md transition hover:brightness-95"
+            >
+              <Plus className="h-3 w-3" />
+              {t("admin.classes.newClass", "New Class")}
+            </motion.button>
+          </div>
 
           {/* Classes List */}
           <div className="space-y-4">
@@ -559,8 +581,26 @@ export default function AdminClassesPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-secondary" />
               </div>
             ) : filteredClasses.length === 0 ? (
-              <div className="rounded-3xl bg-surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg">
-                {t("admin.classes.empty", "No classes found.")}
+              <div className="rounded-3xl bg-surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg space-y-4">
+                <p>
+                  {t(
+                    "admin.classes.empty",
+                    "No classes found.",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(emptyForm);
+                    setFieldErrors({});
+                    setShowForm(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2 text-xs font-semibold text-primary-foreground shadow hover:brightness-95"
+                >
+                  <Plus className="h-3 w-3" />
+                  {t("admin.classes.createFirst", "Create first class")}
+                </button>
               </div>
             ) : (
               <>
