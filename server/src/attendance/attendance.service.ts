@@ -33,6 +33,7 @@ import {
   StudentPayment,
   StudentPaymentDocument,
 } from './schemas/student-payment.schema';
+import { Class, ClassDocument } from '../class/schemas/class.schema';
 import { RegisterTeacherParticipantDto } from './dto/register-teacher-participant.dto';
 import { RegisterStudentParticipantDto } from './dto/register-student-participant.dto';
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
@@ -53,6 +54,8 @@ export class AttendanceService {
     private readonly studentAttendanceModel: Model<StudentAttendanceDocument>,
     @InjectModel(InstrumentLesson.name)
     private readonly lessonModel: Model<InstrumentLessonDocument>,
+    @InjectModel(Class.name)
+    private readonly classModel: Model<ClassDocument>,
     @InjectModel(StudentPayment.name)
     private readonly studentPaymentModel: Model<StudentPaymentDocument>,
     @Inject(forwardRef(() => UserService))
@@ -703,13 +706,13 @@ export class AttendanceService {
     return payments;
   }
 
-  async listInstrumentLessons(instrumentType?: string, level?: string) {
+  async listInstrumentLessons(classId?: string) {
     const filter: any = { isActive: true };
-    if (instrumentType) {
-      filter.instrumentType = instrumentType;
-    }
-    if (level) {
-      filter.level = level;
+    if (classId) {
+      if (!Types.ObjectId.isValid(classId)) {
+        throw new BadRequestException('Invalid classId');
+      }
+      filter.classId = new Types.ObjectId(classId);
     }
     return this.lessonModel
       .find(filter)
@@ -720,15 +723,24 @@ export class AttendanceService {
 
   // Lessons management
   async createLesson(data: {
-    instrumentType: string;
-    level?: string;
+    classId: string;
     title: string;
     code?: string;
     order?: number;
   }) {
+    if (!Types.ObjectId.isValid(data.classId)) {
+      throw new BadRequestException('Invalid classId');
+    }
+
+    const klass = await this.classModel.findById(data.classId).lean().exec();
+    if (!klass) {
+      throw new NotFoundException('Class not found');
+    }
+
     const created = await this.lessonModel.create({
-      instrumentType: data.instrumentType,
-      level: data.level ?? 'beginner',
+      classId: new Types.ObjectId(data.classId),
+      instrumentType: (klass as any).instrumentType,
+      level: (klass as any).level ?? 'beginner',
       title: data.title.trim(),
       code: data.code?.trim(),
       order: data.order ?? 0,
@@ -738,7 +750,7 @@ export class AttendanceService {
   }
 
   async updateLesson(lessonId: string, data: {
-    level?: string;
+    classId?: string;
     title?: string;
     code?: string;
     order?: number;
@@ -749,7 +761,19 @@ export class AttendanceService {
       throw new NotFoundException('Lesson not found');
     }
 
-    if (data.level !== undefined) (lesson as any).level = data.level;
+    if (data.classId) {
+      if (!Types.ObjectId.isValid(data.classId)) {
+        throw new BadRequestException('Invalid classId');
+      }
+      const klass = await this.classModel.findById(data.classId).lean().exec();
+      if (!klass) {
+        throw new NotFoundException('Class not found');
+      }
+      lesson.classId = new Types.ObjectId(data.classId);
+      (lesson as any).instrumentType = (klass as any).instrumentType;
+      (lesson as any).level = (klass as any).level ?? 'beginner';
+    }
+
     if (data.title !== undefined) lesson.title = data.title.trim();
     if (data.code !== undefined) lesson.code = data.code?.trim();
     if (data.order !== undefined) lesson.order = data.order;

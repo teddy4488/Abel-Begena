@@ -8,6 +8,7 @@ import { Model, Types } from 'mongoose';
 import { InstrumentMaterial, InstrumentMaterialDocument } from './schemas/instrument-material.schema';
 import { UploadService } from '../upload/upload.service';
 import { InstrumentType } from '../product/schemas/product.schema';
+import { Class, ClassDocument } from '../class/schemas/class.schema';
 
 type AuthenticatedUser = {
   sub: string;
@@ -19,13 +20,15 @@ export class MaterialsService {
   constructor(
     @InjectModel(InstrumentMaterial.name)
     private readonly materialModel: Model<InstrumentMaterialDocument>,
+    @InjectModel(Class.name)
+    private readonly classModel: Model<ClassDocument>,
     private readonly uploadService: UploadService,
   ) {}
 
   async uploadMaterial(
     file: Express.Multer.File,
     title: string,
-    instrumentType: InstrumentType,
+    classId: string,
     uploadedBy: string,
     description?: string,
     lessonId?: string,
@@ -46,16 +49,27 @@ export class MaterialsService {
       fileType = 'video';
     }
 
+    // Resolve class and inferred instrument
+    if (!Types.ObjectId.isValid(classId)) {
+      throw new BadRequestException('Invalid classId');
+    }
+    const klass = await this.classModel.findById(classId).lean().exec();
+    if (!klass) {
+      throw new NotFoundException('Class not found');
+    }
+    const instrumentType = (klass as any).instrumentType as InstrumentType | undefined;
+
     // Upload file
     const url = await this.uploadService.uploadMaterial(
       file,
-      `abel-begena/materials/${instrumentType.toLowerCase()}`,
+      `abel-begena/materials/${instrumentType ? instrumentType.toLowerCase() : 'class'}`,
     );
 
     // Create material record
     const material = await this.materialModel.create({
       title,
       url,
+      classId: new Types.ObjectId(classId),
       instrumentType,
       lessonId: lessonId ? new Types.ObjectId(lessonId) : undefined,
       uploadedBy: new Types.ObjectId(uploadedBy),
@@ -67,10 +81,13 @@ export class MaterialsService {
     return material.toObject();
   }
 
-  async getMaterialsByInstrument(instrumentType?: InstrumentType) {
+  async getMaterialsByClass(classId?: string) {
     const filter: any = { isActive: true };
-    if (instrumentType) {
-      filter.instrumentType = instrumentType;
+    if (classId) {
+      if (!Types.ObjectId.isValid(classId)) {
+        throw new BadRequestException('Invalid classId');
+      }
+      filter.classId = new Types.ObjectId(classId);
     }
 
     const materials = await this.materialModel
@@ -102,7 +119,7 @@ export class MaterialsService {
     }
 
     // Only allow deletion by the uploader or admin
-    if (material.uploadedBy.toString() !== teacherId) {
+    if (teacherId && material.uploadedBy.toString() !== teacherId) {
       throw new BadRequestException('You can only delete materials you uploaded');
     }
 

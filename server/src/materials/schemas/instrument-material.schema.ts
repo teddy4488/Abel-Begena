@@ -12,13 +12,14 @@ export class InstrumentMaterial {
   @Prop({ required: true })
   url: string;
 
+  @Prop({ type: Types.ObjectId, ref: 'Class', required: true, index: true })
+  classId: Types.ObjectId;
+
   @Prop({
     type: String,
     enum: Object.values(InstrumentType),
-    required: true,
-    index: true,
   })
-  instrumentType: InstrumentType;
+  instrumentType?: InstrumentType;
 
   @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson', required: false })
   lessonId?: Types.ObjectId;

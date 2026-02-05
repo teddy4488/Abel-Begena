@@ -80,7 +80,7 @@ export default function AdminPaymentsPage() {
       });
       setSelectedRequest(null);
       setReviewNote("");
-    } catch (error) {
+    } catch {
       pushToast({
         title: t("admin.payments.review.error", "Error"),
         description: t(
@@ -95,7 +95,9 @@ export default function AdminPaymentsPage() {
   const parseConversionData = (request: PaymentRequest | null) => {
     if (!request?.conversionData) return null;
     try {
-      return JSON.parse(request.conversionData as unknown as string) as Record<string, any>;
+      return JSON.parse(
+        request.conversionData as unknown as string,
+      ) as Record<string, unknown>;
     } catch {
       return null;
     }
@@ -128,7 +130,7 @@ export default function AdminPaymentsPage() {
       });
       setSelectedRequest(null);
       setReviewNote("");
-    } catch (error) {
+    } catch {
       pushToast({
         title: t("admin.payments.review.error", "Error"),
         description: t(

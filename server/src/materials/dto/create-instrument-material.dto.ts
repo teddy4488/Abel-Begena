@@ -7,8 +7,12 @@ export class CreateInstrumentMaterialDto {
   @MaxLength(200)
   title: string;
 
+  @IsMongoId()
+  classId: string;
+
+  @IsOptional()
   @IsEnum(InstrumentType)
-  instrumentType: InstrumentType;
+  instrumentType?: InstrumentType;
 
   @IsOptional()
   @IsMongoId()

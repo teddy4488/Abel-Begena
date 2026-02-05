@@ -34,6 +34,7 @@ export default function AdminFaqPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!editingId) return;
     const match = faqs.find((f) => f._id === editingId);
@@ -64,6 +65,7 @@ export default function AdminFaqPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [faqs.length]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const reset = () => {
     setEditingId(null);

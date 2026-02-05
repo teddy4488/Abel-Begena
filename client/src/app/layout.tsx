@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter, Merriweather } from "next/font/google";
 import Footer from "@/components/layout/Footer";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Providers } from "@/components/providers/StoreProvider";
@@ -8,17 +7,6 @@ import { AuthHydrator } from "@/components/providers/AuthHydrator";
 import { I18nProvider } from "@/components/providers/I18nProvider";
 import { NavbarGate } from "@/components/layout/NavbarGate";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const merriweather = Merriweather({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-serif",
-});
 
 export const metadata: Metadata = {
   title: "Abel Begena | Ethiopian Liturgical Instruments",
@@ -39,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${merriweather.variable} bg-background text-foreground antialiased`}
+        className="bg-background text-foreground antialiased font-sans"
       >
         <Providers>
           <ThemeProvider>

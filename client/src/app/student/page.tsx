@@ -6,23 +6,18 @@ import Link from "next/link";
 import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, BookOpen, Clock, Calendar, Download, FileText, Video, Image as ImageIcon, File, ExternalLink, Bell, AlertCircle } from "lucide-react";
+import { GraduationCap, BookOpen, Clock, Calendar, Download, FileText, Video, Image as ImageIcon, File, ExternalLink, Bell } from "lucide-react";
 import { useGetPublicMaterialsQuery } from "@/store/api/materialsApi";
 import { useGetClassesQuery } from "@/store/api/classApi";
 import { useGetMyUpcomingPaymentsQuery } from "@/store/api/attendanceApi";
-import { InstrumentType } from "@/store/api/storeApi";
 
 export default function StudentDashboardPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const { t } = useI18n();
   
-  // Get materials filtered by student's instrument type (accessible to all students)
-  const studentInstrumentType = user?.instrumentType as InstrumentType | undefined;
-  const { data: materials = [], isLoading: materialsLoading } = useGetPublicMaterialsQuery(
-    studentInstrumentType ? { instrumentType: studentInstrumentType } : undefined,
-    { skip: !studentInstrumentType }
-  );
+  // Get materials (accessible to all students)
+  const { data: materials = [], isLoading: materialsLoading } = useGetPublicMaterialsQuery();
   
   // Get classes and filter live classes for online learners only
   const { data: classes = [] } = useGetClassesQuery();
@@ -30,6 +25,19 @@ export default function StudentDashboardPage() {
     skip: !isLoggedIn || user?.userType !== "student",
   });
   const isOnlineLearner = user?.learningType === "online";
+  const studentInstrumentType = user?.instrumentType;
+
+  const filteredMaterials = useMemo(
+    () =>
+      studentInstrumentType
+        ? materials.filter(
+            (material) =>
+              !material.instrumentType ||
+              material.instrumentType === studentInstrumentType,
+          )
+        : materials,
+    [materials, studentInstrumentType],
+  );
   
   const liveClasses = useMemo(() => {
     if (!isOnlineLearner) return [];
@@ -238,13 +246,14 @@ export default function StudentDashboardPage() {
                       : t("student.dashboard.upcomingPayments.dueInDays", `Due in ${payment.daysUntilDue} days`);
 
                 const monthName = new Date(payment.year, payment.month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                const getEffectiveDueDate = (payment: any): Date | null => {
+                const getEffectiveDueDate = (p: { duedate?: unknown; period?: number; dueDate?: string }): Date | null => {
                   try {
-                    if (payment?.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
-                      const idx = payment?.period && Number.isInteger(payment.period) && payment.period >= 1 && payment.period <= payment.duedate.length ? payment.period - 1 : 0;
-                      return new Date(payment.duedate[idx]);
+                    if (p?.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
+                      const arr = p.duedate as (string | number)[];
+                      const idx = p.period != null && Number.isInteger(p.period) && p.period >= 1 && p.period <= arr.length ? p.period - 1 : 0;
+                      return new Date(arr[idx]);
                     }
-                    if (payment?.dueDate) return new Date(payment.dueDate);
+                    if (p?.dueDate) return new Date(p.dueDate);
                     return null;
                   } catch {
                     return null;
@@ -324,7 +333,7 @@ export default function StudentDashboardPage() {
                   <div key={i} className="h-16 rounded-xl surface-elevated animate-pulse" />
                 ))}
               </div>
-            ) : materials.length === 0 ? (
+            ) : filteredMaterials.length === 0 ? (
               <div className="rounded-xl surface-elevated p-8 text-center shadow-lg">
                 <BookOpen className="mx-auto h-12 w-12 text-foreground/30 mb-3" />
                 <p className="text-sm text-foreground/70">
@@ -337,7 +346,7 @@ export default function StudentDashboardPage() {
             ) : (
               <div className="space-y-3">
                 <AnimatePresence>
-                  {materials.map((material, idx) => {
+                  {filteredMaterials.map((material, idx) => {
                     const FileIcon = getFileIcon(material.fileType);
                     return (
                       <motion.div

@@ -133,12 +133,9 @@ export default function DashboardPage() {
     void fetchClasses();
   }, [apiBase, isLoggedIn, pushToast, t, token]);
 
-  if (!isLoggedIn) {
-    return null;
-  }
-
-  const hasPendingEnrollment = classes.some(
-    (klass) => klass.enrollment?.status === "pending",
+  const hasPendingEnrollment = useMemo(
+    () => classes.some((klass) => klass.enrollment?.status === "pending"),
+    [classes],
   );
 
   const recentMaterials = useMemo(() => {
@@ -181,6 +178,10 @@ export default function DashboardPage() {
       };
     });
   }, [classes]);
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   const staticHighlights = [
     {

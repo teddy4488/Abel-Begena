@@ -187,10 +187,9 @@ export class AttendanceController {
   @Roles('Admin', 'Student', 'Teacher')
   @UseGuards(JwtAuthGuard, RoleGuard)
   listLessons(
-    @Query('instrumentType') instrumentType?: string,
-    @Query('level') level?: string,
+    @Query('classId') classId?: string,
   ) {
-    return this.attendanceService.listInstrumentLessons(instrumentType, level);
+    return this.attendanceService.listInstrumentLessons(classId);
   }
 
   @Post('lessons')
@@ -199,8 +198,7 @@ export class AttendanceController {
   createLesson(
     @Body()
     body: {
-      instrumentType: string;
-      level?: string;
+      classId: string;
       title: string;
       code?: string;
       order?: number;
@@ -217,7 +215,7 @@ export class AttendanceController {
     @Param('id') id: string,
     @Body()
     body: {
-      level?: string;
+      classId?: string;
       title?: string;
       code?: string;
       order?: number;

@@ -93,12 +93,20 @@ export default function ChangePasswordPage() {
       // Redirect based on user type
       const destination = user?.userType === "student" ? "/student" : "/dashboard";
       router.replace(destination);
-    } catch (err: any) {
-      const message = err?.data?.message || err?.message || t("changePassword.error", "Failed to change password. Please try again.");
-      setErrorMessage(message);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object"
+          ? ("data" in err && err.data && typeof err.data === "object" && "message" in err.data
+              ? String((err.data as { message: unknown }).message)
+              : "message" in err
+                ? String((err as { message: unknown }).message)
+                : null)
+          : null;
+      const displayMsg = message || t("changePassword.error", "Failed to change password. Please try again.");
+      setErrorMessage(displayMsg);
       pushToast({
         title: t("changePassword.errorTitle", "Password change failed"),
-        description: message,
+        description: displayMsg,
         variant: "error",
       });
     }

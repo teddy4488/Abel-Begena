@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { motion } from "framer-motion";
-import { useGetMyAttendanceQuery, useGetInstrumentLessonsQuery } from "@/store/api/attendanceApi";
-import { Calendar, CheckCircle2, Clock, AlertCircle, BookOpen, TrendingUp } from "lucide-react";
-import { InstrumentType } from "@/store/api/storeApi";
+import { useGetMyAttendanceQuery } from "@/store/api/attendanceApi";
+import { Calendar, CheckCircle2, Clock, AlertCircle, TrendingUp } from "lucide-react";
 
 export default function StudentAttendancePage() {
   const router = useRouter();
@@ -16,14 +15,12 @@ export default function StudentAttendancePage() {
   const [filterMonth, setFilterMonth] = useState<string>("");
   const [filterYear, setFilterYear] = useState<string>("");
 
-  const { data: attendanceRecords = [], isLoading } = useGetMyAttendanceQuery(undefined, {
-    skip: !isLoggedIn || user?.userType !== "student",
-  });
-
-  const studentInstrumentType = user?.instrumentType as InstrumentType | undefined;
-  const { data: lessons = [] } = useGetInstrumentLessonsQuery(studentInstrumentType, {
-    skip: !studentInstrumentType,
-  });
+  const { data: attendanceRecords = [], isLoading } = useGetMyAttendanceQuery(
+    undefined,
+    {
+      skip: !isLoggedIn || user?.userType !== "student",
+    },
+  );
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -34,10 +31,6 @@ export default function StudentAttendancePage() {
       router.replace("/student");
     }
   }, [isLoggedIn, router, user?.userType]);
-
-  if (!isLoggedIn || user?.userType !== "student") {
-    return null;
-  }
 
   const filteredRecords = useMemo(() => {
     let filtered = attendanceRecords;
@@ -72,6 +65,10 @@ export default function StudentAttendancePage() {
     
     return { total, present, late, excused, attendanceRate };
   }, [attendanceRecords]);
+
+  if (!isLoggedIn || user?.userType !== "student") {
+    return null;
+  }
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);

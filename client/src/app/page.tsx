@@ -11,7 +11,7 @@ import { useGetPublicClassesQuery } from "@/store/api/classApi";
 import { useGetBranchesQuery } from "@/store/api/branchApi";
 import { useGetFaqQuery } from "@/store/api/faqApi";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { ChevronLeft, ChevronRight, ChevronDown, Mail } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
 // import { BranchesMapModal } from "@/components/branches/BranchesMapModal";
 import dynamic from "next/dynamic";

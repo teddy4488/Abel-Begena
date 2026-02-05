@@ -193,14 +193,19 @@ export default function TeacherSchedulePage() {
         });
       }
       resetForm();
-    } catch (err: any) {
-      const serverMessage =
-        err?.data?.message ??
-        err?.error ??
-        t("teacher.schedule.saveErrorDesc", "Please try again.");
+    } catch (err: unknown) {
+      let serverMessage: string | undefined;
+      if (err && typeof err === "object") {
+        if ("data" in err && err.data && typeof err.data === "object" && "message" in err.data) {
+          serverMessage = String((err.data as { message: unknown }).message);
+        } else if ("error" in err && typeof (err as { error: unknown }).error === "string") {
+          serverMessage = (err as { error: string }).error;
+        }
+      }
+      const displayMessage = serverMessage ?? t("teacher.schedule.saveErrorDesc", "Please try again.");
       pushToast({
         title: t("teacher.schedule.saveError", "Unable to save schedule"),
-        description: serverMessage,
+        description: displayMessage,
         variant: "error",
       });
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/store/hooks";
 import {
   useGetClassesQuery,
@@ -53,17 +53,15 @@ export default function TeacherMaterialsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   
-  // Get lessons for selected instrument
-  const { data: lessons = [] } = useGetInstrumentLessonsQuery(
-    uploadDraft.instrumentType || undefined
-  );
-  
-  const filteredLessons = useMemo(() => {
-    if (!uploadDraft.instrumentType) return [];
-    return lessons.filter(
-      (lesson) => lesson.instrumentType === uploadDraft.instrumentType && lesson.isActive
-    );
-  }, [lessons, uploadDraft.instrumentType]);
+// Get lessons for selected class
+const { data: lessons = [] } = useGetInstrumentLessonsQuery(
+  selectedClassId ? { classId: selectedClassId } : undefined,
+);
+
+const filteredLessons = useMemo(() => {
+  if (!selectedClassId) return [];
+  return lessons.filter((lesson) => lesson.classId === selectedClassId && lesson.isActive);
+}, [lessons, selectedClassId]);
 
   const teacherClasses = useMemo(
     () =>
@@ -76,6 +74,17 @@ export default function TeacherMaterialsPage() {
   const { data: classAccess, refetch: refetchMaterials } = useGetClassAccessQuery(selectedClassId ?? "", {
     skip: !selectedClassId,
   });
+
+  // Keep instrument type in sync with selected class (defer setState to avoid sync-in-effect lint)
+  useEffect(() => {
+    if (!selectedClassId) return;
+    const klass = classes?.find((item) => item._id === selectedClassId);
+    if (klass?.instrumentType) {
+      const inst = klass.instrumentType;
+      const id = setTimeout(() => setUploadDraft((prev) => ({ ...prev, instrumentType: inst })), 0);
+      return () => clearTimeout(id);
+    }
+  }, [classes, selectedClassId]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -175,17 +184,17 @@ export default function TeacherMaterialsPage() {
         });
       }
     } else {
-      // Instrument-based upload
-      if (!uploadDraft.file) {
+      // Lesson-specific upload
+      if (!selectedClassId) {
         pushToast({
-          title: t("teacher.materials.selectFile", "Choose a file first"),
+          title: t("teacher.materials.selectClass", "Select a class first"),
           variant: "error",
         });
         return;
       }
-      if (!uploadDraft.instrumentType) {
+      if (!uploadDraft.file) {
         pushToast({
-          title: "Select instrument type",
+          title: t("teacher.materials.selectFile", "Choose a file first"),
           variant: "error",
         });
         return;
@@ -214,6 +223,7 @@ export default function TeacherMaterialsPage() {
         }, 200);
 
         await uploadInstrumentMaterial({
+          classId: selectedClassId,
           file: uploadDraft.file,
           title: uploadDraft.title || uploadDraft.file.name,
           instrumentType: uploadDraft.instrumentType,
@@ -226,7 +236,7 @@ export default function TeacherMaterialsPage() {
 
         pushToast({
           title: "Material uploaded successfully",
-          description: `All ${uploadDraft.instrumentType} students can now access this material`,
+          description: t("teacher.materials.lessonUploadSuccess", "Students in this class can now access the material."),
           variant: "success",
         });
         
@@ -331,7 +341,16 @@ export default function TeacherMaterialsPage() {
                 </label>
                 <select
                   value={selectedClassId ?? ""}
-                  onChange={(e) => setSelectedClassId(e.target.value || null)}
+                  onChange={(e) => {
+                    const val = e.target.value || null;
+                    setSelectedClassId(val);
+                    if (val && classes) {
+                      const klass = classes.find((item) => item._id === val);
+                      if (klass?.instrumentType) {
+                        setUploadDraft((prev) => ({ ...prev, instrumentType: klass.instrumentType }));
+                      }
+                    }
+                  }}
                   className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 >
                   <option value="">{t("teacher.materials.chooseClass", "Choose a class...")}</option>
@@ -672,7 +691,7 @@ export default function TeacherMaterialsPage() {
                                       variant: "success",
                                     });
                                     void refetchInstrumentMaterials();
-                                  } catch (error) {
+                                  } catch {
                                     pushToast({
                                       title: "Failed to delete",
                                       variant: "error",

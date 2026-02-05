@@ -43,14 +43,8 @@ export default function BecomeStudentPage() {
   const { pushToast } = useToast();
   const { t } = useI18n();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
-
-  // Avoid SSR evaluation of client-only APIs (guards build-time ReferenceError on location/window)
-  const isClient = typeof window !== "undefined";
-  if (!isClient) {
-    return null;
-  }
   const { data: branches = [] } = useGetBranchesQuery();
-  const [convertToStudent, { isLoading: isConverting }] = useConvertUserToStudentMutation();
+  const [, { isLoading: isConverting }] = useConvertUserToStudentMutation();
   const [createPayment, { isLoading: isCreatingPayment }] = useCreatePaymentRequestMutation();
 
   const [form, setForm] = useState({
@@ -85,10 +79,6 @@ export default function BecomeStudentPage() {
       : form.programDurationMonths === 6 ? 3 
       : 2;
   }, [form.programDurationMonths]);
-
-  const availableDays = useMemo(() => {
-    return DAYS_OF_WEEK.filter(day => !form.preferredLearningDays.includes(day.value));
-  }, [form.preferredLearningDays]);
 
   const handleDayToggle = (day: DayOfWeek) => {
     if (form.preferredLearningDays.includes(day)) {
@@ -190,7 +180,7 @@ export default function BecomeStudentPage() {
       };
 
       // Create payment request with conversion data
-      const paymentRequest = await createPayment({
+      await createPayment({
         type: "student_conversion",
         amount: form.amount,
         currency: form.currency,
@@ -213,11 +203,15 @@ export default function BecomeStudentPage() {
       });
 
       router.push("/dashboard");
-    } catch (error: any) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(err);
+      const message =
+        err && typeof err === "object" && "data" in err && err.data && typeof err.data === "object" && "message" in err.data && typeof (err.data as { message: unknown }).message === "string"
+          ? (err.data as { message: string }).message
+          : t("becomeStudent.errorDesc", "Please check your information and try again");
       pushToast({
         title: t("becomeStudent.error", "Unable to submit application"),
-        description: error?.data?.message || t("becomeStudent.errorDesc", "Please check your information and try again"),
+        description: message,
         variant: "error",
       });
     }

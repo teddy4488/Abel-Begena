@@ -39,11 +39,11 @@ export class ClassController {
   ) {}
 
   @Get('public')
-  getPublicCatalog(@Query('courseTrackId') courseTrackId?: string) {
-    if (courseTrackId) {
-      return this.classService.getPublicCohortsByCourseTrack(courseTrackId);
-    }
-    return this.classService.getPublicCatalog();
+  getPublicCatalog(
+    @Query('instrumentType') instrumentType?: string,
+    @Query('level') level?: 'beginner' | 'advanced',
+  ) {
+    return this.classService.getPublicCatalog(undefined, instrumentType, level);
   }
 
   @Get()
@@ -204,6 +204,53 @@ export class ClassController {
     );
   }
 
+  // Lessons (class-scoped)
+  @Get('lessons')
+  @Roles('Admin', 'Student', 'Teacher')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  listLessons(@Query('classId') classId?: string) {
+    return this.attendanceService.listInstrumentLessons(classId);
+  }
+
+  @Post('lessons')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  createLesson(
+    @Body()
+    body: {
+      classId: string;
+      title: string;
+      code?: string;
+      order?: number;
+    },
+  ) {
+    return this.attendanceService.createLesson(body);
+  }
+
+  @Put('lessons/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  updateLesson(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      classId?: string;
+      title?: string;
+      code?: string;
+      order?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.attendanceService.updateLesson(id, body);
+  }
+
+  @Delete('lessons/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  deleteLesson(@Param('id') id: string) {
+    return this.attendanceService.deleteLesson(id);
+  }
+
   @Delete(':id/schedule/:sessionId')
   @Roles('Teacher', 'Admin')
   @UseGuards(JwtAuthGuard, RoleGuard, ClassOwnerGuard)
@@ -267,56 +314,5 @@ export class ClassController {
       updateEnrollmentStatusDto,
       req.user.sub,
     );
-  }
-
-  // Lesson management endpoints (moved from attendance controller)
-  @Get('lessons')
-  @Roles('Admin', 'Student', 'Teacher')
-  @UseGuards(JwtAuthGuard, RoleGuard)
-  listLessons(
-    @Query('instrumentType') instrumentType?: string,
-    @Query('level') level?: string,
-  ) {
-    return this.attendanceService.listInstrumentLessons(instrumentType, level);
-  }
-
-  @Post('lessons')
-  @Roles('Admin')
-  @UseGuards(JwtAuthGuard, RoleGuard)
-  createLesson(
-    @Body()
-    body: {
-      instrumentType: string;
-      level?: string;
-      title: string;
-      code?: string;
-      order?: number;
-    },
-  ) {
-    return this.attendanceService.createLesson(body);
-  }
-
-  @Put('lessons/:id')
-  @Roles('Admin')
-  @UseGuards(JwtAuthGuard, RoleGuard)
-  updateLesson(
-    @Param('id') id: string,
-    @Body()
-    body: {
-      level?: string;
-      title?: string;
-      code?: string;
-      order?: number;
-      isActive?: boolean;
-    },
-  ) {
-    return this.attendanceService.updateLesson(id, body);
-  }
-
-  @Delete('lessons/:id')
-  @Roles('Admin')
-  @UseGuards(JwtAuthGuard, RoleGuard)
-  deleteLesson(@Param('id') id: string) {
-    return this.attendanceService.deleteLesson(id);
   }
 }

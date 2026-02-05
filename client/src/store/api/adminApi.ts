@@ -61,10 +61,11 @@ export type AnalyticsKpi = {
 export type ManagedClass = ClassSummary & {
   description?: string;
   classType?: "online" | "physical" | "both";
+  instrumentType: InstrumentType;
+  level?: "beginner" | "advanced";
   startDate?: string;
   endDate?: string;
   capacity?: number;
-  courseTrackId?: string | null;
   branchId?: string | null;
   instructorId?: {
     _id: string;
@@ -73,18 +74,6 @@ export type ManagedClass = ClassSummary & {
     email?: string;
     avatarUrl?: string;
   } | null;
-};
-
-export type CourseTrack = {
-  _id: string;
-  instrumentType: InstrumentType;
-  level: "beginner" | "advanced";
-  title: string;
-  description?: string;
-  lessonIds?: string[];
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 export type AdminEnrollment = {
@@ -178,7 +167,6 @@ export const adminApi = createApi({
     "Admins",
     "Students",
     "WebsiteUsers",
-    "CourseTracks",
   ],
   endpoints: (builder) => ({
     getAnalyticsOverview: builder.query<AnalyticsKpi, void>({
@@ -226,36 +214,6 @@ export const adminApi = createApi({
       invalidatesTags: ["AdminClasses"],
     }),
 
-    getManagedCourseTracks: builder.query<CourseTrack[], void>({
-      query: () => "/course-tracks/manage",
-      providesTags: ["CourseTracks"],
-    }),
-    createCourseTrack: builder.mutation<CourseTrack, Partial<CourseTrack>>({
-      query: (body) => ({
-        url: "/course-tracks",
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: ["CourseTracks"],
-    }),
-    updateCourseTrack: builder.mutation<
-      CourseTrack,
-      { id: string; data: Partial<CourseTrack> }
-    >({
-      query: ({ id, data }) => ({
-        url: `/course-tracks/${id}`,
-        method: "PATCH",
-        body: data,
-      }),
-      invalidatesTags: ["CourseTracks"],
-    }),
-    deleteCourseTrack: builder.mutation<{ message: string }, string>({
-      query: (id) => ({
-        url: `/course-tracks/${id}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: ["CourseTracks"],
-    }),
     getAllEnrollments: builder.query<
       AdminEnrollment[],
       { status?: "active" | "pending" | "withdrawn" } | void
@@ -336,10 +294,6 @@ export const {
   useUpdateManagedClassMutation,
   useDeleteManagedClassMutation,
   useAssignClassInstructorMutation,
-  useGetManagedCourseTracksQuery,
-  useCreateCourseTrackMutation,
-  useUpdateCourseTrackMutation,
-  useDeleteCourseTrackMutation,
   useGetAllEnrollmentsQuery,
   useGetTeachersQuery,
   useGetAdminsQuery,

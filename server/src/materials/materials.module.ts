@@ -7,11 +7,13 @@ import {
   InstrumentMaterialSchema,
 } from './schemas/instrument-material.schema';
 import { UploadModule } from '../upload/upload.module';
+import { Class, ClassSchema } from '../class/schemas/class.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: InstrumentMaterial.name, schema: InstrumentMaterialSchema },
+      { name: Class.name, schema: ClassSchema },
     ]),
     UploadModule,
   ],

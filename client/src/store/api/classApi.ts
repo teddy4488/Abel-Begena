@@ -37,6 +37,8 @@ export type EnrollmentSnapshot = {
 export type ClassSummary = {
   _id: string;
   title: string;
+  instrumentType: InstrumentType;
+  level?: "beginner" | "advanced";
   isLive?: boolean;
   liveRoomCode?: string | null;
   createdAt?: string;
@@ -140,16 +142,13 @@ export const classApi = createApi({
   baseQuery: authorizedBaseQuery,
   tagTypes: ["Classes", "ClassRoster", "ClassSchedule", "ClassEnrollment"],
   endpoints: (builder) => ({
-    getPublicCourseTracks: builder.query<PublicCourseTrack[], void>({
-      query: () => "/course-tracks/public",
-    }),
-    getPublicClasses: builder.query<ClassSummary[], void>({
-      query: () => "/classes/public",
-    }),
-    getPublicClassesByTrack: builder.query<ClassSummary[], string>({
-      query: (courseTrackId) => ({
+    getPublicClasses: builder.query<
+      ClassSummary[],
+      { instrumentType?: string; level?: "beginner" | "advanced" } | void
+    >({
+      query: (params) => ({
         url: "/classes/public",
-        params: { courseTrackId },
+        params: params ?? {},
       }),
     }),
     getClasses: builder.query<ClassSummary[], void>({
@@ -297,9 +296,7 @@ export const classApi = createApi({
 });
 
 export const {
-  useGetPublicCourseTracksQuery,
   useGetPublicClassesQuery,
-  useGetPublicClassesByTrackQuery,
   useGetClassesQuery,
   useGetClassAccessQuery,
   useGetClassStudentsQuery,

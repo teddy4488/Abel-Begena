@@ -10,9 +10,36 @@ import { useGetMyPaymentsQuery, useGetMyUpcomingPaymentsQuery, attendanceApi } f
 import { useSubmitStudentMonthlyPaymentMutation, useGetMyPaymentRequestsQuery } from "@/store/api/paymentApi";
 import { useUploadReceiptMutation } from "@/store/api/storeApi";
 import { useDispatch } from "react-redux";
-import { Receipt, CheckCircle2, Clock, XCircle, Calendar, Filter, AlertTriangle, Upload, X, Loader2, FileText } from "lucide-react";
+import { Receipt, CheckCircle2, Clock, XCircle, Calendar, Filter, AlertTriangle, Upload, X, Loader2 } from "lucide-react";
 
 type PaymentStatus = "paid" | "partial" | "unpaid";
+
+type PaymentRecord = {
+  year: number;
+  month: number;
+  status: string;
+  amount?: number;
+  duedate?: unknown;
+  period?: number;
+  dueDate?: string;
+};
+
+function getEffectiveDueDate(payment: PaymentRecord | null | undefined): Date | null {
+  try {
+    if (payment?.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
+      const arr = payment.duedate as (string | number)[];
+      const idx = payment.period != null && Number.isInteger(payment.period) && payment.period >= 1 && payment.period <= arr.length
+        ? payment.period - 1
+        : 0;
+      return new Date(arr[idx]);
+    }
+    if (payment?.dueDate) return new Date(payment.dueDate);
+    if (payment?.year != null && payment?.month != null) return new Date(payment.year, payment.month - 1, 5);
+  } catch {
+    // ignore parse errors
+  }
+  return null;
+}
 
 export default function StudentPaymentsPage() {
   const router = useRouter();
@@ -53,10 +80,6 @@ export default function StudentPaymentsPage() {
       router.replace("/student");
     }
   }, [isLoggedIn, router, user?.userType]);
-
-  if (!isLoggedIn || user?.userType !== "student") {
-    return null;
-  }
 
   // Calculate overdue payments (30-day rolling: use payment.duedate/period when set)
   const overduePayments = useMemo(() => {
@@ -120,6 +143,10 @@ export default function StudentPaymentsPage() {
     return { total, paid, partial, unpaid, totalPaid };
   }, [payments]);
 
+  if (!isLoggedIn || user?.userType !== "student") {
+    return null;
+  }
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -145,22 +172,6 @@ export default function StudentPaymentsPage() {
     }
   };
 
-  // Helper to determine effective due date for a payment (supports new `duedate` arrays and `period`).
-  function getEffectiveDueDate(payment: any): Date | null {
-    try {
-      if (payment?.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
-        const idx = payment?.period && Number.isInteger(payment.period) && payment.period >= 1 && payment.period <= payment.duedate.length
-          ? payment.period - 1
-          : 0;
-        return new Date(payment.duedate[idx]);
-      }
-      if (payment?.dueDate) return new Date(payment.dueDate);
-      if (payment?.year && payment?.month) return new Date(payment.year, payment.month - 1, 5);
-    } catch (e) {
-      // ignore parse errors
-    }
-    return null;
-  }
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -240,10 +251,14 @@ export default function StudentPaymentsPage() {
       setReceiptUrl("");
       setReference("");
       setNote("");
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "data" in err && err.data && typeof err.data === "object" && "message" in err.data
+          ? String((err.data as { message: unknown }).message)
+          : t("student.payments.tryAgain", "Please try again");
       pushToast({
         title: t("student.payments.submitError", "Submission failed"),
-        description: error?.data?.message || t("student.payments.tryAgain", "Please try again"),
+        description: msg,
         variant: "error",
       });
     }

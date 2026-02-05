@@ -19,7 +19,6 @@ import { CreateInstrumentMaterialDto } from './dto/create-instrument-material.dt
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
-import { InstrumentType } from '../product/schemas/product.schema';
 
 @Controller('materials')
 export class MaterialsController {
@@ -45,7 +44,7 @@ export class MaterialsController {
     return this.materialsService.uploadMaterial(
       file,
       dto.title,
-      dto.instrumentType,
+      dto.classId,
       req.user.sub,
       dto.description,
       dto.lessonId,
@@ -54,11 +53,11 @@ export class MaterialsController {
 
   @Get()
   async getMaterials(
-    @Query('instrumentType') instrumentType?: InstrumentType,
+    @Query('classId') classId?: string,
   ) {
     // Materials are accessible to all students (public endpoint)
-    // Filter by instrument type if provided
-    return this.materialsService.getMaterialsByInstrument(instrumentType);
+    // Filter by class if provided
+    return this.materialsService.getMaterialsByClass(classId);
   }
 
   @Get('teacher')

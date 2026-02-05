@@ -2,24 +2,22 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Edit, Loader2, Trash2, Plus, Music, X } from "lucide-react";
+import { Edit, Loader2, Trash2, Plus, X } from "lucide-react";
 import {
   useAssignClassInstructorMutation,
   useCreateManagedClassMutation,
   useDeleteManagedClassMutation,
   useGetManagedClassesQuery,
-  useGetManagedCourseTracksQuery,
-  useCreateCourseTrackMutation,
-  useUpdateCourseTrackMutation,
-  useDeleteCourseTrackMutation,
   useUpdateManagedClassMutation,
+  useGetTeachersQuery,
+  type ManagedClass,
 } from "@/store/api/adminApi";
-import { useGetTeachersQuery } from "@/store/api/adminApi";
 import {
   useGetInstrumentLessonsQuery,
   useCreateLessonMutation,
   useUpdateLessonMutation,
   useDeleteLessonMutation,
+  type InstrumentLesson,
 } from "@/store/api/attendanceApi";
 import type { InstrumentType } from "@/store/api/storeApi";
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
@@ -27,10 +25,20 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
 
+const INSTRUMENTS: InstrumentType[] = [
+  "Begena",
+  "Kirar",
+  "Masinko",
+  "Washint",
+  "Kebero",
+  "Other",
+];
+
 const emptyForm = {
   title: "",
   description: "",
-  courseTrackId: "",
+  instrumentType: "Begena" as InstrumentType,
+  level: "beginner" as "beginner" | "advanced",
   classType: "online" as "online" | "physical" | "both",
   branchId: "",
   instructorId: "",
@@ -46,51 +54,45 @@ export default function AdminClassesPage() {
   const { data: classes, isLoading } = useGetManagedClassesQuery();
   const { data: teachers = [] } = useGetTeachersQuery();
   const { data: branches = [] } = useGetBranchesAdminQuery();
-  const { data: courseTracks = [] } = useGetManagedCourseTracksQuery();
   const [createClass] = useCreateManagedClassMutation();
   const [updateClass] = useUpdateManagedClassMutation();
   const [deleteClass] = useDeleteManagedClassMutation();
   const [assignInstructor] = useAssignClassInstructorMutation();
-  const [createCourseTrack, { isLoading: creatingCourseTrack }] =
-    useCreateCourseTrackMutation();
-  const [updateCourseTrack, { isLoading: updatingCourseTrack }] =
-    useUpdateCourseTrackMutation();
-  const [deleteCourseTrack, { isLoading: deletingCourseTrack }] =
-    useDeleteCourseTrackMutation();
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { pushToast } = useToast();
   const { t } = useI18n();
 
+  const formatMessage = (
+    key: string,
+    fallback: string,
+    vars: Record<string, string | number>,
+  ) => {
+    const template = t(key, fallback);
+    return Object.entries(vars).reduce(
+      (acc, [token, value]) => acc.replace(`{{${token}}}`, String(value)),
+      template,
+    );
+  };
+
   const [searchTerm, setSearchTerm] = useState("");
   const [viewFilter, setViewFilter] = useState<"all" | "unassigned" | "live">(
     "all",
   );
-  const [activeTab, setActiveTab] = useState<"cohorts" | "lessons" | "tracks">(
-    "cohorts",
-  );
+  const [activeTab, setActiveTab] = useState<"classes" | "lessons">("classes");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [lessonsCurrentPage, setLessonsCurrentPage] = useState(1);
   const [lessonsItemsPerPage, setLessonsItemsPerPage] = useState(10);
-  const [tracksCurrentPage, setTracksCurrentPage] = useState(1);
-  const [tracksItemsPerPage, setTracksItemsPerPage] = useState(10);
-  
-  // Lessons management (linked to CourseTracks)
-  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
-  const selectedTrack = useMemo(
-    () => courseTracks.find((track) => track._id === selectedTrackId) ?? null,
-    [courseTracks, selectedTrackId],
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const selectedClass = useMemo(
+    () => classes?.find((klass) => klass._id === selectedClassId) ?? null,
+    [classes, selectedClassId],
   );
   const { data: lessons = [], isLoading: lessonsLoading } =
     useGetInstrumentLessonsQuery(
-      selectedTrack
-        ? {
-            instrumentType: selectedTrack.instrumentType,
-            level: selectedTrack.level,
-          }
-        : undefined,
+      selectedClass ? { classId: selectedClass._id } : undefined,
     );
   const [createLesson, { isLoading: creatingLesson }] = useCreateLessonMutation();
   const [updateLesson, { isLoading: updatingLesson }] = useUpdateLessonMutation();
@@ -98,22 +100,10 @@ export default function AdminClassesPage() {
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [lessonForm, setLessonForm] = useState({
-    instrumentType: "Begena" as InstrumentType,
-    level: "beginner" as "beginner" | "advanced",
+    classId: "",
     title: "",
     code: "",
     order: 0,
-    isActive: true,
-  });
-
-  // Course tracks management
-  const [showTrackModal, setShowTrackModal] = useState(false);
-  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
-  const [trackForm, setTrackForm] = useState({
-    instrumentType: "Begena" as InstrumentType,
-    level: "beginner" as "beginner" | "advanced",
-    title: "",
-    description: "",
     isActive: true,
   });
 
@@ -149,7 +139,8 @@ export default function AdminClassesPage() {
     const payload = {
       title: form.title,
       description: form.description || undefined,
-      courseTrackId: form.courseTrackId || undefined,
+      instrumentType: form.instrumentType,
+      level: form.level,
       classType: form.classType || "online",
       branchId: form.branchId || undefined,
       instructorId: form.instructorId || undefined,
@@ -187,14 +178,14 @@ export default function AdminClassesPage() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const startEdit = (klass: any) => {
+  const startEdit = (klass: ManagedClass) => {
     setEditingId(klass._id);
     setShowForm(true);
     setForm({
       title: klass.title ?? "",
       description: klass.description ?? "",
-      courseTrackId: klass.courseTrackId ?? "",
+      instrumentType: klass.instrumentType ?? "Begena",
+      level: klass.level ?? "beginner",
       classType: klass.classType ?? "online",
       branchId: klass.branchId ?? "",
       instructorId: klass.instructorId?._id ?? "",
@@ -270,12 +261,13 @@ export default function AdminClassesPage() {
       if (viewFilter === "unassigned" && klass.instructorId) return false;
       if (viewFilter === "live" && !klass.isLive) return false;
       if (query) {
-        const instructor =
-          typeof klass.instructorId === "object" && klass.instructorId
-            ? `${(klass.instructorId as any).firstName ?? ""} ${
-                (klass.instructorId as any).lastName ?? ""
-              }`
-            : "";
+        const instructorObj =
+          typeof klass.instructorId === "object" && klass.instructorId !== null
+            ? klass.instructorId
+            : null;
+        const instructor = instructorObj
+          ? `${instructorObj.firstName ?? ""} ${instructorObj.lastName ?? ""}`.trim()
+          : "";
         const haystack = `${klass.title} ${instructor}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
@@ -308,10 +300,19 @@ export default function AdminClassesPage() {
     }
 
     try {
+      if (!lessonForm.classId) {
+        pushToast({
+          title: t("admin.lessons.error", "Error"),
+          description: t("admin.lessons.classRequired", "Please choose a class"),
+          variant: "error",
+        });
+        return;
+      }
+
       if (editingLessonId) {
         await updateLesson({
           id: editingLessonId,
-          level: lessonForm.level,
+          classId: lessonForm.classId,
           title: lessonForm.title,
           code: lessonForm.code || undefined,
           order: lessonForm.order,
@@ -323,8 +324,7 @@ export default function AdminClassesPage() {
         });
       } else {
         await createLesson({
-          instrumentType: lessonForm.instrumentType,
-          level: lessonForm.level,
+          classId: lessonForm.classId,
           title: lessonForm.title,
           code: lessonForm.code || undefined,
           order: lessonForm.order,
@@ -337,27 +337,32 @@ export default function AdminClassesPage() {
       setShowLessonModal(false);
       setEditingLessonId(null);
       setLessonForm({
-        instrumentType: selectedTrack?.instrumentType ?? "Begena",
-        level: selectedTrack?.level ?? "beginner",
+        classId: selectedClass?._id ?? "",
         title: "",
         code: "",
         order: 0,
         isActive: true,
       });
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("admin.lessons.error", "Error"),
-        description: error?.data?.message || t("admin.lessons.errorDesc", "Unable to save lesson"),
+        description:
+          typeof message === "string" && message.length > 0
+            ? message
+            : t("admin.lessons.errorDesc", "Unable to save lesson"),
         variant: "error",
       });
     }
   };
 
-  const startEditLesson = (lesson: any) => {
+  const startEditLesson = (lesson: InstrumentLesson) => {
     setEditingLessonId(lesson._id);
     setLessonForm({
-      instrumentType: lesson.instrumentType,
-      level: lesson.level ?? "beginner",
+      classId: lesson.classId ?? selectedClassId ?? "",
       title: lesson.title,
       code: lesson.code || "",
       order: lesson.order || 0,
@@ -376,133 +381,44 @@ export default function AdminClassesPage() {
         title: t("admin.lessons.deleted", "Lesson deleted"),
         variant: "success",
       });
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("admin.lessons.error", "Error"),
-        description: error?.data?.message || t("admin.lessons.deleteError", "Unable to delete lesson"),
-        variant: "error",
-      });
-    }
-  };
-
-  const handleTrackSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!trackForm.title.trim()) {
-      pushToast({
-        title: t("admin.tracks.error", "Error"),
-        description: t("admin.tracks.titleRequired", "Track title is required"),
-        variant: "error",
-      });
-      return;
-    }
-
-    try {
-      if (editingTrackId) {
-        await updateCourseTrack({
-          id: editingTrackId,
-          data: {
-            instrumentType: trackForm.instrumentType,
-            level: trackForm.level,
-            title: trackForm.title,
-            description: trackForm.description || undefined,
-            isActive: trackForm.isActive,
-          },
-        }).unwrap();
-        pushToast({
-          title: t("admin.tracks.updated", "Course track updated"),
-          variant: "success",
-        });
-      } else {
-        await createCourseTrack({
-          instrumentType: trackForm.instrumentType,
-          level: trackForm.level,
-          title: trackForm.title,
-          description: trackForm.description || undefined,
-          isActive: trackForm.isActive,
-        }).unwrap();
-        pushToast({
-          title: t("admin.tracks.created", "Course track created"),
-          variant: "success",
-        });
-      }
-
-      setShowTrackModal(false);
-      setEditingTrackId(null);
-      setTrackForm({
-        instrumentType: "Begena",
-        level: "beginner",
-        title: "",
-        description: "",
-        isActive: true,
-      });
-    } catch (error: any) {
-      pushToast({
-        title: t("admin.tracks.error", "Error"),
         description:
-          error?.data?.message ||
-          t("admin.tracks.errorDesc", "Unable to save course track"),
-        variant: "error",
-      });
-    }
-  };
-
-  const startEditTrack = (track: any) => {
-    setEditingTrackId(track._id);
-    setTrackForm({
-      instrumentType: track.instrumentType,
-      level: track.level ?? "beginner",
-      title: track.title ?? "",
-      description: track.description ?? "",
-      isActive: track.isActive !== false,
-    });
-    setShowTrackModal(true);
-  };
-
-  const handleDeleteTrack = async (trackId: string) => {
-    if (
-      !confirm(
-        t(
-          "admin.tracks.confirmDelete",
-          "Are you sure you want to delete this course track?",
-        ),
-      )
-    ) {
-      return;
-    }
-    try {
-      await deleteCourseTrack(trackId).unwrap();
-      pushToast({
-        title: t("admin.tracks.deleted", "Course track deleted"),
-        variant: "success",
-      });
-    } catch (error: any) {
-      pushToast({
-        title: t("admin.tracks.error", "Error"),
-        description:
-          error?.data?.message ||
-          t("admin.tracks.deleteError", "Unable to delete course track"),
+          typeof message === "string" && message.length > 0
+            ? message
+            : t("admin.lessons.deleteError", "Unable to delete lesson"),
         variant: "error",
       });
     }
   };
 
   const filteredLessons = useMemo(() => {
-    if (!selectedTrack) return [];
-    return lessons.filter(
-      (lesson) =>
-        lesson.instrumentType === selectedTrack.instrumentType &&
-        (lesson.level ?? "beginner") === selectedTrack.level,
-    );
-  }, [lessons, selectedTrack]);
+    if (!selectedClassId) return [];
+    return lessons.filter((lesson) => lesson.classId === selectedClassId);
+  }, [lessons, selectedClassId]);
 
-  // Reset to page 1 when filters change
+  // Reset pagination when filters/selection change.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, viewFilter]);
 
   useEffect(() => {
     setLessonsCurrentPage(1);
-  }, [selectedTrackId]);
+  }, [selectedClassId]);
+
+  useEffect(() => {
+    if (!selectedClassId && classes?.length) {
+      setSelectedClassId(classes[0]._id);
+      setLessonForm((prev) => ({ ...prev, classId: classes[0]._id }));
+    }
+  }, [classes, selectedClassId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Calculate pagination for classes
   const classesTotalPages = Math.ceil(filteredClasses.length / itemsPerPage);
@@ -516,19 +432,6 @@ export default function AdminClassesPage() {
   const lessonsEndIndex = lessonsStartIndex + lessonsItemsPerPage;
   const paginatedLessons = filteredLessons.slice(lessonsStartIndex, lessonsEndIndex);
 
-  const sortedTracks = useMemo(() => {
-    return [...courseTracks].sort((a, b) => {
-      const aKey = `${a.instrumentType}-${a.level}-${a.title}`.toLowerCase();
-      const bKey = `${b.instrumentType}-${b.level}-${b.title}`.toLowerCase();
-      return aKey.localeCompare(bKey);
-    });
-  }, [courseTracks]);
-
-  const tracksTotalPages = Math.ceil(sortedTracks.length / tracksItemsPerPage);
-  const tracksStartIndex = (tracksCurrentPage - 1) * tracksItemsPerPage;
-  const tracksEndIndex = tracksStartIndex + tracksItemsPerPage;
-  const paginatedTracks = sortedTracks.slice(tracksStartIndex, tracksEndIndex);
-
   return (
     <section className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -541,12 +444,12 @@ export default function AdminClassesPage() {
           {t("admin.classes.kicker", "Curriculum & Cohorts")}
         </p>
         <h1 className="text-2xl font-serif text-primary sm:text-3xl md:text-4xl">
-          {t("admin.classes.title", "Manage Courses & Cohorts")}
+          {t("admin.classes.title", "Manage Classes & Lessons")}
         </h1>
         <p className="mt-2 text-xs text-foreground/70 sm:text-sm">
           {t(
             "admin.classes.subtitle",
-            "Define course tracks, attach lessons, and schedule cohorts for each instrument and level.",
+            "Create classes and attach lessons students will access after enrollment.",
           )}
         </p>
       </motion.div>
@@ -555,14 +458,14 @@ export default function AdminClassesPage() {
       <div className="flex gap-2 border-b border-border">
         <button
           type="button"
-          onClick={() => setActiveTab("cohorts")}
+          onClick={() => setActiveTab("classes")}
           className={`px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "cohorts"
+            activeTab === "classes"
               ? "border-b-2 border-primary text-primary"
               : "text-foreground/60 hover:text-foreground"
           }`}
         >
-          {t("admin.classes.tabs.cohorts", "Cohorts")}
+          {t("admin.classes.tabs.classes", "Classes")}
         </button>
         <button
           type="button"
@@ -575,21 +478,10 @@ export default function AdminClassesPage() {
         >
           {t("admin.classes.tabs.lessons", "Lessons")}
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("tracks")}
-          className={`px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "tracks"
-              ? "border-b-2 border-primary text-primary"
-              : "text-foreground/60 hover:text-foreground"
-          }`}
-        >
-          {t("admin.classes.tabs.tracks", "Course Tracks")}
-        </button>
       </div>
 
-      {/* Cohorts Tab */}
-      {activeTab === "cohorts" && (
+      {/* Classes Tab */}
+      {activeTab === "classes" && (
         <>
       {/* Summary View */}
       {!showForm && !editingId && (
@@ -602,7 +494,7 @@ export default function AdminClassesPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
               <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/70">
-                {t("admin.classes.stats.total", "Total Cohorts")}
+                {t("admin.classes.stats.total", "Total Classes")}
               </p>
               <p className="mt-1 text-2xl font-serif text-primary">{stats.total}</p>
             </div>
@@ -711,12 +603,14 @@ export default function AdminClassesPage() {
                       <p className="mt-1 text-xs text-foreground/70">{klass.description}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/60">
                         <span>{t("admin.classes.type", "Type")}: {klass.classType}</span>
-                        {klass.instructorId && typeof klass.instructorId === "object" && (
-                          <span>
-                            {t("admin.classes.instructor", "Instructor")}:{" "}
-                            {(klass.instructorId as any).firstName} {(klass.instructorId as any).lastName}
-                          </span>
-                        )}
+                        {klass.instructorId &&
+                          typeof klass.instructorId === "object" && (
+                            <span>
+                              {t("admin.classes.instructor", "Instructor")}:{" "}
+                              {klass.instructorId.firstName}{" "}
+                              {klass.instructorId.lastName}
+                            </span>
+                          )}
                         {!klass.instructorId && (
                           <span className="text-amber-500">{t("admin.classes.noInstructor", "No instructor")}</span>
                         )}
@@ -772,39 +666,26 @@ export default function AdminClassesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          {/* Course Track selector */}
+          {/* Class selector */}
           <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
             <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
-              {t("admin.lessons.selectTrack", "Select Course Track")}
+              {t("admin.lessons.selectClass", "Select Class")}
             </label>
             <select
-              value={selectedTrackId ?? ""}
+              value={selectedClassId ?? ""}
               onChange={(e) => {
                 const value = e.target.value || null;
-                setSelectedTrackId(value);
-                if (value) {
-                  const track = courseTracks.find((t) => t._id === value);
-                  if (track) {
-                    setLessonForm((prev) => ({
-                      ...prev,
-                      instrumentType: track.instrumentType,
-                      level: track.level,
-                    }));
-                  }
-                }
+                setSelectedClassId(value);
+                setLessonForm((prev) => ({ ...prev, classId: value ?? "" }));
               }}
-              className="w-full rounded-2xl border border-border bg-background px  -4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+              className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
             >
               <option value="">
-                {t("admin.lessons.selectTrackPlaceholder", "Choose a course track")}
+                {t("admin.lessons.selectClassPlaceholder", "Choose a class")}
               </option>
-              {courseTracks.map((track) => (
-                <option key={track._id} value={track._id}>
-                  {track.instrumentType} ·{" "}
-                  {track.level === "beginner"
-                    ? t("admin.lessons.level.beginner", "Beginner")
-                    : t("admin.lessons.level.advanced", "Advanced")}{" "}
-                  · {track.title}
+              {(classes ?? []).map((klass) => (
+                <option key={klass._id} value={klass._id}>
+                  {klass.title}
                 </option>
               ))}
             </select>
@@ -814,43 +695,31 @@ export default function AdminClassesPage() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-serif text-primary">
-                {selectedTrack
-                  ? t("admin.lessons.titleForTrack", {
-                      defaultValue: "Lessons for {{instrument}} · {{level}}",
-                      instrument: selectedTrack.instrumentType,
-                      level:
-                        selectedTrack.level === "beginner"
-                          ? t("admin.lessons.level.beginner", "Beginner")
-                          : t("admin.lessons.level.advanced", "Advanced"),
+                {selectedClass
+                  ? formatMessage("admin.lessons.titleForClass", "Lessons for {{class}}", {
+                      class: selectedClass.title,
                     })
                   : t("admin.lessons.title", "Lessons")}
               </h2>
               <p className="text-xs text-foreground/70 mt-1">
-                {selectedTrack
-                  ? t("admin.lessons.subtitleForTrack", {
-                      defaultValue:
-                        "Manage lessons for {{instrument}} {{level}} students",
-                      instrument: selectedTrack.instrumentType,
-                      level:
-                        selectedTrack.level === "beginner"
-                          ? t("admin.lessons.level.beginner", "Beginner")
-                          : t("admin.lessons.level.advanced", "Advanced"),
-                    })
-                  : t(
-                      "admin.lessons.subtitle",
-                      "Choose a course track to manage its lessons",
-                    )}
+                {selectedClass
+                  ? formatMessage(
+                      "admin.lessons.subtitleForClass",
+                      "Manage lessons for {{class}} students",
+                      { class: selectedClass.title },
+                    )
+                  : t("admin.lessons.subtitle", "Choose a class to manage its lessons")}
               </p>
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => {
-                if (!selectedTrack) {
+                if (!selectedClass) {
                   pushToast({
-                    title: t("admin.lessons.selectTrackFirst", "Select a course track"),
+                    title: t("admin.lessons.selectClassFirst", "Select a class"),
                     description: t(
-                      "admin.lessons.selectTrackFirstDesc",
-                      "Please choose which course track these lessons belong to.",
+                      "admin.lessons.selectClassFirstDesc",
+                      "Please choose which class these lessons belong to.",
                     ),
                     variant: "error",
                   });
@@ -858,8 +727,7 @@ export default function AdminClassesPage() {
                 }
                 setEditingLessonId(null);
                 setLessonForm({
-                  instrumentType: selectedTrack.instrumentType,
-                  level: selectedTrack.level,
+                  classId: selectedClass._id,
                   title: "",
                   code: "",
                   order: filteredLessons.length,
@@ -881,19 +749,15 @@ export default function AdminClassesPage() {
             </div>
           ) : filteredLessons.length === 0 ? (
             <div className="rounded-3xl bg-surface-elevated p-10 text-center text-sm text-foreground/70 shadow-lg">
-              {selectedTrack
-                ? t("admin.lessons.emptyForTrack", {
-                    defaultValue:
-                      "No lessons found for {{instrument}} {{level}} yet.",
-                    instrument: selectedTrack.instrumentType,
-                    level:
-                      selectedTrack.level === "beginner"
-                        ? t("admin.lessons.level.beginner", "Beginner")
-                        : t("admin.lessons.level.advanced", "Advanced"),
-                  })
+              {selectedClass
+                ? formatMessage(
+                    "admin.lessons.emptyForClass",
+                    "No lessons found for {{class}} yet.",
+                    { class: selectedClass.title },
+                  )
                 : t(
-                    "admin.lessons.emptyNoTrack",
-                    "Select a course track above to view or create its lessons.",
+                    "admin.lessons.emptyNoClass",
+                    "Select a class above to view or create its lessons.",
                   )}
             </div>
           ) : (
@@ -1008,22 +872,20 @@ export default function AdminClassesPage() {
                 <form onSubmit={handleLessonSubmit} className="space-y-4">
                   <div>
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
-                      {t("admin.lessons.form.instrument", "Instrument")} *
+                      {t("admin.lessons.form.class", "Class")} *
                     </label>
                     <select
-                      value={lessonForm.instrumentType}
+                      value={lessonForm.classId}
                       onChange={(e) =>
-                        setLessonForm((prev) => ({
-                          ...prev,
-                          instrumentType: e.target.value as InstrumentType,
-                        }))
+                        setLessonForm((prev) => ({ ...prev, classId: e.target.value }))
                       }
                       className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
                       required
                     >
-                      {INSTRUMENTS.map((instrument) => (
-                        <option key={instrument} value={instrument}>
-                          {instrument}
+                      <option value="">{t("admin.lessons.selectClassPlaceholder", "Choose a class")}</option>
+                      {(classes ?? []).map((klass) => (
+                        <option key={klass._id} value={klass._id}>
+                          {klass.title}
                         </option>
                       ))}
                     </select>
@@ -1124,46 +986,10 @@ export default function AdminClassesPage() {
         </motion.div>
       )}
 
-      {/* Course Tracks Tab */}
-      {activeTab === "tracks" && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-serif text-primary">
-                {t("admin.tracks.title", "Course Tracks")}
-              </h2>
-              <p className="mt-1 text-xs text-foreground/70">
-                {t(
-                  "admin.tracks.subtitle",
-                  "Define instrument + level offerings (e.g. Begena Beginner).",
-                )}
-              </p>
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setEditingTrackId(null);
-                setTrackForm({
-                  instrumentType: "Begena",
-                  level: "beginner",
-                  title: "",
-                  description: "",
-                  isActive: true,
-                });
-                setShowTrackModal(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
-            >
-              <Plus className="h-4 w-4" />
-              {t("admin.tracks.add", "Add Track")}
-            </motion.button>
-          </div>
-
-          <div className="rounded-2xl bg-surface-elevated p-4 shadow-lg">
+      {/* Course Tracks Tab removed
+      {false && (
+        <motion.div>
+          <div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-foreground/70">
                 {t("admin.tracks.count", "Tracks")}:{" "}
@@ -1415,6 +1241,7 @@ export default function AdminClassesPage() {
           )}
         </motion.div>
       )}
+      */}
 
       {/* Form View */}
       {(showForm || editingId) && (
@@ -1491,26 +1318,40 @@ export default function AdminClassesPage() {
               <option value="both">{t("admin.classes.form.both", "Both (Online & Physical)")}</option>
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
-              {t("admin.classes.form.courseTrack", "Course Track")}
-            </label>
-            <select
-              value={form.courseTrackId}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, courseTrackId: e.target.value }))
-              }
-              className="w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-            >
-              <option value="">
-                {t("admin.classes.form.courseTrackOptional", "Select a track (optional)")}
-              </option>
-              {courseTracks.map((track) => (
-                <option key={track._id} value={track._id}>
-                  {track.instrumentType} · {track.level} · {track.title}
-                </option>
-              ))}
-            </select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t("admin.classes.form.instrument", "Instrument")}
+              </label>
+              <select
+                value={form.instrumentType}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, instrumentType: e.target.value as InstrumentType }))
+                }
+                className="w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              >
+                {INSTRUMENTS.map((inst) => (
+                  <option key={inst} value={inst}>
+                    {inst}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t("admin.classes.form.level", "Level")}
+              </label>
+              <select
+                value={form.level}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, level: e.target.value as "beginner" | "advanced" }))
+                }
+                className="w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              >
+                <option value="beginner">{t("admin.lessons.level.beginner", "Beginner")}</option>
+                <option value="advanced">{t("admin.lessons.level.advanced", "Advanced")}</option>
+              </select>
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">

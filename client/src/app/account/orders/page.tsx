@@ -92,7 +92,7 @@ export default function OrdersPage() {
       }).unwrap();
 
       resetModalState();
-    } catch (err) {
+    } catch {
       setFieldError(
         t(
           "orders.resubmit.error",

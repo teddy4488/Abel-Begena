@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   useAddToCartMutation,
@@ -96,9 +97,11 @@ export default function ProductDetailPage() {
         <div className="flex-1 space-y-3 sm:space-y-4">
           <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-background/80 sm:rounded-3xl">
             {data.images?.length ? (
-              <img
+              <Image
                 src={activeImage ?? data.images[0]}
                 alt={data.name}
+                width={800}
+                height={800}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -120,9 +123,11 @@ export default function ProductDetailPage() {
                       : "border-border hover:border-secondary/60"
                   }`}
                 >
-                  <img
+                  <Image
                     src={image}
                     alt={data.name}
+                    width={200}
+                    height={200}
                     className="h-full w-full object-cover"
                   />
                 </button>

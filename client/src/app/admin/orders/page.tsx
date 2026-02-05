@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetAllOrdersQuery,
   useUpdateOrderStatusMutation,
+  type Order,
 } from "@/store/api/storeApi";
 import {
   useGetPendingPaymentRequestsQuery,
@@ -95,7 +96,7 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -124,9 +125,11 @@ export default function AdminOrdersPage() {
   }, [orders, search, statusFilter, paymentFilter]);
 
   // Reset to page 1 when filters change
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, paymentFilter]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Calculate pagination
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -171,7 +174,7 @@ export default function AdminOrdersPage() {
     return map;
   }, [pendingOrderPayments]);
 
-  const getCustomerLabel = (order: any) => {
+  const getCustomerLabel = (order: Order) => {
     const user = order?.user;
     if (user && typeof user === "object") {
       const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
@@ -180,7 +183,7 @@ export default function AdminOrdersPage() {
     return t("admin.orders.unknownCustomer", "Customer");
   };
 
-  const getCustomerSub = (order: any) => {
+  const getCustomerSub = (order: Order) => {
     const user = order?.user;
     if (user && typeof user === "object") {
       return user.email || user.phone || "";

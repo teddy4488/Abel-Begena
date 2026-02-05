@@ -403,7 +403,7 @@ export default function HeritageArticlePage() {
             {comments.map((c) => {
               const userId = user?._id || user?.id;
               const authorId = typeof c.authorId === 'object' && c.authorId !== null 
-                ? (c.authorId as any)?._id || (c.authorId as any)?.id 
+                ? (c.authorId as { _id?: string; id?: string })?._id || (c.authorId as { _id?: string; id?: string })?.id 
                 : c.authorId;
               const isOwner = isLoggedIn && user && userId && authorId === userId;
               const isEditing = editingCommentId === c._id;
@@ -438,7 +438,7 @@ export default function HeritageArticlePage() {
                                     title: t("heritage.comments.updated", "Comment updated"),
                                     variant: "success",
                                   });
-                                } catch (error) {
+                                } catch {
                                   pushToast({
                                     title: t("heritage.comments.updateError", "Failed to update comment"),
                                     variant: "error",
@@ -469,7 +469,7 @@ export default function HeritageArticlePage() {
                             {c.content}
                           </p>
                           <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/50 mt-1">
-                            {new Date(c.createdAt ?? Date.now()).toLocaleDateString()}
+                            {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "-"}
                           </p>
                         </>
                       )}
@@ -497,7 +497,7 @@ export default function HeritageArticlePage() {
                                   title: t("heritage.comments.deleted", "Comment deleted"),
                                   variant: "success",
                                 });
-                              } catch (error) {
+                              } catch {
                                 pushToast({
                                   title: t("heritage.comments.deleteError", "Failed to delete comment"),
                                   variant: "error",

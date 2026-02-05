@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -45,7 +46,7 @@ export function BlogStudio({
   const isAdmin = user?.role === "Admin";
   const [search, setSearch] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
-  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [, setCoverImageFile] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string>("");
   const [form, setForm] = useState({
     ...emptyForm,
@@ -68,8 +69,8 @@ export function BlogStudio({
     const map = new Map<string, number>();
     allComments.forEach((c) => {
       const pid =
-        typeof c.postId === "object" && c.postId?._id
-          ? (c.postId as any)._id.toString()
+        typeof c.postId === "object" && c.postId != null && "_id" in c.postId
+          ? String((c.postId as { _id: unknown })._id)
           : (c.postId as unknown as string);
       if (pid) {
         map.set(pid, (map.get(pid) ?? 0) + 1);
@@ -354,9 +355,11 @@ export function BlogStudio({
               </label>
               {coverImagePreview && (
                 <div className="relative rounded-xl overflow-hidden border border-border">
-                  <img
+                  <Image
                     src={coverImagePreview}
                     alt="Cover preview"
+                    width={800}
+                    height={200}
                     className="w-full h-32 object-cover"
                   />
                 </div>

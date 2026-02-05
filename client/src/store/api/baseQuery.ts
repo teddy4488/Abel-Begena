@@ -52,7 +52,7 @@ export const authorizedBaseQuery: BaseQueryFn<
 
       if (!refreshResult.error) {
         const data = refreshResult.data as
-          | { accessToken?: string | null; expiresAt?: string | null; user?: any }
+          | { accessToken?: string | null; expiresAt?: string | null; user?: unknown }
           | undefined;
 
         api.dispatch(

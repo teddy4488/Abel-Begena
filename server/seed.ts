@@ -161,10 +161,25 @@ const TeacherAttendanceParticipantSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// InstrumentLesson Schema
+// InstrumentLesson Schema (class-linked lessons)
 const InstrumentLessonSchema = new mongoose.Schema(
   {
-    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true },
+    classId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+      required: true,
+      index: true,
+    },
+    instrumentType: {
+      type: String,
+      enum: Object.values(InstrumentType),
+    },
+    level: {
+      type: String,
+      enum: ['beginner', 'advanced'],
+      default: 'beginner',
+      index: true,
+    },
     title: { type: String, required: true, trim: true, maxlength: 120 },
     code: { type: String, trim: true, maxlength: 60 },
     order: { type: Number, min: 0, default: 0 },
@@ -227,6 +242,8 @@ const ClassSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     description: { type: String, trim: true },
+    instrumentType: { type: String, enum: Object.values(InstrumentType) },
+    level: { type: String, enum: ['beginner', 'advanced'], default: 'beginner' },
     classType: { type: String, enum: ['online', 'physical', 'both'], default: 'online' },
     instructorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' },
     startDate: { type: Date },
@@ -356,16 +373,38 @@ const FaqSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// InstrumentMaterial Schema
+// InstrumentMaterial Schema (class-linked materials)
 const InstrumentMaterialSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 200 },
     url: { type: String, required: true },
-    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true, index: true },
-    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+    classId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+      required: true,
+      index: true,
+    },
+    instrumentType: {
+      type: String,
+      enum: Object.values(InstrumentType),
+    },
+    lessonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'InstrumentLesson',
+      required: false,
+    },
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Teacher',
+      required: true,
+    },
     uploadedAt: { type: Date, default: Date.now },
     description: { type: String, trim: true, maxlength: 500 },
-    fileType: { type: String, enum: ['pdf', 'image', 'video', 'other'], default: 'other' },
+    fileType: {
+      type: String,
+      enum: ['pdf', 'image', 'video', 'other'],
+      default: 'other',
+    },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },
@@ -590,39 +629,7 @@ async function seed() {
     ]);
     console.log('✅ Created branches:', branches.map((b) => b.name).join(', '));
 
-    // Create Instrument Lessons for each instrument type
-    const begenaLessons = await InstrumentLesson.insertMany([
-      { instrumentType: InstrumentType.BEGENA, title: 'Introduction to Begena', code: 'BEG-001', order: 1, isActive: true },
-      { instrumentType: InstrumentType.BEGENA, title: 'Basic Posture and Holding', code: 'BEG-002', order: 2, isActive: true },
-      { instrumentType: InstrumentType.BEGENA, title: 'String Tuning Fundamentals', code: 'BEG-003', order: 3, isActive: true },
-      { instrumentType: InstrumentType.BEGENA, title: 'First Melodies', code: 'BEG-004', order: 4, isActive: true },
-      { instrumentType: InstrumentType.BEGENA, title: 'Traditional Mezmur Patterns', code: 'BEG-005', order: 5, isActive: true },
-    ]);
-
-    const masinkoLessons = await InstrumentLesson.insertMany([
-      { instrumentType: InstrumentType.MASINKO, title: 'Introduction to Masinko', code: 'MAS-001', order: 1, isActive: true },
-      { instrumentType: InstrumentType.MASINKO, title: 'Bow Technique Basics', code: 'MAS-002', order: 2, isActive: true },
-      { instrumentType: InstrumentType.MASINKO, title: 'Finger Positioning', code: 'MAS-003', order: 3, isActive: true },
-      { instrumentType: InstrumentType.MASINKO, title: 'Basic Scales', code: 'MAS-004', order: 4, isActive: true },
-    ]);
-
-    const keberoLessons = await InstrumentLesson.insertMany([
-      { instrumentType: InstrumentType.KEBERO, title: 'Introduction to Kebero', code: 'KEB-001', order: 1, isActive: true },
-      { instrumentType: InstrumentType.KEBERO, title: 'Hand Techniques', code: 'KEB-002', order: 2, isActive: true },
-      { instrumentType: InstrumentType.KEBERO, title: 'Rhythm Patterns', code: 'KEB-003', order: 3, isActive: true },
-    ]);
-
-    const kirarLessons = await InstrumentLesson.insertMany([
-      { instrumentType: InstrumentType.KIRAR, title: 'Introduction to Kirar', code: 'KIR-001', order: 1, isActive: true },
-      { instrumentType: InstrumentType.KIRAR, title: 'Plucking Techniques', code: 'KIR-002', order: 2, isActive: true },
-    ]);
-
-    const washintLessons = await InstrumentLesson.insertMany([
-      { instrumentType: InstrumentType.WASHINT, title: 'Introduction to Washint', code: 'WAS-001', order: 1, isActive: true },
-      { instrumentType: InstrumentType.WASHINT, title: 'Breathing and Embouchure', code: 'WAS-002', order: 2, isActive: true },
-    ]);
-
-    console.log('✅ Created instrument lessons for all instrument types');
+    console.log('✅ Prepared instruments list for class-linked lessons');
 
     // Create Teacher Attendance Participant (with email to match new requirements - verified & ready for testing)
     const teacherParticipant = await TeacherAttendanceParticipant.create({
@@ -676,6 +683,8 @@ async function seed() {
       title: 'Introduction to Begena: The Harp of David',
       description: 'Learn the fundamentals of playing the Begena, Ethiopia\'s sacred harp.',
       classType: 'both',
+      instrumentType: InstrumentType.BEGENA,
+      level: 'beginner',
       instructorId: teacher._id,
       startDate: new Date(),
       isLive: false,
@@ -691,6 +700,47 @@ async function seed() {
       currency: 'ETB',
     });
     console.log('✅ Created sample class:', sampleClass.title);
+
+    // Lessons tied to the sample class
+    const begenaLessons = await InstrumentLesson.insertMany([
+      {
+        classId: sampleClass._id,
+        instrumentType: InstrumentType.BEGENA,
+        level: 'beginner',
+        title: 'Introduction to Begena',
+        code: 'BEG-001',
+        order: 1,
+        isActive: true,
+      },
+      {
+        classId: sampleClass._id,
+        instrumentType: InstrumentType.BEGENA,
+        level: 'beginner',
+        title: 'Basic Posture and Holding',
+        code: 'BEG-002',
+        order: 2,
+        isActive: true,
+      },
+      {
+        classId: sampleClass._id,
+        instrumentType: InstrumentType.BEGENA,
+        level: 'beginner',
+        title: 'String Tuning Fundamentals',
+        code: 'BEG-003',
+        order: 3,
+        isActive: true,
+      },
+      {
+        classId: sampleClass._id,
+        instrumentType: InstrumentType.BEGENA,
+        level: 'beginner',
+        title: 'First Melodies',
+        code: 'BEG-004',
+        order: 4,
+        isActive: true,
+      },
+    ]);
+    console.log('✅ Seeded lessons linked to sample class');
 
     // Create a Standard Website User for testing (verified & ready for testing)
     const websiteUser = await User.create({
@@ -770,11 +820,12 @@ async function seed() {
     ]);
     console.log('✅ Created FAQs');
 
-    // Create Sample Instrument Materials
+    // Create Sample Instrument Materials linked to the sample class/lessons
     await InstrumentMaterial.insertMany([
       {
         title: 'Begena Basic Exercises',
         url: 'https://example.com/begena-exercises.pdf',
+        classId: sampleClass._id,
         instrumentType: InstrumentType.BEGENA,
         lessonId: begenaLessons[0]?._id,
         uploadedBy: teacher._id,
@@ -782,18 +833,8 @@ async function seed() {
         fileType: 'pdf',
         isActive: true,
       },
-      {
-        title: 'Masinko Technique Guide',
-        url: 'https://example.com/masinko-technique.pdf',
-        instrumentType: InstrumentType.MASINKO,
-        lessonId: masinkoLessons[0]?._id,
-        uploadedBy: teacher._id,
-        description: 'Comprehensive guide to Masinko playing techniques',
-        fileType: 'pdf',
-        isActive: true,
-      },
     ]);
-    console.log('✅ Created instrument materials');
+    console.log('✅ Created instrument materials linked to class');
 
     // Create Sample Products
     await Product.insertMany([
@@ -822,7 +863,7 @@ async function seed() {
     ]);
     console.log('✅ Created sample products');
 
-    // Create Sample Student Attendance Record
+    // Create Sample Student Attendance Record using first class lesson
     await StudentAttendance.create({
       participantId: student._id,
       attendanceNumber: student.attendanceNumber,
@@ -854,10 +895,6 @@ async function seed() {
     console.log('\n💡 All accounts are verified and active - no verification needed for testing!');
     console.log('\n📚 Created Data:');
     console.log(`   - ${begenaLessons.length} Begena lessons`);
-    console.log(`   - ${masinkoLessons.length} Masinko lessons`);
-    console.log(`   - ${keberoLessons.length} Kebero lessons`);
-    console.log(`   - ${kirarLessons.length} Kirar lessons`);
-    console.log(`   - ${washintLessons.length} Washint lessons`);
     console.log(`   - ${branches.length} branches`);
     console.log('   - 1 sample class');
     console.log('   - 2 blog posts');

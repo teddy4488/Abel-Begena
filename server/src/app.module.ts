@@ -19,7 +19,6 @@ import { MaterialsModule } from './materials/materials.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { UploadModule } from './upload/upload.module';
-import { CourseTrackModule } from './course-track/course-track.module';
 
 @Module({
   imports: [
@@ -61,7 +60,6 @@ import { CourseTrackModule } from './course-track/course-track.module';
     AttendanceModule,
     PaymentModule,
     MaterialsModule,
-    CourseTrackModule,
     UploadModule,
   ],
   controllers: [AppController],

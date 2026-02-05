@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { InstrumentType } from '../../product/schemas/product.schema';
 
 export type InstrumentLessonDocument = InstrumentLesson & Document;
@@ -8,8 +8,11 @@ export type LessonLevel = 'beginner' | 'advanced';
 
 @Schema({ timestamps: true })
 export class InstrumentLesson {
-  @Prop({ type: String, enum: Object.values(InstrumentType), required: true })
-  instrumentType: InstrumentType;
+  @Prop({ type: Types.ObjectId, ref: 'Class', required: true, index: true })
+  classId: Types.ObjectId;
+
+  @Prop({ type: String, enum: Object.values(InstrumentType) })
+  instrumentType?: InstrumentType;
 
   @Prop({
     type: String,
@@ -35,4 +38,4 @@ export class InstrumentLesson {
 export const InstrumentLessonSchema =
   SchemaFactory.createForClass(InstrumentLesson);
 
-InstrumentLessonSchema.index({ instrumentType: 1, level: 1, order: 1 });
+InstrumentLessonSchema.index({ classId: 1, order: 1 });

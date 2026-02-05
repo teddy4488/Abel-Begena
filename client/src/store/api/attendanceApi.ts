@@ -45,7 +45,8 @@ export type StudentParticipant = {
 
 export type InstrumentLesson = {
   _id: string;
-  instrumentType: InstrumentType;
+  classId: string;
+  instrumentType?: InstrumentType;
   level?: "beginner" | "advanced";
   title: string;
   code?: string;
@@ -193,7 +194,10 @@ export const attendanceApi = createApi({
     }),
     getStudentDetails: builder.query<
       StudentParticipant & {
-        lastAttendance?: any;
+        lastAttendance?: {
+          sessionDate?: string | null;
+          status?: "present" | "late" | "excused" | "absent";
+        } | null;
         totalAttendance: number;
         paidMonths: number;
         unpaidMonths: number;
@@ -264,22 +268,17 @@ export const attendanceApi = createApi({
     }),
     getInstrumentLessons: builder.query<
       InstrumentLesson[],
-      { instrumentType?: string; level?: "beginner" | "advanced" } | string | undefined
+      { classId?: string } | undefined
     >({
       query: (arg) => ({
         url: "/classes/lessons",
-        params:
-          typeof arg === "string"
-            ? { instrumentType: arg }
-            : arg
-              ? { instrumentType: arg.instrumentType, level: arg.level }
-              : {},
+        params: arg?.classId ? { classId: arg.classId } : {},
       }),
       providesTags: ["Lessons"],
     }),
     createLesson: builder.mutation<
       InstrumentLesson,
-      { instrumentType: InstrumentType; level?: "beginner" | "advanced"; title: string; code?: string; order?: number }
+      { classId: string; title: string; code?: string; order?: number }
     >({
       query: (body) => ({
         url: "/classes/lessons",
@@ -290,7 +289,7 @@ export const attendanceApi = createApi({
     }),
     updateLesson: builder.mutation<
       InstrumentLesson,
-      { id: string; level?: "beginner" | "advanced"; title?: string; code?: string; order?: number; isActive?: boolean }
+      { id: string; classId?: string; title?: string; code?: string; order?: number; isActive?: boolean }
     >({
       query: ({ id, ...body }) => ({
         url: `/classes/lessons/${id}`,
@@ -455,7 +454,7 @@ export const attendanceApi = createApi({
           attendanceNumber?: string;
           instrumentType?: string;
           registrationStartDate?: string;
-          branch?: any;
+          branch?: unknown;
         };
         payments: Array<{
           month: number;
@@ -468,7 +467,7 @@ export const attendanceApi = createApi({
           period?: number;
           paidAt?: string;
           note?: string;
-          recordedBy?: any;
+          recordedBy?: unknown;
         }>;
         totalPaid: number;
         totalPayments: number;

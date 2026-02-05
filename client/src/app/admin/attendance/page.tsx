@@ -5,8 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetTeacherParticipantsQuery,
   useGetStudentParticipantsQuery,
-  useGetStudentByAttendanceNumberQuery,
-  useSearchStudentsQuery,
   useGetStudentDetailsQuery,
   useGetStudentAttendanceReportQuery,
   useTeacherCheckInMutation,
@@ -23,6 +21,7 @@ import {
   type AttendanceStatus,
   type TeachingTimeRange,
   type GraduationEligibilityItem,
+  type StudentParticipant,
 } from "@/store/api/attendanceApi";
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
 import { useAppDispatch } from "@/store/hooks";
@@ -43,6 +42,14 @@ import {
 import type { InstrumentType } from "@/store/api/storeApi";
 
 type AttendanceMode = "student" | "teacher" | "eligibility";
+
+type AttendanceHistoryRecord = {
+  _id?: string;
+  date: string;
+  lesson?: { _id?: string; title?: string; code?: string } | null;
+  revisedLesson?: { _id?: string; title?: string; code?: string } | null;
+  status: AttendanceStatus;
+};
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
   "monday",
@@ -105,7 +112,8 @@ export default function AdminAttendancePage() {
   // Student attendance recording state
   const [studentCode, setStudentCode] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
-  const [selectedStudentSnapshot, setSelectedStudentSnapshot] = useState<any>(null);
+  const [selectedStudentSnapshot, setSelectedStudentSnapshot] =
+    useState<StudentParticipant | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [revisedLessonId, setRevisedLessonId] = useState<string>("");
   const [status, setStatus] = useState<AttendanceStatus>("present");
@@ -129,13 +137,12 @@ export default function AdminAttendancePage() {
   const [searchingStudents, setSearchingStudents] = useState(false);
   const [lookingUpStudentByNumber, setLookingUpStudentByNumber] = useState(false);
 
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<StudentParticipant[]>([]);
   const [searchExecuted, setSearchExecuted] = useState(false);
 
   // Get student details when one is selected
   const {
     data: studentDetails,
-    isLoading: loadingDetails,
   } = useGetStudentDetailsQuery(selectedStudentForDetails || "", {
     skip: !selectedStudentForDetails,
   });
@@ -160,23 +167,33 @@ export default function AdminAttendancePage() {
       // Prefer text search for queries >= 2 characters
       if (query.length >= 2) {
         setSearchingStudents(true);
-        const res: any = await dispatch(attendanceApi.endpoints.searchStudents.initiate(query));
+        const res = (await dispatch(
+          attendanceApi.endpoints.searchStudents.initiate(query),
+        )) as unknown;
         setSearchingStudents(false);
-        const data = res?.data ?? res;
+        const data =
+          (res as { data?: unknown }).data !== undefined
+            ? (res as { data?: unknown }).data
+            : res;
         if (Array.isArray(data) && data.length > 0) {
-          setSearchResults(data);
+          setSearchResults(data as typeof searchResults);
           return;
         }
       }
 
       // Fallback to exact attendance number lookup (useful for single-digit codes)
       setLookingUpStudentByNumber(true);
-      const lookupRes: any = await dispatch(attendanceApi.endpoints.getStudentByAttendanceNumber.initiate(query));
+      const lookupRes = (await dispatch(
+        attendanceApi.endpoints.getStudentByAttendanceNumber.initiate(query),
+      )) as unknown;
       setLookingUpStudentByNumber(false);
-      const lookup = lookupRes?.data ?? lookupRes;
-      if (lookup) setSearchResults([lookup]);
+      const lookup =
+        (lookupRes as { data?: unknown }).data !== undefined
+          ? (lookupRes as { data?: unknown }).data
+          : lookupRes;
+      if (lookup) setSearchResults([lookup] as typeof searchResults);
       else setSearchResults([]);
-    } catch (err) {
+    } catch {
       setSearchingStudents(false);
       setLookingUpStudentByNumber(false);
       setSearchResults([]);
@@ -242,14 +259,6 @@ export default function AdminAttendancePage() {
         : 2;
   }, [studentForm.programDurationMonths]);
 
-  const formatAmount = (amount?: number | null) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "ETB",
-      minimumFractionDigits: 2,
-    }).format(amount ?? 0);
-  };
-
   // Teacher status tracking
   const currentTeacherStatus = useMemo(() => {
     const openMap = new Map<string, boolean>();
@@ -271,8 +280,6 @@ export default function AdminAttendancePage() {
   // Overview / analytics (client-side; attendance tables only)
   const totalStudents = studentParticipants.length;
   const totalTeachers = teacherParticipants.length;
-  const totalLessons = allLessons.filter((l) => l.isActive).length;
-  const totalBranches = branches.length;
   const teachersCheckedInNow = useMemo(() => {
     let count = 0;
     teacherParticipants.forEach((p) => {
@@ -360,10 +367,17 @@ export default function AdminAttendancePage() {
       setStatus("present");
       setSelectedStudentForDetails(null);
       setShowRecordAttendanceModal(false);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("attendance.error", "Unable to record attendance"),
-        description: error?.data?.message || "Please try again",
+        description:
+          typeof message === "string" && message.length > 0
+            ? message
+            : "Please try again",
         variant: "error",
       });
     }
@@ -421,10 +435,17 @@ export default function AdminAttendancePage() {
         registrationStartDate: new Date().toISOString().split("T")[0],
         attendanceNumber: "",
       });
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("attendance.error", "Unable to register student"),
-        description: error?.data?.message || "Please try again",
+        description:
+          typeof message === "string" && message.length > 0
+            ? message
+            : "Please try again",
         variant: "error",
       });
     }
@@ -466,10 +487,17 @@ export default function AdminAttendancePage() {
         teachingDays: [],
         timeRanges: [],
       });
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("attendance.error", "Unable to register teacher"),
-        description: error?.data?.message || "Please try again",
+        description:
+          typeof message === "string" && message.length > 0
+            ? message
+            : "Please try again",
         variant: "error",
       });
     }
@@ -492,10 +520,17 @@ export default function AdminAttendancePage() {
         });
       }
       await refetchToday();
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("attendance.error", "Unable to update teacher attendance"),
-        description: error?.data?.message || "Please try again",
+        description:
+          typeof message === "string" && message.length > 0
+            ? message
+            : "Please try again",
         variant: "error",
       });
     }
@@ -503,6 +538,7 @@ export default function AdminAttendancePage() {
 
 
   // Update student snapshot based on search results; do NOT auto-open the modal
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (searchResults.length === 1) {
       // Populate snapshot so it appears in results; selection/modal should only occur on explicit click
@@ -513,6 +549,7 @@ export default function AdminAttendancePage() {
       setSelectedStudentSnapshot(null);
     }
   }, [searchResults]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <section className="space-y-6">
@@ -873,8 +910,11 @@ export default function AdminAttendancePage() {
                                   {t("attendance.students.lastAttendance", "Last Attendance")}
                                 </p>
                                 <p className="font-semibold text-primary">
-                                  {studentDetails.lastAttendance
-                                    ? new Date(studentDetails.lastAttendance.sessionDate).toLocaleDateString()
+                                  {studentDetails.lastAttendance &&
+                                  studentDetails.lastAttendance.sessionDate
+                                    ? new Date(
+                                        studentDetails.lastAttendance.sessionDate,
+                                      ).toLocaleDateString()
                                     : t("attendance.students.none", "—")}
                                 </p>
                               </div>
@@ -1023,7 +1063,8 @@ export default function AdminAttendancePage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border/60">
-                                {attendanceHistory.map((rec: any, idx: number) => {
+                                {attendanceHistory.map(
+                                  (rec: AttendanceHistoryRecord, idx: number) => {
                                   const dt = new Date(rec.date);
                                   return (
                                     <tr key={rec._id ?? `${rec.date}-${rec.status}`}>

@@ -9,6 +9,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { InstrumentType } from '../../product/schemas/product.schema';
 
 export class CreateClassDto {
   @IsString()
@@ -21,9 +22,12 @@ export class CreateClassDto {
   @MaxLength(600)
   description?: string;
 
+  @IsEnum(InstrumentType)
+  instrumentType: InstrumentType;
+
   @IsOptional()
-  @IsMongoId()
-  courseTrackId?: string;
+  @IsEnum(['beginner', 'advanced'])
+  level?: 'beginner' | 'advanced';
 
   @IsOptional()
   @IsMongoId()

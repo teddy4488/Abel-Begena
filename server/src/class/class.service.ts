@@ -97,17 +97,12 @@ export class ClassService {
       title: dto.title,
       description: dto.description,
       capacity: dto.capacity,
+      instrumentType: dto.instrumentType,
+      level: dto.level ?? 'beginner',
     };
 
     if (dto.classType) {
       payload.classType = dto.classType;
-    }
-
-    if (dto.courseTrackId) {
-      if (!Types.ObjectId.isValid(dto.courseTrackId)) {
-        throw new BadRequestException('Invalid courseTrackId');
-      }
-      (payload as any).courseTrackId = new Types.ObjectId(dto.courseTrackId);
     }
 
     if (dto.branchId) {
@@ -158,19 +153,16 @@ export class ClassService {
       ...(dto.description ? { description: dto.description } : {}),
     };
 
-    if (dto.classType) {
-      update.classType = dto.classType;
+    if (dto.instrumentType) {
+      update.instrumentType = dto.instrumentType;
     }
 
-    if (dto.courseTrackId !== undefined) {
-      if (!dto.courseTrackId) {
-        (update as any).courseTrackId = undefined;
-      } else {
-        if (!Types.ObjectId.isValid(dto.courseTrackId)) {
-          throw new BadRequestException('Invalid courseTrackId');
-        }
-        (update as any).courseTrackId = new Types.ObjectId(dto.courseTrackId);
-      }
+    if (dto.level) {
+      update.level = dto.level;
+    }
+
+    if (dto.classType) {
+      update.classType = dto.classType;
     }
 
     if (dto.branchId !== undefined) {
@@ -228,57 +220,6 @@ export class ClassService {
     return updated;
   }
 
-  async getPublicCohortsByCourseTrack(courseTrackId: string) {
-    if (!Types.ObjectId.isValid(courseTrackId)) {
-      throw new BadRequestException('Invalid courseTrackId');
-    }
-
-    const classes = await this.classModel
-      .find({ courseTrackId: new Types.ObjectId(courseTrackId) } as any)
-      .sort({ createdAt: -1 })
-      .select(
-        'title description startDate endDate tuition currency capacity enrollmentDeadline enrollments instructorId classType branchId courseTrackId createdAt',
-      )
-      .populate('instructorId', 'firstName lastName')
-      .lean()
-      .exec();
-
-    return classes.map((klass) => {
-      const enrollmentCount = (klass.enrollments ?? []).filter(
-        (enrollment) => enrollment.status !== 'withdrawn',
-      ).length;
-      const instructor = klass.instructorId as
-        | { firstName?: string; lastName?: string }
-        | undefined;
-      const instructorName = instructor
-        ? `${instructor.firstName ?? ''} ${instructor.lastName ?? ''}`.trim() ||
-          null
-        : null;
-      const enrollmentDeadline =
-        klass.enrollmentDeadline instanceof Date
-          ? klass.enrollmentDeadline.toISOString()
-          : null;
-      const createdAt =
-        klass.createdAt instanceof Date ? klass.createdAt.toISOString() : null;
-
-      return {
-        _id: klass._id?.toString(),
-        title: klass.title,
-        description: klass.description ?? null,
-        tuition: klass.tuition ?? 0,
-        currency: klass.currency ?? 'ETB',
-        capacity: klass.capacity ?? null,
-        enrollmentDeadline,
-        enrollmentCount,
-        instructorName,
-        createdAt,
-        classType: (klass as any).classType ?? 'online',
-        branchId: (klass as any).branchId?.toString?.() ?? null,
-        courseTrackId: (klass as any).courseTrackId?.toString?.() ?? null,
-      };
-    });
-  }
-
   async removeClass(id: string) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class id');
@@ -290,13 +231,25 @@ export class ClassService {
     return { message: 'Class removed' };
   }
 
-  async getPublicCatalog(limit = 6) {
+  async getPublicCatalog(
+    limit = 6,
+    instrumentType?: string,
+    level?: 'beginner' | 'advanced',
+  ) {
+    const filter: Record<string, unknown> = {};
+    if (instrumentType) {
+      filter.instrumentType = instrumentType;
+    }
+    if (level) {
+      filter.level = level;
+    }
+
     const classes = await this.classModel
-      .find()
+      .find(filter)
       .sort({ createdAt: -1 })
       .limit(limit)
       .select(
-        'title description startDate endDate tuition currency capacity enrollmentDeadline enrollments instructorId createdAt',
+        'title description startDate endDate tuition currency capacity enrollmentDeadline enrollments instructorId instrumentType level classType',
       )
       .populate('instructorId', 'firstName lastName')
       .lean()
@@ -331,6 +284,9 @@ export class ClassService {
         enrollmentCount,
         instructorName,
         createdAt,
+        instrumentType: (klass as any).instrumentType,
+        level: (klass as any).level ?? 'beginner',
+        classType: (klass as any).classType ?? 'online',
       };
     });
   }
@@ -1166,6 +1122,8 @@ export class ClassService {
         title: klass.title,
         isLive: klass.isLive ?? false,
         liveRoomCode: klass.liveRoomCode ?? null,
+        instrumentType: klass.instrumentType,
+        level: (klass as any).level ?? 'beginner',
         createdAt,
         instructorId: includeInstructor ? instructorId : null,
         tuition: klass.tuition ?? 0,

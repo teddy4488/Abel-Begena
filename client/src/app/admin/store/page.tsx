@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   useCreateProductMutation,
@@ -9,6 +10,7 @@ import {
   useUploadProductImageMutation,
   useDeleteProductMutation,
   type InstrumentType,
+  type Product,
 } from "@/store/api/storeApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
@@ -114,8 +116,6 @@ export default function AdminStorePage() {
       return;
     }
     try {
-      let productId = editingId;
-
       if (editingId) {
         await updateProduct({
           id: editingId,
@@ -143,7 +143,6 @@ export default function AdminStorePage() {
           promoActive: form.promoActive,
           discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
         }).unwrap();
-        productId = newProduct._id;
 
         // Upload images if any
         if (form.images.length > 0) {
@@ -195,7 +194,7 @@ export default function AdminStorePage() {
     }
   };
 
-  const handleEditProduct = (product: any) => {
+  const handleEditProduct = (product: Product) => {
     setEditingId(product._id);
     setShowAddForm(true);
     setForm({
@@ -623,9 +622,11 @@ export default function AdminStorePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {form.images.map((file, index) => (
                     <div key={index} className="relative group">
-                      <img
+                      <Image
                         src={URL.createObjectURL(file)}
                         alt={`Preview ${index + 1}`}
+                        width={200}
+                        height={200}
                         className="w-full h-24 object-cover rounded-xl"
                       />
                       <button

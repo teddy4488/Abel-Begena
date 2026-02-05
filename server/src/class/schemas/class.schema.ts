@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { InstrumentType } from '../../product/schemas/product.schema';
 
 export type ClassDocument = Class & Document;
 
@@ -141,8 +142,21 @@ export class Class {
   @Prop({ trim: true })
   description?: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'CourseTrack', index: true })
-  courseTrackId?: Types.ObjectId;
+  @Prop({
+    type: String,
+    enum: Object.values(InstrumentType),
+    required: true,
+    index: true,
+  })
+  instrumentType: InstrumentType;
+
+  @Prop({
+    type: String,
+    enum: ['beginner', 'advanced'],
+    default: 'beginner',
+    index: true,
+  })
+  level: 'beginner' | 'advanced';
 
   // Physical cohorts can be tied to a branch
   @Prop({ type: Types.ObjectId, ref: 'Branch', index: true })

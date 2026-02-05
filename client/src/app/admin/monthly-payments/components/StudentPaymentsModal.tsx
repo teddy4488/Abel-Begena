@@ -5,6 +5,19 @@ import { X, Loader2, FileText } from "lucide-react";
 import { useGetStudentPaymentReportQuery } from "@/store/api/attendanceApi";
 import { useI18n } from "@/components/providers/I18nProvider";
 
+type StudentPaymentRow = {
+  month: number;
+  year: number;
+  amount?: number;
+  status: "paid" | "partial" | "unpaid";
+  dueDate?: string | null;
+  dueDateInferred?: boolean;
+  duedate?: string[];
+  period?: number;
+  paidAt?: string;
+  receiptUrl?: string;
+};
+
 export default function StudentPaymentsModal({ studentId, onClose }: { studentId: string; onClose: () => void }) {
   const { t } = useI18n();
   const { data: report, isFetching, isError } = useGetStudentPaymentReportQuery(studentId, { skip: !studentId });
@@ -57,7 +70,7 @@ export default function StudentPaymentsModal({ studentId, onClose }: { studentId
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {(report.payments || []).map((p: any, idx: number) => (
+                  {(report.payments || []).map((p: StudentPaymentRow, idx: number) => (
                     <tr key={`${p.year}-${p.month}-${idx}`}>
                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{idx + 1}</td>
                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{p.year}-{String(p.month).padStart(2, "0")}</td>

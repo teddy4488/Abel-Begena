@@ -6,6 +6,7 @@ import {
   useGetAnalyticsOverviewQuery,
   useGetManagedClassesQuery,
   useGetAllEnrollmentsQuery,
+  type ManagedClass,
 } from "@/store/api/adminApi";
 import { useGetAllUsersQuery } from "@/store/api/userApi";
 import { useGetProductsQuery, useGetAllOrdersQuery } from "@/store/api/storeApi";
@@ -288,10 +289,10 @@ export default function AdminConsolePage() {
                     <span className="font-medium text-primary truncate flex-1 group-hover:text-secondary transition-colors">
                       {klass.title}
                     </span>
-                    <div className="flex items-center gap-2">
-                      {(klass as any).classType && (
+                      <div className="flex items-center gap-2">
+                      {(klass as ManagedClass).classType && (
                         <span className="text-xs text-foreground/50 capitalize">
-                          {(klass as any).classType}
+                          {(klass as ManagedClass).classType}
                         </span>
                       )}
                       <span className={`ml-2 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-wide ${

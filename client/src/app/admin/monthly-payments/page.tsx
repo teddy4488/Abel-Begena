@@ -7,7 +7,6 @@ import {
   useRecordStudentPaymentMutation,
   useGetOverduePaymentsQuery,
   useGetStudentUpcomingPaymentsQuery,
-  useGetStudentPaymentReportQuery,
   attendanceApi,
 } from "@/store/api/attendanceApi";
 import { useGetPendingPaymentRequestsQuery, useUpdatePaymentStatusMutation, type PaymentRequest } from "@/store/api/paymentApi";
@@ -28,7 +27,6 @@ import {
   Clock,
   X,
   Loader2,
-  Receipt,
   DollarSign,
   Users,
   CheckCircle2,
@@ -57,7 +55,6 @@ export default function AdminMonthlyPaymentsPage() {
   const [overdueItemsPerPage, setOverdueItemsPerPage] = useState(10);
 
   const { data: billingSummary } = useGetBillingSummaryQuery({ year: selectedYear, month: selectedMonth });
-  const { data: overduePayments = [] } = useGetOverduePaymentsQuery();
   const { data: pendingPaymentRequests = [] } = useGetPendingPaymentRequestsQuery({
     type: "student_monthly_fee",
   });
@@ -99,10 +96,20 @@ export default function AdminMonthlyPaymentsPage() {
       dispatch(attendanceApi.util.invalidateTags(["StudentPayments", "Billing"]));
       setSelectedPaymentRequest(null);
       setReviewNote("");
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("monthlyPayments.paymentError", "Error"),
-        description: error?.data?.message || t("monthlyPayments.paymentErrorDesc", "Failed to update payment status."),
+        description:
+          typeof message === "string" && message.length > 0
+            ? message
+            : t(
+                "monthlyPayments.paymentErrorDesc",
+                "Failed to update payment status.",
+              ),
         variant: "error",
       });
     }
@@ -130,10 +137,20 @@ export default function AdminMonthlyPaymentsPage() {
       dispatch(attendanceApi.util.invalidateTags(["StudentPayments", "Billing"]));
       setSelectedPaymentRequest(null);
       setReviewNote("");
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "data" in err && err.data
+          ? (err.data as { message?: unknown }).message
+          : undefined;
       pushToast({
         title: t("monthlyPayments.paymentError", "Error"),
-        description: error?.data?.message || t("monthlyPayments.paymentErrorDesc", "Failed to update payment status."),
+        description:
+          typeof message === "string" && message.length > 0
+            ? message
+            : t(
+                "monthlyPayments.paymentErrorDesc",
+                "Failed to update payment status.",
+              ),
         variant: "error",
       });
     }
@@ -174,17 +191,29 @@ export default function AdminMonthlyPaymentsPage() {
   };
 
   // Helper to determine the effective due date for a payment record.
-  function getEffectiveDueDate(payment: any): Date | null {
+  function getEffectiveDueDate(payment: {
+    duedate?: unknown;
+    period?: number;
+    dueDate?: string | null;
+    year?: number;
+    month?: number;
+  }): Date | null {
     try {
       if (payment?.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
-        const idx = payment?.period && Number.isInteger(payment.period) && payment.period >= 1 && payment.period <= payment.duedate.length
+        const arr = payment.duedate as (string | number)[];
+        const idx =
+          payment?.period &&
+          Number.isInteger(payment.period) &&
+          payment.period >= 1 &&
+          payment.period <= arr.length
           ? payment.period - 1
           : 0;
-        return new Date(payment.duedate[idx]);
+        return new Date(arr[idx]);
       }
       if (payment?.dueDate) return new Date(payment.dueDate);
-      if (payment?.year && payment?.month) return new Date(payment.year, payment.month - 1, 5);
-    } catch (e) {
+      if (payment?.year && payment?.month)
+        return new Date(payment.year, payment.month - 1, 5);
+    } catch {
       // ignore parse errors and fall through to null
     }
     return null;
@@ -290,6 +319,12 @@ export default function AdminMonthlyPaymentsPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-secondary">
               {t("monthlyPayments.kicker", "Student Payments")}
             </p>
+            {totalRevenue > 0 && (
+              <p className="mt-1 text-xs text-foreground/60">
+                {t("monthlyPayments.totalRevenue", "Total recorded revenue")}:{" "}
+                {formatAmount(totalRevenue)}
+              </p>
+            )}
             <h1 className="text-3xl font-serif text-primary sm:text-4xl">
               {t("monthlyPayments.title", "Monthly Payments Management")}
             </h1>
@@ -1026,10 +1061,26 @@ export default function AdminMonthlyPaymentsPage() {
                         });
                         setShowPaymentModal(false);
                         setPaymentReceiptFile(null);
-                      } catch (error: any) {
+                      } catch (err: unknown) {
+                        const message =
+                          err &&
+                          typeof err === "object" &&
+                          "data" in err &&
+                          err.data
+                            ? (err.data as { message?: unknown }).message
+                            : undefined;
                         pushToast({
-                          title: t("monthlyPayments.error", "Unable to record payment"),
-                          description: error?.data?.message || t("monthlyPayments.tryAgain", "Please try again"),
+                          title: t(
+                            "monthlyPayments.error",
+                            "Unable to record payment",
+                          ),
+                          description:
+                            typeof message === "string" && message.length > 0
+                              ? message
+                              : t(
+                                  "monthlyPayments.tryAgain",
+                                  "Please try again",
+                                ),
                           variant: "error",
                         });
                       }

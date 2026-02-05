@@ -6,7 +6,8 @@ export type InstrumentMaterial = {
   _id: string;
   title: string;
   url: string;
-  instrumentType: InstrumentType;
+  classId: string;
+  instrumentType?: InstrumentType;
   lessonId?: string;
   uploadedBy: {
     _id: string;
@@ -29,25 +30,21 @@ export const materialsApi = createApi({
   endpoints: (builder) => ({
     getMaterials: builder.query<
       InstrumentMaterial[],
-      { instrumentType?: InstrumentType } | void
+      { classId?: string } | void
     >({
       query: (params) => ({
         url: "/materials",
-        params: params?.instrumentType
-          ? { instrumentType: params.instrumentType }
-          : undefined,
+        params: params?.classId ? { classId: params.classId } : undefined,
       }),
       providesTags: ["Materials"],
     }),
     getPublicMaterials: builder.query<
       InstrumentMaterial[],
-      { instrumentType?: InstrumentType } | void
+      { classId?: string } | void
     >({
       query: (params) => ({
         url: "/materials",
-        params: params?.instrumentType
-          ? { instrumentType: params.instrumentType }
-          : undefined,
+        params: params?.classId ? { classId: params.classId } : undefined,
       }),
       providesTags: ["Materials"],
     }),
@@ -60,16 +57,20 @@ export const materialsApi = createApi({
       {
         file: File;
         title: string;
-        instrumentType: InstrumentType;
+        classId: string;
+        instrumentType?: InstrumentType;
         description?: string;
         lessonId?: string;
       }
     >({
-      query: ({ file, title, instrumentType, description, lessonId }) => {
+      query: ({ file, title, classId, instrumentType, description, lessonId }) => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("title", title);
-        formData.append("instrumentType", instrumentType);
+        formData.append("classId", classId);
+        if (instrumentType) {
+          formData.append("instrumentType", instrumentType);
+        }
         if (description) {
           formData.append("description", description);
         }
