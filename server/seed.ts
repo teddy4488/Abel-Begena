@@ -94,33 +94,56 @@ const AdminUserSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// StudentAttendanceParticipant Schema
+// StudentAttendanceParticipant Schema (mirrors src/attendance/schemas/student-attendance-participant.schema.ts)
 const StudentAttendanceParticipantSchema = new mongoose.Schema(
   {
-    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true, index: true },
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
     password: { type: String },
+    isVerified: { type: Boolean, default: false },
+    verificationCode: { type: String, default: null },
+    verificationCodeExpiresAt: { type: Date, default: null },
+    passwordResetCode: { type: String, default: null },
+    passwordResetCodeExpiresAt: { type: Date, default: null },
+    refreshTokenHash: { type: String, default: null },
+    refreshTokenExpiresAt: { type: Date, default: null },
+    mustChangePassword: { type: Boolean, default: false },
+
     fullName: { type: String, required: true, trim: true, maxlength: 120 },
-    attendanceNumber: { type: String, required: true, unique: true, trim: true, index: true, maxlength: 20 },
-    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: false },
-    learningType: { type: String, enum: ['physical', 'online'], required: true },
-    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true },
-    programDurationMonths: { type: Number, enum: [3, 6, 9], required: true },
-    preferredLearningDays: { type: [String], required: true },
-    registrationStartDate: { type: Date, required: true },
-    learningDaysPerWeek: { type: Number, required: true },
-    preferredSchedule: { type: String, trim: true, maxlength: 240 },
     phone: { type: String, trim: true, maxlength: 40 },
     emergencyContactName: { type: String, trim: true, maxlength: 120 },
     emergencyContactPhone: { type: String, trim: true, maxlength: 40 },
     occupation: { type: String, trim: true, maxlength: 120 },
     city: { type: String, trim: true, maxlength: 120 },
     address: { type: String, trim: true, maxlength: 240 },
+
+    attendanceNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      index: true,
+      maxlength: 20,
+    },
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: false },
+    learningType: { type: String, enum: ['physical', 'online'], required: true },
+    instrumentType: { type: String, enum: Object.values(InstrumentType), required: true },
+    programDurationMonths: { type: Number, enum: [3, 6, 9], required: true },
+    preferredLearningDays: {
+      type: [String],
+      enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      required: true,
+    },
+    registrationStartDate: { type: Date, required: true },
+    learningDaysPerWeek: { type: Number, required: true },
     isActive: { type: Boolean, default: true },
-    isVerified: { type: Boolean, default: false },
-    verificationCode: { type: String, default: null },
-    verificationCodeExpiresAt: { type: Date, default: null },
-    passwordResetCode: { type: String, default: null },
-    passwordResetCodeExpiresAt: { type: Date, default: null },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -227,15 +250,25 @@ const StudentPaymentSchema = new mongoose.Schema(
     month: { type: Number, min: 1, max: 12, required: true },
     year: { type: Number, min: 2000, max: 9999, required: true },
     status: { type: String, enum: ['paid', 'partial', 'unpaid'], default: 'paid' },
-
+    // Optional exact due date and rolling schedule
+    dueDate: { type: Date },
+    duedate: { type: [Date] },
+    // When the payment was actually received
     paidAt: { type: Date },
+    // Enrollment period (1..24) indicating which month of enrollment this payment represents
+    period: { type: Number, min: 1 },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     note: { type: String, trim: true, maxlength: 240 },
+    // Optional URL to a receipt image/file
+    receiptUrl: { type: String, trim: true, maxlength: 400 },
   },
   { timestamps: true },
 );
-StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 }, { unique: true });
+StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 });
+StudentPaymentSchema.index({ participantId: 1, dueDate: 1 });
 StudentPaymentSchema.index({ year: 1, month: 1 });
+StudentPaymentSchema.index({ status: 1 });
+StudentPaymentSchema.index({ participantId: 1, period: 1 });
 
 // Class Schema
 const ClassSchema = new mongoose.Schema(

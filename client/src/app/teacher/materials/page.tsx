@@ -28,7 +28,7 @@ type UploadDraft = {
   lessonId?: string;
 };
 
-type TabType = "class" | "instrument";
+type TabType = "class" | "lesson";
 
 export default function TeacherMaterialsPage() {
   const { user } = useAppSelector((state) => state.auth);
@@ -57,16 +57,18 @@ export default function TeacherMaterialsPage() {
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  
-// Get lessons for selected class
-const { data: lessons = [] } = useGetInstrumentLessonsQuery(
-  selectedClassId ? { classId: selectedClassId } : undefined,
-);
 
-const filteredLessons = useMemo(() => {
-  if (!selectedClassId) return [];
-  return lessons.filter((lesson) => lesson.classId === selectedClassId && lesson.isActive);
-}, [lessons, selectedClassId]);
+  // Get lessons for selected class (for lesson materials tab)
+  const { data: lessons = [] } = useGetInstrumentLessonsQuery(
+    selectedClassId ? { classId: selectedClassId } : undefined,
+  );
+
+  const filteredLessons = useMemo(() => {
+    if (!selectedClassId) return [];
+    return lessons.filter(
+      (lesson) => lesson.classId === selectedClassId && lesson.isActive,
+    );
+  }, [lessons, selectedClassId]);
 
   const openDeleteConfirm = (id: string) => {
     setPendingDeleteId(id);
@@ -222,6 +224,13 @@ const filteredLessons = useMemo(() => {
         });
         return;
       }
+      if (!uploadDraft.lessonId) {
+        pushToast({
+          title: t("teacher.materials.selectLessonRequired", "Select a lesson first"),
+          variant: "error",
+        });
+        return;
+      }
       if (!uploadDraft.file) {
         pushToast({
           title: t("teacher.materials.selectFile", "Choose a file first"),
@@ -258,7 +267,7 @@ const filteredLessons = useMemo(() => {
           title: uploadDraft.title || uploadDraft.file.name,
           instrumentType: uploadDraft.instrumentType,
           description: uploadDraft.description,
-          lessonId: uploadDraft.lessonId || undefined,
+          lessonId: uploadDraft.lessonId,
         }).unwrap();
 
         clearInterval(progressInterval);
@@ -322,7 +331,13 @@ const filteredLessons = useMemo(() => {
         <button
           onClick={() => {
             setActiveTab("class");
-            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena", lessonId: "" });
+            setUploadDraft({
+              title: "",
+              file: undefined,
+              description: "",
+              instrumentType: "Begena",
+              lessonId: "",
+            });
           }}
           className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 ${
             activeTab === "class"
@@ -332,23 +347,29 @@ const filteredLessons = useMemo(() => {
         >
           <div className="flex items-center gap-2">
             <GraduationCap className="w-4 h-4" />
-            Class Materials
+            {t("teacher.materials.tabClass", "Class materials")}
           </div>
         </button>
         <button
           onClick={() => {
-            setActiveTab("instrument");
-            setUploadDraft({ title: "", file: undefined, description: "", instrumentType: "Begena", lessonId: "" });
+            setActiveTab("lesson");
+            setUploadDraft({
+              title: "",
+              file: undefined,
+              description: "",
+              instrumentType: "Begena",
+              lessonId: "",
+            });
           }}
           className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 ${
-            activeTab === "instrument"
+            activeTab === "lesson"
               ? "border-secondary text-secondary"
               : "border-transparent text-foreground/60 hover:text-foreground"
           }`}
         >
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4" />
-            Instrument Materials
+            {t("teacher.materials.tabLesson", "Lesson materials")}
           </div>
         </button>
       </div>
@@ -416,7 +437,7 @@ const filteredLessons = useMemo(() => {
                 </div>
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
-                    {t("teacher.materials.lesson", "Lesson")} ({t("teacher.materials.optional", "Optional")})
+                    {t("teacher.materials.lesson", "Lesson")} *
                   </label>
                   <select
                     value={uploadDraft.lessonId || ""}
@@ -425,7 +446,7 @@ const filteredLessons = useMemo(() => {
                     }
                     className="w-full rounded-2xl  card-elevated80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                   >
-                    <option value="">{t("teacher.materials.selectLesson", "Select a lesson (optional)")}</option>
+                    <option value="">{t("teacher.materials.selectLessonRequired", "Select a lesson")}</option>
                     {filteredLessons.map((lesson) => (
                       <option key={lesson._id} value={lesson._id}>
                         {lesson.title} {lesson.code && `(${lesson.code})`}
@@ -548,20 +569,27 @@ const filteredLessons = useMemo(() => {
             <motion.button
               whileHover={
                 (activeTab === "class" && selectedClassId && uploadDraft.file) ||
-                (activeTab === "instrument" && uploadDraft.file && uploadDraft.instrumentType)
+                (activeTab === "lesson" &&
+                  uploadDraft.file &&
+                  uploadDraft.instrumentType &&
+                  uploadDraft.lessonId)
                   ? { scale: 1.02 }
                   : { scale: 1 }
               }
               whileTap={
                 (activeTab === "class" && selectedClassId && uploadDraft.file) ||
-                (activeTab === "instrument" && uploadDraft.file && uploadDraft.instrumentType)
+                (activeTab === "lesson" &&
+                  uploadDraft.file &&
+                  uploadDraft.instrumentType &&
+                  uploadDraft.lessonId)
                   ? { scale: 0.98 }
                   : { scale: 1 }
               }
               disabled={
                 isUploading ||
                 (activeTab === "class" && (!selectedClassId || !uploadDraft.file)) ||
-                (activeTab === "instrument" && (!uploadDraft.file || !uploadDraft.instrumentType)) ||
+                (activeTab === "lesson" &&
+                  (!uploadDraft.file || !uploadDraft.instrumentType || !uploadDraft.lessonId)) ||
                 uploadProgress > 0
               }
               onClick={handleUpload}

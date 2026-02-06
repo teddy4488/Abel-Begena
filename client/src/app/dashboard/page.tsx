@@ -55,6 +55,7 @@ export default function DashboardPage() {
     const userType = user?.userType;
     if (userType === "admin" || userType === "teacher" || userType === "student") {
       router.replace(getUserLandingRoute(userType, user?.role));
+      return;
     }
   }, [isLoggedIn, router, user?.userType, user?.role]);
 
@@ -185,19 +186,19 @@ export default function DashboardPage() {
 
   const staticHighlights = [
     {
-      id: "highlight-materials",
-      title: t("dashboard.highlights.materials", "New materials arrive weekly"),
+      id: "highlight-classes",
+      title: t("dashboard.user.highlightClasses", "Explore classes at your own pace"),
       description: t(
-        "dashboard.highlights.materialsDesc",
-        "Teachers continue to upload PDFs, slides, and video recaps for every enrolled class.",
+        "dashboard.user.highlightClassesDesc",
+        "Browse upcoming cohorts, see tuition, and prepare your application when you are ready.",
       ),
     },
     {
       id: "highlight-store",
-      title: t("dashboard.highlights.store", "Commissioned instruments"),
+      title: t("dashboard.user.highlightStore", "Handcrafted instruments"),
       description: t(
-        "dashboard.highlights.storeDesc",
-        "Our luthiers are crafting limited-run Begena and Masinko sets—visit the store to reserve yours.",
+        "dashboard.user.highlightStoreDesc",
+        "Visit the shop to commission Begena, Masinko, and other sacred instruments built with care.",
       ),
     },
   ];
@@ -245,19 +246,19 @@ export default function DashboardPage() {
   return (
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
       <div className="mx-auto max-w-6xl space-y-8 md:space-y-12">
-        <header className="space-y-3 rounded-2xl surface-elevated bg-gradient-to-br from-surface via-background to-secondary/5 p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6 md:p-8">
+        <header className="space-y-3 rounded-2xl surface-elevated bg-background p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-[32px] sm:p-6 md:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                {t("dashboard.kicker", "My Conservatory")}
+                {t("dashboard.user.kicker", "My Portal")}
               </p>
               <h1 className="text-2xl font-serif text-primary sm:text-3xl md:text-4xl">
-                {t("dashboard.title", "Student Dashboard")}
+                {t("dashboard.user.title", "Website Dashboard")}
               </h1>
               <p className="mt-1 text-sm text-foreground/75 sm:text-base">
                 {t(
-                  "dashboard.description",
-                  "Access your live rooms, download materials, and keep shopping for handcrafted instruments.",
+                  "dashboard.user.description",
+                  "Track your orders, discover classes, and start your journey toward becoming a student.",
                 )}
               </p>
             </div>
@@ -318,10 +319,10 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-                {t("dashboard.section.learning", "My learning")}
+                {t("dashboard.user.section.overview", "Overview")}
               </p>
               <h2 className="text-xl font-serif text-primary sm:text-2xl">
-                {t("dashboard.section.active", "Active cohorts")}
+                {t("dashboard.user.section.activity", "Recent activity")}
               </h2>
             </div>
             <Link
@@ -356,114 +357,40 @@ export default function DashboardPage() {
           )}
 
           <div className="grid gap-4 sm:gap-6">
-            {isLoading && !classes.length
-              ? [1, 2, 3].map((item) => (
-                  <div key={`loading-card-${item}`}>{renderSkeletonCard()}</div>
-                ))
-              : classes.map((classAccess) => (
-                  <div
-                    key={classAccess.class._id}
-                    className="rounded-2xl surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-5"
-                  >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-3">
-                      {renderStatusChip(classAccess.enrollment?.status ?? null)}
-                      {!classAccess.isLive && (
-                        <span className="text-xs font-medium uppercase tracking-wide text-foreground/60">
-                          {t("dashboard.card.offline", "Live session offline")}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-xl font-serif text-primary sm:text-2xl">
-                      {classAccess.class.title}
-                    </h3>
-                    {classAccess.enrollment?.status === "pending" && (
-                      <p className="text-xs text-amber-700">
-                        {t(
-                          "dashboard.card.pendingExplanation",
-                          "Your enrollment is awaiting admin approval. Materials and live access will unlock once your payment is confirmed.",
-                        )}
-                      </p>
-                    )}
-                    {classAccess.enrollment?.paymentReference && (
-                      <p className="text-xs text-foreground/60">
-                        {t(
-                          "dashboard.enrollment.reference",
-                          "Payment ref:",
-                        )}{" "}
-                        {classAccess.enrollment.paymentReference}
-                      </p>
-                    )}
-                  </div>
-                  {classAccess.isLive && classAccess.liveLink ? (
-                    <Link
-                      href={`/live/class/${classAccess.class._id}`}
-                      className="w-full inline-flex items-center justify-center rounded-full bg-secondary px-6 py-3 text-sm font-semibold text-primary shadow-lg shadow-secondary/40 transition hover:-translate-y-0.5 sm:w-auto"
-                    >
-                      {t("dashboard.card.join", "Join Live Class")}
-                    </Link>
-                  ) : null}
-                </div>
-                <div className="mt-6 space-y-3">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                    {t("dashboard.materials.title", "Materials")}
-                  </p>
-                  {classAccess.materials.length ? (
-                    <ul className="space-y-2">
-                      {classAccess.materials.map((material) => {
-                        const getFileIcon = (url: string) => {
-                          const ext = url.split('.').pop()?.toLowerCase();
-                          if (['pdf'].includes(ext || '')) return '📄';
-                          if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return '🖼️';
-                          if (['mp4', 'mov', 'avi'].includes(ext || '')) return '🎥';
-                          return '📎';
-                        };
-                        return (
-                          <motion.li
-                          key={`${classAccess.class._id}-${material.url}`}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="flex items-center justify-between rounded-2xl surface-elevated px-4 py-3 text-sm hover:shadow-lg transition-all group shadow-sm"
-                        >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <span className="text-lg shrink-0">{getFileIcon(material.url)}</span>
-                              <span className="truncate font-medium text-primary">{material.title}</span>
-                              {material.uploadedAt && (
-                                <span className="hidden sm:inline text-xs text-foreground/50 shrink-0">
-                                  {new Date(material.uploadedAt).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                          <a
-                            href={material.url}
-                            target="_blank"
-                            rel="noreferrer"
-                              download
-                              className="flex items-center gap-1.5 text-secondary underline-offset-4 hover:underline font-medium group-hover:text-secondary/80 transition-colors shrink-0" 
-                          >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
-                              {t("dashboard.materials.download", "Download")}
-                          </a>
-                          </motion.li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <div className="rounded-xl surface-elevated p-6 text-center shadow-lg">
-                    <p className="text-sm text-foreground/70">
-                      {t(
-                        "dashboard.materials.empty",
-                        "Materials will appear here once your teacher uploads them.",
-                      )}
-                    </p>
-                    </div>
-                  )}
-                </div>
-                  </div>
-                ))}
+            <div className="rounded-2xl surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-5">
+              <p className="text-sm font-semibold text-primary">
+                {t("dashboard.user.activityOrders", "Review your latest orders")}
+              </p>
+              <p className="mt-1 text-xs text-foreground/70">
+                {t(
+                  "dashboard.user.activityOrdersDesc",
+                  "Track delivery status and download receipts for instruments and materials.",
+                )}
+              </p>
+              <Link
+                href="/account/orders"
+                className="mt-3 inline-flex text-xs font-semibold text-secondary hover:underline"
+              >
+                {t("dashboard.user.viewOrders", "View my orders")}
+              </Link>
+            </div>
+            <div className="rounded-2xl surface-elevated p-4 shadow-lg sm:rounded-3xl sm:p-5">
+              <p className="text-sm font-semibold text-primary">
+                {t("dashboard.user.activityPayments", "See your payment history")}
+              </p>
+              <p className="mt-1 text-xs text-foreground/70">
+                {t(
+                  "dashboard.user.activityPaymentsDesc",
+                  "Download receipts and review tuition or store payments.",
+                )}
+              </p>
+              <Link
+                href="/dashboard/payments"
+                className="mt-3 inline-flex text-xs font-semibold text-secondary hover:underline"
+              >
+                {t("dashboard.user.viewPayments", "Open payment history")}
+              </Link>
+            </div>
           </div>
         </div>
 

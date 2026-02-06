@@ -20,14 +20,14 @@ export default function Footer() {
 
   if (isConsoleRoute) {
     return (
-      <footer className="relative bg-[#1a0b12] text-background overflow-hidden">
+      <footer className="relative bg-background text-foreground dark:bg-[#05030a] dark:text-foreground overflow-hidden">
         <div className="pointer-events-none absolute inset-0">
           <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl text-secondary opacity-25">
             ✝
           </span>
         </div>
         <div className="relative mx-auto flex max-w-6xl flex-col items-center justify-center gap-1 px-4 py-3 text-center">
-          <p className="text-[10px] uppercase tracking-[0.4em] text-background/70">
+          <p className="text-[10px] uppercase tracking-[0.4em] text-secondary/80">
             {t("footer.console.reference", "Psalm 33:3")}
           </p>
           <p className="text-xs font-serif text-secondary">
@@ -42,16 +42,16 @@ export default function Footer() {
   }
 
   return (
-    <footer className="relative bg-[#1a0b12] text-background overflow-hidden">
+    <footer className="relative bg-background text-foreground dark:bg-[#05030a] dark:text-foreground overflow-hidden">
       {/* Subtle cross line decorations */}
       <div className="pointer-events-none absolute inset-0">
-        <span className="absolute left-8 top-8 text-3xl text-secondary opacity-25">✝</span>
-        <span className="absolute right-8 top-8 text-3xl text-secondary opacity-25">✝</span>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl text-secondary opacity-20">
+        <span className="absolute left-8 top-8 text-3xl text-secondary opacity-15">✝</span>
+        <span className="absolute right-8 top-8 text-3xl text-secondary opacity-15">✝</span>
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl text-secondary opacity-10">
           ✝
         </span>
-        <span className="absolute right-12 bottom-12 text-2xl text-secondary opacity-25">✝</span>
-        <span className="absolute left-12 bottom-12 text-2xl text-secondary opacity-25">✝</span>
+        <span className="absolute right-12 bottom-12 text-2xl text-secondary opacity-15">✝</span>
+        <span className="absolute left-12 bottom-12 text-2xl text-secondary opacity-15">✝</span>
       </div>
       <div className="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-12 text-center md:px-10">
         <p className="text-sm uppercase tracking-[0.3em] text-secondary">
@@ -63,7 +63,7 @@ export default function Footer() {
             "“Praise Him with stringed instruments and organs.”",
           )}
         </blockquote>
-        <div className="flex flex-wrap items-center justify-center gap-8 text-sm uppercase tracking-wide text-foreground opacity-80">
+        <div className="flex flex-wrap items-center justify-center gap-6 text-sm uppercase tracking-wide text-foreground/80">
           {footerLinks.map((link) => (
             <Link
               key={link.labelKey}
@@ -74,7 +74,7 @@ export default function Footer() {
             </Link>
           ))}
         </div>
-        <p className="text-xs text-foreground opacity-70">
+        <p className="text-xs text-foreground/70">
           {t(
             "footer.copyright",
             "© 2025 Abel Begena. Preserving the Heritage of Saint Yared.",

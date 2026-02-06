@@ -326,6 +326,12 @@ export default function StudentDashboardPage() {
                   {t("student.dashboard.materials.title", "Materials for")} {studentInstrumentType}
                 </h2>
               </div>
+              <Link
+                href="/student/lessons"
+                className="rounded-full border border-secondary px-4 py-2 text-xs font-semibold text-secondary shadow-sm hover:bg-(--color-secondary-soft)"
+              >
+                {t("student.dashboard.materials.viewLessons", "View lessons & materials")}
+              </Link>
             </div>
             {materialsLoading ? (
               <div className="space-y-3">
