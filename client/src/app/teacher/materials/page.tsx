@@ -15,6 +15,7 @@ import {
 import { useGetInstrumentLessonsQuery } from "@/store/api/attendanceApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileText, Download, X, Loader2, File, BookOpen, GraduationCap } from "lucide-react";
 import { InstrumentType } from "@/store/api/storeApi";
@@ -36,7 +37,8 @@ export default function TeacherMaterialsPage() {
     useUploadMaterialMutation();
   const [uploadInstrumentMaterial, { isLoading: isUploadingInstrument }] =
     useUploadInstrumentMaterialMutation();
-  const [deleteMaterial] = useDeleteMaterialMutation();
+  const [deleteMaterial, { isLoading: isDeletingMaterial }] =
+    useDeleteMaterialMutation();
   const { data: instrumentMaterials, refetch: refetchInstrumentMaterials } =
     useGetTeacherMaterialsQuery();
   const { pushToast } = useToast();
@@ -52,6 +54,9 @@ export default function TeacherMaterialsPage() {
   });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   
 // Get lessons for selected class
 const { data: lessons = [] } = useGetInstrumentLessonsQuery(
@@ -62,6 +67,31 @@ const filteredLessons = useMemo(() => {
   if (!selectedClassId) return [];
   return lessons.filter((lesson) => lesson.classId === selectedClassId && lesson.isActive);
 }, [lessons, selectedClassId]);
+
+  const openDeleteConfirm = (id: string) => {
+    setPendingDeleteId(id);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    try {
+      await deleteMaterial(pendingDeleteId).unwrap();
+      pushToast({
+        title: "Material deleted",
+        variant: "success",
+      });
+      void refetchInstrumentMaterials();
+    } catch {
+      pushToast({
+        title: "Failed to delete",
+        variant: "error",
+      });
+    } finally {
+      setConfirmDeleteOpen(false);
+      setPendingDeleteId(null);
+    }
+  };
 
   const teacherClasses = useMemo(
     () =>
@@ -683,21 +713,7 @@ const filteredLessons = useMemo(() => {
                             </a>
                             <button
                               onClick={async () => {
-                                if (confirm("Delete this material?")) {
-                                  try {
-                                    await deleteMaterial(material._id).unwrap();
-                                    pushToast({
-                                      title: "Material deleted",
-                                      variant: "success",
-                                    });
-                                    void refetchInstrumentMaterials();
-                                  } catch {
-                                    pushToast({
-                                      title: "Failed to delete",
-                                      variant: "error",
-                                    });
-                                  }
-                                }
+                                openDeleteConfirm(material._id);
                               }}
                               className="rounded-full p-2 hover:bg-red-500/10 text-red-500 transition-colors"
                               aria-label="Delete material"
@@ -715,6 +731,25 @@ const filteredLessons = useMemo(() => {
           )}
         </motion.div>
       </div>
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title={t("teacher.materials.confirmDeleteTitle", "Delete material?")}
+        description={t(
+          "teacher.materials.confirmDelete",
+          "Delete this material? This action cannot be undone.",
+        )}
+        confirmLabel={t("button.delete", "Delete")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={isDeletingMaterial}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!isDeletingMaterial) {
+            setConfirmDeleteOpen(false);
+            setPendingDeleteId(null);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { Edit, Trash2, X, Check } from "lucide-react";
 import { useState } from "react";
 
@@ -35,11 +36,38 @@ export default function HeritageArticlePage() {
   );
   const [createComment, { isLoading: isSubmitting }] = useCreateCommentMutation();
   const [updateComment] = useUpdateCommentMutation();
-  const [deleteComment] = useDeleteCommentMutation();
+  const [deleteComment, { isLoading: isDeleting }] = useDeleteCommentMutation();
   const { pushToast } = useToast();
   const [commentText, setCommentText] = useState("");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+
+  const openDeleteConfirm = (commentId: string) => {
+    setPendingDeleteId(commentId);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    try {
+      await deleteComment(pendingDeleteId).unwrap();
+      pushToast({
+        title: t("heritage.comments.deleted", "Comment deleted"),
+        variant: "success",
+      });
+      void refetchComments();
+    } catch {
+      pushToast({
+        title: t("heritage.comments.deleteError", "Failed to delete comment"),
+        variant: "error",
+      });
+    } finally {
+      setConfirmDeleteOpen(false);
+      setPendingDeleteId(null);
+    }
+  };
 
   const handleShare = async () => {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
@@ -490,20 +518,7 @@ export default function HeritageArticlePage() {
                         <button
                           type="button"
                           onClick={async () => {
-                            if (confirm(t("heritage.comments.confirmDelete", "Delete this comment?"))) {
-                              try {
-                                await deleteComment(c._id).unwrap();
-                                pushToast({
-                                  title: t("heritage.comments.deleted", "Comment deleted"),
-                                  variant: "success",
-                                });
-                              } catch {
-                                pushToast({
-                                  title: t("heritage.comments.deleteError", "Failed to delete comment"),
-                                  variant: "error",
-                                });
-                              }
-                            }
+                            openDeleteConfirm(c._id);
                           }}
                           className="rounded-full p-1.5 text-foreground/60 hover:bg-red-500/10 hover:text-red-500 transition"
                           aria-label={t("button.delete", "Delete")}
@@ -534,6 +549,22 @@ export default function HeritageArticlePage() {
             {t("heritage.single.back")}
           </Link>
         </div>
+
+        <ConfirmModal
+          open={confirmDeleteOpen}
+          title={t("heritage.comments.confirmDeleteTitle", "Delete comment?")}
+          description={t("heritage.comments.confirmDelete", "Delete this comment?")}
+          confirmLabel={t("button.delete", "Delete")}
+          cancelLabel={t("button.cancel", "Cancel")}
+          isLoading={isDeleting}
+          onConfirm={confirmDelete}
+          onCancel={() => {
+            if (!isDeleting) {
+              setConfirmDeleteOpen(false);
+              setPendingDeleteId(null);
+            }
+          }}
+        />
       </motion.div>
     </article>
   );

@@ -563,7 +563,7 @@ export default function StudentPaymentsPage() {
       {/* Receipt Submission Modal */}
       <AnimatePresence>
         {showReceiptModal && selectedPayment && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

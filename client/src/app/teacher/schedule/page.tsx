@@ -14,6 +14,7 @@ import {
 import { Clock, Pencil, Trash2, Calendar, MapPin, FileText, AlertTriangle, X } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const formatDateInputValue = (iso?: string | null) => {
   if (!iso) return "";
@@ -83,6 +84,8 @@ export default function TeacherSchedulePage() {
     useUpdateScheduleItemMutation();
   const [deleteScheduleItem, { isLoading: isDeleting }] =
     useDeleteScheduleItemMutation();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const conflictingSessions = useMemo(
     () => getConflictSet(schedule),
@@ -222,16 +225,15 @@ export default function TeacherSchedulePage() {
     });
   };
 
-  const handleDelete = async (sessionId: string) => {
-    if (!selectedClassId) return;
-    if (
-      !confirm(
-        t("teacher.schedule.confirmDelete", "Are you sure you want to delete this session?")
-      )
-    ) {
-      return;
-    }
+  const openDeleteConfirm = (sessionId: string) => {
+    setPendingDeleteId(sessionId);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedClassId || !pendingDeleteId) return;
     try {
+      const sessionId = pendingDeleteId;
       await deleteScheduleItem({ classId: selectedClassId, sessionId }).unwrap();
       pushToast({
         title: t("teacher.schedule.removed", "Session removed"),
@@ -245,6 +247,9 @@ export default function TeacherSchedulePage() {
         title: t("teacher.schedule.removeError", "Unable to remove session"),
         variant: "error",
       });
+    } finally {
+      setConfirmDeleteOpen(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -592,7 +597,7 @@ export default function TeacherSchedulePage() {
                           </motion.button>
                           <motion.button
                             type="button"
-                            onClick={() => handleDelete(session._id)}
+                            onClick={() => openDeleteConfirm(session._id)}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/20 transition"
@@ -674,6 +679,25 @@ export default function TeacherSchedulePage() {
           </div>
         )}
       </motion.div>
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title={t("teacher.schedule.confirmDeleteTitle", "Remove session?")}
+        description={t(
+          "teacher.schedule.confirmDelete",
+          "Are you sure you want to delete this session?",
+        )}
+        confirmLabel={t("button.remove", "Remove")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!isDeleting) {
+            setConfirmDeleteOpen(false);
+            setPendingDeleteId(null);
+          }
+        }}
+      />
     </div>
   );
 }

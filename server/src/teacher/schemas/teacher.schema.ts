@@ -29,6 +29,9 @@ export class Teacher {
   @Prop({ required: true, default: true })
   isActive: boolean;
 
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
+
   @Prop({ default: false })
   isVerified: boolean;
 

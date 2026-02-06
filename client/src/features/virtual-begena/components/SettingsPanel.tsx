@@ -177,7 +177,7 @@ export default function SettingsPanel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 z-40"
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
           />
 
           {/* Panel */}
@@ -186,7 +186,7 @@ export default function SettingsPanel({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-20 right-4 bottom-4 w-full max-w-md bg-begena-cream dark:bg-begena-darkBrown z-50 shadow-2xl overflow-y-auto rounded-3xl"
+            className="fixed top-20 right-4 bottom-4 w-full max-w-md bg-background dark:bg-begena-darkBrown z-50 shadow-2xl overflow-y-auto rounded-3xl"
           >
             <div className="p-6 space-y-6">
               {/* Header */}

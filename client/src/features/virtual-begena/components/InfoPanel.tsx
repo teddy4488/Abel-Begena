@@ -53,7 +53,7 @@ export default function InfoPanel() {
       className="fixed bottom-4 left-4 right-4 md:right-auto md:w-80 lg:w-96 z-[100]"
     >
       <motion.div
-        className="bg-gradient-to-br from-begena-cream/98 via-begena-cream/95 to-begena-cream/98 dark:from-begena-darkBrown/98 dark:via-begena-darkBrown/95 dark:to-begena-darkBrown/98 backdrop-blur-lg rounded-xl shadow-2xl border-2 border-begena-gold/40 overflow-hidden"
+        className="bg-background dark:bg-begena-darkBrown/95 backdrop-blur-lg rounded-xl shadow-2xl border-2 border-begena-gold/40 overflow-hidden"
         animate={{ height: isExpanded ? "auto" : "60px" }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >

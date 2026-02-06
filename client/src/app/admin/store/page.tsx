@@ -16,6 +16,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Plus, Upload, X, Package, TrendingDown, AlertTriangle, Loader2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const productFormDefaults = {
   name: "",
@@ -46,6 +47,8 @@ export default function AdminStorePage() {
   const [promoSavingId, setPromoSavingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [currentPage, setCurrentPage] = useState(1);
@@ -211,14 +214,22 @@ export default function AdminStorePage() {
     setErrors({});
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (!confirm("Delete this product? This cannot be undone.")) return;
+  const openDeleteProduct = (id: string) => {
+    setPendingDeleteId(id);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!pendingDeleteId) return;
     try {
-      await deleteProduct(id).unwrap();
+      await deleteProduct(pendingDeleteId).unwrap();
       pushToast({ title: "Product deleted", variant: "success" });
     } catch (error) {
       console.error(error);
       pushToast({ title: "Unable to delete product", variant: "error" });
+    } finally {
+      setConfirmDeleteOpen(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -520,25 +531,42 @@ export default function AdminStorePage() {
 
       {/* Add Product Form */}
       {showAddForm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:items-center">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => {
+              if (!isCreating) {
+                setShowAddForm(false);
+                setEditingId(null);
+                setForm(productFormDefaults);
+                setErrors({});
+              }
+            }}
+          />
         <motion.form
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-3xl surface-elevated p-6 card-elevated"
+          className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto space-y-4 rounded-3xl surface-elevated p-6 card-elevated shadow-2xl"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
-                {t("admin.store.newProduct", "New Product")}
+                {editingId
+                  ? t("admin.store.editProduct", "Edit Product")
+                  : t("admin.store.newProduct", "New Product")}
               </p>
               <h2 className="text-xl font-serif text-primary">
-                {t("admin.store.addProductTitle", "Add Product to Store")}
+                {editingId
+                  ? t("admin.store.editProductTitle", "Update product details")
+                  : t("admin.store.addProductTitle", "Add Product to Store")}
               </h2>
             </div>
             <button
               type="button"
               onClick={() => {
                 setShowAddForm(false);
+                setEditingId(null);
                 setForm(productFormDefaults);
                 setErrors({});
               }}
@@ -761,6 +789,7 @@ export default function AdminStorePage() {
             </button>
           </div>
         </motion.form>
+        </div>
       )}
 
       <div className="rounded-3xl  surface-elevated p-6">
@@ -826,7 +855,7 @@ export default function AdminStorePage() {
                       <button
                         type="button"
                         disabled={isDeleting}
-                        onClick={() => handleDeleteProduct(product._id)}
+                        onClick={() => openDeleteProduct(product._id)}
                         className="rounded-full border border-red-500/50 px-3 py-1 font-semibold text-red-500 transition hover:bg-red-500/10 disabled:opacity-50"
                       >
                         Delete
@@ -1015,6 +1044,25 @@ export default function AdminStorePage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title={t("admin.store.confirmDeleteTitle", "Delete product?")}
+        description={t(
+          "admin.store.confirmDelete",
+          "Delete this product? This cannot be undone.",
+        )}
+        confirmLabel={t("button.delete", "Delete")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteProduct}
+        onCancel={() => {
+          if (!isDeleting) {
+            setConfirmDeleteOpen(false);
+            setPendingDeleteId(null);
+          }
+        }}
+      />
     </section>
   );
 }

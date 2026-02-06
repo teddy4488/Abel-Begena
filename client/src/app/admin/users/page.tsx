@@ -11,9 +11,12 @@ import {
   useGetStudentsQuery,
   useGetWebsiteUsersQuery,
   useUpdateTeacherMutation,
+  useDeleteTeacherMutation,
   useUpdateAdminMutation,
+  useDeleteAdminMutation,
   useUpdateWebsiteUserMutation,
   useUpdateStudentMutation,
+  useDeleteStudentMutation,
 } from "@/store/api/adminApi";
 import type { AuthUser } from "@/store/slices/authSlice";
 import type { Teacher, AdminUser, Student } from "@/store/api/adminApi";
@@ -21,6 +24,7 @@ import Image from "next/image";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap } from "lucide-react";
 
 type UserTab = "website" | "teachers" | "admins" | "students";
@@ -31,6 +35,12 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{
+    id: string;
+    label: string;
+    userType: UserTab;
+  } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const { pushToast } = useToast();
@@ -43,6 +53,9 @@ export default function AdminUsersPage() {
   const { data: students = [], isLoading: studentsLoading } = useGetStudentsQuery();
 
   const [deleteUser] = useAdminDeleteUserMutation();
+  const [deleteTeacher] = useDeleteTeacherMutation();
+  const [deleteAdmin] = useDeleteAdminMutation();
+  const [deleteStudent] = useDeleteStudentMutation();
   const [updateTeacher] = useUpdateTeacherMutation();
   const [updateAdmin] = useUpdateAdminMutation();
   const [updateWebsiteUser] = useUpdateWebsiteUserMutation();
@@ -167,15 +180,35 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleDelete = async (id: string, emailOrName: string) => {
-    if (!confirm(t("admin.users.confirmDelete", `Are you sure you want to delete ${emailOrName}? This action cannot be undone.`))) {
-      return;
-    }
+  const openDeleteConfirm = (
+    id: string,
+    emailOrName: string,
+    userType: UserTab = activeTab,
+  ) => {
+    setConfirmTarget({ id, label: emailOrName, userType });
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmTarget) return;
     try {
+      const { id, userType } = confirmTarget;
       setDeletingId(id);
-      // For now, only website users can be deleted through this endpoint
-      if (activeTab === "website") {
-        await deleteUser(id).unwrap();
+      switch (userType) {
+        case "website":
+          await deleteUser(id).unwrap();
+          break;
+        case "teachers":
+          await deleteTeacher(id).unwrap();
+          break;
+        case "admins":
+          await deleteAdmin(id).unwrap();
+          break;
+        case "students":
+          await deleteStudent(id).unwrap();
+          break;
+        default:
+          break;
       }
       pushToast({
         title: t("admin.users.userRemoved", "User removed"),
@@ -189,6 +222,8 @@ export default function AdminUsersPage() {
       });
     } finally {
       setDeletingId(null);
+      setConfirmOpen(false);
+      setConfirmTarget(null);
     }
   };
 
@@ -482,26 +517,30 @@ export default function AdminUsersPage() {
                       </button>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {activeTab === "website" && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item._id ?? item.id ?? "", displayEmail)}
-                          disabled={deletingId === (item._id ?? item.id ?? "")}
-                          className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {deletingId === (item._id ?? item.id ?? "") ? (
-                            <>
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              {t("admin.users.deleting", "Deleting...")}
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="w-3 h-3" />
-                              {t("admin.users.delete", "Delete")}
-                            </>
-                          )}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openDeleteConfirm(
+                            item._id ?? item.id ?? "",
+                            displayEmail || displayName,
+                            activeTab,
+                          )
+                        }
+                        disabled={deletingId === (item._id ?? item.id ?? "")}
+                        className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingId === (item._id ?? item.id ?? "") ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            {t("admin.users.deleting", "Deleting...")}
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-3 h-3" />
+                            {t("admin.users.delete", "Delete")}
+                          </>
+                        )}
+                      </button>
                     </td>
                   </motion.tr>
                 );
@@ -551,6 +590,25 @@ export default function AdminUsersPage() {
           </div>
         )}
       </motion.div>
+
+      <ConfirmModal
+        open={confirmOpen}
+        title={t("admin.users.confirmDeleteTitle", "Delete user?")}
+        description={t(
+          "admin.users.confirmDeleteDesc",
+          `Are you sure you want to delete ${confirmTarget?.label ?? "this user"}? This action cannot be undone.`,
+        )}
+        confirmLabel={t("button.delete", "Delete")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={Boolean(confirmTarget?.id && deletingId === confirmTarget.id)}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!deletingId) {
+            setConfirmOpen(false);
+            setConfirmTarget(null);
+          }
+        }}
+      />
     </section>
   );
 }

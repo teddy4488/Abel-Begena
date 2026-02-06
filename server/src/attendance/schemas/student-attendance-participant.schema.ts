@@ -126,6 +126,9 @@ export class StudentAttendanceParticipant {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
 }
 
 export const StudentAttendanceParticipantSchema =
@@ -136,3 +139,4 @@ StudentAttendanceParticipantSchema.index({ attendanceNumber: 1 });
 StudentAttendanceParticipantSchema.index({ branchId: 1 });
 StudentAttendanceParticipantSchema.index({ instrumentType: 1 });
 StudentAttendanceParticipantSchema.index({ isActive: 1 });
+StudentAttendanceParticipantSchema.index({ deletedAt: 1 });

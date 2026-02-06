@@ -235,7 +235,7 @@ export default function AdminMonthlyPaymentsPage() {
     const next = upcoming && upcoming.length > 0 ? upcoming[0] : null;
 
     return (
-      <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+      <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -945,7 +945,7 @@ export default function AdminMonthlyPaymentsPage() {
       {/* Payment Recording Modal */}
       <AnimatePresence>
         {showPaymentModal && billingSummary && (
-          <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+          <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1103,7 +1103,7 @@ export default function AdminMonthlyPaymentsPage() {
       {/* Payment Request Review Modal */}
       <AnimatePresence>
         {selectedPaymentRequest && (
-          <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur">
+          <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

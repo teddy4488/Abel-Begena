@@ -1,13 +1,14 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppSelector } from "@/store/hooks";
 import { useGetClassAccessQuery } from "@/store/api/classApi";
 import { X, Share2 } from "lucide-react";
 import { LiveRoom } from "@/components/live/LiveRoom";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useToast } from "@/components/providers/ToastProvider";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 export default function LiveClassPage() {
   const params = useParams();
@@ -19,6 +20,7 @@ export default function LiveClassPage() {
   });
   const { t } = useI18n();
   const { pushToast } = useToast();
+  const [confirmEndOpen, setConfirmEndOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -91,16 +93,7 @@ export default function LiveClassPage() {
   }
 
   const handleEndSession = () => {
-    if (
-      confirm(
-        t(
-          "live.confirm.endSession",
-          "Are you sure you want to end this session for everyone?",
-        ),
-      )
-    ) {
-      router.push("/dashboard");
-    }
+    setConfirmEndOpen(true);
   };
 
   const handleShareLink = () => {
@@ -178,6 +171,19 @@ export default function LiveClassPage() {
           </div>
         </aside>
       )}
+
+      <ConfirmModal
+        open={confirmEndOpen}
+        title={t("live.confirm.endSessionTitle", "End session?")}
+        description={t(
+          "live.confirm.endSession",
+          "Are you sure you want to end this session for everyone?",
+        )}
+        confirmLabel={t("live.confirm.endSessionAction", "End session")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        onConfirm={() => router.push("/dashboard")}
+        onCancel={() => setConfirmEndOpen(false)}
+      />
 
       <div
         className={`flex h-full flex-1 flex-col px-3 py-4 md:px-6 ${

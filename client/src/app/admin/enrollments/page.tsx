@@ -12,6 +12,7 @@ import { useUpdateEnrollmentStatusMutation } from "@/store/api/classApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const statusPalette: Record<string, string> = {
   active: "bg-emerald-500/10 text-emerald-600",
@@ -48,6 +49,11 @@ export default function AdminEnrollmentsPage() {
   >("pending");
   const [search, setSearch] = useState("");
   const [selectedEnrollment, setSelectedEnrollment] = useState<AdminEnrollment | null>(null);
+  const [confirmWithdrawOpen, setConfirmWithdrawOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    enrollment: AdminEnrollment;
+    status: "active" | "pending" | "withdrawn";
+  } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -81,7 +87,7 @@ export default function AdminEnrollmentsPage() {
   const endIndex = startIndex + itemsPerPage;
   const paginated = filtered.slice(startIndex, endIndex);
 
-  const handleStatusChange = async (
+  const applyStatusChange = async (
     enrollment: AdminEnrollment,
     status: "active" | "pending" | "withdrawn",
   ) => {
@@ -103,6 +109,18 @@ export default function AdminEnrollmentsPage() {
         variant: "error",
       });
     }
+  };
+
+  const requestStatusChange = (
+    enrollment: AdminEnrollment,
+    status: "active" | "pending" | "withdrawn",
+  ) => {
+    if (status === "withdrawn" && (enrollment.status ?? "pending") !== "withdrawn") {
+      setPendingStatusChange({ enrollment, status });
+      setConfirmWithdrawOpen(true);
+      return;
+    }
+    void applyStatusChange(enrollment, status);
   };
 
   return (
@@ -296,7 +314,7 @@ export default function AdminEnrollmentsPage() {
                                 key={option}
                                 type="button"
                                 disabled={isUpdating || option === status}
-                                onClick={() => handleStatusChange(enrollment, option)}
+                                onClick={() => requestStatusChange(enrollment, option)}
                                 className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
                                   option === status
                                     ? "border-border bg-border/40 text-foreground/70"
@@ -428,7 +446,7 @@ export default function AdminEnrollmentsPage() {
                               key={option}
                               type="button"
                               disabled={isUpdating || option === status}
-                              onClick={() => handleStatusChange(enrollment, option)}
+                              onClick={() => requestStatusChange(enrollment, option)}
                               className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
                                 option === status
                                   ? "border-border bg-border/40 text-foreground/70"
@@ -496,7 +514,7 @@ export default function AdminEnrollmentsPage() {
       {/* Receipt Viewer Modal */}
       <AnimatePresence>
         {selectedEnrollment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -819,7 +837,7 @@ export default function AdminEnrollmentsPage() {
                     <button
                       type="button"
                       onClick={async () => {
-                        await handleStatusChange(selectedEnrollment, "active");
+                        await applyStatusChange(selectedEnrollment, "active");
                         setSelectedEnrollment(null);
                       }}
                       disabled={isUpdating}
@@ -831,7 +849,7 @@ export default function AdminEnrollmentsPage() {
                     <button
                       type="button"
                       onClick={async () => {
-                        await handleStatusChange(selectedEnrollment, "withdrawn");
+                        requestStatusChange(selectedEnrollment, "withdrawn");
                         setSelectedEnrollment(null);
                       }}
                       disabled={isUpdating}
@@ -848,6 +866,33 @@ export default function AdminEnrollmentsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        open={confirmWithdrawOpen}
+        title={t("admin.enrollments.confirmWithdrawTitle", "Withdraw enrollment?")}
+        description={t(
+          "admin.enrollments.confirmWithdraw",
+          "This will mark the enrollment as withdrawn. Continue?",
+        )}
+        confirmLabel={t("button.withdraw", "Withdraw")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={isUpdating}
+        onConfirm={() => {
+          if (!pendingStatusChange) return;
+          void applyStatusChange(pendingStatusChange.enrollment, pendingStatusChange.status).finally(
+            () => {
+              setConfirmWithdrawOpen(false);
+              setPendingStatusChange(null);
+            },
+          );
+        }}
+        onCancel={() => {
+          if (!isUpdating) {
+            setConfirmWithdrawOpen(false);
+            setPendingStatusChange(null);
+          }
+        }}
+      />
     </section>
   );
 }

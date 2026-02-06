@@ -19,10 +19,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="relative flex h-screen overflow-hidden bg-background text-foreground">
       {/* Subtle Orthodox cross line decorations */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <span className="absolute left-8 top-20 text-4xl text-[#facc15] opacity-20">✝</span>
-        <span className="absolute right-12 top-40 text-5xl text-[#facc15] opacity-20">✝</span>
-        <span className="absolute bottom-40 left-12 text-3xl text-[#facc15] opacity-20">✝</span>
-        <span className="absolute bottom-20 right-8 text-4xl text-[#facc15] opacity-20">✝</span>
+        <span className="absolute left-8 top-20 text-4xl text-secondary opacity-20">✝</span>
+        <span className="absolute right-12 top-40 text-5xl text-secondary opacity-20">✝</span>
+        <span className="absolute bottom-40 left-12 text-3xl text-secondary opacity-20">✝</span>
+        <span className="absolute bottom-20 right-8 text-4xl text-secondary opacity-20">✝</span>
       </div>
       <AdminSidebar />
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">

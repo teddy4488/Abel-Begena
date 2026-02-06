@@ -237,7 +237,7 @@ export default function PaymentHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-begena-cream via-begena-cream to-begena-lightBrown dark:from-begena-darkBrown dark:via-gray-900 dark:to-black p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <motion.div
@@ -367,7 +367,7 @@ export default function PaymentHistoryPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-begena-cream/40 dark:bg-begena-darkBrown/40 backdrop-blur-sm border border-begena-gold/20"
+          className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-surface backdrop-blur-sm border border-border"
         >
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-begena-gold" />
@@ -404,7 +404,7 @@ export default function PaymentHistoryPage() {
               onChange={(e) =>
                 setFilterStatus(e.target.value as PaymentStatus | "all")
               }
-              className="px-3 py-2 rounded-lg bg-begena-cream dark:bg-begena-darkBrown border border-begena-gold/30 text-begena-brown dark:text-begena-cream text-sm focus:outline-none focus:ring-2 focus:ring-begena-gold"
+              className="px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30"
             >
               <option value="all">{t("payments.filters.allStatuses", "All Statuses")}</option>
               <option value="completed">{t("payments.status.completed", "Completed")}</option>
@@ -423,7 +423,7 @@ export default function PaymentHistoryPage() {
               )}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 rounded-lg border border-begena-gold/30 bg-begena-cream dark:bg-begena-darkBrown px-3 py-2 text-sm text-begena-brown dark:text-begena-cream focus:outline-none focus:ring-2 focus:ring-begena-gold"
+              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/30"
             />
             <button
               type="button"
@@ -443,7 +443,7 @@ export default function PaymentHistoryPage() {
           transition={{ delay: 0.5 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          <div className="rounded-xl border border-begena-gold/30 bg-begena-cream/50 dark:bg-begena-darkBrown/40 p-4">
+          <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm font-semibold text-begena-brown dark:text-begena-cream mb-2">
               {t("payments.insights.breakdownTitle", "Breakdown by Type")}
             </p>
@@ -475,7 +475,7 @@ export default function PaymentHistoryPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-begena-gold/30 bg-begena-cream/50 dark:bg-begena-darkBrown/40 p-4">
+          <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm font-semibold text-begena-brown dark:text-begena-cream mb-2">
               {t("payments.insights.pendingTitle", "Pending follow-ups")}
             </p>
@@ -512,7 +512,7 @@ export default function PaymentHistoryPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-12 rounded-xl bg-begena-cream/40 dark:bg-begena-darkBrown/40 border border-begena-gold/20"
+            className="text-center py-12 rounded-xl bg-surface border border-border"
           >
             <Receipt className="w-12 h-12 mx-auto text-begena-brown/40 dark:text-begena-cream/40 mb-4" />
             <p className="text-begena-brown/70 dark:text-begena-cream/70">
@@ -527,7 +527,7 @@ export default function PaymentHistoryPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="p-4 md:p-6 rounded-xl bg-begena-cream/60 dark:bg-begena-darkBrown/60 backdrop-blur-sm border border-begena-gold/20 hover:border-begena-gold/40 transition-all"
+                className="p-4 md:p-6 rounded-xl bg-surface backdrop-blur-sm border border-border transition-all"
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex-1">

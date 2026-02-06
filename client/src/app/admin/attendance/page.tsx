@@ -859,7 +859,7 @@ export default function AdminAttendancePage() {
               <AnimatePresence>
                 {showRecordAttendanceModal && selectedStudent && (
                   <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
                     onClick={() => setShowRecordAttendanceModal(false)}
                   >
                     <motion.div
@@ -1016,7 +1016,7 @@ export default function AdminAttendancePage() {
               <AnimatePresence>
                 {showAttendanceHistoryModal && attendanceHistoryStudentId && (
                   <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
                     onClick={() => {
                       setShowAttendanceHistoryModal(false);
                       setAttendanceHistoryStudentId(null);
@@ -1536,7 +1536,7 @@ export default function AdminAttendancePage() {
       {/* Add Student Modal */}
       {showAddStudentModal && (
         <div
-          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur"
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onClick={() => setShowAddStudentModal(false)}
         >
           <motion.div
@@ -1844,7 +1844,7 @@ export default function AdminAttendancePage() {
       {/* Add Teacher Modal */}
       {showAddTeacherModal && (
         <div
-          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur"
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onClick={() => setShowAddTeacherModal(false)}
         >
           <motion.div

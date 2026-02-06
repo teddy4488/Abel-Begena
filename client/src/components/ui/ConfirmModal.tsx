@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { X } from "lucide-react";
 
 type Props = {
@@ -25,20 +26,30 @@ export default function ConfirmModal({
 }: Props) {
   if (!open) return null;
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isLoading) {
+        onCancel();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isLoading, onCancel]);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
       <div
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={() => {
           if (!isLoading) onCancel();
         }}
       />
 
-      <div className="z-10 w-[min(640px,94%)] rounded-2xl border border-border bg-surface p-6 shadow-lg">
+      <div className="z-10 w-full max-w-xl rounded-3xl border border-border bg-surface-elevated p-6 shadow-2xl">
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-lg font-semibold">{title}</h3>

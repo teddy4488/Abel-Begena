@@ -16,7 +16,10 @@ export class UserService {
   ) {}
 
   async findAll() {
-    const users = await this.userModel.find().lean().exec();
+    const users = await this.userModel
+      .find({ deletedAt: null })
+      .lean()
+      .exec();
     return users.map((user) => this.toSafeUser(user));
   }
 
@@ -43,7 +46,9 @@ export class UserService {
     }
 
     const updatedUser = await this.userModel
-      .findByIdAndUpdate(id, updateUserDto, { new: true })
+      .findOneAndUpdate({ _id: id, deletedAt: null }, updateUserDto, {
+        new: true,
+      })
       .lean()
       .exec();
 
@@ -55,7 +60,14 @@ export class UserService {
   }
 
   async remove(id: string) {
-    const result = await this.userModel.findByIdAndDelete(id).lean().exec();
+    const result = await this.userModel
+      .findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { isActive: false, deletedAt: new Date() },
+        { new: true },
+      )
+      .lean()
+      .exec();
     if (!result) {
       throw new NotFoundException('User not found');
     }
@@ -71,7 +83,7 @@ export class UserService {
   }
 
   findByEmail(email: string) {
-    return this.userModel.findOne({ email }).exec();
+    return this.userModel.findOne({ email, deletedAt: null }).exec();
   }
 
   async assignVerificationCode(
@@ -137,7 +149,10 @@ export class UserService {
   }
 
   async findById(id: string) {
-    const user = await this.userModel.findById(id).lean().exec();
+    const user = await this.userModel
+      .findOne({ _id: id, deletedAt: null })
+      .lean()
+      .exec();
     return user ? this.toSafeUser(user) : null;
   }
 

@@ -9,6 +9,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Loader2, Trash2, RefreshCw } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 export default function AdminCommentsPage() {
   const { t } = useI18n();
@@ -18,6 +19,8 @@ export default function AdminCommentsPage() {
   const [deleteComment, { isLoading: isDeleting }] =
     useDeleteCommentMutation();
   const { pushToast } = useToast();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -27,19 +30,15 @@ export default function AdminCommentsPage() {
   const endIndex = startIndex + itemsPerPage;
   const paginated = comments.slice(startIndex, endIndex);
 
-  const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        t(
-          "admin.comments.confirmDelete",
-          "Delete this comment? This cannot be undone.",
-        ),
-      )
-    ) {
-      return;
-    }
+  const openDeleteConfirm = (id: string) => {
+    setPendingDeleteId(id);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
     try {
-      await deleteComment(id).unwrap();
+      await deleteComment(pendingDeleteId).unwrap();
       pushToast({
         title: t("admin.comments.deleted", "Comment deleted"),
         variant: "success",
@@ -51,6 +50,9 @@ export default function AdminCommentsPage() {
         title: t("admin.comments.deleteError", "Unable to delete comment"),
         variant: "error",
       });
+    } finally {
+      setConfirmDeleteOpen(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -134,7 +136,7 @@ export default function AdminCommentsPage() {
                     <button
                       type="button"
                       disabled={isDeleting}
-                      onClick={() => handleDelete(c._id)}
+                      onClick={() => openDeleteConfirm(c._id)}
                       className="inline-flex items-center gap-1 rounded-full border border-red-500/50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-500/10 disabled:opacity-60"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -176,6 +178,25 @@ export default function AdminCommentsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title={t("admin.comments.confirmDeleteTitle", "Delete comment?")}
+        description={t(
+          "admin.comments.confirmDelete",
+          "Delete this comment? This cannot be undone.",
+        )}
+        confirmLabel={t("button.delete", "Delete")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!isDeleting) {
+            setConfirmDeleteOpen(false);
+            setPendingDeleteId(null);
+          }
+        }}
+      />
     </section>
   );
 }

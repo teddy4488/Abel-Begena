@@ -843,7 +843,7 @@ export default function AdminOrdersPage() {
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">
           <div className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 p-6 shadow-2xl">
             <button
               type="button"

@@ -388,7 +388,7 @@ export class AttendanceService {
 
   async listStudentParticipants() {
     return this.studentParticipantModel
-      .find({ isActive: true })
+      .find({ isActive: true, deletedAt: null })
       .populate('branchId', 'name slug')
       .sort({ fullName: 1 })
       .lean()
@@ -397,7 +397,11 @@ export class AttendanceService {
 
   async getStudentByAttendanceNumber(attendanceNumber: string) {
     const student = await this.studentParticipantModel
-      .findOne({ attendanceNumber: attendanceNumber.trim(), isActive: true })
+      .findOne({
+        attendanceNumber: attendanceNumber.trim(),
+        isActive: true,
+        deletedAt: null,
+      })
       .populate('branchId', 'name slug')
       .lean()
       .exec();
@@ -424,6 +428,7 @@ export class AttendanceService {
     const students = await this.studentParticipantModel
       .find({
         isActive: true,
+        deletedAt: null,
         $or: [
           { attendanceNumber: { $regex: safe, $options: 'i' } },
           { fullName: { $regex: safe, $options: 'i' } },
@@ -440,7 +445,7 @@ export class AttendanceService {
 
   async getStudentDetails(studentId: string) {
     const student = await this.studentParticipantModel
-      .findById(studentId)
+      .findOne({ _id: studentId, deletedAt: null })
       .populate('branchId', 'name slug')
       .lean()
       .exec();
@@ -487,7 +492,9 @@ export class AttendanceService {
     id: string,
     updateData: Partial<StudentAttendanceParticipant>,
   ) {
-    const student = await this.studentParticipantModel.findById(id).exec();
+    const student = await this.studentParticipantModel
+      .findOne({ _id: id, deletedAt: null })
+      .exec();
     if (!student) {
       throw new NotFoundException('Student participant not found');
     }
@@ -495,10 +502,25 @@ export class AttendanceService {
     Object.assign(student, updateData);
     await student.save();
     return this.studentParticipantModel
-      .findById(id)
+      .findOne({ _id: id, deletedAt: null })
       .populate('branchId', 'name slug')
       .lean()
       .exec();
+  }
+
+  async removeStudentParticipant(id: string) {
+    const updated = await this.studentParticipantModel
+      .findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { isActive: false, deletedAt: new Date() },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!updated) {
+      throw new NotFoundException('Student participant not found');
+    }
+    return { message: 'Student removed' };
   }
 
   // Teacher attendance

@@ -251,6 +251,13 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ["Teachers"],
     }),
+    deleteTeacher: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/admin/teachers/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Teachers"],
+    }),
     updateAdmin: builder.mutation<
       AdminUser,
       { id: string; data: Partial<AdminUser> }
@@ -259,6 +266,13 @@ export const adminApi = createApi({
         url: `/admin/admins/${id}`,
         method: "PATCH",
         body: data,
+      }),
+      invalidatesTags: ["Admins"],
+    }),
+    deleteAdmin: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/admin/admins/${id}`,
+        method: "DELETE",
       }),
       invalidatesTags: ["Admins"],
     }),
@@ -284,6 +298,13 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ["Students"],
     }),
+    deleteStudent: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/attendance/students/participants/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Students"],
+    }),
   }),
 });
 
@@ -300,8 +321,11 @@ export const {
   useGetStudentsQuery,
   useGetWebsiteUsersQuery,
   useUpdateTeacherMutation,
+  useDeleteTeacherMutation,
   useUpdateAdminMutation,
+  useDeleteAdminMutation,
   useUpdateWebsiteUserMutation,
   useUpdateStudentMutation,
+  useDeleteStudentMutation,
 } = adminApi;
 

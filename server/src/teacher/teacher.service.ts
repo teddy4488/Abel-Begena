@@ -14,7 +14,10 @@ export class TeacherService {
   ) {}
 
   async findAll() {
-    const teachers = await this.teacherModel.find().lean().exec();
+    const teachers = await this.teacherModel
+      .find({ deletedAt: null })
+      .lean()
+      .exec();
     return teachers.map((teacher) => this.toSafeTeacher(teacher));
   }
 
@@ -47,7 +50,9 @@ export class TeacherService {
     }
 
     const updatedTeacher = await this.teacherModel
-      .findByIdAndUpdate(id, updateTeacherDto, { new: true })
+      .findOneAndUpdate({ _id: id, deletedAt: null }, updateTeacherDto, {
+        new: true,
+      })
       .lean()
       .exec();
 
@@ -59,7 +64,14 @@ export class TeacherService {
   }
 
   async remove(id: string) {
-    const result = await this.teacherModel.findByIdAndDelete(id).lean().exec();
+    const result = await this.teacherModel
+      .findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { isActive: false, deletedAt: new Date() },
+        { new: true },
+      )
+      .lean()
+      .exec();
     if (!result) {
       throw new NotFoundException('Teacher not found');
     }
@@ -75,11 +87,11 @@ export class TeacherService {
   }
 
   findByEmail(email: string) {
-    return this.teacherModel.findOne({ email }).exec();
+    return this.teacherModel.findOne({ email, deletedAt: null }).exec();
   }
 
   findById(id: string) {
-    return this.teacherModel.findById(id).lean().exec();
+    return this.teacherModel.findOne({ _id: id, deletedAt: null }).lean().exec();
   }
 
   async setRefreshToken(teacherId: string, refreshTokenHash: string, expiresAt: Date) {

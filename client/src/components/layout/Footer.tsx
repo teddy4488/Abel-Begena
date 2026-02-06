@@ -22,7 +22,7 @@ export default function Footer() {
     return (
       <footer className="relative bg-[#1a0b12] text-background overflow-hidden">
         <div className="pointer-events-none absolute inset-0">
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl text-[#facc15] opacity-25">
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl text-secondary opacity-25">
             ✝
           </span>
         </div>
@@ -45,13 +45,13 @@ export default function Footer() {
     <footer className="relative bg-[#1a0b12] text-background overflow-hidden">
       {/* Subtle cross line decorations */}
       <div className="pointer-events-none absolute inset-0">
-        <span className="absolute left-8 top-8 text-3xl text-[#facc15] opacity-25">✝</span>
-        <span className="absolute right-8 top-8 text-3xl text-[#facc15] opacity-25">✝</span>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl text-[#facc15] opacity-20">
+        <span className="absolute left-8 top-8 text-3xl text-secondary opacity-25">✝</span>
+        <span className="absolute right-8 top-8 text-3xl text-secondary opacity-25">✝</span>
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl text-secondary opacity-20">
           ✝
         </span>
-        <span className="absolute right-12 bottom-12 text-2xl text-[#facc15] opacity-25">✝</span>
-        <span className="absolute left-12 bottom-12 text-2xl text-[#facc15] opacity-25">✝</span>
+        <span className="absolute right-12 bottom-12 text-2xl text-secondary opacity-25">✝</span>
+        <span className="absolute left-12 bottom-12 text-2xl text-secondary opacity-25">✝</span>
       </div>
       <div className="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-12 text-center md:px-10">
         <p className="text-sm uppercase tracking-[0.3em] text-secondary">

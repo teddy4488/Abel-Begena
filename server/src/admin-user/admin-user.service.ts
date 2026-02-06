@@ -14,7 +14,10 @@ export class AdminUserService {
   ) {}
 
   async findAll() {
-    const admins = await this.adminUserModel.find().lean().exec();
+    const admins = await this.adminUserModel
+      .find({ deletedAt: null })
+      .lean()
+      .exec();
     return admins.map((admin) => this.toSafeAdmin(admin));
   }
 
@@ -45,7 +48,9 @@ export class AdminUserService {
     }
 
     const updatedAdmin = await this.adminUserModel
-      .findByIdAndUpdate(id, updateAdminDto, { new: true })
+      .findOneAndUpdate({ _id: id, deletedAt: null }, updateAdminDto, {
+        new: true,
+      })
       .lean()
       .exec();
 
@@ -57,7 +62,14 @@ export class AdminUserService {
   }
 
   async remove(id: string) {
-    const result = await this.adminUserModel.findByIdAndDelete(id).lean().exec();
+    const result = await this.adminUserModel
+      .findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { isActive: false, deletedAt: new Date() },
+        { new: true },
+      )
+      .lean()
+      .exec();
     if (!result) {
       throw new NotFoundException('Admin not found');
     }
@@ -73,11 +85,11 @@ export class AdminUserService {
   }
 
   findByEmail(email: string) {
-    return this.adminUserModel.findOne({ email }).exec();
+    return this.adminUserModel.findOne({ email, deletedAt: null }).exec();
   }
 
   findById(id: string) {
-    return this.adminUserModel.findById(id).lean().exec();
+    return this.adminUserModel.findOne({ _id: id, deletedAt: null }).lean().exec();
   }
 
   async setRefreshToken(adminId: string, refreshTokenHash: string, expiresAt: Date) {

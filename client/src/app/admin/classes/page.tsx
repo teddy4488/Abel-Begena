@@ -24,6 +24,7 @@ import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const INSTRUMENTS: InstrumentType[] = [
   "Begena",
@@ -54,13 +55,21 @@ export default function AdminClassesPage() {
   const { data: classes, isLoading } = useGetManagedClassesQuery();
   const { data: teachers = [] } = useGetTeachersQuery();
   const { data: branches = [] } = useGetBranchesAdminQuery();
-  const [createClass] = useCreateManagedClassMutation();
-  const [updateClass] = useUpdateManagedClassMutation();
-  const [deleteClass] = useDeleteManagedClassMutation();
+  const [createClass, { isLoading: creatingClass }] =
+    useCreateManagedClassMutation();
+  const [updateClass, { isLoading: updatingClass }] =
+    useUpdateManagedClassMutation();
+  const [deleteClass, { isLoading: deletingClass }] = useDeleteManagedClassMutation();
   const [assignInstructor] = useAssignClassInstructorMutation();
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<
+    | { kind: "class"; id: string }
+    | { kind: "lesson"; id: string }
+    | null
+  >(null);
   const { pushToast } = useToast();
   const { t } = useI18n();
 
@@ -224,29 +233,44 @@ export default function AdminClassesPage() {
     }
   };
 
-  const handleDelete = async (classId: string) => {
-    if (
-      !confirm(
-        t(
-          "admin.classes.confirmDelete",
-          "Are you sure you want to delete this class? This action cannot be undone.",
-        ),
-      )
-    ) {
-      return;
-    }
+  const openConfirmDeleteClass = (classId: string) => {
+    setConfirmTarget({ kind: "class", id: classId });
+    setConfirmOpen(true);
+  };
+
+  const openConfirmDeleteLesson = (lessonId: string) => {
+    setConfirmTarget({ kind: "lesson", id: lessonId });
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmTarget) return;
     try {
-      await deleteClass(classId).unwrap();
-      pushToast({
-        title: t("admin.classes.toast.deleted", "Class removed"),
-        variant: "success",
-      });
+      if (confirmTarget.kind === "class") {
+        await deleteClass(confirmTarget.id).unwrap();
+        pushToast({
+          title: t("admin.classes.toast.deleted", "Class removed"),
+          variant: "success",
+        });
+      } else {
+        await deleteLesson(confirmTarget.id).unwrap();
+        pushToast({
+          title: t("admin.lessons.deleted", "Lesson deleted"),
+          variant: "success",
+        });
+      }
     } catch (error) {
       console.error(error);
       pushToast({
-        title: t("admin.classes.toast.deleteError", "Unable to delete class"),
+        title:
+          confirmTarget.kind === "class"
+            ? t("admin.classes.toast.deleteError", "Unable to delete class")
+            : t("admin.lessons.deleteError", "Unable to delete lesson"),
         variant: "error",
       });
+    } finally {
+      setConfirmOpen(false);
+      setConfirmTarget(null);
     }
   };
 
@@ -370,30 +394,8 @@ export default function AdminClassesPage() {
     setShowLessonModal(true);
   };
 
-  const handleDeleteLesson = async (lessonId: string) => {
-    if (!confirm(t("admin.lessons.confirmDelete", "Are you sure you want to delete this lesson?"))) {
-      return;
-    }
-    try {
-      await deleteLesson(lessonId).unwrap();
-      pushToast({
-        title: t("admin.lessons.deleted", "Lesson deleted"),
-        variant: "success",
-      });
-    } catch (err: unknown) {
-      const message =
-        err && typeof err === "object" && "data" in err && err.data
-          ? (err.data as { message?: unknown }).message
-          : undefined;
-      pushToast({
-        title: t("admin.lessons.error", "Error"),
-        description:
-          typeof message === "string" && message.length > 0
-            ? message
-            : t("admin.lessons.deleteError", "Unable to delete lesson"),
-        variant: "error",
-      });
-    }
+  const handleDeleteLesson = (lessonId: string) => {
+    openConfirmDeleteLesson(lessonId);
   };
 
   const filteredLessons = useMemo(() => {
@@ -668,7 +670,7 @@ export default function AdminClassesPage() {
                       </motion.button>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => handleDelete(klass._id)}
+                        onClick={() => openConfirmDeleteClass(klass._id)}
                         className="inline-flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/20"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -884,11 +886,18 @@ export default function AdminClassesPage() {
 
           {/* Lesson Modal */}
           {showLessonModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                onClick={() => {
+                  setShowLessonModal(false);
+                  setEditingLessonId(null);
+                }}
+              />
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md rounded-3xl bg-surface-elevated p-6 shadow-2xl"
+                className="relative z-10 w-full max-w-md rounded-3xl bg-surface-elevated p-6 shadow-2xl"
               >
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xl font-serif text-primary">
@@ -1120,7 +1129,7 @@ export default function AdminClassesPage() {
           {showTrackModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                 onClick={() => setShowTrackModal(false)}
               />
               <motion.div
@@ -1283,7 +1292,17 @@ export default function AdminClassesPage() {
 
       {/* Form View */}
       {(showForm || editingId) && (
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:items-center">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => {
+              if (!creatingClass && !updatingClass) {
+                clearForm();
+              }
+            }}
+          />
+          <div className="relative z-10 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
           <motion.form
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1303,15 +1322,26 @@ export default function AdminClassesPage() {
                   : t("admin.classes.newCohort", "New cohort")}
               </h2>
             </div>
-            {editingId && (
+            <div className="flex items-center gap-2">
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={clearForm}
+                  className="text-xs uppercase tracking-[0.3em] text-secondary hover:underline"
+                >
+                  {t("button.reset", "Reset")}
+                </button>
+              )}
               <button
                 type="button"
+                aria-label={t("button.close", "Close")}
+                disabled={creatingClass || updatingClass}
                 onClick={clearForm}
-                className="text-xs uppercase tracking-[0.3em] text-secondary hover:underline"
+                className="rounded-full p-2 text-foreground/70 transition hover:bg-secondary/10 disabled:opacity-60"
               >
-                {t("button.reset", "Reset")}
+                <X className="h-4 w-4" />
               </button>
-            )}
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -1650,7 +1680,7 @@ export default function AdminClassesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(klass._id)}
+                      onClick={() => openConfirmDeleteClass(klass._id)}
                       className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-red-600 transition hover:bg-red-500/20"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -1732,8 +1762,42 @@ export default function AdminClassesPage() {
             </div>
           )}
         </motion.div>
+            </div>
+          </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmOpen}
+        title={
+          confirmTarget?.kind === "lesson"
+            ? t("admin.lessons.confirmDeleteTitle", "Delete lesson?")
+            : t("admin.classes.confirmDeleteTitle", "Delete class?")
+        }
+        description={
+          confirmTarget?.kind === "lesson"
+            ? t(
+                "admin.lessons.confirmDelete",
+                "Are you sure you want to delete this lesson? This action cannot be undone.",
+              )
+            : t(
+                "admin.classes.confirmDelete",
+                "Are you sure you want to delete this class? This action cannot be undone.",
+              )
+        }
+        confirmLabel={t("button.delete", "Delete")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={
+          confirmTarget?.kind === "lesson" ? deletingLesson : deletingClass
+        }
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!deletingLesson && !deletingClass) {
+            setConfirmOpen(false);
+            setConfirmTarget(null);
+          }
+        }}
+      />
     </section>
   );
 }

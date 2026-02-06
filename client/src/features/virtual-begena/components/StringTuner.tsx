@@ -101,12 +101,16 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="bg-begena-cream dark:bg-begena-darkBrown rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-begena-gold/30"
+        className="relative z-10 bg-background dark:bg-begena-darkBrown rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-begena-gold/30"
       >
         <div className="p-4 md:p-6 space-y-4 md:space-y-6">
           {/* Header with Orthodox cross */}
@@ -212,7 +216,7 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
                             e.target.value as NoteName
                           )
                         }
-                        className="w-full px-2 md:px-3 py-2 rounded-lg bg-begena-cream dark:bg-begena-darkBrown border-2 border-begena-gold/50 text-begena-brown dark:text-begena-cream font-semibold focus:outline-none focus:ring-2 focus:ring-begena-gold focus:border-begena-gold shadow-sm hover:shadow-md hover:border-begena-gold transition-all cursor-pointer"
+                        className="w-full px-2 md:px-3 py-2 rounded-lg bg-background dark:bg-begena-darkBrown border-2 border-border text-begena-brown dark:text-begena-cream font-semibold focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary shadow-sm hover:shadow-md transition-all cursor-pointer"
                       >
                         {NOTE_NAMES.map((note) => (
                           <option key={note} value={note}>

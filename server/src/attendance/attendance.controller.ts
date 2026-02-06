@@ -96,6 +96,13 @@ export class AttendanceController {
     return this.attendanceService.updateStudentParticipant(id, updateData);
   }
 
+  @Delete('students/participants/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  removeStudentParticipant(@Param('id') id: string) {
+    return this.attendanceService.removeStudentParticipant(id);
+  }
+
   // Teacher attendance
   @Post('teachers/check-in')
   @Roles('Admin')

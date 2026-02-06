@@ -200,8 +200,8 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-tr from-[var(--color-background)] via-[var(--color-surface)] to-[var(--color-secondary-soft)] opacity-60 dark:opacity-40" />
           {/* Subtle Orthodox cross lines in the hero background */}
           <div className="pointer-events-none absolute inset-0">
-            <span className="absolute left-6 top-10 text-5xl text-[#facc15] opacity-25">✝</span>
-            <span className="absolute right-10 bottom-8 text-6xl text-[#facc15] opacity-25">✝</span>
+            <span className="absolute left-6 top-10 text-5xl text-secondary opacity-25">✝</span>
+            <span className="absolute right-10 bottom-8 text-6xl text-secondary opacity-25">✝</span>
           </div>
           <div className="relative grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">

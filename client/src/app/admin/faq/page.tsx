@@ -13,6 +13,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Loader2, Plus, Save, Trash2, X, CheckCircle, Circle } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const emptyFaq: Omit<FaqItem, "_id"> = {
   question: "",
@@ -31,6 +32,8 @@ export default function AdminFaqPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyFaq);
   const [showModal, setShowModal] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -120,24 +123,20 @@ export default function AdminFaqPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        t(
-          "admin.faq.confirmDelete",
-          "Delete this FAQ? This action cannot be undone.",
-        ),
-      )
-    ) {
-      return;
-    }
+  const openDeleteFaq = (id: string) => {
+    setPendingDeleteId(id);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDeleteFaq = async () => {
+    if (!pendingDeleteId) return;
     try {
-      await deleteFaq(id).unwrap();
+      await deleteFaq(pendingDeleteId).unwrap();
       pushToast({
         title: t("admin.faq.deleted", "FAQ deleted"),
         variant: "success",
       });
-      if (editingId === id) {
+      if (editingId === pendingDeleteId) {
         reset();
       }
       refetch();
@@ -147,6 +146,9 @@ export default function AdminFaqPage() {
         title: t("admin.faq.deleteError", "Unable to delete FAQ"),
         variant: "error",
       });
+    } finally {
+      setConfirmDeleteOpen(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -249,7 +251,7 @@ export default function AdminFaqPage() {
                     <button
                       type="button"
                       disabled={isDeleting}
-                      onClick={() => handleDelete(faq._id)}
+                      onClick={() => openDeleteFaq(faq._id)}
                       className="rounded-full border border-red-500/40 px-3 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-red-500 transition hover:bg-red-500/10 disabled:opacity-60"
                     >
                       <Trash2 className="mr-1 inline h-3 w-3" />
@@ -294,7 +296,7 @@ export default function AdminFaqPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <motion.form
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -418,6 +420,25 @@ export default function AdminFaqPage() {
           </motion.form>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title={t("admin.faq.confirmDeleteTitle", "Delete FAQ?")}
+        description={t(
+          "admin.faq.confirmDelete",
+          "Delete this FAQ? This action cannot be undone.",
+        )}
+        confirmLabel={t("button.delete", "Delete")}
+        cancelLabel={t("button.cancel", "Cancel")}
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteFaq}
+        onCancel={() => {
+          if (!isDeleting) {
+            setConfirmDeleteOpen(false);
+            setPendingDeleteId(null);
+          }
+        }}
+      />
     </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/store/hooks";
@@ -79,6 +79,12 @@ export default function BecomeStudentPage() {
       : form.programDurationMonths === 6 ? 3 
       : 2;
   }, [form.programDurationMonths]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.replace("/login");
+    }
+  }, [isLoggedIn, router]);
 
   const handleDayToggle = (day: DayOfWeek) => {
     if (form.preferredLearningDays.includes(day)) {
@@ -218,7 +224,6 @@ export default function BecomeStudentPage() {
   };
 
   if (!isLoggedIn) {
-    router.push("/login");
     return null;
   }
 
