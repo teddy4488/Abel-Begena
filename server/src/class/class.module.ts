@@ -7,6 +7,7 @@ import { Class, ClassSchema } from './schemas/class.schema';
 import { UploadModule } from '../upload/upload.module';
 import { ClassOwnerGuard } from '../auth/guards/class-owner.guard';
 import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 import { PaymentModule } from '../payment/payment.module';
 import { AttendanceModule } from '../attendance/attendance.module';
 import { EnrollmentModule } from '../enrollment/enrollment.module';
@@ -17,6 +18,7 @@ import { EnrollmentModule } from '../enrollment/enrollment.module';
     MongooseModule.forFeature([{ name: Class.name, schema: ClassSchema }]),
     UploadModule,
     AuthModule,
+    UserModule,
     forwardRef(() => PaymentModule),
     AttendanceModule,
     EnrollmentModule,
