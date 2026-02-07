@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Branch, BranchDocument } from './schemas/branch.schema';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
@@ -24,8 +24,12 @@ export class BranchService {
       .exec();
   }
 
-  async findAll() {
-    return this.branchModel.find(this.notDeletedFilter()).sort({ createdAt: 1 }).lean().exec();
+  async findAll(branchId?: string) {
+    const filter = this.notDeletedFilter();
+    if (branchId && Types.ObjectId.isValid(branchId)) {
+      (filter as Record<string, unknown>)._id = new Types.ObjectId(branchId);
+    }
+    return this.branchModel.find(filter).sort({ createdAt: 1 }).lean().exec();
   }
 
   async create(dto: CreateBranchDto) {

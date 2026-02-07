@@ -12,7 +12,6 @@ import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { AuditLog } from '../audit/decorators/audit-log.decorator';
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { SubmitStudentMonthlyPaymentDto } from './dto/submit-student-monthly-payment.dto';
@@ -56,7 +55,6 @@ export class PaymentController {
   @Post(':id/decision')
   @UseGuards(RoleGuard)
   @Roles('Admin')
-  @AuditLog({ action: 'payment.updateStatus', resource: 'PaymentRequest', resourceIdParam: 'id' })
   updateStatus(
     @Param('id') id: string,
     @Body() body: Omit<UpdatePaymentStatusDto, 'id'>,

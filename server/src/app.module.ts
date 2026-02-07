@@ -21,7 +21,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { UploadModule } from './upload/upload.module';
-import { AuditModule } from './audit/audit.module';
 import { EnrollmentModule } from './enrollment/enrollment.module';
 
 @Module({
@@ -67,7 +66,6 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
     MaterialsModule,
     CourseTrackModule,
     UploadModule,
-    AuditModule,
     EnrollmentModule,
   ],
   controllers: [AppController],

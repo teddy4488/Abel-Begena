@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { BranchService } from './branch.service';
@@ -28,32 +29,35 @@ export class BranchController {
   }
 
   /**
-   * Admin endpoint: list all branches (including inactive).
+   * Admin endpoint: list all branches (SuperAdmin) or only the admin's branch (branch Admin).
    */
   @Get('admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  @Roles('Admin')
-  findAllAdmin() {
-    return this.branchService.findAll();
+  @Roles('Admin', 'SuperAdmin')
+  findAllAdmin(@Request() req: { user?: { role?: string; branchId?: string } }) {
+    const branchId = req.user?.role === 'Admin' && req.user?.branchId
+      ? String(req.user.branchId)
+      : undefined;
+    return this.branchService.findAll(branchId);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RoleGuard)
-  @Roles('Admin')
+  @Roles('SuperAdmin')
   create(@Body() dto: CreateBranchDto) {
     return this.branchService.create(dto);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  @Roles('Admin')
+  @Roles('SuperAdmin')
   update(@Param('id') id: string, @Body() dto: UpdateBranchDto) {
     return this.branchService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  @Roles('Admin')
+  @Roles('SuperAdmin')
   remove(@Param('id') id: string) {
     return this.branchService.remove(id);
   }

@@ -16,7 +16,6 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
-import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -73,7 +72,6 @@ export class OrderController {
   @Patch(':id/status')
   @Roles('Admin')
   @UseGuards(RoleGuard)
-  @AuditLog({ action: 'order.updateStatus', resource: 'Order', resourceIdParam: 'id' })
   updateStatus(
     @Param('id') id: string,
     @Body() updateOrderStatusDto: UpdateOrderStatusDto,

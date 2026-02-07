@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import { Loader2, MapPin, Plus, Trash2, Save, Globe2, X } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import Pagination from "@/components/ui/Pagination";
+import { useAppSelector } from "@/store/hooks";
 
 const BranchMap = dynamic(
   () => import("@/components/branches/BranchAdminMap"),
@@ -52,6 +53,8 @@ const emptyForm: BranchFormState = {
 export default function AdminBranchesPage() {
   const { t } = useI18n();
   const { pushToast } = useToast();
+  const { user } = useAppSelector((state) => state.auth);
+  const isSuperAdmin = user?.role === "SuperAdmin";
   const { data: branches, isLoading, isError, refetch } =
     useGetBranchesAdminQuery();
   const [createBranch, { isLoading: isCreating }] = useCreateBranchMutation();
@@ -265,14 +268,16 @@ export default function AdminBranchesPage() {
             )}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleNewBranch}
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
-        >
-          <Plus className="h-4 w-4" />
-          {t("branches.admin.newBranch", "New branch")}
-        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={handleNewBranch}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-lg transition hover:brightness-95"
+          >
+            <Plus className="h-4 w-4" />
+            {t("branches.admin.newBranch", "New branch")}
+          </button>
+        )}
       </header>
 
       <div className="grid gap-6">
@@ -391,8 +396,8 @@ export default function AdminBranchesPage() {
               >
                 <button
                   type="button"
-                  onClick={() => handleEdit(branch)}
-                  className="flex flex-1 items-center gap-2 text-left"
+                  onClick={() => isSuperAdmin && handleEdit(branch)}
+                  className={`flex flex-1 items-center gap-2 text-left ${!isSuperAdmin ? "cursor-default" : ""}`}
                 >
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                     <MapPin className="h-3 w-3" />
@@ -406,15 +411,17 @@ export default function AdminBranchesPage() {
                     </span>
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => requestDelete(branch._id)}
-                  disabled={isDeleting}
-                  aria-label={t("branches.admin.delete", "Delete branch")}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500/40 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => requestDelete(branch._id)}
+                    disabled={isDeleting}
+                    aria-label={t("branches.admin.delete", "Delete branch")}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500/40 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               </div>
               ))}
             {mapBranches.length > 0 && Math.ceil(mapBranches.length / itemsPerPage) > 1 && (

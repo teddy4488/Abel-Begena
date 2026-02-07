@@ -165,6 +165,16 @@ export class UserService {
     return user ? this.toSafeUser(user) : null;
   }
 
+  /** List Users with role Teacher (for admin UI). */
+  async findTeachers() {
+    const teachers = await this.userModel
+      .find({ role: 'Teacher', deletedAt: null })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    return teachers.map((u) => this.toSafeUser(u));
+  }
+
   /** Phase 5.3: List Users with role Admin, optionally filtered by branchId. Include branch name. */
   async findAdmins(branchFilter?: { branchId: string }) {
     const filter: Record<string, unknown> = { role: 'Admin', deletedAt: null };

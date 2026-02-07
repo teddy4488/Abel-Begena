@@ -159,18 +159,6 @@ export type Student = {
   isVerified: boolean;
 };
 
-export type AuditLogItem = {
-  _id: string;
-  adminId: { _id: string; email?: string; firstName?: string; lastName?: string } | string;
-  action: string;
-  resource: string;
-  resourceId?: string;
-  payload?: Record<string, unknown>;
-  ip?: string;
-  userAgent?: string;
-  timestamp: string;
-};
-
 export const adminApi = createApi({
   reducerPath: "adminApi",
   baseQuery: authorizedBaseQuery,
@@ -182,7 +170,6 @@ export const adminApi = createApi({
     "Admins",
     "Students",
     "WebsiteUsers",
-    "AuditLogs",
   ],
   endpoints: (builder) => ({
     getAnalyticsOverview: builder.query<AnalyticsKpi, void>({
@@ -332,28 +319,6 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ["Students"],
     }),
-
-    getAuditLogs: builder.query<
-      { items: AuditLogItem[]; total: number },
-      { limit?: number; offset?: number; adminId?: string; resource?: string; from?: string; to?: string }
-    >({
-      query: (params) => ({
-        url: "/audit-logs",
-        params: params as Record<string, string>,
-      }),
-      providesTags: ["AuditLogs"],
-    }),
-    getAuditLogsExport: builder.query<
-      string,
-      { from?: string; to?: string; adminId?: string }
-    >({
-      query: (params) => ({
-        url: "/audit-logs/export",
-        params: params as Record<string, string>,
-        responseHandler: "text",
-      }),
-      providesTags: ["AuditLogs"],
-    }),
   }),
 });
 
@@ -377,7 +342,5 @@ export const {
   useUpdateWebsiteUserMutation,
   useUpdateStudentMutation,
   useDeleteStudentMutation,
-  useGetAuditLogsQuery,
-  useLazyGetAuditLogsExportQuery,
 } = adminApi;
 

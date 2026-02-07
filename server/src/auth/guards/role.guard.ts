@@ -50,6 +50,10 @@ export class RoleGuard implements CanActivate {
     const role = user.role;
     const userType = user.userType;
 
+    // SuperAdmin can access any endpoint that allows Admin (system-wide oversight)
+    if (role === 'SuperAdmin' && requiredRoles.includes('Admin')) {
+      return true;
+    }
     if (!role || !requiredRoles.includes(role)) {
       return false;
     }
