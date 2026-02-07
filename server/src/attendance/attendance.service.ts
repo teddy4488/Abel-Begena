@@ -1464,8 +1464,8 @@ export class AttendanceService {
         let matchedPayment: any = null;
         let matchedIndex: number | null = null;
         for (const p of payments) {
-          if (p.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
-            const idx = p.duedate.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
+          if (p.dueDates && Array.isArray(p.dueDates) && p.dueDates.length > 0) {
+            const idx = p.dueDates.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
             if (idx >= 0) {
               matchedPayment = p;
               matchedIndex = idx;
