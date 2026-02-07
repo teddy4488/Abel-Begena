@@ -37,6 +37,9 @@ export class StudentPayment {
   @Prop({ type: Date })
   dueDate?: Date;
 
+  // Array of scheduled due dates (30-day rolling schedule) for multi-month tracking
+  @Prop({ type: [Date] })
+  dueDates?: Date[];
 
   // When the payment was actually received
   @Prop({ type: Date })

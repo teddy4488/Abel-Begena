@@ -1171,19 +1171,19 @@ export class AttendanceService {
         dto.status === 'paid' || dto.status === 'partial'
           ? new Date()
           : undefined;
-      // If an existing record was updated to paid and has no duedate array, generate it
-      if ((dto.status === 'paid' || dto.status === 'partial') && (!existing.duedate || existing.duedate.length === 0)) {
-        let duedates: Date[] = [];
+      // If an existing record was updated to paid and has no dueDates array, generate it
+      if ((dto.status === 'paid' || dto.status === 'partial') && (!existing.dueDates || existing.dueDates.length === 0)) {
+        let dueDatesArr: Date[] = [];
         // If admin provided a period, generate schedule from registration so it aligns with enrollment schedule
         if (dto.period) {
           const regDate = new Date(participant.registrationStartDate || new Date());
           const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
-          duedates = this.getDueDatesFromRegistration(regStartOfDay, 24);
+          dueDatesArr = this.getDueDatesFromRegistration(regStartOfDay, 24);
           existing.period = dto.period;
         } else {
           // fallback: generate from paidAt
           const baseDate = existing.paidAt ?? new Date();
-          duedates = (() => {
+          dueDatesArr = (() => {
             const arr: Date[] = [];
             for (let i = 1; i <= 24; i += 1) {
               arr.push(this.addDays(baseDate, i * 30));
@@ -1202,7 +1202,7 @@ export class AttendanceService {
             existing.period = (lastPeriod[0]?.period ?? 0) + 1 || 1;
           }
         }
-        existing.duedate = duedates;
+        existing.dueDates = dueDatesArr;
       }
       existing.recordedBy = new Types.ObjectId(adminUserId);
       // attach receipt if provided
@@ -1415,11 +1415,11 @@ export class AttendanceService {
       .exec();
 
     const studentIds = students.map((s) => s._id);
-    // include duedate array and other metadata in the payments map so overdue logic can match by period/index
-    const paymentsByParticipant = new Map<string, Array<{ dueDate?: Date; duedate?: Date[]; period?: number; month?: number; year?: number; paidAt?: Date; status: string; amount?: number }>>();
+    // include dueDates array and other metadata in the payments map so overdue logic can match by period/index
+    const paymentsByParticipant = new Map<string, Array<{ dueDate?: Date; dueDates?: Date[]; period?: number; month?: number; year?: number; paidAt?: Date; status: string; amount?: number }>>();
     const allPayments = await this.studentPaymentModel
       .find({ participantId: { $in: studentIds } })
-      .select('participantId dueDate status amount duedate period month year paidAt')
+      .select('participantId dueDate status amount dueDates period month year paidAt')
       .lean()
       .exec();
     allPayments.forEach((p) => {
@@ -1427,7 +1427,7 @@ export class AttendanceService {
       if (!paymentsByParticipant.has(key)) paymentsByParticipant.set(key, []);
       paymentsByParticipant.get(key)!.push({
         dueDate: p.dueDate,
-        duedate: p.duedate,
+        dueDates: p.dueDates,
         period: p.period,
         month: p.month,
         year: p.year,
@@ -1553,8 +1553,8 @@ export class AttendanceService {
       let matchedIndex: number | null = null;
 
       for (const p of payments) {
-        if (p.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
-          const idx = p.duedate.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
+        if (p.dueDates && Array.isArray(p.dueDates) && p.dueDates.length > 0) {
+          const idx = p.dueDates.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
           if (idx >= 0) {
             matchedPayment = p;
             matchedIndex = idx;
@@ -1737,14 +1737,14 @@ export class AttendanceService {
       let inferredDue: Date | null = null;
       let dueDateInferred = false;
 
-      // 0) If a duedate array is present on the record, prefer the entry for its period (or fallback to first)
-      if (payment.duedate && Array.isArray(payment.duedate) && payment.duedate.length > 0) {
-        if (payment.period && payment.period >= 1 && payment.period <= payment.duedate.length) {
-          inferredDue = payment.duedate[payment.period - 1];
+      // 0) If a dueDates array is present on the record, prefer the entry for its period (or fallback to first)
+      if (payment.dueDates && Array.isArray(payment.dueDates) && payment.dueDates.length > 0) {
+        if (payment.period && payment.period >= 1 && payment.period <= payment.dueDates.length) {
+          inferredDue = payment.dueDates[payment.period - 1];
         } else {
-          inferredDue = payment.duedate[0];
+          inferredDue = payment.dueDates[0];
         }
-        // persisted `duedate` array is canonical — not an inferred value
+        // persisted `dueDates` array is canonical — not an inferred value
         dueDateInferred = false;
       }
 
@@ -1818,7 +1818,7 @@ export class AttendanceService {
         status: payment.status,
         dueDate: inferredDue ?? null,
         dueDateInferred,
-        duedate: payment.duedate ?? undefined,
+        dueDates: payment.dueDates ?? undefined,
         period: payment.period ?? undefined,
         paidAt: payment.paidAt,
         note: payment.note,

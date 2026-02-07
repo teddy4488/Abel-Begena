@@ -227,6 +227,7 @@ const StudentPaymentSchema = new mongoose.Schema(
     year: { type: Number, min: 2000, max: 9999, required: true },
     status: { type: String, enum: ['paid', 'partial', 'unpaid'], default: 'paid' },
     dueDate: { type: Date },
+    dueDates: { type: [Date] },
     paidAt: { type: Date },
     period: { type: Number, min: 1 },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -483,11 +484,9 @@ async function seed() {
     });
     console.log('✅ Created Student (User):', studentUser.email);
 
-    // ----- TeacherAttendanceParticipant -----
+    // ----- TeacherAttendanceParticipant (with required userId, no auth fields) -----
     const teacherParticipant = await TeacherAttendanceParticipant.create({
-      email: 'teacher@abelbegena.com',
-      password: hashedPassword,
-      isVerified: true,
+      userId: teacher._id,
       fullName: 'Master Instructor',
       instruments: [InstrumentType.BEGENA, InstrumentType.MASINKO],
       teachingDays: ['monday', 'wednesday', 'friday'],
@@ -500,11 +499,9 @@ async function seed() {
     });
     console.log('✅ Created Teacher Attendance Participant');
 
-    // ----- StudentAttendanceParticipant (with userId) -----
+    // ----- StudentAttendanceParticipant (with required userId, no auth fields) -----
     const studentParticipant = await StudentAttendanceParticipant.create({
       userId: studentUser._id,
-      email: 'student@abelbegena.com',
-      password: hashedPassword,
       fullName: 'Test Student',
       attendanceNumber: '1',
       branchId: branch1._id,
@@ -517,7 +514,6 @@ async function seed() {
       phone: '+251911234567',
       city: 'Addis Ababa',
       isActive: true,
-      isVerified: true,
     });
     console.log('✅ Created Student Attendance Participant (linked to User)');
 
