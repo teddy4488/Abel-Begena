@@ -9,9 +9,11 @@ export function getUserLandingRoute(
   userType?: string | null,
   role?: string | null,
 ) {
-  // Use userType if available, otherwise fall back to role for backward compatibility
+  // SuperAdmin has dedicated area (branch admins go to /admin/console)
+  if (role === "SuperAdmin") {
+    return "/superadmin";
+  }
   const type = userType || (role === "Admin" ? "admin" : role === "Teacher" ? "teacher" : role === "Student" ? "student" : "website_user");
-  
   switch (type) {
     case "admin":
       return "/admin/console";

@@ -7,9 +7,10 @@ export function NavbarGate() {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith("/admin");
   const isTeacherRoute = pathname?.startsWith("/teacher");
+  const isSuperAdminRoute = pathname?.startsWith("/superadmin");
   const isVirtualBegenaRoute = pathname?.startsWith("/virtual-begena");
 
-  if (isAdminRoute || isTeacherRoute || isVirtualBegenaRoute) {
+  if (isAdminRoute || isTeacherRoute || isSuperAdminRoute || isVirtualBegenaRoute) {
     return null;
   }
 

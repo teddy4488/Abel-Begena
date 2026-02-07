@@ -51,10 +51,10 @@ export default function DashboardPage() {
       router.replace("/login");
       return;
     }
-    // Redirect based on userType
-    const userType = user?.userType;
-    if (userType === "admin" || userType === "teacher" || userType === "student") {
-      router.replace(getUserLandingRoute(userType, user?.role));
+    // Redirect based on role/userType so each role lands in the right place
+    const destination = getUserLandingRoute(user?.userType, user?.role);
+    if (destination !== "/dashboard") {
+      router.replace(destination);
       return;
     }
   }, [isLoggedIn, router, user?.userType, user?.role]);
