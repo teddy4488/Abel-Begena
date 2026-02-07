@@ -355,9 +355,19 @@ export class OrderService {
     return this.formatOrder(fullOrder ?? order.toObject());
   }
 
-  async findAll() {
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
+  /** Phase 5.3: optional branchId filters by pickupBranchId (Admin branch scope). */
+  async findAll(branchFilter?: { branchId: string }) {
+    const base = this.notDeletedFilter();
+    const filter =
+      branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)
+        ? { ...base, pickupBranchId: new Types.ObjectId(branchFilter.branchId) }
+        : base;
     const orders = await this.orderModel
-      .find()
+      .find(filter)
       .populate('user', 'email firstName lastName phone')
       .populate('items.productId', 'name images')
       .populate('pickupBranchId', 'name address city region')
@@ -373,7 +383,7 @@ export class OrderService {
     }
 
     const order = await this.orderModel
-      .findById(id)
+      .findOne({ _id: new Types.ObjectId(id), ...this.notDeletedFilter() })
       .populate('user', 'email firstName lastName phone')
       .populate('items.productId', 'name images')
       .populate('pickupBranchId', 'name address city region')
@@ -383,7 +393,9 @@ export class OrderService {
   }
 
   async updateStatus(id: string, status?: OrderStatus, isPaid?: boolean) {
-    const existing = await this.orderModel.findById(id).exec();
+    const existing = await this.orderModel
+      .findOne({ _id: new Types.ObjectId(id), ...this.notDeletedFilter() })
+      .exec();
     if (!existing) {
       throw new NotFoundException('Order not found');
     }
@@ -423,7 +435,7 @@ export class OrderService {
 
   async getUserOrders(userId: string) {
     const orders = await this.orderModel
-      .find({ user: new Types.ObjectId(userId) })
+      .find({ user: new Types.ObjectId(userId), ...this.notDeletedFilter() })
       .populate('items.productId', 'name images')
       .sort({ createdAt: -1 })
       .lean()

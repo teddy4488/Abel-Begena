@@ -102,6 +102,79 @@ export class MailService {
     });
   }
 
+  async sendPaymentOverdueEmail(
+    to: string,
+    fullName: string,
+    attendanceNumber: string,
+    dueDate: Date,
+    daysOverdue: number,
+    amount?: number,
+  ) {
+    const dueStr = dueDate.toLocaleDateString();
+    const intro =
+      daysOverdue === 1
+        ? `A payment was due on ${dueStr} for your studies at Abel Begena Conservatory (student #${attendanceNumber}).`
+        : `A payment was due on ${dueStr} (${daysOverdue} days ago) for your studies at Abel Begena Conservatory (student #${attendanceNumber}).`;
+    await this.sendMail({
+      to,
+      subject: 'Payment reminder: Abel Begena Conservatory',
+      html: this.renderPaymentReminderTemplate({
+        greeting: `Peace be with you, ${fullName}`,
+        intro,
+        ...(amount ? { amount, currency: 'ETB' } : {}),
+        outro: 'Please arrange payment at your earliest convenience. If you have already paid, please disregard this message.',
+      }),
+    });
+  }
+
+  async sendPaymentDueSoonEmail(
+    to: string,
+    fullName: string,
+    dueDate: Date,
+    daysUntilDue: number,
+    amount?: number,
+  ) {
+    const dueStr = dueDate.toLocaleDateString();
+    const intro =
+      daysUntilDue === 0
+        ? `A payment is due today (${dueStr}) for your studies at Abel Begena Conservatory.`
+        : daysUntilDue === 1
+          ? `A payment is due tomorrow (${dueStr}) for your studies at Abel Begena Conservatory.`
+          : `A payment is due in ${daysUntilDue} days (${dueStr}) for your studies at Abel Begena Conservatory.`;
+    await this.sendMail({
+      to,
+      subject: 'Upcoming payment: Abel Begena Conservatory',
+      html: this.renderPaymentReminderTemplate({
+        greeting: `Peace be with you, ${fullName}`,
+        intro,
+        ...(amount ? { amount, currency: 'ETB' } : {}),
+        outro: 'Please ensure payment is made by the due date.',
+      }),
+    });
+  }
+
+  private renderPaymentReminderTemplate(payload: {
+    greeting: string;
+    intro: string;
+    amount?: number;
+    currency?: string;
+    outro: string;
+  }) {
+    const amountBlock =
+      payload.amount != null
+        ? `<p style="margin: 16px 0;"><strong>Amount:</strong> ${payload.amount} ${payload.currency ?? 'ETB'}</p>`
+        : '';
+    return `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+        <p>${payload.greeting}</p>
+        <p>${payload.intro}</p>
+        ${amountBlock}
+        <p>${payload.outro}</p>
+        <p style="margin-top: 32px;">With gratitude,<br/>Abel Begena Conservatory</p>
+      </div>
+    `;
+  }
+
   private async sendMail(options: {
     to: string;
     subject: string;

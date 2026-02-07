@@ -11,10 +11,14 @@ import { ConfigService } from '@nestjs/config';
 import {
   Class,
   ClassDocument,
-  ClassEnrollment,
   ClassSession,
 } from './schemas/class.schema';
-import { UploadService } from '../upload/upload.service';
+import {
+  UploadService,
+  ALLOWED_RECEIPT_MIMES,
+  ALLOWED_RECEIPT_EXTENSIONS,
+  MAX_RECEIPT_SIZE_BYTES,
+} from '../upload/upload.service';
 import { UpdateLiveStateDto } from './dto/update-live-state.dto';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
@@ -23,10 +27,12 @@ import { UpdateScheduleItemDto } from './dto/update-schedule-item.dto';
 import { EnrollClassDto, ClassPaymentMethod } from './dto/enroll-class.dto';
 import { PaymentService } from '../payment/payment.service';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
+import { EnrollmentService } from '../enrollment/enrollment.service';
 
 type AuthenticatedUser = {
   sub: string;
   role?: string;
+  branchId?: string;
 };
 
 @Injectable()
@@ -37,6 +43,7 @@ export class ClassService {
     private readonly configService: ConfigService,
     private readonly uploadService: UploadService,
     private readonly paymentService: PaymentService,
+    private readonly enrollmentService: EnrollmentService,
   ) {}
 
   async findForUser(user: AuthenticatedUser) {
@@ -47,48 +54,66 @@ export class ClassService {
       throw new UnauthorizedException('Missing user context');
     }
 
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const branchFilter = user.branchId ? { branchId: new Types.ObjectId(user.branchId) } : {};
     if (role === 'Admin') {
       const classes = await this.classModel
-        .find()
+        .find({ ...notDeleted, ...branchFilter })
         .sort({ createdAt: -1 })
         .lean()
         .exec();
-      return this.mapClassSummaries(classes, userId, true);
+      const classIds = classes.map((c) => (c as { _id: Types.ObjectId })._id);
+      const countMap = await this.enrollmentService.countActiveByClassIds(classIds);
+      return this.mapClassSummariesFromEnrollments(classes, userId, [], countMap);
     }
 
     if (role === 'Teacher') {
       const classes = await this.classModel
-        .find({ instructorId: new Types.ObjectId(userId) })
+        .find({ instructorId: new Types.ObjectId(userId), ...notDeleted })
         .sort({ createdAt: -1 })
         .lean()
         .exec();
-      return this.mapClassSummaries(classes, userId, true);
+      const classIds = classes.map((c) => (c as { _id: Types.ObjectId })._id);
+      const countMap = await this.enrollmentService.countActiveByClassIds(classIds);
+      return this.mapClassSummariesFromEnrollments(classes, userId, [], countMap);
     }
 
+    // Phase 5.2: enrollments in separate collection
+    const enrollments = await this.enrollmentService.findByStudent(userId);
+    const activeEnrollments = enrollments.filter((e: { status?: string }) => e.status !== 'withdrawn');
+    const classIds = activeEnrollments
+      .map((e: { classId?: { _id?: Types.ObjectId } | Types.ObjectId }) =>
+        typeof e.classId === 'object' && e.classId && '_id' in e.classId
+          ? (e.classId as { _id: Types.ObjectId })._id
+          : e.classId,
+      )
+      .filter(Boolean);
+    if (classIds.length === 0) return [];
     const classes = await this.classModel
-      .find({
-        'enrollments.student': new Types.ObjectId(userId),
-        'enrollments.status': { $ne: 'withdrawn' },
-      })
+      .find({ _id: { $in: classIds }, ...notDeleted })
       .sort({ createdAt: -1 })
       .lean()
       .exec();
-    return this.mapClassSummaries(classes, userId, false);
+    const countMap = await this.enrollmentService.countActiveByClassIds(
+      classes.map((c) => (c as { _id: Types.ObjectId })._id),
+    );
+    return this.mapClassSummariesFromEnrollments(classes, userId, activeEnrollments, countMap);
   }
 
-  async getManagedCatalog() {
+  async getManagedCatalog(branchId?: string) {
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const branchFilter = branchId && Types.ObjectId.isValid(branchId) ? { branchId: new Types.ObjectId(branchId) } : {};
     const classes = await this.classModel
-      .find()
+      .find({ ...notDeleted, ...branchFilter })
       .populate('instructorId', 'firstName lastName email avatarUrl')
       .sort({ createdAt: -1 })
       .lean()
       .exec();
-
+    const classIds = classes.map((c) => (c as { _id: Types.ObjectId })._id);
+    const countMap = await this.enrollmentService.countActiveByClassIds(classIds);
     return classes.map((klass) => ({
       ...klass,
-      enrollmentCount: (klass.enrollments ?? []).filter(
-        (enrollment) => enrollment.status !== 'withdrawn',
-      ).length,
+      enrollmentCount: countMap.get((klass as { _id: Types.ObjectId })._id.toString()) ?? 0,
     }));
   }
 
@@ -224,8 +249,16 @@ export class ClassService {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class id');
     }
-    const removed = await this.classModel.findByIdAndDelete(id).lean().exec();
-    if (!removed) {
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const updated = await this.classModel
+      .findOneAndUpdate(
+        { _id: id, ...notDeleted },
+        { deletedAt: new Date() },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!updated) {
       throw new NotFoundException('Class not found');
     }
     return { message: 'Class removed' };
@@ -249,16 +282,16 @@ export class ClassService {
       .sort({ createdAt: -1 })
       .limit(limit)
       .select(
-        'title description startDate endDate tuition currency capacity enrollmentDeadline enrollments instructorId instrumentType level classType',
+        'title description startDate endDate tuition currency capacity enrollmentDeadline instructorId instrumentType level classType',
       )
       .populate('instructorId', 'firstName lastName')
       .lean()
       .exec();
+    const classIds = classes.map((c) => (c as { _id: Types.ObjectId })._id);
+    const countMap = await this.enrollmentService.countActiveByClassIds(classIds);
 
     return classes.map((klass) => {
-      const enrollmentCount = (klass.enrollments ?? []).filter(
-        (enrollment) => enrollment.status !== 'withdrawn',
-      ).length;
+      const enrollmentCount = countMap.get((klass as { _id: Types.ObjectId })._id.toString()) ?? 0;
       const instructor = klass.instructorId as
         | { firstName?: string; lastName?: string }
         | undefined;
@@ -311,11 +344,11 @@ export class ClassService {
     const isInstructor =
       user.role === 'Teacher' &&
       classEntity.instructorId?.toString() === userId;
-    const isEnrolled = (classEntity.enrollments ?? []).some(
-      (enrollment) =>
-        enrollment.student?.toString() === userId &&
-        enrollment.status === 'active',
+    const enrollment = await this.enrollmentService.findOne(
+      (classEntity as { _id: Types.ObjectId })._id.toString(),
+      userId,
     );
+    const isEnrolled = enrollment?.status === 'active';
 
     if (!isAdmin && !isInstructor && !isEnrolled) {
       throw new ForbiddenException('You are not enrolled in this class');
@@ -376,7 +409,11 @@ export class ClassService {
       throw new NotFoundException('Class not found');
     }
 
-    const url = await this.uploadService.uploadMaterial(file);
+    const url = await this.uploadService.uploadMaterial(file, undefined, {
+      allowedMimeTypes: [...ALLOWED_RECEIPT_MIMES],
+      allowedExtensions: [...ALLOWED_RECEIPT_EXTENSIONS],
+      maxSizeBytes: MAX_RECEIPT_SIZE_BYTES,
+    });
 
     classEntity.materials = classEntity.materials ?? [];
 
@@ -415,20 +452,13 @@ export class ClassService {
       throw new BadRequestException('Enrollment period has ended');
     }
 
-    const activeCount = (classEntity.enrollments ?? []).filter(
-      (enrollment) => enrollment.status !== 'withdrawn',
-    ).length;
-
-    const studentObjectId = new Types.ObjectId(studentId);
-    classEntity.enrollments = classEntity.enrollments ?? [];
-    const existingIndex = classEntity.enrollments.findIndex(
-      (enrollment) => enrollment.student?.toString() === studentId,
-    );
+    const activeCount = await this.enrollmentService.countActiveByClass(classId);
+    const existing = await this.enrollmentService.findOne(classId, studentId);
 
     if (
       classEntity.capacity &&
       activeCount >= classEntity.capacity &&
-      existingIndex === -1
+      !existing
     ) {
       throw new BadRequestException('This class has reached capacity');
     }
@@ -452,8 +482,6 @@ export class ClassService {
     const enrollmentStatus: 'active' | 'pending' =
       options?.statusOverride ?? (requiresVerification ? 'pending' : 'active');
 
-    // If payment requires verification AND no receipt is provided, enforce a reference.
-    // (Receipt-based path uses `enrollStudentWithReceipt`, which enriches dto.receiptUrl.)
     if (
       requiresVerification &&
       enrollmentStatus === 'pending' &&
@@ -465,12 +493,9 @@ export class ClassService {
       );
     }
 
-    // For paid classes, always create a pending payment request (even if no receipt is uploaded)
-    // so admins can verify and activate the enrollment.
     if (
       requiresVerification &&
       enrollmentStatus === 'pending' &&
-      // enrollStudentWithReceipt already creates the payment request
       !dto.receiptUrl
     ) {
       await this.paymentService.create(
@@ -488,9 +513,9 @@ export class ClassService {
       );
     }
 
-    const enrollmentPayload: ClassEnrollment = {
-      student: studentObjectId,
-      enrolledAt: new Date(),
+    const createDto = {
+      classId,
+      studentId,
       status: enrollmentStatus,
       amountPaid: dto.amount,
       currency,
@@ -511,35 +536,19 @@ export class ClassService {
       notesForTeacher: dto.notesForTeacher,
       receiptUrl: dto.receiptUrl,
       learningType: dto.learningType,
-      branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
+      branchId: dto.branchId,
       instrumentType: dto.instrumentType,
       programDurationMonths: dto.programDurationMonths,
       preferredLearningDays: dto.preferredLearningDays,
-      registrationStartDate: dto.registrationStartDate
-        ? new Date(dto.registrationStartDate)
-        : undefined,
+      registrationStartDate: dto.registrationStartDate,
     };
-
-    if (existingIndex >= 0) {
-      classEntity.enrollments[existingIndex] = {
-        ...classEntity.enrollments[existingIndex],
-        ...enrollmentPayload,
-      };
-    } else {
-      classEntity.enrollments.push(enrollmentPayload);
-    }
-
-    classEntity.markModified('enrollments');
-    await classEntity.save();
-
-    const enrollment =
-      classEntity.enrollments[
-        existingIndex >= 0 ? existingIndex : classEntity.enrollments.length - 1
-      ];
+    const enrollmentRecord = existing
+      ? await this.enrollmentService.update(classId, studentId, createDto)
+      : await this.enrollmentService.create(createDto);
 
     return {
       message: 'Enrollment recorded',
-      enrollment: this.mapEnrollmentResponse(enrollment, classEntity),
+      enrollment: this.mapEnrollmentResponse(enrollmentRecord as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string }, classEntity),
     };
   }
 
@@ -552,6 +561,11 @@ export class ClassService {
     const receiptUrl = await this.uploadService.uploadMaterial(
       file,
       'abel-begena/payment-receipts',
+      {
+        allowedMimeTypes: [...ALLOWED_RECEIPT_MIMES],
+        allowedExtensions: [...ALLOWED_RECEIPT_EXTENSIONS],
+        maxSizeBytes: MAX_RECEIPT_SIZE_BYTES,
+      },
     );
     const enrichedDto: EnrollClassDto = {
       ...dto,
@@ -647,21 +661,15 @@ export class ClassService {
       throw new BadRequestException('Invalid student id');
     }
     const classEntity = await this.classModel.findById(classId).lean().exec();
-
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
-
-    const enrollment = (classEntity.enrollments ?? []).find(
-      (entry) => entry.student?.toString() === studentId,
-    );
-
+    const enrollment = await this.enrollmentService.findOne(classId, studentId);
     if (!enrollment) {
       throw new NotFoundException('Enrollment not found');
     }
-
     return this.mapEnrollmentResponse(
-      enrollment,
+      enrollment as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string; preferredDaysPerWeek?: number; preferredSchedule?: string; preferredTime?: string; preferredLearningDays?: string[]; registrationStartDate?: Date; learningGoals?: string; notesForTeacher?: string },
       classEntity as Class & { _id: Types.ObjectId },
     );
   }
@@ -670,40 +678,22 @@ export class ClassService {
     if (!Types.ObjectId.isValid(studentId)) {
       throw new BadRequestException('Invalid student id');
     }
-
-    const classes = await this.classModel
-      .find({
-        'enrollments.student': new Types.ObjectId(studentId),
-      })
-      .select(
-        'title enrollments startDate endDate tuition currency enrollmentDeadline',
-      )
-      .lean()
-      .exec();
-
-    const entries = classes
-      .map((klass) => {
-        const enrollment = (klass.enrollments ?? []).find(
-          (entry) => entry.student?.toString() === studentId,
-        );
-        if (!enrollment) {
-          return null;
-        }
-        return {
-          ...this.mapEnrollmentResponse(
-            enrollment,
-            klass as Class & { _id: Types.ObjectId },
-          ),
-          startDate: klass.startDate ? klass.startDate.toISOString() : null,
-          endDate: klass.endDate ? klass.endDate.toISOString() : null,
-          enrollmentDeadline: klass.enrollmentDeadline
-            ? klass.enrollmentDeadline.toISOString()
-            : null,
-          tuition: klass.tuition ?? 0,
-        };
-      })
-      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-
+    const enrollments = await this.enrollmentService.findByStudent(studentId);
+    const entries = enrollments.map((enrollment) => {
+      const klass = enrollment.classId as { _id?: Types.ObjectId; title?: string; startDate?: Date; endDate?: Date; tuition?: number; currency?: string; enrollmentDeadline?: Date } | undefined;
+      return {
+        ...this.mapEnrollmentResponse(
+          enrollment as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string; preferredDaysPerWeek?: number; preferredSchedule?: string; preferredTime?: string; preferredLearningDays?: string[]; registrationStartDate?: Date; learningGoals?: string; notesForTeacher?: string },
+          klass ? { _id: klass._id, currency: klass.currency } as Class & { _id: Types.ObjectId } : undefined,
+        ),
+        startDate: klass?.startDate ? new Date(klass.startDate).toISOString() : null,
+        endDate: klass?.endDate ? new Date(klass.endDate).toISOString() : null,
+        enrollmentDeadline: klass?.enrollmentDeadline
+          ? new Date(klass.enrollmentDeadline).toISOString()
+          : null,
+        tuition: klass?.tuition ?? 0,
+      };
+    });
     return entries.sort((a, b) => {
       const aTime = a.enrolledAt ? new Date(a.enrolledAt).getTime() : 0;
       const bTime = b.enrolledAt ? new Date(b.enrolledAt).getTime() : 0;
@@ -712,70 +702,36 @@ export class ClassService {
   }
 
   async getAllEnrollments(status?: 'active' | 'pending' | 'withdrawn') {
-    const statusFilter =
-      typeof status === 'string' ? { 'enrollments.status': status } : {};
+    const enrollments = await this.enrollmentService.findAll(status);
+    const instructorLabel = (obj: { firstName?: string; lastName?: string } | null | undefined): string | null =>
+      obj ? `${obj.firstName ?? ''} ${obj.lastName ?? ''}`.trim() || null : null;
 
-    const classes = await this.classModel
-      .find(statusFilter)
-      .select('title enrollments currency tuition instructorId')
-      .populate('enrollments.student', 'firstName lastName email')
-      .populate('instructorId', 'firstName lastName email')
-      .lean()
-      .exec();
-
-    const enrollments = classes.flatMap((klass) => {
-      const instructor =
-        typeof klass.instructorId === 'object' && klass.instructorId
-          ? `${
-              (klass.instructorId as { firstName?: string; lastName?: string })
-                .firstName ?? ''
-            } ${
-              (
-                klass.instructorId as {
-                  firstName?: string;
-                  lastName?: string;
-                }
-              ).lastName ?? ''
-            }`.trim() || null
-          : null;
-
-      return (klass.enrollments ?? [])
-        .filter((entry) =>
-          typeof status === 'string' ? entry.status === status : true,
-        )
-        .map((enrollment) => {
-          const student = enrollment.student as
-            | {
-                _id: Types.ObjectId | string;
-                firstName?: string;
-                lastName?: string;
-                email?: string;
-              }
-            | undefined;
-          return {
-            classId: klass._id?.toString?.() ?? '',
-            classTitle: klass.title,
-            instructor,
-            student: {
-              id: student?._id?.toString?.() ?? '',
-              firstName: student?.firstName ?? null,
-              lastName: student?.lastName ?? null,
-              email: student?.email ?? '',
-            },
-            status: enrollment.status,
-            amountPaid: enrollment.amountPaid ?? null,
-            currency: enrollment.currency ?? klass.currency ?? 'ETB',
-            paymentMethod: enrollment.paymentMethod ?? null,
-            paymentReference: enrollment.paymentReference ?? null,
-            note: enrollment.note ?? null,
-            enrolledAt: enrollment.enrolledAt
-              ? new Date(enrollment.enrolledAt).toISOString()
-              : null,
-          };
-        });
+    const rows = enrollments.map((enrollment) => {
+      const classDoc = enrollment.classId as { _id?: Types.ObjectId; title?: string; currency?: string; instructorId?: { firstName?: string; lastName?: string; email?: string } } | undefined;
+      const studentDoc = enrollment.studentId as { _id?: Types.ObjectId; firstName?: string; lastName?: string; email?: string } | undefined;
+      return {
+        classId: classDoc?._id?.toString?.() ?? '',
+        classTitle: classDoc?.title ?? '',
+        instructor: instructorLabel(classDoc?.instructorId as { firstName?: string; lastName?: string }),
+        student: {
+          id: studentDoc?._id?.toString?.() ?? '',
+          firstName: studentDoc?.firstName ?? null,
+          lastName: studentDoc?.lastName ?? null,
+          email: studentDoc?.email ?? '',
+        },
+        status: enrollment.status,
+        amountPaid: enrollment.amountPaid ?? null,
+        currency: enrollment.currency ?? classDoc?.currency ?? 'ETB',
+        paymentMethod: enrollment.paymentMethod ?? null,
+        paymentReference: enrollment.paymentReference ?? null,
+        note: enrollment.note ?? null,
+        enrolledAt: enrollment.enrolledAt
+          ? new Date(enrollment.enrolledAt).toISOString()
+          : null,
+      };
     });
 
-    return enrollments.sort((a, b) => {
+    return rows.sort((a, b) => {
       const aTime = a.enrolledAt ? new Date(a.enrolledAt).getTime() : 0;
       const bTime = b.enrolledAt ? new Date(b.enrolledAt).getTime() : 0;
       return bTime - aTime;
@@ -792,38 +748,21 @@ export class ClassService {
     if (!Types.ObjectId.isValid(studentId)) {
       throw new BadRequestException('Invalid student id');
     }
-
-    const classEntity = await this.classModel.findById(classId).exec();
-
+    const updated = await this.enrollmentService.updateStatus(
+      classId,
+      studentId,
+      dto,
+      approverId,
+    );
+    const classEntity = await this.classModel.findById(classId).lean().exec();
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
-
-    const targetIndex = (classEntity.enrollments ?? []).findIndex(
-      (enrollment) => enrollment.student?.toString() === studentId,
-    );
-
-    if (targetIndex === -1) {
-      throw new NotFoundException('Enrollment not found');
-    }
-
-    classEntity.enrollments[targetIndex].status = dto.status;
-    if (typeof dto.note !== 'undefined') {
-      classEntity.enrollments[targetIndex].note = dto.note;
-    }
-    classEntity.enrollments[targetIndex].approvedBy = new Types.ObjectId(
-      approverId,
-    );
-    classEntity.enrollments[targetIndex].approvedAt = new Date();
-
-    classEntity.markModified('enrollments');
-    await classEntity.save();
-
     return {
       message: 'Enrollment status updated',
       enrollment: this.mapEnrollmentResponse(
-        classEntity.enrollments[targetIndex],
-        classEntity,
+        updated as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string },
+        classEntity as Class & { _id: Types.ObjectId },
       ),
     };
   }
@@ -855,28 +794,19 @@ export class ClassService {
 
   async getClassRoster(classId: string) {
     this.ensureValidClassId(classId);
-    const roster = await this.classModel
+    const classEntity = await this.classModel
       .findById(classId)
-      .select('title enrollments currency')
-      .populate('enrollments.student', 'firstName lastName email avatarUrl')
+      .select('title currency')
       .lean()
       .exec();
-
-    if (!roster) {
+    if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
-
-    const students = (roster.enrollments ?? [])
-      .filter((enrollment) => enrollment.status !== 'withdrawn')
+    const enrollments = await this.enrollmentService.findByClass(classId);
+    const students = enrollments
+      .filter((e) => e.status !== 'withdrawn')
       .map((enrollment) => {
-        const student = enrollment.student as unknown as {
-          _id: Types.ObjectId | string;
-          firstName?: string;
-          lastName?: string;
-          email?: string;
-          avatarUrl?: string;
-        };
-
+        const student = enrollment.studentId as { _id?: Types.ObjectId; firstName?: string; lastName?: string; email?: string; avatarUrl?: string } | undefined;
         return {
           _id: student?._id?.toString?.() ?? '',
           firstName: student?.firstName ?? null,
@@ -888,7 +818,7 @@ export class ClassService {
             : null,
           status: enrollment.status,
           amountPaid: enrollment.amountPaid ?? null,
-          currency: enrollment.currency ?? roster.currency ?? 'ETB',
+          currency: enrollment.currency ?? classEntity.currency ?? 'ETB',
           paymentMethod: enrollment.paymentMethod ?? null,
           paymentReference: enrollment.paymentReference ?? null,
           note: enrollment.note ?? null,
@@ -908,8 +838,8 @@ export class ClassService {
       });
 
     return {
-      classId: roster._id.toString(),
-      title: roster.title,
+      classId: (classEntity as { _id: Types.ObjectId })._id.toString(),
+      title: classEntity.title,
       students,
     };
   }
@@ -1086,20 +1016,20 @@ export class ClassService {
     return this.mapScheduleResponse(classEntity.schedule);
   }
 
-  private mapClassSummaries(
-    classes: Array<Class & { _id: Types.ObjectId }>,
+  /** Phase 5.2: map class summaries using Enrollment collection data. */
+  private mapClassSummariesFromEnrollments(
+    classes: Array<Record<string, unknown> & { _id: Types.ObjectId }>,
     userId: string,
-    includeInstructor: boolean,
+    enrollments: Array<{ classId?: { _id?: Types.ObjectId } | Types.ObjectId; status?: string; enrolledAt?: Date; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string }>,
+    countByClassId: Map<string, number>,
   ) {
     return classes.map((klass) => {
-      const enrollmentCount = (klass.enrollments ?? []).filter(
-        (enrollment) => enrollment.status !== 'withdrawn',
-      ).length;
-
-      const myEnrollment = (klass.enrollments ?? []).find(
-        (enrollment) => enrollment.student?.toString() === userId,
-      );
-
+      const classIdStr = klass._id.toString();
+      const enrollmentCount = countByClassId.get(classIdStr) ?? 0;
+      const myEnrollment = enrollments.find((e) => {
+        const cid = (e.classId as { _id?: Types.ObjectId })?._id ?? e.classId;
+        return cid?.toString() === classIdStr;
+      });
       const instructorId =
         klass.instructorId instanceof Types.ObjectId
           ? klass.instructorId.toString()
@@ -1107,25 +1037,24 @@ export class ClassService {
             ? klass.instructorId
             : null;
       const createdAt =
-        klass.createdAt instanceof Date ? klass.createdAt.toISOString() : null;
+        klass.createdAt instanceof Date ? (klass.createdAt as Date).toISOString() : null;
       const enrollmentDeadline =
         klass.enrollmentDeadline instanceof Date
-          ? klass.enrollmentDeadline.toISOString()
+          ? (klass.enrollmentDeadline as Date).toISOString()
           : null;
       const enrolledAt =
         myEnrollment?.enrolledAt instanceof Date
           ? myEnrollment.enrolledAt.toISOString()
           : null;
-
       return {
-        _id: klass._id.toString(),
+        _id: classIdStr,
         title: klass.title,
         isLive: klass.isLive ?? false,
         liveRoomCode: klass.liveRoomCode ?? null,
         instrumentType: klass.instrumentType,
         level: (klass as any).level ?? 'beginner',
         createdAt,
-        instructorId: includeInstructor ? instructorId : null,
+        instructorId: instructorId ?? null,
         tuition: klass.tuition ?? 0,
         currency: klass.currency ?? 'ETB',
         enrollmentDeadline,
@@ -1137,7 +1066,7 @@ export class ClassService {
               amountPaid: myEnrollment.amountPaid ?? null,
               paymentMethod: myEnrollment.paymentMethod ?? null,
               paymentReference: myEnrollment.paymentReference ?? null,
-              currency: myEnrollment.currency ?? klass.currency ?? 'ETB',
+              currency: myEnrollment.currency ?? (klass.currency as string) ?? 'ETB',
               note: myEnrollment.note ?? null,
               enrolledAt,
             }

@@ -137,6 +137,9 @@ export type AdminUser = {
   isVerified: boolean;
   avatarUrl?: string;
   languagePreference?: 'en' | 'am';
+  /** Phase 5.3: branch-scoped admin */
+  branchId?: string | { _id: string; name: string };
+  role?: string;
 };
 
 export type Student = {
@@ -156,6 +159,18 @@ export type Student = {
   isVerified: boolean;
 };
 
+export type AuditLogItem = {
+  _id: string;
+  adminId: { _id: string; email?: string; firstName?: string; lastName?: string } | string;
+  action: string;
+  resource: string;
+  resourceId?: string;
+  payload?: Record<string, unknown>;
+  ip?: string;
+  userAgent?: string;
+  timestamp: string;
+};
+
 export const adminApi = createApi({
   reducerPath: "adminApi",
   baseQuery: authorizedBaseQuery,
@@ -167,6 +182,7 @@ export const adminApi = createApi({
     "Admins",
     "Students",
     "WebsiteUsers",
+    "AuditLogs",
   ],
   endpoints: (builder) => ({
     getAnalyticsOverview: builder.query<AnalyticsKpi, void>({
@@ -231,6 +247,17 @@ export const adminApi = createApi({
     getAdmins: builder.query<AdminUser[], void>({
       query: () => "/admin/admins",
       providesTags: ["Admins"],
+    }),
+    createAdmin: builder.mutation<
+      AdminUser,
+      { email: string; password: string; firstName?: string; lastName?: string; phone?: string; branchId?: string }
+    >({
+      query: (body) => ({
+        url: "/admin/admins",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Admins"],
     }),
     getStudents: builder.query<Student[], void>({
       query: () => "/attendance/students/participants",
@@ -305,6 +332,28 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ["Students"],
     }),
+
+    getAuditLogs: builder.query<
+      { items: AuditLogItem[]; total: number },
+      { limit?: number; offset?: number; adminId?: string; resource?: string; from?: string; to?: string }
+    >({
+      query: (params) => ({
+        url: "/audit-logs",
+        params: params as Record<string, string>,
+      }),
+      providesTags: ["AuditLogs"],
+    }),
+    getAuditLogsExport: builder.query<
+      string,
+      { from?: string; to?: string; adminId?: string }
+    >({
+      query: (params) => ({
+        url: "/audit-logs/export",
+        params: params as Record<string, string>,
+        responseHandler: "text",
+      }),
+      providesTags: ["AuditLogs"],
+    }),
   }),
 });
 
@@ -318,6 +367,7 @@ export const {
   useGetAllEnrollmentsQuery,
   useGetTeachersQuery,
   useGetAdminsQuery,
+  useCreateAdminMutation,
   useGetStudentsQuery,
   useGetWebsiteUsersQuery,
   useUpdateTeacherMutation,
@@ -327,5 +377,7 @@ export const {
   useUpdateWebsiteUserMutation,
   useUpdateStudentMutation,
   useDeleteStudentMutation,
+  useGetAuditLogsQuery,
+  useLazyGetAuditLogsExportQuery,
 } = adminApi;
 

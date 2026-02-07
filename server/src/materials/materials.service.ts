@@ -6,7 +6,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { InstrumentMaterial, InstrumentMaterialDocument } from './schemas/instrument-material.schema';
-import { UploadService } from '../upload/upload.service';
+import {
+  UploadService,
+  ALLOWED_RECEIPT_MIMES,
+  ALLOWED_RECEIPT_EXTENSIONS,
+  MAX_RECEIPT_SIZE_BYTES,
+} from '../upload/upload.service';
 import { InstrumentType } from '../product/schemas/product.schema';
 import { Class, ClassDocument } from '../class/schemas/class.schema';
 
@@ -37,18 +42,6 @@ export class MaterialsService {
       throw new BadRequestException('Material file is required');
     }
 
-    // Determine file type
-    const fileExtension = file.originalname.split('.').pop()?.toLowerCase() || '';
-    let fileType: 'pdf' | 'image' | 'video' | 'other' = 'other';
-    
-    if (fileExtension === 'pdf') {
-      fileType = 'pdf';
-    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension)) {
-      fileType = 'image';
-    } else if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(fileExtension)) {
-      fileType = 'video';
-    }
-
     // Resolve class and inferred instrument
     if (!Types.ObjectId.isValid(classId)) {
       throw new BadRequestException('Invalid classId');
@@ -59,11 +52,25 @@ export class MaterialsService {
     }
     const instrumentType = (klass as any).instrumentType as InstrumentType | undefined;
 
-    // Upload file
+    // Upload file (validates: images + PDF only, max size)
     const url = await this.uploadService.uploadMaterial(
       file,
       `abel-begena/materials/${instrumentType ? instrumentType.toLowerCase() : 'class'}`,
+      {
+        allowedMimeTypes: [...ALLOWED_RECEIPT_MIMES],
+        allowedExtensions: [...ALLOWED_RECEIPT_EXTENSIONS],
+        maxSizeBytes: MAX_RECEIPT_SIZE_BYTES,
+      },
     );
+
+    // Determine file type for storage metadata
+    const fileExtension = file.originalname.split('.').pop()?.toLowerCase() || '';
+    let fileType: 'pdf' | 'image' | 'video' | 'other' = 'other';
+    if (fileExtension === 'pdf') {
+      fileType = 'pdf';
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+      fileType = 'image';
+    }
 
     // Create material record
     const material = await this.materialModel.create({

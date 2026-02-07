@@ -28,8 +28,8 @@ export class CreateUserDto {
   phone?: string;
 
   @IsOptional()
-  @IsIn(['User', 'Teacher', 'Admin'])
-  role?: 'User' | 'Teacher' | 'Admin';
+  @IsIn(['User', 'Teacher', 'Admin', 'Student', 'SuperAdmin'])
+  role?: 'User' | 'Teacher' | 'Admin' | 'Student' | 'SuperAdmin';
 
   @IsOptional()
   @IsUrl()
@@ -46,4 +46,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsIn(['pending', 'approved', 'suspended'])
   teacherStatus?: 'pending' | 'approved' | 'suspended';
+
+  /** Branch for Admin (Phase 5.3). SuperAdmin only. */
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }

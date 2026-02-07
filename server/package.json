@@ -19,7 +19,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed": "ts-node seed.ts"
+    "seed": "ts-node seed.ts",
+    "migration:consolidate-identity": "ts-node -r tsconfig-paths/register src/migrations/consolidate-identity.ts",
+    "migration:enrollments": "ts-node -r tsconfig-paths/register src/migrations/migrate-enrollments.ts"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -32,6 +34,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-socket.io": "^11.1.9",
+    "@nestjs/schedule": "^6.1.1",
     "@nestjs/swagger": "^11.2.5",
     "@nestjs/throttler": "^6.5.0",
     "@types/bcrypt": "^6.0.0",

@@ -57,6 +57,9 @@ export class PaymentRequest {
   // Store conversion data as JSON string for student_conversion type
   @Prop({ type: String })
   conversionData?: string;
+
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
 }
 
 export const PaymentRequestSchema =

@@ -59,10 +59,11 @@ export class AttendanceController {
   }
 
   @Get('students/participants')
-  @Roles('Admin')
+  @Roles('Admin', 'SuperAdmin')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  listStudentParticipants() {
-    return this.attendanceService.listStudentParticipants();
+  listStudentParticipants(@Request() req: { user?: { branchId?: string } }) {
+    const branchFilter = req.user?.branchId ? { branchId: req.user.branchId } : undefined;
+    return this.attendanceService.listStudentParticipants(branchFilter);
   }
 
   @Get('students/lookup/:attendanceNumber')
@@ -73,10 +74,14 @@ export class AttendanceController {
   }
 
   @Get('students/search')
-  @Roles('Admin')
+  @Roles('Admin', 'SuperAdmin')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  searchStudents(@Query('q') query: string) {
-    return this.attendanceService.searchStudents(query);
+  searchStudents(
+    @Query('q') query: string,
+    @Request() req: { user?: { branchId?: string } },
+  ) {
+    const branchFilter = req.user?.branchId ? { branchId: req.user.branchId } : undefined;
+    return this.attendanceService.searchStudents(query ?? '', branchFilter);
   }
 
   @Get('students/:id/details')
@@ -239,6 +244,18 @@ export class AttendanceController {
     return this.attendanceService.deleteLesson(id);
   }
 
+  @Get('reports/summary')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getAttendanceSummary(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.attendanceService.getAttendanceSummary(start, end);
+  }
+
   // Admin attendance reporting - using existing endpoints
   @Get('reports')
   @Roles('Admin')
@@ -262,10 +279,11 @@ export class AttendanceController {
 
   // Overdue payments
   @Get('payments/overdue')
-  @Roles('Admin')
+  @Roles('Admin', 'SuperAdmin')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  getOverduePayments() {
-    return this.attendanceService.getOverduePayments();
+  getOverduePayments(@Request() req: { user?: { branchId?: string } }) {
+    const branchFilter = req.user?.branchId ? { branchId: req.user.branchId } : undefined;
+    return this.attendanceService.getOverduePayments(branchFilter);
   }
 
   @Get('students/me/upcoming-payments')

@@ -100,6 +100,9 @@ export class Order {
 
   @Prop({ trim: true, maxlength: 500 })
   receiptUrl?: string;
+
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

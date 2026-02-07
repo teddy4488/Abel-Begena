@@ -45,6 +45,9 @@ export class Branch {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
+
   @Prop()
   createdAt: Date;
 

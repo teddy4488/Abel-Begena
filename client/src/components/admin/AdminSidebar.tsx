@@ -15,6 +15,7 @@ import {
   CalendarDays,
   HelpCircle,
   MessageSquare,
+  ScrollText,
   LogOut,
   Menu,
   X,
@@ -37,6 +38,7 @@ const links = [
   { href: "/admin/branches", labelKey: "admin.sidebar.branches", icon: MapPin },
   { href: "/admin/store", labelKey: "admin.sidebar.store", icon: Package2 },
   { href: "/admin/orders", labelKey: "admin.sidebar.orders", icon: Receipt },
+  { href: "/admin/audit-logs", labelKey: "admin.sidebar.auditLogs", icon: ScrollText },
   { href: "/admin/attendance", labelKey: "admin.sidebar.attendance", icon: CalendarDays },
   { href: "/admin/monthly-payments", labelKey: "admin.sidebar.monthlyPayments", icon: Receipt },
   { href: "/admin/faq", labelKey: "admin.sidebar.faq", icon: HelpCircle },
@@ -105,13 +107,22 @@ export function AdminSidebar() {
               {(user?.firstName?.[0] ?? user?.email?.[0] ?? "").toUpperCase()}
             </div>
           )}
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-primary">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-primary truncate">
               {user?.firstName} {user?.lastName}
             </p>
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/80">
-              {t("admin.sidebar.role", "Super Admin")}
+              {user?.role === "SuperAdmin"
+                ? t("admin.sidebar.roleSuperAdmin", "Super Admin")
+                : t("admin.sidebar.role", "Admin")}
             </p>
+            {user?.role === "Admin" && user?.branchId && (
+              <p className="text-[10px] text-secondary/80 truncate mt-0.5">
+                {typeof user.branchId === "object" && user.branchId?.name
+                  ? user.branchId.name
+                  : String(user.branchId)}
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -6,21 +6,32 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
-import { TeacherService } from '../teacher/teacher.service';
-import { AdminUserService } from '../admin-user/admin-user.service';
-import { StudentService } from '../student/student.service';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { MailService } from '../mail/mail.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-
 export type UserType = 'website_user' | 'teacher' | 'admin' | 'student';
 
 export type ValidatedUser = Record<string, unknown> & {
   userType: UserType;
   role: string;
 };
+
+/** Derive JWT userType from User.role (Phase 5.1: single User collection). */
+function roleToUserType(role: string): UserType {
+  switch (role) {
+    case 'Teacher':
+      return 'teacher';
+    case 'Admin':
+    case 'SuperAdmin':
+      return 'admin';
+    case 'Student':
+      return 'student';
+    default:
+      return 'website_user';
+  }
+}
 
 @Injectable()
 export class AuthService {
@@ -30,9 +41,6 @@ export class AuthService {
 
   constructor(
     private readonly userService: UserService,
-    private readonly teacherService: TeacherService,
-    private readonly adminUserService: AdminUserService,
-    private readonly studentService: StudentService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
   ) {}
@@ -60,142 +68,52 @@ export class AuthService {
     };
   }
 
+  /** Phase 5.1: validate only User collection; userType derived from user.role. */
   async validateUser(email: string, password: string): Promise<ValidatedUser | null> {
-    // Check all user tables in order: WebsiteUser, Teacher, AdminUser, Student
-    // Website User
-    let user = await this.userService.findByEmail(email);
-    if (user) {
-      const isValid = await this.userService.comparePassword(
-        password,
-        user.password,
+    const user = await this.userService.findByEmail(email);
+    if (!user) return null;
+    const userObj = typeof (user as { toObject?: () => unknown }).toObject === 'function'
+      ? (user as { toObject: () => unknown }).toObject()
+      : user;
+    const passwordHash = (userObj as { password?: string }).password;
+    if (!passwordHash) return null; // e.g. Student without password set yet
+    const isValid = await this.userService.comparePassword(password, passwordHash);
+    if (!isValid) return null;
+    if (!(userObj as { isVerified?: boolean }).isVerified) {
+      throw new UnauthorizedException(
+        'Please verify your email before signing in.',
       );
-      if (isValid) {
-        if (!user.isVerified) {
-          throw new UnauthorizedException(
-            'Please verify your email before signing in.',
-          );
-        }
-        const safeUser = this.userService.toSafeUser(
-          typeof user.toObject === 'function' ? user.toObject() : user,
-        );
-        return {
-          ...safeUser,
-          userType: 'website_user' as UserType,
-          role: (safeUser as { role?: string })?.role ?? 'User',
-        };
-      }
     }
-
-    // Teacher
-    let teacher = await this.teacherService.findByEmail(email);
-    if (teacher) {
-      const isValid = await this.teacherService.comparePassword(
-        password,
-        teacher.password,
-      );
-      if (isValid) {
-        if (!teacher.isVerified) {
-          throw new UnauthorizedException(
-            'Please verify your email before signing in.',
-          );
-        }
-        const safeTeacher = this.teacherService.toSafeTeacher(
-          typeof teacher.toObject === 'function' ? teacher.toObject() : teacher,
-        );
-        return {
-          ...safeTeacher,
-          userType: 'teacher' as UserType,
-          role: 'Teacher',
-        };
-      }
-    }
-
-    // Admin User
-    let admin = await this.adminUserService.findByEmail(email);
-    if (admin) {
-      const isValid = await this.adminUserService.comparePassword(
-        password,
-        admin.password,
-      );
-      if (isValid) {
-        if (!admin.isVerified) {
-          throw new UnauthorizedException(
-            'Please verify your email before signing in.',
-          );
-        }
-        const safeAdmin = this.adminUserService.toSafeAdmin(
-          typeof admin.toObject === 'function' ? admin.toObject() : admin,
-        );
-        return {
-          ...safeAdmin,
-          userType: 'admin' as UserType,
-          role: 'Admin',
-        };
-      }
-    }
-
-    // Student
-    let student = await this.studentService.findByEmail(email);
-    if (student) {
-      if (!student.password) {
-        return null; // Student doesn't have password set yet
-      }
-      const isValid = await this.studentService.comparePassword(
-        password,
-        student.password,
-      );
-      if (isValid) {
-        if (!student.isVerified) {
-          throw new UnauthorizedException(
-            'Please verify your email before signing in.',
-          );
-        }
-        const safeStudent = this.studentService.toSafeStudent(
-          typeof student.toObject === 'function' ? student.toObject() : student,
-        );
-        return {
-          ...safeStudent,
-          userType: 'student' as UserType,
-          role: 'Student',
-        };
-      }
-    }
-
-    return null;
+    const safeUser = this.userService.toSafeUser(userObj as { password?: string });
+    const role = (safeUser as { role?: string })?.role ?? 'User';
+    return {
+      ...safeUser,
+      userType: roleToUserType(role),
+      role,
+    };
   }
 
+  /** Phase 5.1: all identities are User; safe shape from UserService. */
   login(user: Record<string, unknown>) {
     const plainUser = this.extractPlainUser(user);
     const userType = (plainUser as { userType?: UserType })?.userType ?? 'website_user';
     const role = (plainUser as { role?: string })?.role ?? 'User';
-    
-    // Extract safe user based on type
-    let safeUser: Record<string, unknown> | null;
-    if (userType === 'teacher') {
-      safeUser = this.teacherService.toSafeTeacher(plainUser);
-    } else if (userType === 'admin') {
-      safeUser = this.adminUserService.toSafeAdmin(plainUser);
-    } else if (userType === 'student') {
-      safeUser = this.studentService.toSafeStudent(plainUser);
-    } else {
-      safeUser = this.userService.toSafeUser(plainUser);
-    }
-    
+    const safeUser = this.userService.toSafeUser(plainUser as { password?: string });
     if (!safeUser) {
       throw new BadRequestException('Unable to process user data');
     }
-
     const rawId =
       (safeUser as { _id?: { toString: () => string } })?._id ??
       (plainUser as { _id?: { toString: () => string } })?._id ??
       (plainUser as { id?: string })?.id;
-    
+    const branchIdRaw = (safeUser as { branchId?: { toString: () => string } })?.branchId;
+    const branchId = branchIdRaw ? (typeof branchIdRaw === 'string' ? branchIdRaw : branchIdRaw?.toString?.()) : undefined;
     const payload = {
       sub: typeof rawId === 'string' ? rawId : (rawId?.toString?.() ?? ''),
       role,
       userType,
+      ...(branchId && { branchId }),
     };
-
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
     const refreshToken = this.jwtService.sign(
       { ...payload, typ: 'refresh' as const },
@@ -205,7 +123,6 @@ export class AuthService {
     const expiresAt = this.hasExpiry(decoded)
       ? new Date(decoded.exp * 1000).toISOString()
       : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-    
     return {
       accessToken,
       refreshToken,
@@ -215,44 +132,24 @@ export class AuthService {
     };
   }
 
-  async persistRefreshToken(userId: string, userType: UserType, refreshToken: string) {
+  /** Phase 5.1: userId is always User id. */
+  async persistRefreshToken(userId: string, _userType: UserType, refreshToken: string) {
     const decoded: unknown = this.jwtService.decode(refreshToken);
     const expiresAt = this.hasExpiry(decoded)
       ? new Date(decoded.exp * 1000)
       : new Date(Date.now() + this.refreshTtlDays * 24 * 60 * 60 * 1000);
-
-    // Hash via bcrypt through the appropriate service helpers.
-    if (userType === 'teacher') {
-      const hash = await this.teacherService.hashPassword(refreshToken);
-      await this.teacherService.setRefreshToken(userId, hash, expiresAt);
-    } else if (userType === 'admin') {
-      const hash = await this.adminUserService.hashPassword(refreshToken);
-      await this.adminUserService.setRefreshToken(userId, hash, expiresAt);
-    } else if (userType === 'student') {
-      const hash = await this.studentService.hashPassword(refreshToken);
-      await this.studentService.setRefreshToken(userId, hash, expiresAt);
-    } else {
-      const hash = await this.userService.hashPassword(refreshToken);
-      await this.userService.setRefreshToken(userId, hash, expiresAt);
-    }
-
+    const hash = await this.userService.hashPassword(refreshToken);
+    await this.userService.setRefreshToken(userId, hash, expiresAt);
     return expiresAt;
   }
 
-  async clearRefreshToken(userId: string, userType: UserType) {
-    if (userType === 'teacher') {
-      await this.teacherService.clearRefreshToken(userId);
-    } else if (userType === 'admin') {
-      await this.adminUserService.clearRefreshToken(userId);
-    } else if (userType === 'student') {
-      await this.studentService.clearRefreshToken(userId);
-    } else {
-      await this.userService.clearRefreshToken(userId);
-    }
+  async clearRefreshToken(userId: string, _userType: UserType) {
+    await this.userService.clearRefreshToken(userId);
   }
 
+  /** Phase 5.1: refresh always loads from User by payload.sub. */
   async refreshSession(refreshToken: string) {
-    let payload: any;
+    let payload: { sub?: string; role?: string; userType?: UserType; typ?: string };
     try {
       payload = this.jwtService.verify(refreshToken);
     } catch {
@@ -261,45 +158,30 @@ export class AuthService {
     if (!payload || payload.typ !== 'refresh') {
       throw new UnauthorizedException('Invalid refresh token');
     }
-
-    const userId: string = payload.sub;
+    const userId: string = payload.sub!;
     const userType: UserType = payload.userType ?? 'website_user';
-
-    // Load stored hash and compare
-    const tokenData =
-      userType === 'teacher'
-        ? await this.teacherService.getRefreshTokenData(userId)
-        : userType === 'admin'
-          ? await this.adminUserService.getRefreshTokenData(userId)
-          : userType === 'student'
-            ? await this.studentService.getRefreshTokenData(userId)
-            : await this.userService.getRefreshTokenData(userId);
-
-    const storedHash = (tokenData as any)?.refreshTokenHash as string | null | undefined;
-    const storedExpiresAt = (tokenData as any)?.refreshTokenExpiresAt as string | Date | null | undefined;
-
+    const tokenData = await this.userService.getRefreshTokenData(userId);
+    const storedHash = (tokenData as { refreshTokenHash?: string } | null)?.refreshTokenHash;
+    const storedExpiresAt = (tokenData as { refreshTokenExpiresAt?: Date } | null)?.refreshTokenExpiresAt;
     if (!storedHash) {
       throw new UnauthorizedException('Refresh session not found');
     }
     if (storedExpiresAt && new Date(storedExpiresAt).getTime() < Date.now()) {
       throw new UnauthorizedException('Refresh session expired');
     }
-
-    const compare =
-      userType === 'teacher'
-        ? await this.teacherService.comparePassword(refreshToken, storedHash)
-        : userType === 'admin'
-          ? await this.adminUserService.comparePassword(refreshToken, storedHash)
-          : userType === 'student'
-            ? await this.studentService.comparePassword(refreshToken, storedHash)
-            : await this.userService.comparePassword(refreshToken, storedHash);
-
+    const compare = await this.userService.comparePassword(refreshToken, storedHash);
     if (!compare) {
       throw new UnauthorizedException('Refresh token does not match');
     }
-
-    // Rotate: issue new tokens and store new refresh token hash
-    const accessPayload = { sub: userId, role: payload.role, userType };
+    const currentUser = await this.userService.findById(userId);
+    const branchIdRaw = (currentUser as { branchId?: { toString: () => string } } | null)?.branchId;
+    const branchId = branchIdRaw ? (typeof branchIdRaw === 'string' ? branchIdRaw : branchIdRaw?.toString?.()) : undefined;
+    const accessPayload = {
+      sub: userId,
+      role: payload.role,
+      userType,
+      ...(branchId && { branchId }),
+    };
     const newAccessToken = this.jwtService.sign(accessPayload, { expiresIn: '15m' });
     const newRefreshToken = this.jwtService.sign(
       { ...accessPayload, typ: 'refresh' as const },
@@ -309,174 +191,60 @@ export class AuthService {
     const expiresAt = this.hasExpiry(decoded)
       ? new Date(decoded.exp * 1000).toISOString()
       : new Date(Date.now() + 15 * 60 * 1000).toISOString();
-
     await this.persistRefreshToken(userId, userType, newRefreshToken);
     const user = await this.getSession(userId, userType);
-
     return { accessToken: newAccessToken, refreshToken: newRefreshToken, expiresAt, user };
   }
 
+  /** Phase 5.1: single User collection; userType derived from user.role. */
   async getSession(userId: string, userType?: UserType) {
-    // Try to find user in the appropriate table based on userType
-    if (userType === 'teacher') {
-      const teacher = await this.teacherService.findById(userId);
-      if (teacher) {
-        return {
-          ...this.teacherService.toSafeTeacher(teacher),
-          userType: 'teacher' as UserType,
-          role: 'Teacher',
-        };
-      }
-    } else if (userType === 'admin') {
-      const admin = await this.adminUserService.findById(userId);
-      if (admin) {
-        return {
-          ...this.adminUserService.toSafeAdmin(admin),
-          userType: 'admin' as UserType,
-          role: 'Admin',
-        };
-      }
-    } else if (userType === 'student') {
-      const student = await this.studentService.findById(userId);
-      if (student) {
-        return {
-          ...this.studentService.toSafeStudent(student),
-          userType: 'student' as UserType,
-          role: 'Student',
-        };
-      }
-    }
-    
-    // Default to website user
     const user = await this.userService.findById(userId);
-    if (user) {
-      return {
-        ...user,
-        userType: 'website_user' as UserType,
-        role: (user as { role?: string })?.role ?? 'User',
-      };
-    }
-    
-    return null;
+    if (!user) return null;
+    const role = (user as { role?: string })?.role ?? 'User';
+    return {
+      ...user,
+      userType: userType ?? roleToUserType(role),
+      role,
+    };
   }
 
   async verifyEmail(dto: VerifyEmailDto) {
-    // Check all user tables
-    let user: any = await this.userService.findByEmail(dto.email);
-    let userType: UserType = 'website_user';
-    
-    if (!user) {
-      user = await this.teacherService.findByEmail(dto.email);
-      userType = 'teacher';
-    }
-    
-    if (!user) {
-      user = await this.adminUserService.findByEmail(dto.email);
-      userType = 'admin';
-    }
-    
-    if (!user) {
-      user = await this.studentService.findByEmail(dto.email);
-      userType = 'student';
-    }
-    
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    
-    if (user.isVerified) {
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) throw new NotFoundException('User not found');
+    const userObj = typeof (user as { toObject?: () => unknown }).toObject === 'function'
+      ? (user as { toObject: () => unknown }).toObject()
+      : user;
+    if ((userObj as { isVerified?: boolean }).isVerified) {
       return { message: 'Email already verified.' };
     }
-    
-    if (
-      !user.verificationCode ||
-      !user.verificationCodeExpiresAt ||
-      user.verificationCodeExpiresAt.getTime() < Date.now()
-    ) {
+    const verificationCode = (userObj as { verificationCode?: string }).verificationCode;
+    const verificationCodeExpiresAt = (userObj as { verificationCodeExpiresAt?: Date }).verificationCodeExpiresAt;
+    if (!verificationCode || !verificationCodeExpiresAt || new Date(verificationCodeExpiresAt).getTime() < Date.now()) {
       throw new BadRequestException(
         'Verification code has expired. Please request a new code.',
       );
     }
-    
-    let matches = false;
-    if (userType === 'teacher') {
-      matches = await this.teacherService.comparePassword(
-        dto.code,
-        user.verificationCode,
-      );
-    } else if (userType === 'admin') {
-      matches = await this.adminUserService.comparePassword(
-        dto.code,
-        user.verificationCode,
-      );
-    } else if (userType === 'student') {
-      matches = await this.studentService.comparePassword(
-        dto.code,
-        user.verificationCode,
-      );
-    } else {
-      matches = await this.userService.comparePassword(
-        dto.code,
-        user.verificationCode,
-      );
-    }
-    
-    if (!matches) {
-      throw new BadRequestException('Invalid verification code.');
-    }
-
-    const userId = this.extractUserId(user);
-    if (!userId) {
-      throw new BadRequestException('Unable to verify account.');
-    }
-    
-    if (userType === 'teacher') {
-      await this.teacherService.markEmailVerified(userId);
-    } else if (userType === 'admin') {
-      await this.adminUserService.markEmailVerified(userId);
-    } else if (userType === 'student') {
-      await this.studentService.markEmailVerified(userId);
-    } else {
-      await this.userService.markEmailVerified(userId);
-    }
-    
+    const matches = await this.userService.comparePassword(dto.code, verificationCode);
+    if (!matches) throw new BadRequestException('Invalid verification code.');
+    const userId = this.extractUserId(userObj);
+    if (!userId) throw new BadRequestException('Unable to verify account.');
+    await this.userService.markEmailVerified(userId);
     return { message: 'Email verified successfully.' };
   }
 
   async resendVerification(email: string) {
-    // Check all user tables
-    let user: any = await this.userService.findByEmail(email);
-    let userType: UserType = 'website_user';
-    
-    if (!user) {
-      user = await this.teacherService.findByEmail(email);
-      userType = 'teacher';
-    }
-    
-    if (!user) {
-      user = await this.adminUserService.findByEmail(email);
-      userType = 'admin';
-    }
-    
-    if (!user) {
-      user = await this.studentService.findByEmail(email);
-      userType = 'student';
-    }
-    
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    
-    if (user.isVerified) {
+    const user = await this.userService.findByEmail(email);
+    if (!user) throw new NotFoundException('User not found');
+    const userObj = typeof (user as { toObject?: () => unknown }).toObject === 'function'
+      ? (user as { toObject: () => unknown }).toObject()
+      : user;
+    if ((userObj as { isVerified?: boolean }).isVerified) {
       return { message: 'Email already verified.' };
     }
-
-    // Basic resend throttle: prevent spamming codes.
-    // We infer the last-send time from the existing expiry timestamp.
-    if (user.verificationCodeExpiresAt) {
+    const verificationCodeExpiresAt = (userObj as { verificationCodeExpiresAt?: Date }).verificationCodeExpiresAt;
+    if (verificationCodeExpiresAt) {
       const issuedAt = new Date(
-        user.verificationCodeExpiresAt.getTime() -
-          this.verificationTtlMinutes * 60 * 1000,
+        new Date(verificationCodeExpiresAt).getTime() - this.verificationTtlMinutes * 60 * 1000,
       );
       if (Date.now() - issuedAt.getTime() < this.resendCooldownMs) {
         throw new BadRequestException(
@@ -484,17 +252,10 @@ export class AuthService {
         );
       }
     }
-    
-    const userId = this.extractUserId(user);
-    if (!userId) {
-      throw new BadRequestException('Unable to resend code.');
-    }
-    
-    const devCode = await this.issueVerificationCode(
-      userId,
-      user.email,
-      userType,
-    );
+    const userId = this.extractUserId(userObj);
+    if (!userId) throw new BadRequestException('Unable to resend code.');
+    const role = (userObj as { role?: string }).role ?? 'User';
+    const devCode = await this.issueVerificationCode(userId, (userObj as { email: string }).email, roleToUserType(role));
     
     return {
       message: 'We sent a fresh verification code to your email.',
@@ -504,42 +265,22 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    // Check all user tables
-    let user: any = await this.userService.findByEmail(dto.email);
-    let userType: UserType = 'website_user';
-    
+    const user = await this.userService.findByEmail(dto.email);
     if (!user) {
-      user = await this.teacherService.findByEmail(dto.email);
-      userType = 'teacher';
+      return { message: 'If that email exists, a reset code has been sent.' };
     }
-    
-    if (!user) {
-      user = await this.adminUserService.findByEmail(dto.email);
-      userType = 'admin';
-    }
-    
-    if (!user) {
-      user = await this.studentService.findByEmail(dto.email);
-      userType = 'student';
-    }
-    
-    if (!user) {
-      return {
-        message: 'If that email exists, a reset code has been sent.',
-      };
-    }
-
-    // Basic resend throttle for reset codes (10 min TTL in issuePasswordResetCode).
-    if (user.passwordResetCodeExpiresAt) {
-      const issuedAt = new Date(user.passwordResetCodeExpiresAt.getTime() - 10 * 60 * 1000);
+    const userObj = typeof (user as { toObject?: () => unknown }).toObject === 'function'
+      ? (user as { toObject: () => unknown }).toObject()
+      : user;
+    const passwordResetCodeExpiresAt = (userObj as { passwordResetCodeExpiresAt?: Date }).passwordResetCodeExpiresAt;
+    if (passwordResetCodeExpiresAt) {
+      const issuedAt = new Date(new Date(passwordResetCodeExpiresAt).getTime() - 10 * 60 * 1000);
       if (Date.now() - issuedAt.getTime() < this.resendCooldownMs) {
-        return {
-          message: 'If that email exists, a reset code has been sent.',
-        };
+        return { message: 'If that email exists, a reset code has been sent.' };
       }
     }
-    
-    const devCode = await this.issuePasswordResetCode(dto.email, userType);
+    const role = (userObj as { role?: string }).role ?? 'User';
+    const devCode = await this.issuePasswordResetCode(dto.email, roleToUserType(role));
     return {
       message: 'If that email exists, a reset code has been sent.',
       ...(devCode ? { devCode } : {}),
@@ -547,168 +288,53 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    // Check all user tables
-    let user: any = await this.userService.findByEmail(dto.email);
-    let userType: UserType = 'website_user';
-    
-    if (!user) {
-      user = await this.teacherService.findByEmail(dto.email);
-      userType = 'teacher';
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) throw new NotFoundException('User not found');
+    const userObj = typeof (user as { toObject?: () => unknown }).toObject === 'function'
+      ? (user as { toObject: () => unknown }).toObject()
+      : user;
+    const passwordResetCode = (userObj as { passwordResetCode?: string }).passwordResetCode;
+    const passwordResetCodeExpiresAt = (userObj as { passwordResetCodeExpiresAt?: Date }).passwordResetCodeExpiresAt;
+    if (!passwordResetCode || !passwordResetCodeExpiresAt || new Date(passwordResetCodeExpiresAt).getTime() < Date.now()) {
+      throw new BadRequestException('Reset code has expired. Please request a new code.');
     }
-    
-    if (!user) {
-      user = await this.adminUserService.findByEmail(dto.email);
-      userType = 'admin';
-    }
-    
-    if (!user) {
-      user = await this.studentService.findByEmail(dto.email);
-      userType = 'student';
-    }
-    
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    
-    if (
-      !user.passwordResetCode ||
-      !user.passwordResetCodeExpiresAt ||
-      user.passwordResetCodeExpiresAt.getTime() < Date.now()
-    ) {
-      throw new BadRequestException(
-        'Reset code has expired. Please request a new code.',
-      );
-    }
-    
-    let matches = false;
-    if (userType === 'teacher') {
-      matches = await this.teacherService.comparePassword(
-        dto.code,
-        user.passwordResetCode,
-      );
-    } else if (userType === 'admin') {
-      matches = await this.adminUserService.comparePassword(
-        dto.code,
-        user.passwordResetCode,
-      );
-    } else if (userType === 'student') {
-      matches = await this.studentService.comparePassword(
-        dto.code,
-        user.passwordResetCode,
-      );
-    } else {
-      matches = await this.userService.comparePassword(
-        dto.code,
-        user.passwordResetCode,
-      );
-    }
-    
-    if (!matches) {
-      throw new BadRequestException('Invalid reset code.');
-    }
-    
-    if (userType === 'teacher') {
-      await this.teacherService.resetPasswordWithCode(dto.email, dto.password);
-    } else if (userType === 'admin') {
-      await this.adminUserService.resetPasswordWithCode(dto.email, dto.password);
-    } else if (userType === 'student') {
-      await this.studentService.resetPasswordWithCode(dto.email, dto.password);
-    } else {
-      await this.userService.resetPasswordWithCode(dto.email, dto.password);
-    }
-    
+    const matches = await this.userService.comparePassword(dto.code, passwordResetCode);
+    if (!matches) throw new BadRequestException('Invalid reset code.');
+    await this.userService.resetPasswordWithCode(dto.email, dto.password);
     return { message: 'Password updated successfully.' };
   }
 
-  async changePassword(userId: string, userType: UserType | undefined, dto: { currentPassword: string; newPassword: string }) {
-    // Only students need password change on first login
-    // But this endpoint can be used by any user type
-    if (userType === 'student') {
-      await this.studentService.changePassword(userId, dto.currentPassword, dto.newPassword);
-    } else if (userType === 'teacher') {
-      const teacher = await this.teacherService.findById(userId);
-      if (!teacher || !teacher.password) {
-        throw new BadRequestException('Teacher not found or password not set');
-      }
-      const isValid = await this.teacherService.comparePassword(dto.currentPassword, teacher.password);
-      if (!isValid) {
-        throw new BadRequestException('Current password is incorrect');
-      }
-      // update() method will hash the password automatically
-      await this.teacherService.update(userId, { password: dto.newPassword } as any);
-    } else if (userType === 'admin') {
-      const admin = await this.adminUserService.findById(userId);
-      if (!admin || !admin.password) {
-        throw new BadRequestException('Admin not found or password not set');
-      }
-      const isValid = await this.adminUserService.comparePassword(dto.currentPassword, admin.password);
-      if (!isValid) {
-        throw new BadRequestException('Current password is incorrect');
-      }
-      // update() method will hash the password automatically
-      await this.adminUserService.update(userId, { password: dto.newPassword });
-    } else {
-      // website_user - need to get user with password, so use findByEmail
-      // First get the user email from the safe user object
-      const safeUser = await this.userService.findById(userId);
-      if (!safeUser || !('email' in safeUser)) {
-        throw new BadRequestException('User not found');
-      }
-      // Now get the full user document (with password) using findByEmail
-      const userDoc = await this.userService.findByEmail((safeUser as { email: string }).email);
-      if (!userDoc) {
-        throw new BadRequestException('User not found');
-      }
-      // UserDocument has password property
-      const userPassword = (userDoc as { password?: string }).password;
-      if (!userPassword) {
-        throw new BadRequestException('Password not set');
-      }
-      const isValid = await this.userService.comparePassword(dto.currentPassword, userPassword);
-      if (!isValid) {
-        throw new BadRequestException('Current password is incorrect');
-      }
-      // update() method will hash the password automatically
-      await this.userService.update(userId, { password: dto.newPassword } as any);
+  /** Phase 5.1: userId is always User id. */
+  async changePassword(userId: string, _userType: UserType | undefined, dto: { currentPassword: string; newPassword: string }) {
+    const safeUser = await this.userService.findById(userId);
+    if (!safeUser || !('email' in safeUser)) {
+      throw new BadRequestException('User not found');
     }
+    const userDoc = await this.userService.findByEmail((safeUser as { email: string }).email);
+    if (!userDoc) {
+      throw new BadRequestException('User not found');
+    }
+    const userPassword = (userDoc as { password?: string }).password;
+    if (!userPassword) {
+      throw new BadRequestException('Password not set');
+    }
+    const isValid = await this.userService.comparePassword(dto.currentPassword, userPassword);
+    if (!isValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+    await this.userService.update(userId, { password: dto.newPassword } as import('../user/dto/update-user.dto').UpdateUserDto);
     return { message: 'Password changed successfully.' };
   }
 
   private async issueVerificationCode(
     userId: string,
     email: string,
-    userType: UserType = 'website_user',
+    _userType: UserType = 'website_user',
   ) {
     const code = this.generateVerificationCode();
-    let hash: string;
-    let expiresAt: Date;
-    
-    if (userType === 'teacher') {
-      hash = await this.teacherService.hashPassword(code);
-      expiresAt = new Date(
-        Date.now() + this.verificationTtlMinutes * 60 * 1000,
-      );
-      await this.teacherService.assignVerificationCode(userId, hash, expiresAt);
-    } else if (userType === 'admin') {
-      hash = await this.adminUserService.hashPassword(code);
-      expiresAt = new Date(
-        Date.now() + this.verificationTtlMinutes * 60 * 1000,
-      );
-      await this.adminUserService.assignVerificationCode(userId, hash, expiresAt);
-    } else if (userType === 'student') {
-      hash = await this.studentService.hashPassword(code);
-      expiresAt = new Date(
-        Date.now() + this.verificationTtlMinutes * 60 * 1000,
-      );
-      await this.studentService.assignVerificationCode(userId, hash, expiresAt);
-    } else {
-      hash = await this.userService.hashPassword(code);
-      expiresAt = new Date(
-        Date.now() + this.verificationTtlMinutes * 60 * 1000,
-      );
-      await this.userService.assignVerificationCode(userId, hash, expiresAt);
-    }
-    
+    const hash = await this.userService.hashPassword(code);
+    const expiresAt = new Date(Date.now() + this.verificationTtlMinutes * 60 * 1000);
+    await this.userService.assignVerificationCode(userId, hash, expiresAt);
     await this.mailService.sendVerificationEmail(email, code);
     return process.env.NODE_ENV !== 'production' ? code : undefined;
   }
@@ -719,26 +345,12 @@ export class AuthService {
 
   private async issuePasswordResetCode(
     email: string,
-    userType: UserType = 'website_user',
+    _userType: UserType = 'website_user',
   ) {
     const code = this.generateVerificationCode();
-    let hash: string;
+    const hash = await this.userService.hashPassword(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    
-    if (userType === 'teacher') {
-      hash = await this.teacherService.hashPassword(code);
-      await this.teacherService.assignPasswordResetCode(email, hash, expiresAt);
-    } else if (userType === 'admin') {
-      hash = await this.adminUserService.hashPassword(code);
-      await this.adminUserService.assignPasswordResetCode(email, hash, expiresAt);
-    } else if (userType === 'student') {
-      hash = await this.studentService.hashPassword(code);
-      await this.studentService.assignPasswordResetCode(email, hash, expiresAt);
-    } else {
-      hash = await this.userService.hashPassword(code);
-      await this.userService.assignPasswordResetCode(email, hash, expiresAt);
-    }
-    
+    await this.userService.assignPasswordResetCode(email, hash, expiresAt);
     await this.mailService.sendPasswordResetEmail(email, code);
     return process.env.NODE_ENV !== 'production' ? code : undefined;
   }

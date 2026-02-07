@@ -1,9 +1,43 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export type UserDocument = User & Document;
 
-export type UserRole = 'User' | 'Teacher' | 'Admin';
+export type UserRole = 'User' | 'Teacher' | 'Admin' | 'Student' | 'SuperAdmin';
+
+@Schema({ _id: false })
+export class TeacherProfile {
+  @Prop({ enum: ['pending', 'approved', 'suspended'], default: 'pending' })
+  teacherStatus?: 'pending' | 'approved' | 'suspended';
+}
+export const TeacherProfileSchema = SchemaFactory.createForClass(TeacherProfile);
+
+@Schema({ _id: false })
+export class StudentProfile {
+  @Prop({ required: true, trim: true, maxlength: 20 })
+  attendanceNumber: string;
+  @Prop({ required: true, trim: true, maxlength: 120 })
+  fullName: string;
+  @Prop({ type: Types.ObjectId, ref: 'Branch' })
+  branchId?: Types.ObjectId;
+  @Prop({ type: String, enum: ['physical', 'online'] })
+  learningType?: 'physical' | 'online';
+  @Prop({ type: String })
+  instrumentType?: string;
+  @Prop({ enum: [3, 6, 9] })
+  programDurationMonths?: 3 | 6 | 9;
+  @Prop({ type: [String], enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] })
+  preferredLearningDays?: string[];
+  @Prop({ type: Date })
+  registrationStartDate?: Date;
+  @Prop({ type: Number })
+  learningDaysPerWeek?: number;
+  @Prop({ default: true })
+  isActive: boolean;
+  @Prop({ type: Number, min: 0, default: 0 })
+  missedLessonsCount?: number;
+}
+export const StudentProfileSchema = SchemaFactory.createForClass(StudentProfile);
 
 @Schema({ timestamps: true })
 export class User {
@@ -30,8 +64,9 @@ export class User {
 
   @Prop({
     required: true,
-    enum: ['User', 'Teacher', 'Admin'],
+    enum: ['User', 'Teacher', 'Admin', 'Student', 'SuperAdmin'],
     default: 'User',
+    index: true,
   })
   role: UserRole;
 
@@ -50,10 +85,19 @@ export class User {
   @Prop({ type: Date, required: false, default: null })
   verificationCodeExpiresAt?: Date;
 
-  @Prop({
-    enum: ['pending', 'approved', 'suspended'],
-  })
+  /** @deprecated Use teacherProfile.teacherStatus (Phase 5.1 consolidation) */
+  @Prop({ enum: ['pending', 'approved', 'suspended'] })
   teacherStatus?: 'pending' | 'approved' | 'suspended';
+
+  @Prop({ type: TeacherProfileSchema })
+  teacherProfile?: TeacherProfile;
+
+  @Prop({ type: StudentProfileSchema })
+  studentProfile?: StudentProfile;
+
+  /** Branch-scoped Admin (Phase 5.3). SuperAdmin has no branchId. */
+  @Prop({ type: Types.ObjectId, ref: 'Branch', index: true })
+  branchId?: Types.ObjectId;
 
   @Prop()
   avatarUrl?: string;

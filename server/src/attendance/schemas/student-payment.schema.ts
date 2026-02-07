@@ -70,4 +70,9 @@ StudentPaymentSchema.index({ year: 1, month: 1 });
 StudentPaymentSchema.index({ status: 1 });
 // Index for quick lookup by enrollment period
 StudentPaymentSchema.index({ participantId: 1, period: 1 });
+// Prevent duplicate paid records per participant/month/year
+StudentPaymentSchema.index(
+  { participantId: 1, month: 1, year: 1 },
+  { unique: true, partialFilterExpression: { status: 'paid' } },
+);
 

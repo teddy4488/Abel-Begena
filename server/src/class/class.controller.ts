@@ -55,10 +55,12 @@ export class ClassController {
   }
 
   @Get('manage')
-  @Roles('Admin')
+  @Roles('Admin', 'SuperAdmin')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  findManaged() {
-    return this.classService.getManagedCatalog();
+  findManaged(
+    @Request() req: ExpressRequest & { user: { sub: string; role?: string; branchId?: string } },
+  ) {
+    return this.classService.getManagedCatalog(req.user?.branchId);
   }
 
   @Post()

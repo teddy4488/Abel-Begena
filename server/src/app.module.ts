@@ -16,9 +16,13 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { PaymentModule } from './payment/payment.module';
 import { MaterialsModule } from './materials/materials.module';
+import { CourseTrackModule } from './course-track/course-track.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { UploadModule } from './upload/upload.module';
+import { AuditModule } from './audit/audit.module';
+import { EnrollmentModule } from './enrollment/enrollment.module';
 
 @Module({
   imports: [
@@ -38,6 +42,7 @@ import { UploadModule } from './upload/upload.module';
         ],
       }),
     }),
+    ScheduleModule.forRoot(),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
@@ -60,7 +65,10 @@ import { UploadModule } from './upload/upload.module';
     AttendanceModule,
     PaymentModule,
     MaterialsModule,
+    CourseTrackModule,
     UploadModule,
+    AuditModule,
+    EnrollmentModule,
   ],
   controllers: [AppController],
   providers: [

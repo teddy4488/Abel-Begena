@@ -1,22 +1,36 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { UserService } from '../../user/user.service';
 
 type RequestWithUser = Request & {
-  user?: { role?: string; userType?: string };
+  user?: { sub?: string; role?: string; userType?: string };
+};
+
+/** Maps JWT role to expected userType (Phase 5.1: single User collection). */
+const ROLE_TO_USER_TYPE: Record<string, string> = {
+  Admin: 'admin',
+  SuperAdmin: 'admin',
+  Teacher: 'teacher',
+  Student: 'student',
+  User: 'website_user',
 };
 
 @Injectable()
 export class RoleGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly userService: UserService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles =
       this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
         context.getHandler(),
@@ -33,6 +47,30 @@ export class RoleGuard implements CanActivate {
       throw new UnauthorizedException('Missing authentication context');
     }
 
-    return user.role ? requiredRoles.includes(user.role) : false;
+    const role = user.role;
+    const userType = user.userType;
+
+    if (!role || !requiredRoles.includes(role)) {
+      return false;
+    }
+
+    const expectedUserType = ROLE_TO_USER_TYPE[role];
+    if (expectedUserType && userType !== expectedUserType) {
+      return false;
+    }
+
+    // When Teacher role is required, only approved teachers may access (Phase 5.1: User.teacherProfile)
+    if (requiredRoles.includes('Teacher') && role === 'Teacher' && userType === 'teacher' && user.sub) {
+      const u = await this.userService.findById(user.sub);
+      const status = (u as { teacherStatus?: string; teacherProfile?: { teacherStatus?: string } } | null)?.teacherProfile?.teacherStatus
+        ?? (u as { teacherStatus?: string } | null)?.teacherStatus;
+      if (!u || status !== 'approved') {
+        throw new ForbiddenException(
+          'Teacher access is restricted. Your account is pending approval or has been suspended.',
+        );
+      }
+    }
+
+    return true;
   }
 }

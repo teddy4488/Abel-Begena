@@ -9,7 +9,12 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { BlogPost, BlogPostDocument } from './schemas/blog-post.schema';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
-import { UploadService } from '../upload/upload.service';
+import {
+  UploadService,
+  ALLOWED_IMAGE_MIMES,
+  ALLOWED_IMAGE_EXTENSIONS,
+  MAX_IMAGE_SIZE_BYTES,
+} from '../upload/upload.service';
 import { CommentService } from './comment.service';
 
 type Actor = {
@@ -68,14 +73,19 @@ export class BlogService {
     return this.populateAndFormat(post);
   }
 
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
   async findPublished(search?: string): Promise<BlogPostResponse[]> {
     const query: FilterQuery<BlogPostDocument> = {
       isPublished: true,
       status: 'published',
+      $and: [this.notDeletedFilter()],
     };
     if (search) {
       const regex = new RegExp(search, 'i');
-      query.$or = [{ title: regex }, { content: regex }];
+      (query.$and as object[]).push({ $or: [{ title: regex }, { content: regex }] });
     }
     const posts = await this.blogModel
       .find(query)
@@ -88,7 +98,7 @@ export class BlogService {
 
   async findPublishedBySlug(slug: string): Promise<BlogPostResponse> {
     const post = await this.blogModel
-      .findOne({ slug, isPublished: true, status: 'published' })
+      .findOne({ slug, isPublished: true, status: 'published', ...this.notDeletedFilter() })
       .populate('author', 'firstName lastName role email')
       .lean()
       .exec();
@@ -101,11 +111,14 @@ export class BlogService {
   }
 
   async findAllForManagement(search?: string): Promise<BlogPostResponse[]> {
-    const query: FilterQuery<BlogPostDocument> = {};
-    if (search) {
-      const regex = new RegExp(search, 'i');
-      query.$or = [{ title: regex }, { content: regex }];
-    }
+    const query: FilterQuery<BlogPostDocument> = {
+      $and: [
+        this.notDeletedFilter(),
+        ...(search
+          ? [{ $or: [{ title: new RegExp(search, 'i') }, { content: new RegExp(search, 'i') }] }]
+          : []),
+      ],
+    };
 
     const posts = await this.blogModel
       .find(query)
@@ -123,7 +136,7 @@ export class BlogService {
     }
 
     const post = await this.blogModel
-      .findById(id)
+      .findOne({ _id: id, ...this.notDeletedFilter() })
       .populate('author', 'firstName lastName role email')
       .lean()
       .exec();
@@ -140,7 +153,9 @@ export class BlogService {
     dto: UpdateBlogPostDto,
     actor: Actor,
   ): Promise<BlogPostResponse> {
-    const post = await this.blogModel.findById(id).exec();
+    const post = await this.blogModel
+      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .exec();
 
     if (!post) {
       throw new NotFoundException('Post not found');
@@ -193,17 +208,18 @@ export class BlogService {
   }
 
   async remove(id: string, actor: Actor): Promise<{ message: string }> {
-    const post = await this.blogModel.findById(id).exec();
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const post = await this.blogModel.findOne({ _id: id, ...notDeleted }).exec();
     if (!post) {
       throw new NotFoundException('Post not found');
     }
 
     this.assertCanModify(post, actor, true);
 
-    // Delete all comments associated with this post
-    await this.commentService.deleteByPostId(String(post._id));
+    // Soft delete all comments associated with this post
+    await this.commentService.softDeleteByPostId(String(post._id));
 
-    await post.deleteOne();
+    await this.blogModel.findByIdAndUpdate(id, { deletedAt: new Date() }).exec();
     return { message: 'Post deleted' };
   }
 
@@ -270,7 +286,11 @@ export class BlogService {
     if (!file) {
       throw new BadRequestException('Image file is required');
     }
-    return this.uploadService.uploadMaterial(file, 'abel-begena/blog');
+    return this.uploadService.uploadMaterial(file, 'abel-begena/blog', {
+      allowedMimeTypes: [...ALLOWED_IMAGE_MIMES],
+      allowedExtensions: [...ALLOWED_IMAGE_EXTENSIONS],
+      maxSizeBytes: MAX_IMAGE_SIZE_BYTES,
+    });
   }
 
   private async populateAndFormat(

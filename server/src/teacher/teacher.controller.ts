@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -30,21 +31,12 @@ export class TeacherController {
     return this.teacherService.findById(id);
   }
 
+  /** Phase 5.1: No new Teacher documents; create teachers via User API with role Teacher. */
   @Post()
-  create(
-    @Body()
-    createTeacherDto: {
-      email: string;
-      password: string;
-      firstName?: string;
-      lastName?: string;
-      phone?: string;
-      teacherStatus?: 'pending' | 'approved' | 'suspended';
-      isActive?: boolean;
-      isVerified?: boolean;
-    },
-  ) {
-    return this.teacherService.create(createTeacherDto);
+  create() {
+    throw new BadRequestException(
+      'Creating teachers is now done via the User API with role Teacher. Use the user management endpoint instead.',
+    );
   }
 
   @Patch(':id')

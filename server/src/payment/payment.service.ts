@@ -38,6 +38,10 @@ export class PaymentService {
     private readonly productService: ProductService,
   ) {}
 
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
   async create(dto: Omit<CreatePaymentRequestDto, 'userId'>, userId: string) {
     // Idempotency: avoid creating duplicates for the same user/type/target while still pending
     const normalizedTargetId = dto.targetId ? new Types.ObjectId(dto.targetId) : undefined;
@@ -47,6 +51,7 @@ export class PaymentService {
         type: dto.type,
         ...(normalizedTargetId ? { targetId: normalizedTargetId } : {}),
         status: 'pending' as PaymentRequestStatus,
+        ...this.notDeletedFilter(),
       })
       .lean()
       .exec();
@@ -103,6 +108,7 @@ export class PaymentService {
         targetId: new Types.ObjectId(studentParticipantId),
         status: 'pending' as PaymentRequestStatus,
         conversionData: JSON.stringify({ month: dto.month, year: dto.year }),
+        ...this.notDeletedFilter(),
       })
       .lean()
       .exec();
@@ -138,14 +144,14 @@ export class PaymentService {
 
   async listForUser(userId: string) {
     return this.paymentModel
-      .find({ userId: new Types.ObjectId(userId) })
+      .find({ userId: new Types.ObjectId(userId), ...this.notDeletedFilter() })
       .sort({ createdAt: -1 })
       .lean()
       .exec();
   }
 
   async listPending(type?: string) {
-    const filter: any = { status: 'pending' as PaymentRequestStatus };
+    const filter: any = { status: 'pending' as PaymentRequestStatus, ...this.notDeletedFilter() };
     if (type) {
       filter.type = type;
     }
@@ -158,7 +164,9 @@ export class PaymentService {
   }
 
   async updateStatus(dto: UpdatePaymentStatusDto, adminUserId: string) {
-    const payment = await this.paymentModel.findById(dto.id).exec();
+    const payment = await this.paymentModel
+      .findOne({ _id: dto.id, ...this.notDeletedFilter() })
+      .exec();
     if (!payment) {
       throw new NotFoundException('Payment request not found');
     }
@@ -249,7 +257,9 @@ export class PaymentService {
       payment.targetId
     ) {
       try {
-        const order = await this.orderModel.findById(payment.targetId).exec();
+        const order = await this.orderModel
+          .findOne({ _id: payment.targetId, ...this.notDeletedFilter() })
+          .exec();
         if (order) {
           // If stock wasn't reserved at checkout (offline payments), reserve it now.
           if (order.status === OrderStatus.PAYMENT_PENDING) {
@@ -281,7 +291,9 @@ export class PaymentService {
       payment.targetId
     ) {
       try {
-        const order = await this.orderModel.findById(payment.targetId).exec();
+        const order = await this.orderModel
+          .findOne({ _id: payment.targetId, ...this.notDeletedFilter() })
+          .exec();
         if (order) {
           order.isPaid = false;
           order.status = OrderStatus.PAYMENT_REJECTED;

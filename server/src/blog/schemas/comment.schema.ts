@@ -20,6 +20,9 @@ export class Comment {
     default: 'pending',
   })
   status: 'pending' | 'approved' | 'rejected';
+
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
 }
 
 export const CommentSchema = SchemaFactory.createForClass(Comment);

@@ -14,10 +14,12 @@ import {
   useDeleteTeacherMutation,
   useUpdateAdminMutation,
   useDeleteAdminMutation,
+  useCreateAdminMutation,
   useUpdateWebsiteUserMutation,
   useUpdateStudentMutation,
   useDeleteStudentMutation,
 } from "@/store/api/adminApi";
+import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
 import type { AuthUser } from "@/store/slices/authSlice";
 import type { Teacher, AdminUser, Student } from "@/store/api/adminApi";
 import Image from "next/image";
@@ -25,12 +27,15 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap } from "lucide-react";
+import { useAppSelector } from "@/store/hooks";
+import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap, Plus } from "lucide-react";
 
 type UserTab = "website" | "teachers" | "admins" | "students";
 type UserItem = AuthUser | Teacher | AdminUser | Student;
 
 export default function AdminUsersPage() {
+  const { user: authUser } = useAppSelector((state) => state.auth);
+  const isSuperAdmin = authUser?.role === "SuperAdmin";
   const [activeTab, setActiveTab] = useState<UserTab>("website");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -41,10 +46,21 @@ export default function AdminUsersPage() {
     label: string;
     userType: UserTab;
   } | null>(null);
+  const [createAdminOpen, setCreateAdminOpen] = useState(false);
+  const [createAdminForm, setCreateAdminForm] = useState({
+    email: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    branchId: "",
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const { pushToast } = useToast();
   const { t } = useI18n();
+  const { data: branches = [] } = useGetBranchesAdminQuery(undefined, { skip: !createAdminOpen });
+  const [createAdmin, { isLoading: isCreatingAdmin }] = useCreateAdminMutation();
 
   // Fetch all user types
   const { data: websiteUsers = [], isLoading: websiteUsersLoading } = useGetWebsiteUsersQuery();
@@ -415,6 +431,16 @@ export default function AdminUsersPage() {
           <option value="active">{t("admin.users.filter.active", "Active")}</option>
           <option value="inactive">{t("admin.users.filter.inactive", "Inactive")}</option>
         </select>
+        {activeTab === "admins" && isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setCreateAdminOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary/90 transition"
+          >
+            <Plus className="w-4 h-4" />
+            {t("admin.users.createAdmin", "Create Admin")}
+          </button>
+        )}
       </motion.div>
 
       {/* Users Table */}
@@ -430,6 +456,9 @@ export default function AdminUsersPage() {
               <th className="px-6 py-4">{t("admin.users.table.user", "User")}</th>
               {activeTab === "teachers" && (
                 <th className="px-6 py-4">{t("admin.users.table.teacherStatus", "Status")}</th>
+              )}
+              {activeTab === "admins" && (
+                <th className="px-6 py-4">{t("admin.users.table.branch", "Branch")}</th>
               )}
               <th className="px-6 py-4">{t("admin.users.table.activity", "Activity")}</th>
               <th className="px-6 py-4 text-right">{t("admin.users.table.actions", "Actions")}</th>
@@ -493,6 +522,17 @@ export default function AdminUsersPage() {
                         </span>
                       </td>
                     )}
+                    {activeTab === "admins" && (
+                      <td className="px-6 py-4">
+                        <span className="text-xs text-foreground/70">
+                          {"branchId" in item && item.branchId
+                            ? typeof item.branchId === "object" && item.branchId && "name" in item.branchId
+                              ? (item.branchId as { name: string }).name
+                              : String(item.branchId)
+                            : "—"}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <button
                         type="button"
@@ -548,7 +588,12 @@ export default function AdminUsersPage() {
             </AnimatePresence>
             {!filtered.length && (
               <tr>
-                <td colSpan={activeTab === "teachers" ? 4 : 3} className="px-6 py-12 text-center">
+                <td
+                  colSpan={
+                    activeTab === "teachers" ? 4 : activeTab === "admins" ? 4 : 3
+                  }
+                  className="px-6 py-12 text-center"
+                >
                   <div className="flex flex-col items-center gap-3">
                     <UserX className="w-12 h-12 text-foreground/30" />
                     <p className="text-sm text-foreground/60">
@@ -590,6 +635,159 @@ export default function AdminUsersPage() {
           </div>
         )}
       </motion.div>
+
+      {/* Create Admin modal (SuperAdmin only) */}
+      {createAdminOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl surface-elevated p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-primary mb-4">
+              {t("admin.users.createAdminTitle", "Create Admin")}
+            </h3>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await createAdmin({
+                    email: createAdminForm.email,
+                    password: createAdminForm.password,
+                    firstName: createAdminForm.firstName || undefined,
+                    lastName: createAdminForm.lastName || undefined,
+                    phone: createAdminForm.phone || undefined,
+                    branchId: createAdminForm.branchId || undefined,
+                  }).unwrap();
+                  pushToast({
+                    title: t("admin.users.adminCreated", "Admin created"),
+                    variant: "success",
+                  });
+                  setCreateAdminOpen(false);
+                  setCreateAdminForm({
+                    email: "",
+                    password: "",
+                    firstName: "",
+                    lastName: "",
+                    phone: "",
+                    branchId: "",
+                  });
+                } catch (err) {
+                  pushToast({
+                    title: t("admin.users.createAdminError", "Unable to create admin"),
+                    variant: "error",
+                  });
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-secondary/70 mb-1">
+                  {t("admin.users.email", "Email")} *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={createAdminForm.email}
+                  onChange={(e) =>
+                    setCreateAdminForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-secondary/70 mb-1">
+                  {t("admin.users.password", "Password")} *
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={createAdminForm.password}
+                  onChange={(e) =>
+                    setCreateAdminForm((prev) => ({ ...prev, password: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-secondary/70 mb-1">
+                    {t("admin.users.firstName", "First name")}
+                  </label>
+                  <input
+                    type="text"
+                    value={createAdminForm.firstName}
+                    onChange={(e) =>
+                      setCreateAdminForm((prev) => ({ ...prev, firstName: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-secondary/70 mb-1">
+                    {t("admin.users.lastName", "Last name")}
+                  </label>
+                  <input
+                    type="text"
+                    value={createAdminForm.lastName}
+                    onChange={(e) =>
+                      setCreateAdminForm((prev) => ({ ...prev, lastName: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-secondary/70 mb-1">
+                  {t("admin.users.phone", "Phone")}
+                </label>
+                <input
+                  type="text"
+                  value={createAdminForm.phone}
+                  onChange={(e) =>
+                    setCreateAdminForm((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-secondary/70 mb-1">
+                  {t("admin.users.branch", "Branch")}
+                </label>
+                <select
+                  value={createAdminForm.branchId}
+                  onChange={(e) =>
+                    setCreateAdminForm((prev) => ({ ...prev, branchId: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                >
+                  <option value="">{t("admin.users.noBranch", "All branches (no scope)")}</option>
+                  {branches.filter((b) => b.isActive).map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCreateAdminOpen(false)}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-secondary/10"
+                >
+                  {t("button.cancel", "Cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingAdmin}
+                  className="rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary/90 disabled:opacity-60"
+                >
+                  {isCreatingAdmin
+                    ? t("admin.users.creating", "Creating...")
+                    : t("admin.users.createAdmin", "Create Admin")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={confirmOpen}

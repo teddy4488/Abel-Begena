@@ -39,6 +39,9 @@ export class CourseTrack {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
 }
 
 export const CourseTrackSchema = SchemaFactory.createForClass(CourseTrack);

@@ -12,16 +12,20 @@ export class BranchService {
     private readonly branchModel: Model<BranchDocument>,
   ) {}
 
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
   async findAllActive() {
     return this.branchModel
-      .find({ isActive: true })
+      .find({ isActive: true, ...this.notDeletedFilter() })
       .sort({ createdAt: 1 })
       .lean()
       .exec();
   }
 
   async findAll() {
-    return this.branchModel.find().sort({ createdAt: 1 }).lean().exec();
+    return this.branchModel.find(this.notDeletedFilter()).sort({ createdAt: 1 }).lean().exec();
   }
 
   async create(dto: CreateBranchDto) {
@@ -69,8 +73,15 @@ export class BranchService {
   }
 
   async remove(id: string) {
-    const deleted = await this.branchModel.findByIdAndDelete(id).lean().exec();
-    if (!deleted) {
+    const updated = await this.branchModel
+      .findOneAndUpdate(
+        { _id: id, ...this.notDeletedFilter() },
+        { deletedAt: new Date(), isActive: false },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!updated) {
       throw new NotFoundException('Branch not found');
     }
     return { message: 'Branch removed' };

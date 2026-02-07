@@ -12,16 +12,24 @@ export class FaqService {
     private readonly faqModel: Model<FaqDocument>,
   ) {}
 
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
   findPublic() {
     return this.faqModel
-      .find({ isActive: true })
+      .find({ isActive: true, ...this.notDeletedFilter() })
       .sort({ order: 1, createdAt: 1 })
       .lean()
       .exec();
   }
 
   findAll() {
-    return this.faqModel.find().sort({ order: 1, createdAt: 1 }).lean().exec();
+    return this.faqModel
+      .find(this.notDeletedFilter())
+      .sort({ order: 1, createdAt: 1 })
+      .lean()
+      .exec();
   }
 
   async create(dto: CreateFaqDto) {
@@ -35,9 +43,10 @@ export class FaqService {
   }
 
   async update(id: string, dto: UpdateFaqDto) {
+    const notDeleted = this.notDeletedFilter();
     const updated = await this.faqModel
-      .findByIdAndUpdate(
-        id,
+      .findOneAndUpdate(
+        { _id: id, ...notDeleted },
         {
           ...(dto.question ? { question: dto.question } : {}),
           ...(dto.answer ? { answer: dto.answer } : {}),
@@ -59,8 +68,16 @@ export class FaqService {
   }
 
   async remove(id: string) {
-    const removed = await this.faqModel.findByIdAndDelete(id).lean().exec();
-    if (!removed) {
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const updated = await this.faqModel
+      .findOneAndUpdate(
+        { _id: id, ...notDeleted },
+        { deletedAt: new Date(), isActive: false },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!updated) {
       throw new NotFoundException('FAQ not found');
     }
     return { message: 'FAQ removed' };

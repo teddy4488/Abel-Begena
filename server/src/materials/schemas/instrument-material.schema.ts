@@ -24,7 +24,7 @@ export class InstrumentMaterial {
   @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson', required: false })
   lessonId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Teacher', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   uploadedBy: Types.ObjectId;
 
   @Prop({ default: Date.now })

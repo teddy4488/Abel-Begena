@@ -12,9 +12,13 @@ export class CourseTrackService {
     private readonly courseTrackModel: Model<CourseTrackDocument>,
   ) {}
 
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
   async listPublic() {
     return this.courseTrackModel
-      .find({ isActive: true })
+      .find({ isActive: true, ...this.notDeletedFilter() })
       .sort({ instrumentType: 1, level: 1, title: 1 })
       .lean()
       .exec();
@@ -22,7 +26,7 @@ export class CourseTrackService {
 
   async listManaged() {
     return this.courseTrackModel
-      .find()
+      .find(this.notDeletedFilter())
       .sort({ instrumentType: 1, level: 1, title: 1 })
       .lean()
       .exec();
@@ -32,7 +36,10 @@ export class CourseTrackService {
     if (!Types.ObjectId.isValid(id)) {
       return null;
     }
-    return this.courseTrackModel.findById(id).lean().exec();
+    return this.courseTrackModel
+      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .lean()
+      .exec();
   }
 
   async create(dto: CreateCourseTrackDto) {
@@ -81,7 +88,11 @@ export class CourseTrackService {
 
     try {
       const updated = await this.courseTrackModel
-        .findByIdAndUpdate(id, update, { new: true })
+        .findOneAndUpdate(
+          { _id: id, ...this.notDeletedFilter() },
+          update,
+          { new: true },
+        )
         .lean()
         .exec();
       if (!updated) {
@@ -102,8 +113,15 @@ export class CourseTrackService {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Course track not found');
     }
-    const removed = await this.courseTrackModel.findByIdAndDelete(id).lean().exec();
-    if (!removed) {
+    const updated = await this.courseTrackModel
+      .findOneAndUpdate(
+        { _id: id, ...this.notDeletedFilter() },
+        { deletedAt: new Date(), isActive: false },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!updated) {
       throw new NotFoundException('Course track not found');
     }
     return { message: 'Course track removed' };

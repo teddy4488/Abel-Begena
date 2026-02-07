@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type StudentAttendanceDocument = StudentAttendance & Document;
 
-export type AttendanceStatus = 'present' | 'late' | 'excused';
+export type AttendanceStatus = 'present' | 'late' | 'excused' | 'absent';
 
 @Schema({ timestamps: true })
 export class StudentAttendance {
@@ -38,7 +38,7 @@ export class StudentAttendance {
   // Attendance status
   @Prop({
     type: String,
-    enum: ['present', 'late', 'excused'],
+    enum: ['present', 'late', 'excused', 'absent'],
     default: 'present',
   })
   status: AttendanceStatus;

@@ -8,7 +8,6 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { UserService } from '../user/user.service';
-import { TeacherService } from '../teacher/teacher.service';
 import {
   TeacherAttendanceParticipant,
   TeacherAttendanceParticipantDocument,
@@ -60,7 +59,6 @@ export class AttendanceService {
     private readonly studentPaymentModel: Model<StudentPaymentDocument>,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
-    private readonly teacherService: TeacherService,
     private readonly mailService: MailService,
     private readonly studentService: StudentService,
   ) {}
@@ -160,22 +158,21 @@ export class AttendanceService {
     const generatedPassword = this.generateRandomPassword();
     const hashedPassword = await this.studentService.hashPassword(generatedPassword);
 
-    // Create teacher account
+    // Phase 5.1: Create User with role Teacher (single identity collection)
     try {
       const nameParts = dto.fullName.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
-      
-      await this.teacherService.create({
+      await this.userService.create({
         email,
         password: generatedPassword,
         firstName,
         lastName,
+        role: 'Teacher',
         teacherStatus: 'approved',
         isVerified: true,
       });
     } catch (error) {
-      // If teacher creation fails, log but continue with teacher participant creation
       console.error('Failed to create teacher account:', error);
     }
 
@@ -351,11 +348,30 @@ export class AttendanceService {
       dto.programDurationMonths,
     );
 
-    // Create student record with user's email and password
-    const userDoc = await this.userService.findByEmail(user.email);
+    // Phase 5.1: Keep User; set role Student and studentProfile; create participant with userId.
+    const userDoc = await this.userService.findByEmail((user as { email: string }).email);
+    const studentProfile = {
+      attendanceNumber,
+      fullName: dto.fullName.trim(),
+      branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
+      learningType: dto.learningType,
+      instrumentType: dto.instrumentType,
+      programDurationMonths: dto.programDurationMonths,
+      preferredLearningDays: dto.preferredLearningDays,
+      registrationStartDate: new Date(dto.registrationStartDate),
+      learningDaysPerWeek,
+      isActive: true,
+      missedLessonsCount: 0,
+    };
+    await this.userService.update(userId, {
+      role: 'Student',
+      studentProfile,
+    } as import('../user/dto/update-user.dto').UpdateUserDto);
+
     const student = await this.studentParticipantModel.create({
-      email: user.email,
-      password: userDoc?.password, // Preserve password
+      userId: new Types.ObjectId(userId),
+      email: (user as { email: string }).email,
+      password: (userDoc as { password?: string })?.password,
       fullName: dto.fullName.trim(),
       attendanceNumber,
       branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
@@ -366,11 +382,8 @@ export class AttendanceService {
       registrationStartDate: new Date(dto.registrationStartDate),
       learningDaysPerWeek,
       isActive: true,
-      isVerified: user.isVerified ?? false, // Preserve verification status
+      isVerified: (user as { isVerified?: boolean }).isVerified ?? false,
     });
-
-    // Delete user from User table
-    await this.userService.remove(userId);
 
     return {
       message: 'User converted to student successfully',
@@ -386,9 +399,14 @@ export class AttendanceService {
       .exec();
   }
 
-  async listStudentParticipants() {
+  /** Phase 5.3: optional branchFilter scopes to branch (Admin with branchId). */
+  async listStudentParticipants(branchFilter?: { branchId: string }) {
+    const filter: Record<string, unknown> = { isActive: true, deletedAt: null };
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      filter.branchId = new Types.ObjectId(branchFilter.branchId);
+    }
     return this.studentParticipantModel
-      .find({ isActive: true, deletedAt: null })
+      .find(filter)
       .populate('branchId', 'name slug')
       .sort({ fullName: 1 })
       .lean()
@@ -413,27 +431,29 @@ export class AttendanceService {
     return student;
   }
 
-  async searchStudents(query: string) {
+  /** Phase 5.3: optional branchFilter scopes to branch (Admin with branchId). */
+  async searchStudents(query: string, branchFilter?: { branchId: string }) {
     const searchTerm = query.trim();
-    // Allow 1-character searches (some attendance numbers can be single-digit)
     if (!searchTerm || searchTerm.length < 1) {
       return [];
     }
 
-    // Search by attendance number (prefix/partial match) or name (partial match)
-    // Note: attendance numbers are typically compact codes, so prefix matching is useful.
     const escapeRegExp = (value: string) =>
       value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safe = escapeRegExp(searchTerm);
+    const filter: Record<string, unknown> = {
+      isActive: true,
+      deletedAt: null,
+      $or: [
+        { attendanceNumber: { $regex: safe, $options: 'i' } },
+        { fullName: { $regex: safe, $options: 'i' } },
+      ],
+    };
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      filter.branchId = new Types.ObjectId(branchFilter.branchId);
+    }
     const students = await this.studentParticipantModel
-      .find({
-        isActive: true,
-        deletedAt: null,
-        $or: [
-          { attendanceNumber: { $regex: safe, $options: 'i' } },
-          { fullName: { $regex: safe, $options: 'i' } },
-        ],
-      })
+      .find(filter)
       .populate('branchId', 'name slug')
       .sort({ fullName: 1 })
       .limit(20)
@@ -682,6 +702,7 @@ export class AttendanceService {
       );
     }
 
+    const status = dto.status || 'present';
     const created = await this.studentAttendanceModel.create({
       participantId: participant._id,
       attendanceNumber: participant.attendanceNumber,
@@ -689,9 +710,18 @@ export class AttendanceService {
       sessionDate: now,
       lessonId: new Types.ObjectId(dto.lessonId),
       revisedLessonId,
-      status: dto.status || 'present',
+      status,
       recordedBy: new Types.ObjectId(adminUserId),
     });
+
+    if (status === 'absent') {
+      await this.studentParticipantModel
+        .updateOne(
+          { _id: participant._id },
+          { $inc: { missedLessonsCount: 1 } },
+        )
+        .exec();
+    }
 
     return created.toObject();
   }
@@ -713,6 +743,19 @@ export class AttendanceService {
     return records;
   }
 
+  /** True if payment is not paid and has a due date in the past. */
+  private isPaymentOverdue(p: { status: string; dueDate?: Date; duedate?: Date[] }): boolean {
+    if (p.status === 'paid') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (p.dueDate && new Date(p.dueDate).getTime() < today.getTime()) return true;
+    if (p.duedate?.length) {
+      const firstDue = new Date(p.duedate[0]);
+      if (firstDue.getTime() < today.getTime()) return true;
+    }
+    return false;
+  }
+
   async getStudentPayments(studentId: string) {
     const participant = await this.studentParticipantModel.findById(studentId).exec();
     if (!participant) {
@@ -725,7 +768,10 @@ export class AttendanceService {
       .lean()
       .exec();
 
-    return payments;
+    return payments.map((p) => ({
+      ...p,
+      isOverdue: this.isPaymentOverdue(p),
+    }));
   }
 
   async listInstrumentLessons(classId?: string) {
@@ -1078,6 +1124,24 @@ export class AttendanceService {
     const existing = await this.studentPaymentModel.findOne(existingQuery).exec();
 
     if (existing) {
+      // When updating to paid, ensure we don't create a duplicate paid for same month (unique index allows only one)
+      if (dto.status === 'paid' && existing.status !== 'paid') {
+        const otherPaid = await this.studentPaymentModel
+          .findOne({
+            participantId: participant._id,
+            month,
+            year,
+            status: 'paid',
+            _id: { $ne: existing._id },
+          })
+          .lean()
+          .exec();
+        if (otherPaid) {
+          throw new BadRequestException(
+            'A paid record for this student and month already exists.',
+          );
+        }
+      }
       existing.amount = dto.amount;
       existing.status = dto.status;
       existing.note = dto.note;
@@ -1125,6 +1189,24 @@ export class AttendanceService {
       }
       await existing.save();
       return existing.toObject();
+    }
+
+    // When creating a new paid record, prevent duplicate paid per participant/month/year
+    if (dto.status === 'paid') {
+      const existingPaid = await this.studentPaymentModel
+        .findOne({
+          participantId: participant._id,
+          month,
+          year,
+          status: 'paid',
+        })
+        .lean()
+        .exec();
+      if (existingPaid) {
+        throw new BadRequestException(
+          'A paid record for this student and month already exists.',
+        );
+      }
     }
 
     // Determine enrollment period automatically if not provided
@@ -1297,12 +1379,16 @@ export class AttendanceService {
     };
   }
 
-  async getOverduePayments() {
+  /** Phase 5.3: optional branchFilter scopes to branch (Admin with branchId). */
+  async getOverduePayments(branchFilter?: { branchId: string }) {
     const currentDate = new Date();
-
+    const participantFilter: Record<string, unknown> = { isActive: true };
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      participantFilter.branchId = new Types.ObjectId(branchFilter.branchId);
+    }
     const students = await this.studentParticipantModel
-      .find({ isActive: true })
-      .select('_id fullName attendanceNumber instrumentType registrationStartDate')
+      .find(participantFilter)
+      .select('_id fullName attendanceNumber instrumentType registrationStartDate email')
       .lean()
       .exec();
 
@@ -1334,6 +1420,7 @@ export class AttendanceService {
       fullName: string;
       attendanceNumber: string;
       instrumentType: string;
+      email?: string;
       year: number;
       month: number;
       dueDate: Date;
@@ -1387,6 +1474,7 @@ export class AttendanceService {
             fullName: student.fullName,
             attendanceNumber: student.attendanceNumber,
             instrumentType: student.instrumentType,
+            email: (student as { email?: string }).email,
             year: dueDate.getFullYear(),
             month: dueDate.getMonth() + 1,
             dueDate,
@@ -1491,6 +1579,47 @@ export class AttendanceService {
     return upcomingPayments;
   }
 
+  /** For payment reminders: all students with upcoming payments in the next daysAhead days, with email. */
+  async getUpcomingPaymentsForAllStudents(daysAhead: number = 7) {
+    const students = await this.studentParticipantModel
+      .find({ isActive: true })
+      .select('_id fullName email')
+      .lean()
+      .exec();
+    const result: Array<{
+      participantId: string;
+      fullName: string;
+      email: string;
+      dueDate: Date;
+      daysUntilDue: number;
+      amount?: number;
+      year: number;
+      month: number;
+    }> = [];
+    for (const student of students) {
+      const email = (student as { email?: string }).email;
+      if (!email || !email.trim()) continue;
+      try {
+        const upcoming = await this.getUpcomingPayments(String(student._id), daysAhead);
+        for (const u of upcoming) {
+          result.push({
+            participantId: String(student._id),
+            fullName: student.fullName,
+            email,
+            dueDate: u.dueDate,
+            daysUntilDue: u.daysUntilDue,
+            amount: u.amount,
+            year: u.year,
+            month: u.month,
+          });
+        }
+      } catch {
+        // skip if student lookup fails
+      }
+    }
+    return result;
+  }
+
   // Report generation
   async generateStudentAttendanceReport(studentId: string) {
     const student = await this.studentParticipantModel
@@ -1512,6 +1641,12 @@ export class AttendanceService {
       .lean()
       .exec();
 
+    const presentCount = attendanceRecords.filter((r) => r.status === 'present' || r.status === 'late').length;
+    const absentCount = attendanceRecords.filter((r) => r.status === 'absent').length;
+    const excusedCount = attendanceRecords.filter((r) => r.status === 'excused').length;
+    const total = attendanceRecords.length;
+    const attendanceRate = total > 0 ? Math.round((presentCount / total) * 100) / 100 : 0;
+
     return {
       student: {
         fullName: student.fullName,
@@ -1521,6 +1656,7 @@ export class AttendanceService {
         branch: student.branchId,
         learningType: student.learningType,
         programDurationMonths: student.programDurationMonths,
+        missedLessonsCount: (student as { missedLessonsCount?: number }).missedLessonsCount ?? 0,
       },
       attendanceRecords: attendanceRecords.map((record) => ({
         date: record.sessionDate,
@@ -1529,7 +1665,12 @@ export class AttendanceService {
         status: record.status,
         recordedBy: record.recordedBy,
       })),
-      totalSessions: attendanceRecords.length,
+      totalSessions: total,
+      presentCount,
+      absentCount,
+      excusedCount,
+      lateCount: attendanceRecords.filter((r) => r.status === 'late').length,
+      attendanceRate,
       generatedAt: new Date(),
     };
   }
@@ -1676,6 +1817,88 @@ export class AttendanceService {
       totalPayments: payments.length,
       paidCount: payments.filter((p) => p.status === 'paid').length,
       unpaidCount: payments.filter((p) => p.status === 'unpaid').length,
+      generatedAt: new Date(),
+    };
+  }
+
+  /** Admin: attendance summary for a date range (counts by status and per-student rates). */
+  async getAttendanceSummary(startDate?: Date, endDate?: Date) {
+    const query: any = {};
+    if (startDate || endDate) {
+      query.sessionDate = {};
+      if (startDate) query.sessionDate.$gte = startDate;
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.sessionDate.$lte = end;
+      }
+    }
+
+    const records = await this.studentAttendanceModel
+      .find(query)
+      .select('participantId attendanceNumber studentName status sessionDate')
+      .lean()
+      .exec();
+
+    const presentCount = records.filter((r) => r.status === 'present').length;
+    const lateCount = records.filter((r) => r.status === 'late').length;
+    const excusedCount = records.filter((r) => r.status === 'excused').length;
+    const absentCount = records.filter((r) => r.status === 'absent').length;
+    const total = records.length;
+    const attendanceRate = total > 0 ? Math.round((presentCount + lateCount) / total * 100) / 100 : 0;
+
+    const byParticipant = new Map<string, { present: number; late: number; excused: number; absent: number; total: number }>();
+    for (const r of records) {
+      const key = String(r.participantId);
+      if (!byParticipant.has(key)) {
+        byParticipant.set(key, { present: 0, late: 0, excused: 0, absent: 0, total: 0 });
+      }
+      const row = byParticipant.get(key)!;
+      row.total += 1;
+      if (r.status === 'present') row.present += 1;
+      else if (r.status === 'late') row.late += 1;
+      else if (r.status === 'excused') row.excused += 1;
+      else row.absent += 1;
+    }
+
+    const participantIds = [...byParticipant.keys()];
+    const participantObjectIds = participantIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    const participants = await this.studentParticipantModel
+      .find({ _id: { $in: participantObjectIds } })
+      .select('_id fullName attendanceNumber instrumentType')
+      .lean()
+      .exec();
+    const participantMap = new Map(participants.map((p) => [String(p._id), p]));
+
+    const studentRates = participantIds.map((id) => {
+      const row = byParticipant.get(id)!;
+      const p = participantMap.get(id);
+      const rate = row.total > 0 ? Math.round((row.present + row.late) / row.total * 100) / 100 : 0;
+      return {
+        participantId: id,
+        fullName: (p as { fullName?: string })?.fullName,
+        attendanceNumber: (p as { attendanceNumber?: string })?.attendanceNumber,
+        instrumentType: (p as { instrumentType?: string })?.instrumentType,
+        totalSessions: row.total,
+        present: row.present,
+        late: row.late,
+        excused: row.excused,
+        absent: row.absent,
+        attendanceRate: rate,
+      };
+    });
+
+    return {
+      period: { startDate: startDate ?? null, endDate: endDate ?? null },
+      totalRecords: total,
+      presentCount,
+      lateCount,
+      excusedCount,
+      absentCount,
+      overallAttendanceRate: attendanceRate,
+      studentRates: studentRates.sort((a, b) => (b.totalSessions - a.totalSessions)),
       generatedAt: new Date(),
     };
   }

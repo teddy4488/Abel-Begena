@@ -1,6 +1,6 @@
 import { IsMongoId, IsOptional, IsEnum } from 'class-validator';
 
-export type AttendanceStatus = 'present' | 'late' | 'excused';
+export type AttendanceStatus = 'present' | 'late' | 'excused' | 'absent';
 
 export class RecordStudentAttendanceDto {
   @IsMongoId()
@@ -14,6 +14,6 @@ export class RecordStudentAttendanceDto {
   revisedLessonId?: string;
 
   @IsOptional()
-  @IsEnum(['present', 'late', 'excused'])
+  @IsEnum(['present', 'late', 'excused', 'absent'])
   status?: AttendanceStatus;
 }

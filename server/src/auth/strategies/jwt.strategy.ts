@@ -7,6 +7,7 @@ type JwtPayload = {
   sub: string;
   role: string;
   userType?: 'website_user' | 'teacher' | 'admin' | 'student';
+  branchId?: string;
   exp?: number;
   iat?: number;
 };

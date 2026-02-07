@@ -26,8 +26,8 @@ export class UpdateUserDto {
   phone?: string;
 
   @IsOptional()
-  @IsIn(['User', 'Teacher', 'Admin'])
-  role?: 'User' | 'Teacher' | 'Admin';
+  @IsIn(['User', 'Teacher', 'Admin', 'Student', 'SuperAdmin'])
+  role?: 'User' | 'Teacher' | 'Admin' | 'Student' | 'SuperAdmin';
 
   @IsOptional()
   @IsBoolean()
@@ -48,4 +48,25 @@ export class UpdateUserDto {
   @IsOptional()
   @IsIn(['en', 'am'])
   languagePreference?: 'en' | 'am';
+
+  @IsOptional()
+  teacherProfile?: { teacherStatus?: 'pending' | 'approved' | 'suspended' };
+
+  @IsOptional()
+  studentProfile?: {
+    attendanceNumber?: string;
+    fullName?: string;
+    branchId?: unknown;
+    learningType?: 'physical' | 'online';
+    instrumentType?: string;
+    programDurationMonths?: 3 | 6 | 9;
+    preferredLearningDays?: string[];
+    registrationStartDate?: Date;
+    learningDaysPerWeek?: number;
+    isActive?: boolean;
+    missedLessonsCount?: number;
+  };
+
+  @IsOptional()
+  branchId?: string;
 }

@@ -418,6 +418,7 @@
   "admin.sidebar.branches": "Branches",
   "admin.sidebar.store": "Store",
   "admin.sidebar.orders": "Orders",
+  "admin.sidebar.auditLogs": "Audit log",
   "admin.sidebar.content": "Content",
   "admin.sidebar.faq": "FAQ",
   "admin.sidebar.attendance": "Attendance",

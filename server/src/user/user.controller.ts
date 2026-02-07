@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -19,7 +20,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UploadService } from '../upload/upload.service';
+import {
+  UploadService,
+  ALLOWED_IMAGE_MIMES,
+  ALLOWED_IMAGE_EXTENSIONS,
+  MAX_IMAGE_SIZE_BYTES,
+} from '../upload/upload.service';
 
 @Controller('users')
 export class UserController {
@@ -80,9 +86,17 @@ export class UserController {
     @Request() req: { user: { sub: string } },
     @UploadedFile() file: Express.Multer.File,
   ) {
+    if (!file) {
+      throw new BadRequestException('Avatar file is required');
+    }
     const avatarUrl = await this.uploadService.uploadMaterial(
       file,
       'abel-begena/avatars',
+      {
+        allowedMimeTypes: [...ALLOWED_IMAGE_MIMES],
+        allowedExtensions: [...ALLOWED_IMAGE_EXTENSIONS],
+        maxSizeBytes: MAX_IMAGE_SIZE_BYTES,
+      },
     );
     await this.userService.update(req.user.sub, { avatarUrl });
     return { avatarUrl };
@@ -100,9 +114,17 @@ export class UserController {
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    if (!file) {
+      throw new BadRequestException('Avatar file is required');
+    }
     const avatarUrl = await this.uploadService.uploadMaterial(
       file,
       'abel-begena/avatars',
+      {
+        allowedMimeTypes: [...ALLOWED_IMAGE_MIMES],
+        allowedExtensions: [...ALLOWED_IMAGE_EXTENSIONS],
+        maxSizeBytes: MAX_IMAGE_SIZE_BYTES,
+      },
     );
     await this.userService.update(id, { avatarUrl });
     return { avatarUrl };

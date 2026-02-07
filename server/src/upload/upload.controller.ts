@@ -9,7 +9,12 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UploadService } from './upload.service';
+import {
+  UploadService,
+  ALLOWED_RECEIPT_MIMES,
+  ALLOWED_RECEIPT_EXTENSIONS,
+  MAX_RECEIPT_SIZE_BYTES,
+} from './upload.service';
 
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
@@ -20,25 +25,22 @@ export class UploadController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      limits: { fileSize: MAX_RECEIPT_SIZE_BYTES },
     }),
   )
   async uploadReceipt(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('Receipt file is required');
     }
-
-    const isAllowedType =
-      file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf';
-    if (!isAllowedType) {
-      throw new BadRequestException('Receipt must be an image or PDF');
-    }
-
     const url = await this.uploadService.uploadMaterial(
       file,
       'abel-begena/receipts',
+      {
+        allowedMimeTypes: [...ALLOWED_RECEIPT_MIMES],
+        allowedExtensions: [...ALLOWED_RECEIPT_EXTENSIONS],
+        maxSizeBytes: MAX_RECEIPT_SIZE_BYTES,
+      },
     );
-
     return { url };
   }
 }

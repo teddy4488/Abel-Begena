@@ -8,7 +8,12 @@ import { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from './schemas/product.schema';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { UploadService } from '../upload/upload.service';
+import {
+  UploadService,
+  ALLOWED_IMAGE_MIMES,
+  ALLOWED_IMAGE_EXTENSIONS,
+  MAX_IMAGE_SIZE_BYTES,
+} from '../upload/upload.service';
 
 @Injectable()
 export class ProductService {
@@ -18,8 +23,14 @@ export class ProductService {
     private readonly uploadService: UploadService,
   ) {}
 
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
   async findAll(includeInactive = false) {
-    const query = includeInactive ? {} : { isActive: true };
+    const query = includeInactive
+      ? this.notDeletedFilter()
+      : { ...this.notDeletedFilter(), isActive: true };
     return this.productModel.find(query).lean().exec();
   }
 
@@ -27,7 +38,7 @@ export class ProductService {
     if (!Types.ObjectId.isValid(id)) {
       return null;
     }
-    return this.productModel.findById(id).lean().exec();
+    return this.productModel.findOne({ _id: id, ...this.notDeletedFilter() }).lean().exec();
   }
 
   async create(createProductDto: CreateProductDto) {
@@ -105,6 +116,11 @@ export class ProductService {
     const imageUrl = await this.uploadService.uploadMaterial(
       file,
       'abel-begena/products',
+      {
+        allowedMimeTypes: [...ALLOWED_IMAGE_MIMES],
+        allowedExtensions: [...ALLOWED_IMAGE_EXTENSIONS],
+        maxSizeBytes: MAX_IMAGE_SIZE_BYTES,
+      },
     );
 
     product.images = product.images ?? [];
@@ -133,11 +149,15 @@ export class ProductService {
   }
 
   async delete(id: string) {
-    const product = await this.productModel.findById(id).exec();
+    const product = await this.productModel
+      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .exec();
     if (!product) {
       throw new NotFoundException('Product not found');
     }
-    await product.deleteOne();
+    await this.productModel
+      .findByIdAndUpdate(id, { deletedAt: new Date(), isActive: false })
+      .exec();
     return { message: 'Product deleted' };
   }
 

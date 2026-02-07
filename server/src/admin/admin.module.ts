@@ -5,7 +5,6 @@ import { AdminController } from './admin.controller';
 import { Order, OrderSchema } from '../order/schemas/order.schema';
 import { User, UserSchema } from '../user/schemas/user.schema';
 import { Class, ClassSchema } from '../class/schemas/class.schema';
-import { Teacher, TeacherSchema } from '../teacher/schemas/teacher.schema';
 import {
   StudentAttendanceParticipant,
   StudentAttendanceParticipantSchema,
@@ -33,7 +32,6 @@ import {
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },
       { name: Class.name, schema: ClassSchema },
-      { name: Teacher.name, schema: TeacherSchema },
       {
         name: StudentAttendanceParticipant.name,
         schema: StudentAttendanceParticipantSchema,

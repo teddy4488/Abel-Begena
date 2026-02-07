@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -23,20 +23,25 @@ export class UserService {
     return users.map((user) => this.toSafeUser(user));
   }
 
+  /** Phase 5.1: Creates User with role User, Teacher, or Admin (single identity collection). */
   async create(createUserDto: CreateUserDto) {
-    // UserService only creates website users (role: 'User')
-    // Teachers and Admins must be created through their respective services
-    if (createUserDto.role && createUserDto.role !== 'User') {
-      throw new Error(
-        'Cannot create teachers or admins through UserService. Use TeacherService or AdminUserService instead.',
-      );
-    }
+    const role = createUserDto.role ?? 'User';
     const hashedPassword = await this.hashPassword(createUserDto.password);
-    const user = await this.userModel.create({
+    const payload: Record<string, unknown> = {
       ...createUserDto,
       password: hashedPassword,
-      role: 'User', // Always 'User' for website users
-    });
+      role,
+    };
+    if (role === 'Teacher') {
+      payload.teacherProfile = {
+        teacherStatus: createUserDto.teacherStatus ?? 'pending',
+      };
+      payload.teacherStatus = createUserDto.teacherStatus ?? 'pending'; // backward compat
+    }
+    if (role === 'Admin' && createUserDto.branchId && Types.ObjectId.isValid(createUserDto.branchId)) {
+      payload.branchId = new Types.ObjectId(createUserDto.branchId);
+    }
+    const user = await this.userModel.create(payload);
     return this.toSafeUser(user.toObject());
   }
 
@@ -151,9 +156,25 @@ export class UserService {
   async findById(id: string) {
     const user = await this.userModel
       .findOne({ _id: id, deletedAt: null })
+      .populate('branchId', 'name')
       .lean()
       .exec();
     return user ? this.toSafeUser(user) : null;
+  }
+
+  /** Phase 5.3: List Users with role Admin, optionally filtered by branchId. Include branch name. */
+  async findAdmins(branchFilter?: { branchId: string }) {
+    const filter: Record<string, unknown> = { role: 'Admin', deletedAt: null };
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      filter.branchId = new Types.ObjectId(branchFilter.branchId);
+    }
+    const admins = await this.userModel
+      .find(filter)
+      .populate('branchId', 'name')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    return admins.map((a) => this.toSafeUser(a));
   }
 
   async setRefreshToken(userId: string, refreshTokenHash: string, expiresAt: Date) {

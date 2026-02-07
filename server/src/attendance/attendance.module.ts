@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
+import { PaymentReminderService } from './payment-reminder.service';
 import { UserModule } from '../user/user.module';
-import { TeacherModule } from '../teacher/teacher.module';
 import { MailModule } from '../mail/mail.module';
 import { StudentModule } from '../student/student.module';
 import {
@@ -35,7 +35,6 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
 @Module({
   imports: [
     UserModule,
-    TeacherModule,
     MailModule,
     StudentModule,
     MongooseModule.forFeature([
@@ -56,7 +55,7 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
     ]),
   ],
   controllers: [AttendanceController],
-  providers: [AttendanceService],
+  providers: [AttendanceService, PaymentReminderService],
   exports: [AttendanceService],
 })
 export class AttendanceModule {}

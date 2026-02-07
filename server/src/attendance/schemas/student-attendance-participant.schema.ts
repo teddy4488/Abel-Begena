@@ -50,6 +50,10 @@ export class StudentAttendanceParticipant {
   @Prop({ type: Boolean, default: false })
   mustChangePassword?: boolean;
 
+  /** After Phase 5.1 consolidation: ref to User (role Student). Auth uses User; payments still keyed by participant id. */
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false, index: true })
+  userId?: Types.ObjectId;
+
   // Independent student information - no reference to User table
   @Prop({ required: true, trim: true, maxlength: 120 })
   fullName: string;
@@ -126,6 +130,10 @@ export class StudentAttendanceParticipant {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  /** Accumulated count of lessons marked absent (for reporting). */
+  @Prop({ type: Number, min: 0, default: 0 })
+  missedLessonsCount?: number;
 
   @Prop({ type: Date, required: false, default: null })
   deletedAt?: Date | null;

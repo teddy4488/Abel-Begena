@@ -32,6 +32,9 @@ export class BlogPost {
 
   @Prop()
   publishedAt?: Date;
+
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
 }
 
 export const BlogPostSchema = SchemaFactory.createForClass(BlogPost);

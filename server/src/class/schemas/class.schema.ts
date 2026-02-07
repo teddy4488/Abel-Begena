@@ -169,7 +169,7 @@ export class Class {
   })
   classType?: 'online' | 'physical' | 'both';
 
-  @Prop({ type: Types.ObjectId, ref: 'Teacher' })
+  @Prop({ type: Types.ObjectId, ref: 'User' })
   instructorId?: Types.ObjectId;
 
   @Prop()
@@ -213,6 +213,9 @@ export class Class {
 
   @Prop()
   enrollmentDeadline?: Date;
+
+  @Prop({ type: Date, required: false, default: null })
+  deletedAt?: Date | null;
 
   @Prop()
   createdAt: Date;

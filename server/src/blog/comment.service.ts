@@ -34,11 +34,16 @@ export class CommentService {
     return created.toObject();
   }
 
+  private notDeletedFilter() {
+    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  }
+
   async listPublicForPost(postId: string) {
     return this.commentModel
       .find({
         postId: new Types.ObjectId(postId),
         status: 'approved',
+        ...this.notDeletedFilter(),
       })
       .sort({ createdAt: -1 })
       .populate('authorId', 'firstName lastName email avatarUrl')
@@ -47,11 +52,12 @@ export class CommentService {
   }
 
   async listManage(search?: string) {
-    const query: Record<string, unknown> = {};
-    if (search) {
-      const regex = new RegExp(search, 'i');
-      query.$or = [{ content: regex }];
-    }
+    const query: Record<string, unknown> = {
+      $and: [
+        this.notDeletedFilter(),
+        ...(search ? [{ $or: [{ content: new RegExp(search, 'i') }] }] : []),
+      ],
+    };
     return this.commentModel
       .find(query)
       .sort({ createdAt: -1 })
@@ -66,8 +72,8 @@ export class CommentService {
       throw new BadRequestException('Invalid comment id');
     }
     const updated = await this.commentModel
-      .findByIdAndUpdate(
-        id,
+      .findOneAndUpdate(
+        { _id: id, ...this.notDeletedFilter() },
         {
           status: dto.status,
           ...(dto.note ? { note: dto.note } : {}),
@@ -88,7 +94,10 @@ export class CommentService {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid comment id');
     }
-    const comment = await this.commentModel.findById(id).lean().exec();
+    const comment = await this.commentModel
+      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .lean()
+      .exec();
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -110,26 +119,40 @@ export class CommentService {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid comment id');
     }
-    const comment = await this.commentModel.findById(id).lean().exec();
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const comment = await this.commentModel
+      .findOne({ _id: id, ...notDeleted })
+      .lean()
+      .exec();
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
-    // If userId is provided, check ownership (for user deletions)
     if (userId && comment.authorId.toString() !== userId) {
       throw new ForbiddenException('You can only delete your own comments');
     }
-    const removed = await this.commentModel.findByIdAndDelete(id).lean().exec();
-    if (!removed) {
-      throw new NotFoundException('Comment not found');
-    }
+    await this.commentModel.findByIdAndUpdate(id, { deletedAt: new Date() }).exec();
     return { message: 'Comment removed' };
   }
 
-  async deleteByPostId(postId: string): Promise<{ message: string; deletedCount: number }> {
+  async softDeleteByPostId(postId: string): Promise<{ message: string; deletedCount: number }> {
     if (!Types.ObjectId.isValid(postId)) {
       throw new BadRequestException('Invalid post id');
     }
-    const result = await this.commentModel.deleteMany({ postId: new Types.ObjectId(postId) }).exec();
-    return { message: `${result.deletedCount} comments deleted for post ${postId}`, deletedCount: result.deletedCount };
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const result = await this.commentModel
+      .updateMany(
+        { postId: new Types.ObjectId(postId), ...notDeleted },
+        { deletedAt: new Date() },
+      )
+      .exec();
+    return {
+      message: `${result.modifiedCount} comments deleted for post ${postId}`,
+      deletedCount: result.modifiedCount,
+    };
+  }
+
+  /** @deprecated Use softDeleteByPostId instead. Kept for backward compatibility. */
+  async deleteByPostId(postId: string): Promise<{ message: string; deletedCount: number }> {
+    return this.softDeleteByPostId(postId);
   }
 }
