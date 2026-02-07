@@ -159,12 +159,16 @@ export class ClassController {
   }
 
   @Get('enrollments')
-  @Roles('Admin')
+  @Roles('Admin', 'SuperAdmin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   getAllEnrollments(
     @Query('status') status?: 'active' | 'pending' | 'withdrawn',
+    @Request() req?: ExpressRequest & { user?: { role?: string; branchId?: string } },
   ) {
-    return this.classService.getAllEnrollments(status);
+    const branchFilter = req?.user?.role === 'Admin' && req?.user?.branchId
+      ? { branchId: String(req.user.branchId) }
+      : undefined;
+    return this.classService.getAllEnrollments(status, branchFilter);
   }
 
   @Get(':id/students')

@@ -704,8 +704,11 @@ export class ClassService {
     });
   }
 
-  async getAllEnrollments(status?: 'active' | 'pending' | 'withdrawn') {
-    const enrollments = await this.enrollmentService.findAll(status);
+  async getAllEnrollments(
+    status?: 'active' | 'pending' | 'withdrawn',
+    branchFilter?: { branchId: string },
+  ) {
+    const enrollments = await this.enrollmentService.findAll(status, branchFilter);
     const instructorLabel = (obj: { firstName?: string; lastName?: string } | null | undefined): string | null =>
       obj ? `${obj.firstName ?? ''} ${obj.lastName ?? ''}`.trim() || null : null;
 

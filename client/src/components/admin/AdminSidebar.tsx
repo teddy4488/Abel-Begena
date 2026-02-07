@@ -27,14 +27,14 @@ import ThemeSwitcher from "@/components/layout/ThemeSwitcher";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
 import { useI18n } from "@/components/providers/I18nProvider";
 
-const links = [
+const allLinks = [
   { href: "/admin/console", labelKey: "admin.sidebar.console", icon: LayoutDashboard },
   { href: "/admin/analytics", labelKey: "admin.sidebar.analytics", icon: BarChart3 },
   { href: "/admin/users", labelKey: "admin.sidebar.users", icon: Users },
   { href: "/admin/classes", labelKey: "admin.sidebar.classes", icon: GraduationCap },
   { href: "/admin/enrollments", labelKey: "admin.sidebar.enrollments", icon: GraduationCap },
   { href: "/admin/payments", labelKey: "admin.sidebar.payments", icon: Receipt },
-  { href: "/admin/branches", labelKey: "admin.sidebar.branches", icon: MapPin },
+  { href: "/admin/branches", labelKey: "admin.sidebar.branches", icon: MapPin, superAdminOnly: true },
   { href: "/admin/store", labelKey: "admin.sidebar.store", icon: Package2 },
   { href: "/admin/orders", labelKey: "admin.sidebar.orders", icon: Receipt },
   { href: "/admin/attendance", labelKey: "admin.sidebar.attendance", icon: CalendarDays },
@@ -125,7 +125,9 @@ export function AdminSidebar() {
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-1">
-        {links.map((link) => {
+        {allLinks
+          .filter((link) => !(link as { superAdminOnly?: boolean }).superAdminOnly || user?.role === "SuperAdmin")
+          .map((link) => {
           const Icon = link.icon;
           const active = pathname?.startsWith(link.href);
           return (

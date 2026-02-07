@@ -29,12 +29,15 @@ export class AdminUserController {
     private readonly userService: UserService,
   ) {}
 
-  /** SuperAdmin: all admins (Users with role Admin) with branch. Admin: only self. */
+  /** SuperAdmin: all admins. Branch Admin: admins of their branch. */
   @Get()
   @Roles('Admin', 'SuperAdmin')
-  async findAll(@Request() req: { user: ReqUser }) {
+  async findAll(@Request() req: { user: ReqUser & { branchId?: string } }) {
     if (req.user.role === 'SuperAdmin') {
       return this.userService.findAdmins();
+    }
+    if (req.user.role === 'Admin' && req.user.branchId) {
+      return this.userService.findAdmins({ branchId: String(req.user.branchId) });
     }
     const self = await this.userService.findById(req.user.sub);
     if (!self || (self as { role?: string }).role !== 'Admin') {

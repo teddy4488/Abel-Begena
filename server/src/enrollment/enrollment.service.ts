@@ -125,9 +125,15 @@ export class EnrollmentService {
       .exec();
   }
 
-  /** Find all enrollments with optional status filter (for admin list). */
-  async findAll(status?: 'active' | 'pending' | 'withdrawn') {
-    const filter = typeof status === 'string' ? { status } : {};
+  /** Find all enrollments with optional status and branch filter (for admin list). */
+  async findAll(
+    status?: 'active' | 'pending' | 'withdrawn',
+    branchFilter?: { branchId: string },
+  ) {
+    const filter: Record<string, unknown> = typeof status === 'string' ? { status } : {};
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      filter.branchId = new Types.ObjectId(branchFilter.branchId);
+    }
     return this.enrollmentModel
       .find(filter)
       .sort({ enrolledAt: -1 })

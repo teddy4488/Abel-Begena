@@ -9,9 +9,9 @@ export function getUserLandingRoute(
   userType?: string | null,
   role?: string | null,
 ) {
-  // SuperAdmin has dedicated area (branch admins go to /admin/console)
+  // SuperAdmin and Branch Admin both use /admin/console (role-aware sidebar)
   if (role === "SuperAdmin") {
-    return "/superadmin";
+    return "/admin/console";
   }
   const type = userType || (role === "Admin" ? "admin" : role === "Teacher" ? "teacher" : role === "Student" ? "student" : "website_user");
   switch (type) {

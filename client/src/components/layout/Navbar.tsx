@@ -76,9 +76,9 @@ const navConfig: Record<
   },
   SuperAdmin: {
     links: [
-      { labelKey: "nav.superAdminConsole", href: "/superadmin" },
-      { labelKey: "nav.branches", href: "/superadmin/branches" },
-      { labelKey: "nav.admins", href: "/superadmin/admins" },
+      { labelKey: "nav.superAdminConsole", href: "/admin/console" },
+      { labelKey: "nav.branches", href: "/admin/branches" },
+      { labelKey: "nav.admins", href: "/admin/users" },
       { labelKey: "nav.analytics", href: "/admin/analytics" },
       { labelKey: "nav.store", href: "/admin/store" },
       { labelKey: "nav.orders", href: "/admin/orders" },
@@ -100,9 +100,9 @@ const navConfig: Record<
 const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
   SuperAdmin: [
     { labelKey: "nav.profile", href: "/profile" },
-    { labelKey: "nav.superAdminConsole", href: "/superadmin" },
-    { labelKey: "nav.branches", href: "/superadmin/branches" },
-    { labelKey: "nav.admins", href: "/superadmin/admins" },
+    { labelKey: "nav.superAdminConsole", href: "/admin/console" },
+    { labelKey: "nav.branches", href: "/admin/branches" },
+    { labelKey: "nav.admins", href: "/admin/users" },
     { labelKey: "nav.store", href: "/admin/store" },
   ],
   User: [
