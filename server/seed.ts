@@ -108,7 +108,6 @@ const ClassSchema = new mongoose.Schema(
     materials: { type: [{ title: String, url: String, uploadedAt: { type: Date, default: Date.now } }], default: [] },
     isLive: { type: Boolean, default: false },
     liveRoomCode: { type: String },
-    enrollments: { type: [], default: [] },
     schedule: {
       type: [{
         _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
@@ -149,13 +148,10 @@ const EnrollmentSchema = new mongoose.Schema(
 );
 EnrollmentSchema.index({ classId: 1, studentId: 1 }, { unique: true });
 
-// ----- StudentAttendanceParticipant (with userId ref User) -----
+// ----- StudentAttendanceParticipant (with required userId ref User, no auth fields) -----
 const StudentAttendanceParticipantSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
-    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
-    password: { type: String },
-    isVerified: { type: Boolean, default: false },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     fullName: { type: String, required: true, trim: true, maxlength: 120 },
     phone: { type: String, trim: true, maxlength: 40 },
     attendanceNumber: { type: String, required: true, unique: true, trim: true, maxlength: 20, index: true },
@@ -172,12 +168,10 @@ const StudentAttendanceParticipantSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// ----- TeacherAttendanceParticipant -----
+// ----- TeacherAttendanceParticipant (with required userId ref User, no auth fields) -----
 const TeacherAttendanceParticipantSchema = new mongoose.Schema(
   {
-    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
-    password: { type: String },
-    isVerified: { type: Boolean, default: false },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     fullName: { type: String, required: true, trim: true, maxlength: 120 },
     instruments: { type: [String], enum: Object.values(InstrumentType), required: true },
     teachingDays: { type: [String], enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], required: true },
@@ -233,7 +227,6 @@ const StudentPaymentSchema = new mongoose.Schema(
     year: { type: Number, min: 2000, max: 9999, required: true },
     status: { type: String, enum: ['paid', 'partial', 'unpaid'], default: 'paid' },
     dueDate: { type: Date },
-    duedate: { type: [Date] },
     paidAt: { type: Date },
     period: { type: Number, min: 1 },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -402,7 +395,7 @@ async function seed() {
     if (mongoose.connection.db) {
       const collections = await mongoose.connection.db.listCollections().toArray();
       for (const collection of collections) {
-        await mongoose.connection.db.dropCollection(collection.name).catch(() => {});
+        await mongoose.connection.db.dropCollection(collection.name).catch(() => { });
       }
       console.log('🗑️  Dropped all existing collections');
     }

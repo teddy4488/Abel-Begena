@@ -28,7 +28,7 @@ export class RoleGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly userService: UserService,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles =
@@ -66,8 +66,7 @@ export class RoleGuard implements CanActivate {
     // When Teacher role is required, only approved teachers may access (Phase 5.1: User.teacherProfile)
     if (requiredRoles.includes('Teacher') && role === 'Teacher' && userType === 'teacher' && user.sub) {
       const u = await this.userService.findById(user.sub);
-      const status = (u as { teacherStatus?: string; teacherProfile?: { teacherStatus?: string } } | null)?.teacherProfile?.teacherStatus
-        ?? (u as { teacherStatus?: string } | null)?.teacherStatus;
+      const status = (u as { teacherProfile?: { teacherStatus?: string } } | null)?.teacherProfile?.teacherStatus;
       if (!u || status !== 'approved') {
         throw new ForbiddenException(
           'Teacher access is restricted. Your account is pending approval or has been suspended.',

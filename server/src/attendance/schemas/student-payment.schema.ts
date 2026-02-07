@@ -37,9 +37,6 @@ export class StudentPayment {
   @Prop({ type: Date })
   dueDate?: Date;
 
-  // Array of next scheduled due dates (30-day rolling schedule) starting from paidAt
-  @Prop({ type: [Date] })
-  duedate?: Date[];
 
   // When the payment was actually received
   @Prop({ type: Date })

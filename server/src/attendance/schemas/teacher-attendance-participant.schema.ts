@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { InstrumentType } from '../../product/schemas/product.schema';
 
 export type TeacherAttendanceParticipantDocument =
@@ -15,23 +15,11 @@ export interface TeachingTimeRange {
 
 @Schema({ timestamps: true })
 export class TeacherAttendanceParticipant {
-  // Authentication fields (for teachers who want to access portal)
-  @Prop({
-    unique: true,
-    sparse: true,
-    lowercase: true,
-    trim: true,
-    index: true,
-  })
-  email?: string;
+  /** Required reference to User (role Teacher). All auth handled via User collection. */
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
 
-  @Prop()
-  password?: string;
-
-  @Prop({ default: false })
-  isVerified: boolean;
-
-  // Independent teacher information - no reference to User table
+  // Independent teacher information
   @Prop({ required: true, trim: true, maxlength: 120 })
   fullName: string;
 
@@ -70,7 +58,7 @@ export class TeacherAttendanceParticipant {
     ],
     required: true,
     validate: {
-      validator: function(ranges: TeachingTimeRange[]) {
+      validator: function (ranges: TeachingTimeRange[]) {
         // Each teaching day must have a corresponding time range
         return ranges.length === this.teachingDays.length &&
           ranges.every(range => this.teachingDays.includes(range.day));

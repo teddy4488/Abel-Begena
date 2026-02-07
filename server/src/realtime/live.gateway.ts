@@ -11,6 +11,7 @@ import { Logger } from '@nestjs/common';
 import { Namespace, Socket } from 'socket.io';
 import { ClassService } from '../class/class.service';
 import { ClassDocument } from '../class/schemas/class.schema';
+import { EnrollmentService } from '../enrollment/enrollment.service';
 
 type SignalPayload = {
   targetSocketId?: string;
@@ -104,7 +105,10 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly chatHistory = new Map<string, ChatEntry[]>();
   private readonly CHAT_HISTORY_LIMIT = 200;
 
-  constructor(private readonly classService: ClassService) {}
+  constructor(
+    private readonly classService: ClassService,
+    private readonly enrollmentService: EnrollmentService,
+  ) { }
 
   handleConnection(client: LiveSocket) {
     this.logger.log(`Client connected ${client.id}`);
@@ -134,7 +138,7 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const { allowed, reason } = this.isUserAllowedInClass(
+    const { allowed, reason } = await this.isUserAllowedInClass(
       klass,
       payload.userId,
       payload.role,
@@ -194,11 +198,11 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { socketId: client.id };
   }
 
-  private isUserAllowedInClass(
+  private async isUserAllowedInClass(
     klass: ClassDocument,
     userId: string,
     role: JoinPayload['role'],
-  ): { allowed: boolean; reason?: string } {
+  ): Promise<{ allowed: boolean; reason?: string }> {
     if (!userId) {
       return { allowed: false, reason: 'Missing user id' };
     }
@@ -207,10 +211,16 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const isInstructor =
       (role === 'teacher' || role === 'admin') &&
       klass.instructorId?.toString() === userId;
-    const isEnrolled = (klass.enrollments ?? []).some(
-      (enrollment) =>
-        enrollment.student?.toString() === userId &&
-        enrollment.status === 'active',
+
+    // Check Enrollment collection for active enrollment
+    const enrollments = await this.enrollmentService.findByStudent(userId);
+    const isEnrolled = enrollments.some(
+      (enrollment: { classId?: { _id?: { toString(): string } } | { toString(): string }; status?: string }) => {
+        const classIdStr = typeof enrollment.classId === 'object' && enrollment.classId !== null
+          ? ('_id' in enrollment.classId ? enrollment.classId._id?.toString() : enrollment.classId.toString())
+          : enrollment.classId;
+        return classIdStr === (klass as unknown as { _id: { toString(): string } })._id.toString() && enrollment.status === 'active';
+      },
     );
 
     if (isAdmin || isInstructor || isEnrolled) {

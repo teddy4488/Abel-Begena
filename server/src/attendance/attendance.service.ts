@@ -38,7 +38,7 @@ import { RegisterStudentParticipantDto } from './dto/register-student-participan
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
 import { RecordStudentAttendanceDto } from './dto/record-student-attendance.dto';
 import { MailService } from '../mail/mail.service';
-import { StudentService } from '../student/student.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AttendanceService {
@@ -60,8 +60,12 @@ export class AttendanceService {
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     private readonly mailService: MailService,
-    private readonly studentService: StudentService,
-  ) {}
+  ) { }
+
+  // Helper to hash passwords
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+  }
 
   // Helpers
   private async generateAttendanceNumber(): Promise<string> {
@@ -73,17 +77,17 @@ export class AttendanceService {
       .select('attendanceNumber')
       .lean()
       .exec();
-    
+
     if (!lastStudent || !lastStudent.attendanceNumber) {
       return '1';
     }
-    
+
     // Extract numeric part and increment
     const lastNumber = parseInt(lastStudent.attendanceNumber, 10);
     if (isNaN(lastNumber)) {
       return '1';
     }
-    
+
     return (lastNumber + 1).toString();
   }
 
@@ -110,9 +114,9 @@ export class AttendanceService {
 
   private calculateLearningDaysPerWeek(programDurationMonths: 3 | 6 | 9): number {
     // 3 months = 5 days/week, 6 months = 3 days/week, 9 months = 2 days/week
-    return programDurationMonths === 3 ? 5 
-      : programDurationMonths === 6 ? 3 
-      : 2;
+    return programDurationMonths === 3 ? 5
+      : programDurationMonths === 6 ? 3
+        : 2;
   }
 
   // Participants
@@ -120,9 +124,9 @@ export class AttendanceService {
     // Validate that each teaching day has a corresponding time range
     const teachingDaysSet = new Set(dto.teachingDays);
     const timeRangeDaysSet = new Set(dto.timeRanges.map(tr => tr.day));
-    
+
     if (teachingDaysSet.size !== timeRangeDaysSet.size ||
-        ![...teachingDaysSet].every(day => timeRangeDaysSet.has(day))) {
+      ![...teachingDaysSet].every(day => timeRangeDaysSet.has(day))) {
       throw new BadRequestException(
         'Each teaching day must have a corresponding time range',
       );
@@ -134,7 +138,7 @@ export class AttendanceService {
       const [endHour, endMin] = range.endTime.split(':').map(Number);
       const startMinutes = startHour * 60 + startMin;
       const endMinutes = endHour * 60 + endMin;
-      
+
       if (endMinutes <= startMinutes) {
         throw new BadRequestException(
           `End time must be after start time for ${range.day}`,
@@ -147,44 +151,41 @@ export class AttendanceService {
     if (!email) {
       throw new BadRequestException('Email is required for teacher registration');
     }
-    
-    // Check if email already exists
-    const existing = await this.teacherParticipantModel.findOne({ email }).lean().exec();
-    if (existing) {
+
+    // Check if User with this email already exists
+    const existingUser = await this.userService.findByEmail(email);
+    if (existingUser) {
       throw new BadRequestException('Email already in use');
     }
 
-    // Generate password
+    // Generate password for the User account
     const generatedPassword = this.generateRandomPassword();
-    const hashedPassword = await this.studentService.hashPassword(generatedPassword);
 
-    // Phase 5.1: Create User with role Teacher (single identity collection)
-    try {
-      const nameParts = dto.fullName.trim().split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      await this.userService.create({
-        email,
-        password: generatedPassword,
-        firstName,
-        lastName,
-        role: 'Teacher',
-        teacherStatus: 'approved',
-        isVerified: true,
-      });
-    } catch (error) {
-      console.error('Failed to create teacher account:', error);
-    }
-
-    const created = await this.teacherParticipantModel.create({
-      fullName: dto.fullName.trim(),
+    // Create User with role Teacher (auth handled via User collection)
+    const nameParts = dto.fullName.trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    const createdUser = await this.userService.create({
       email,
-      password: hashedPassword,
+      password: generatedPassword,
+      firstName,
+      lastName,
+      role: 'Teacher',
+      teacherStatus: 'approved',
+      isVerified: true,
+    });
+
+    // Get the userId from the created User
+    const userId = (createdUser as { _id: Types.ObjectId })._id;
+
+    // Create attendance participant with userId reference (no auth fields)
+    const created = await this.teacherParticipantModel.create({
+      userId: new Types.ObjectId(userId),
+      fullName: dto.fullName.trim(),
       instruments: dto.instruments,
       teachingDays: dto.teachingDays,
       timeRanges: dto.timeRanges,
       isActive: true,
-      isVerified: true, // Auto-verify since admin is creating
     });
 
     // Send credentials email
@@ -201,7 +202,6 @@ export class AttendanceService {
 
     return {
       ...created.toObject(),
-      password: undefined, // Don't return password in response
       generatedPassword: process.env.NODE_ENV !== 'production' ? generatedPassword : undefined, // Only in dev
     };
   }
@@ -246,26 +246,54 @@ export class AttendanceService {
     if (!email) {
       throw new BadRequestException('Email is required for student registration');
     }
-    
-    // Check if email already exists
-    const existing = await this.studentParticipantModel.findOne({ email }).lean().exec();
-    if (existing) {
+
+    // Check if User with this email already exists
+    const existingUser = await this.userService.findByEmail(email);
+    if (existingUser) {
       throw new BadRequestException('Email already in use');
     }
 
-    // Generate password
+    // Generate password for User account
     const generatedPassword = this.generateRandomPassword();
-    const hashedPassword = await this.studentService.hashPassword(generatedPassword);
 
     // Validate branch for physical learning
     if (dto.learningType === 'physical' && !dto.branchId) {
       throw new BadRequestException('Branch is required for physical learning');
     }
 
-    const created = await this.studentParticipantModel.create({
-      fullName: dto.fullName.trim(),
+    // Create User with role Student (auth handled via User collection)
+    const nameParts = dto.fullName.trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    const createdUser = await this.userService.create({
       email,
-      password: hashedPassword,
+      password: generatedPassword,
+      firstName,
+      lastName,
+      role: 'Student',
+      isVerified: true,
+      studentProfile: {
+        attendanceNumber,
+        fullName: dto.fullName.trim(),
+        branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
+        learningType: dto.learningType,
+        instrumentType: dto.instrumentType,
+        programDurationMonths: dto.programDurationMonths,
+        preferredLearningDays: dto.preferredLearningDays,
+        registrationStartDate: new Date(dto.registrationStartDate),
+        learningDaysPerWeek,
+        isActive: true,
+        missedLessonsCount: 0,
+      },
+    } as any);
+
+    // Get the userId from the created User
+    const userId = (createdUser as { _id: Types.ObjectId })._id;
+
+    // Create attendance participant with userId reference (no auth fields)
+    const created = await this.studentParticipantModel.create({
+      userId: new Types.ObjectId(userId),
+      fullName: dto.fullName.trim(),
       attendanceNumber,
       phone: dto.phone?.trim(),
       emergencyContactName: dto.emergencyContactName?.trim(),
@@ -281,8 +309,6 @@ export class AttendanceService {
       registrationStartDate: new Date(dto.registrationStartDate),
       learningDaysPerWeek,
       isActive: true,
-      isVerified: true, // Auto-verify since admin is creating
-      mustChangePassword: true, // Require password change on first login
     });
 
     // Send credentials email
@@ -299,7 +325,6 @@ export class AttendanceService {
 
     return {
       ...created.toObject(),
-      password: undefined, // Don't return password in response
       generatedPassword: process.env.NODE_ENV !== 'production' ? generatedPassword : undefined, // Only in dev
     };
   }
@@ -333,9 +358,9 @@ export class AttendanceService {
       throw new NotFoundException('User not found');
     }
 
-    // Check if user already has a student record
+    // Check if user already has a student participant record
     const existingStudent = await this.studentParticipantModel
-      .findOne({ email: user.email })
+      .findOne({ userId: new Types.ObjectId(userId) })
       .lean()
       .exec();
     if (existingStudent) {
@@ -348,8 +373,7 @@ export class AttendanceService {
       dto.programDurationMonths,
     );
 
-    // Phase 5.1: Keep User; set role Student and studentProfile; create participant with userId.
-    const userDoc = await this.userService.findByEmail((user as { email: string }).email);
+    // Update User: set role Student and studentProfile
     const studentProfile = {
       attendanceNumber,
       fullName: dto.fullName.trim(),
@@ -368,10 +392,9 @@ export class AttendanceService {
       studentProfile,
     } as import('../user/dto/update-user.dto').UpdateUserDto);
 
+    // Create attendance participant with userId reference (no auth fields)
     const student = await this.studentParticipantModel.create({
       userId: new Types.ObjectId(userId),
-      email: (user as { email: string }).email,
-      password: (userDoc as { password?: string })?.password,
       fullName: dto.fullName.trim(),
       attendanceNumber,
       branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
@@ -382,7 +405,6 @@ export class AttendanceService {
       registrationStartDate: new Date(dto.registrationStartDate),
       learningDaysPerWeek,
       isActive: true,
-      isVerified: (user as { isVerified?: boolean }).isVerified ?? false,
     });
 
     return {
@@ -566,7 +588,7 @@ export class AttendanceService {
       })
       .lean()
       .exec();
-    
+
     if (openRecord) {
       throw new BadRequestException(
         'Teacher already has an open attendance session today',
@@ -579,7 +601,7 @@ export class AttendanceService {
       checkInAt: now,
       recordedBy: new Types.ObjectId(adminUserId),
     });
-    
+
     return created.toObject();
   }
 
@@ -641,7 +663,7 @@ export class AttendanceService {
     const participant = await this.studentParticipantModel
       .findById(dto.participantId)
       .exec();
-    
+
     if (!participant || !participant.isActive) {
       throw new NotFoundException('Student participant not found or inactive');
     }
@@ -655,7 +677,7 @@ export class AttendanceService {
       })
       .lean()
       .exec();
-    
+
     if (!lesson) {
       throw new BadRequestException(
         'Lesson not found for the student instrument',
@@ -673,7 +695,7 @@ export class AttendanceService {
         })
         .lean()
         .exec();
-      
+
       if (!revisedLesson) {
         throw new BadRequestException(
           'Revised lesson not found for the student instrument',
@@ -1744,21 +1766,21 @@ export class AttendanceService {
           inferredDue = match;
           dueDateInferred = true;
 
-        // 3) If still missing, but we have paidAt timestamps, infer from the earliest paidAt + 30-day multiples
+          // 3) If still missing, but we have paidAt timestamps, infer from the earliest paidAt + 30-day multiples
         } else if (payment.paidAt) {
           const idx = paidPaymentsSorted.findIndex((pp) => String(pp._id) === String(payment._id));
           if (idx >= 0 && paidPaymentsSorted.length > 0) {
             if (paidPaymentsSorted.length > 0 && paidPaymentsSorted[0].paidAt) {
-            const basePaidAt = new Date(paidPaymentsSorted[0].paidAt as Date);
-            const inferred = new Date(basePaidAt);
-            // Add 30 days per payment index (first paid = index 0 => base date, second = +30 days, etc.)
-            inferred.setDate(inferred.getDate() + idx * 30);
-            inferredDue = inferred;
-            dueDateInferred = true;
-          } else {
-            inferredDue = null;
-            dueDateInferred = false;
-          }
+              const basePaidAt = new Date(paidPaymentsSorted[0].paidAt as Date);
+              const inferred = new Date(basePaidAt);
+              // Add 30 days per payment index (first paid = index 0 => base date, second = +30 days, etc.)
+              inferred.setDate(inferred.getDate() + idx * 30);
+              inferredDue = inferred;
+              dueDateInferred = true;
+            } else {
+              inferredDue = null;
+              dueDateInferred = false;
+            }
           } else {
             inferredDue = null;
             dueDateInferred = false;

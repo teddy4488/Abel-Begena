@@ -16,7 +16,6 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { PaymentModule } from './payment/payment.module';
 import { MaterialsModule } from './materials/materials.module';
-import { CourseTrackModule } from './course-track/course-track.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -64,7 +63,6 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
     AttendanceModule,
     PaymentModule,
     MaterialsModule,
-    CourseTrackModule,
     UploadModule,
     EnrollmentModule,
   ],
@@ -77,4 +75,4 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

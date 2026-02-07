@@ -85,9 +85,7 @@ export class User {
   @Prop({ type: Date, required: false, default: null })
   verificationCodeExpiresAt?: Date;
 
-  /** @deprecated Use teacherProfile.teacherStatus (Phase 5.1 consolidation) */
-  @Prop({ enum: ['pending', 'approved', 'suspended'] })
-  teacherStatus?: 'pending' | 'approved' | 'suspended';
+
 
   @Prop({ type: TeacherProfileSchema })
   teacherProfile?: TeacherProfile;

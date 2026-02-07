@@ -11,50 +11,11 @@ export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'frida
 
 @Schema({ timestamps: true })
 export class StudentAttendanceParticipant {
-  // Authentication fields (optional - for students who want to access portal)
-  @Prop({
-    unique: true,
-    sparse: true,
-    lowercase: true,
-    trim: true,
-    index: true,
-  })
-  email?: string;
+  /** Required reference to User (role Student). All auth handled via User collection. */
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
 
-  @Prop()
-  password?: string;
-
-  @Prop({ default: false })
-  isVerified: boolean;
-
-  @Prop({ type: String, required: false, default: null })
-  verificationCode?: string;
-
-  @Prop({ type: Date, required: false, default: null })
-  verificationCodeExpiresAt?: Date;
-
-  @Prop({ type: String, required: false, default: null })
-  passwordResetCode?: string;
-
-  @Prop({ type: Date, required: false, default: null })
-  passwordResetCodeExpiresAt?: Date;
-
-  // Refresh-token session (rotated). Stored as a bcrypt hash.
-  @Prop({ type: String, required: false, default: null })
-  refreshTokenHash?: string | null;
-
-  @Prop({ type: Date, required: false, default: null })
-  refreshTokenExpiresAt?: Date | null;
-
-  // Require password change on first login
-  @Prop({ type: Boolean, default: false })
-  mustChangePassword?: boolean;
-
-  /** After Phase 5.1 consolidation: ref to User (role Student). Auth uses User; payments still keyed by participant id. */
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false, index: true })
-  userId?: Types.ObjectId;
-
-  // Independent student information - no reference to User table
+  // Independent student information
   @Prop({ required: true, trim: true, maxlength: 120 })
   fullName: string;
 

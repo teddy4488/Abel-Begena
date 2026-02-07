@@ -6,7 +6,6 @@ import { PaymentReminderService } from './payment-reminder.service';
 import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
-import { StudentModule } from '../student/student.module';
 import {
   TeacherAttendanceParticipant,
   TeacherAttendanceParticipantSchema,
@@ -38,7 +37,6 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
     UserModule,
     AuthModule,
     MailModule,
-    StudentModule,
     MongooseModule.forFeature([
       {
         name: TeacherAttendanceParticipant.name,
@@ -60,5 +58,5 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
   providers: [AttendanceService, PaymentReminderService],
   exports: [AttendanceService],
 })
-export class AttendanceModule {}
+export class AttendanceModule { }
 
