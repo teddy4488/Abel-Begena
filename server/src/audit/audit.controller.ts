@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards, Res } from '@nestjs/common';
-import { Response } from 'express';
+import * as Express from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -36,7 +36,7 @@ export class AuditController {
 
   @Get('export')
   async exportCsv(
-    @Res() res: Response,
+    @Res() res: Express.Response,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('adminId') adminId?: string,

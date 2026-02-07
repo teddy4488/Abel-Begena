@@ -32,6 +32,9 @@ export class UserService {
       password: hashedPassword,
       role,
     };
+    if (createUserDto.isVerified === true) {
+      payload.isVerified = true;
+    }
     if (role === 'Teacher') {
       payload.teacherProfile = {
         teacherStatus: createUserDto.teacherStatus ?? 'pending',

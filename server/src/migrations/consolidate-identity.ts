@@ -105,8 +105,11 @@ async function run() {
 
   // 3. StudentAttendanceParticipant (with email) -> User (role Student, studentProfile) + set participant.userId
   const participants = await ParticipantModel.find({
-    email: { $exists: true, $ne: null, $ne: '' },
-    $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+    $and: [
+      { email: { $exists: true } },
+      { email: { $nin: [null, ''] } },
+      { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] },
+    ],
   }).lean();
   for (const p of participants) {
     const email = (p as any).email?.toLowerCase?.();

@@ -513,6 +513,9 @@ export class ClassService {
       );
     }
 
+    const registrationStartDate = dto.registrationStartDate
+      ? new Date(dto.registrationStartDate)
+      : undefined;
     const createDto = {
       classId,
       studentId,
@@ -540,15 +543,18 @@ export class ClassService {
       instrumentType: dto.instrumentType,
       programDurationMonths: dto.programDurationMonths,
       preferredLearningDays: dto.preferredLearningDays,
-      registrationStartDate: dto.registrationStartDate,
+      registrationStartDate,
     };
     const enrollmentRecord = existing
-      ? await this.enrollmentService.update(classId, studentId, createDto)
+      ? await this.enrollmentService.update(classId, studentId, (() => {
+          const { classId: _cid, studentId: _sid, ...rest } = createDto;
+          return rest;
+        })())
       : await this.enrollmentService.create(createDto);
 
     return {
       message: 'Enrollment recorded',
-      enrollment: this.mapEnrollmentResponse(enrollmentRecord as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string }, classEntity),
+      enrollment: this.mapEnrollmentResponse(enrollmentRecord, classEntity),
     };
   }
 
@@ -668,10 +674,7 @@ export class ClassService {
     if (!enrollment) {
       throw new NotFoundException('Enrollment not found');
     }
-    return this.mapEnrollmentResponse(
-      enrollment as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string; preferredDaysPerWeek?: number; preferredSchedule?: string; preferredTime?: string; preferredLearningDays?: string[]; registrationStartDate?: Date; learningGoals?: string; notesForTeacher?: string },
-      classEntity as Class & { _id: Types.ObjectId },
-    );
+    return this.mapEnrollmentResponse(enrollment, classEntity as Class & { _id: Types.ObjectId });
   }
 
   async getStudentEnrollments(studentId: string) {
@@ -683,7 +686,7 @@ export class ClassService {
       const klass = enrollment.classId as { _id?: Types.ObjectId; title?: string; startDate?: Date; endDate?: Date; tuition?: number; currency?: string; enrollmentDeadline?: Date } | undefined;
       return {
         ...this.mapEnrollmentResponse(
-          enrollment as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string; preferredDaysPerWeek?: number; preferredSchedule?: string; preferredTime?: string; preferredLearningDays?: string[]; registrationStartDate?: Date; learningGoals?: string; notesForTeacher?: string },
+          enrollment,
           klass ? { _id: klass._id, currency: klass.currency } as Class & { _id: Types.ObjectId } : undefined,
         ),
         startDate: klass?.startDate ? new Date(klass.startDate).toISOString() : null,
@@ -760,10 +763,7 @@ export class ClassService {
     }
     return {
       message: 'Enrollment status updated',
-      enrollment: this.mapEnrollmentResponse(
-        updated as { status: string; amountPaid?: number; paymentMethod?: string; paymentReference?: string; currency?: string; note?: string; enrolledAt?: Date; fullName?: string; phone?: string; emergencyContactName?: string; emergencyContactPhone?: string; occupation?: string; city?: string; address?: string },
-        classEntity as Class & { _id: Types.ObjectId },
-      ),
+      enrollment: this.mapEnrollmentResponse(updated, classEntity as Class & { _id: Types.ObjectId }),
     };
   }
 
@@ -1094,13 +1094,27 @@ export class ClassService {
 
   private mapEnrollmentResponse(
     enrollment: {
-      status: 'active' | 'pending' | 'withdrawn';
+      status: string;
       amountPaid?: number;
       paymentMethod?: string;
       paymentReference?: string;
       currency?: string;
       note?: string;
       enrolledAt?: Date | string | null;
+      fullName?: string | null;
+      phone?: string | null;
+      emergencyContactName?: string | null;
+      emergencyContactPhone?: string | null;
+      occupation?: string | null;
+      city?: string | null;
+      address?: string | null;
+      preferredDaysPerWeek?: number | null;
+      preferredSchedule?: string | null;
+      preferredTime?: string | null;
+      preferredLearningDays?: string[] | null;
+      registrationStartDate?: Date | string | null;
+      learningGoals?: string | null;
+      notesForTeacher?: string | null;
     },
     classEntity?: (Class & { _id?: Types.ObjectId }) | null,
   ) {

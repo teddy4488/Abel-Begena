@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEmail,
   IsIn,
   IsOptional,
@@ -51,4 +52,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   branchId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isVerified?: boolean;
 }
