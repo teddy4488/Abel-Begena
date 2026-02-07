@@ -8,6 +8,8 @@ import {
 } from './schemas/instrument-material.schema';
 import { UploadModule } from '../upload/upload.module';
 import { Class, ClassSchema } from '../class/schemas/class.schema';
+import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
       { name: Class.name, schema: ClassSchema },
     ]),
     UploadModule,
+    AuthModule,
+    UserModule,
   ],
   controllers: [MaterialsController],
   providers: [MaterialsService],

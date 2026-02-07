@@ -14,7 +14,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetCartQuery } from "@/store/api/storeApi";
 
-type RoleKey = "guest" | "User" | "Teacher" | "Admin" | "Student";
+type RoleKey = "guest" | "User" | "Teacher" | "Admin" | "Student" | "SuperAdmin";
 type NavLink = { labelKey: string; href: string };
 
 const guestServices: NavLink[] = [
@@ -74,6 +74,17 @@ const navConfig: Record<
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
     ],
   },
+  SuperAdmin: {
+    links: [
+      { labelKey: "nav.superAdminConsole", href: "/superadmin" },
+      { labelKey: "nav.branches", href: "/superadmin/branches" },
+      { labelKey: "nav.admins", href: "/superadmin/admins" },
+      { labelKey: "nav.analytics", href: "/admin/analytics" },
+      { labelKey: "nav.store", href: "/admin/store" },
+      { labelKey: "nav.orders", href: "/admin/orders" },
+      { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
+    ],
+  },
   Student: {
     links: [
       { labelKey: "nav.studentDashboard", href: "/student" },
@@ -87,6 +98,13 @@ const navConfig: Record<
 };
 
 const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
+  SuperAdmin: [
+    { labelKey: "nav.profile", href: "/profile" },
+    { labelKey: "nav.superAdminConsole", href: "/superadmin" },
+    { labelKey: "nav.branches", href: "/superadmin/branches" },
+    { labelKey: "nav.admins", href: "/superadmin/admins" },
+    { labelKey: "nav.store", href: "/admin/store" },
+  ],
   User: [
     { labelKey: "nav.profile", href: "/profile" },
     { labelKey: "nav.dashboard", href: "/dashboard" },
@@ -135,16 +153,16 @@ export default function Navbar() {
 
   const roleKey: RoleKey = useMemo(() => {
     if (!isLoggedIn) return "guest";
-    // Use userType first, then fall back to role
+    // SuperAdmin gets dedicated nav (different from branch Admin)
+    if (user?.role === "SuperAdmin") return "SuperAdmin";
     if (user?.userType === "admin") return "Admin";
     if (user?.userType === "teacher") return "Teacher";
     if (user?.userType === "student") return "Student";
-    // Fallback to role for backward compatibility
     return (user?.role as RoleKey) || "User";
   }, [isLoggedIn, user?.userType, user?.role]);
 
   const navSettings = useMemo(() => navConfig[roleKey], [roleKey]);
-  const servicesLinks = navSettings.services ?? [];
+  const servicesLinks = navSettings?.services ?? [];
 
   const isEnglishLocale = locale === "en";
   const inkUnderlineBase =
@@ -316,7 +334,7 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-4 lg:flex">
-          {navSettings.links.map((link) => {
+          {(navSettings?.links ?? []).map((link) => {
             const isAnchorLink = link.href.startsWith("#");
             const handleClick = isAnchorLink
               ? (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -460,7 +478,7 @@ export default function Navbar() {
 
       {mobileOpen && (
         <div className="space-y-2 bg-(--color-surface-elevated) px-5 py-4 text-base font-medium uppercase text-foreground shadow-[0_-2px_8px_var(--color-primary-glow)] lg:hiddendark:bg-(--color-surface-elevated)">
-          {navSettings.links.map((link) => {
+          {(navSettings?.links ?? []).map((link) => {
             const isAnchorLink = link.href.startsWith("#");
             const handleClick = isAnchorLink
               ? (e: React.MouseEvent<HTMLAnchorElement>) => {

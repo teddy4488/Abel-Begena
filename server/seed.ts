@@ -431,18 +431,6 @@ async function seed() {
     });
     console.log('✅ Created SuperAdmin:', superAdmin.email);
 
-    const adminGlobal = await User.create({
-      email: 'admin@abelbegena.com',
-      password: hashedPassword,
-      firstName: 'Admin',
-      lastName: 'User',
-      role: 'Admin',
-      isActive: true,
-      isVerified: true,
-      // no branchId = sees all (or legacy global admin)
-    });
-    console.log('✅ Created Admin (global):', adminGlobal.email);
-
     const adminBranch = await User.create({
       email: 'admin-bole@abelbegena.com',
       password: hashedPassword,
@@ -648,7 +636,7 @@ async function seed() {
       sessionDate: now,
       lessonId: begenaLessons[0]._id,
       status: 'present',
-      recordedBy: adminGlobal._id,
+      recordedBy: superAdmin._id,
     });
     await StudentPayment.create({
       participantId: studentParticipant._id,
@@ -657,7 +645,7 @@ async function seed() {
       year: now.getFullYear(),
       status: 'paid',
       paidAt: now,
-      recordedBy: adminGlobal._id,
+      recordedBy: superAdmin._id,
       note: 'Seed tuition payment',
     });
     console.log('✅ Created student attendance and payment');
@@ -665,7 +653,6 @@ async function seed() {
     console.log('\n🎉 Phase 5 seed completed successfully!');
     console.log('\n📋 Test credentials (password for all: password123):');
     console.log('   SuperAdmin:    superadmin@abelbegena.com');
-    console.log('   Admin (global): admin@abelbegena.com');
     console.log('   Admin (Bole):   admin-bole@abelbegena.com');
     console.log('   Teacher:       teacher@abelbegena.com');
     console.log('   Website user:  user@abelbegena.com');

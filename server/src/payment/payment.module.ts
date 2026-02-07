@@ -10,6 +10,8 @@ import { ClassModule } from '../class/class.module';
 import { AttendanceModule } from '../attendance/attendance.module';
 import { Order, OrderSchema } from '../order/schemas/order.schema';
 import { ProductModule } from '../product/product.module';
+import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { ProductModule } from '../product/product.module';
     forwardRef(() => ClassModule),
     forwardRef(() => AttendanceModule),
     forwardRef(() => ProductModule),
+    AuthModule,
+    UserModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

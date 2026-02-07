@@ -25,9 +25,13 @@ import {
   StudentPayment,
   StudentPaymentSchema,
 } from '../attendance/schemas/student-payment.schema';
+import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
+    AuthModule,
+    UserModule,
     MongooseModule.forFeature([
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },

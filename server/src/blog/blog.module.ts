@@ -7,6 +7,8 @@ import { Comment, CommentSchema } from './schemas/comment.schema';
 import { CommentService } from './comment.service';
 import { CommentController } from './comment.controller';
 import { UploadModule } from '../upload/upload.module';
+import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { UploadModule } from '../upload/upload.module';
       { name: Comment.name, schema: CommentSchema },
     ]),
     UploadModule,
+    AuthModule,
+    UserModule,
   ],
   controllers: [BlogController, CommentController],
   providers: [BlogService, CommentService],

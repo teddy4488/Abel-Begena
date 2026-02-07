@@ -4,6 +4,7 @@ import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
 import { PaymentReminderService } from './payment-reminder.service';
 import { UserModule } from '../user/user.module';
+import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
 import { StudentModule } from '../student/student.module';
 import {
@@ -35,6 +36,7 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
 @Module({
   imports: [
     UserModule,
+    AuthModule,
     MailModule,
     StudentModule,
     MongooseModule.forFeature([
