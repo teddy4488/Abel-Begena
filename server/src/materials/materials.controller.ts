@@ -51,12 +51,11 @@ export class MaterialsController {
     );
   }
 
+  /** List instrument materials. Use ?classId= to restrict to a class (includes both class-scoped and lesson-scoped materials for that class). */
   @Get()
   async getMaterials(
     @Query('classId') classId?: string,
   ) {
-    // Materials are accessible to all students (public endpoint)
-    // Filter by class if provided
     return this.materialsService.getMaterialsByClass(classId);
   }
 

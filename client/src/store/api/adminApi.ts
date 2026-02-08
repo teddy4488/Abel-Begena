@@ -65,7 +65,6 @@ export type ManagedClass = ClassSummary & {
   level?: "beginner" | "advanced";
   startDate?: string;
   endDate?: string;
-  capacity?: number;
   branchId?: string | null;
   instructorId?: {
     _id: string;

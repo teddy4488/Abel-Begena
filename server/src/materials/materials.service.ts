@@ -15,6 +15,11 @@ import {
 import { InstrumentType } from '../product/schemas/product.schema';
 import { Class, ClassDocument } from '../class/schemas/class.schema';
 
+/**
+ * Instrument materials: files (PDFs, images) attached to a class and optionally to a specific lesson.
+ * These are stored in the InstrumentMaterial collection. Separate from Class.materials, which is
+ * an embedded array on the Class document (used for class-level links returned in class access).
+ */
 type AuthenticatedUser = {
   sub: string;
   role?: string;
@@ -88,6 +93,7 @@ export class MaterialsService {
     return material.toObject();
   }
 
+  /** List instrument materials, optionally filtered by class (returns class-level and lesson-level materials for that class). */
   async getMaterialsByClass(classId?: string) {
     const filter: any = { isActive: true };
     if (classId) {

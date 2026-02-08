@@ -153,6 +153,75 @@ export class MailService {
     });
   }
 
+  async sendOrderConfirmationEmail(
+    to: string,
+    fullName: string,
+    orderId: string,
+    totalAmount: number,
+    currency: string = 'ETB',
+  ) {
+    await this.sendMail({
+      to,
+      subject: 'Order confirmation – Abel Begena Conservatory',
+      html: this.renderOrderConfirmationTemplate({
+        greeting: fullName ? `Peace be with you, ${fullName}` : 'Peace be with you,',
+        intro: 'Your order has been received.',
+        orderId,
+        totalAmount,
+        currency,
+        outro: 'We will notify you when your payment is confirmed and when your order is on its way.',
+      }),
+    });
+  }
+
+  async sendPaymentApprovedEmail(
+    to: string,
+    fullName: string,
+    paymentType: string,
+    amount: number,
+    currency: string = 'ETB',
+  ) {
+    const typeLabel =
+      paymentType === 'enrollment'
+        ? 'Enrollment'
+        : paymentType === 'order'
+          ? 'Order'
+          : paymentType === 'student_monthly_fee'
+            ? 'Monthly fee'
+            : paymentType;
+    await this.sendMail({
+      to,
+      subject: 'Payment approved – Abel Begena Conservatory',
+      html: this.renderPaymentReminderTemplate({
+        greeting: fullName ? `Peace be with you, ${fullName}` : 'Peace be with you,',
+        intro: `Your ${typeLabel} payment has been approved.`,
+        amount,
+        currency,
+        outro: 'Thank you for your payment.',
+      }),
+    });
+  }
+
+  private renderOrderConfirmationTemplate(payload: {
+    greeting: string;
+    intro: string;
+    orderId: string;
+    totalAmount: number;
+    currency: string;
+    outro: string;
+  }) {
+    return `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+        <p>${payload.greeting}</p>
+        <p>${payload.intro}</p>
+        <p style="margin: 16px 0;"><strong>Order ID:</strong> ${payload.orderId}</p>
+        <p style="margin: 16px 0;"><strong>Total:</strong> ${payload.totalAmount} ${payload.currency}</p>
+        <p>${payload.outro}</p>
+        <p style="margin-top: 32px;">With gratitude,<br/>Abel Begena Conservatory</p>
+      </div>
+    `;
+  }
+
   private renderPaymentReminderTemplate(payload: {
     greeting: string;
     intro: string;

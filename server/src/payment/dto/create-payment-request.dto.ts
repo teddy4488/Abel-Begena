@@ -13,7 +13,7 @@ export class CreatePaymentRequestDto {
   @IsMongoId()
   userId: string;
 
-  @IsEnum(['enrollment', 'order', 'tuition', 'student_conversion', 'student_monthly_fee'])
+  @IsEnum(['enrollment', 'order', 'student_monthly_fee'])
   type: PaymentRequestType;
 
   @IsOptional()
@@ -49,6 +49,6 @@ export class CreatePaymentRequestDto {
 
   @IsOptional()
   @IsString()
-  conversionData?: string; // JSON string for student_conversion type
+  conversionData?: string; // JSON string for enrollment (e.g. student profile for convertUserToStudent)
 }
 

@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { CreateFaqDto } from './dto/create-faq.dto';
 import { UpdateFaqDto } from './dto/update-faq.dto';
 import { Faq, FaqDocument } from './schemas/faq.schema';
+import { notDeletedFilter } from '../common/filters/not-deleted.filter';
 
 @Injectable()
 export class FaqService {
@@ -12,13 +13,9 @@ export class FaqService {
     private readonly faqModel: Model<FaqDocument>,
   ) {}
 
-  private notDeletedFilter() {
-    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-  }
-
   findPublic() {
     return this.faqModel
-      .find({ isActive: true, ...this.notDeletedFilter() })
+      .find({ isActive: true, ...notDeletedFilter() })
       .sort({ order: 1, createdAt: 1 })
       .lean()
       .exec();
@@ -26,7 +23,7 @@ export class FaqService {
 
   findAll() {
     return this.faqModel
-      .find(this.notDeletedFilter())
+      .find(notDeletedFilter())
       .sort({ order: 1, createdAt: 1 })
       .lean()
       .exec();
@@ -43,7 +40,7 @@ export class FaqService {
   }
 
   async update(id: string, dto: UpdateFaqDto) {
-    const notDeleted = this.notDeletedFilter();
+    const notDeleted = notDeletedFilter();
     const updated = await this.faqModel
       .findOneAndUpdate(
         { _id: id, ...notDeleted },

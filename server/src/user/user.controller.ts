@@ -26,6 +26,7 @@ import {
   ALLOWED_IMAGE_EXTENSIONS,
   MAX_IMAGE_SIZE_BYTES,
 } from '../upload/upload.service';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('users')
 export class UserController {
@@ -105,6 +106,7 @@ export class UserController {
   @Post(':id/avatar')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'user_avatar', resource: 'user', resourceIdParam: 'id' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -140,6 +142,7 @@ export class UserController {
   @Post()
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'user_create', resource: 'user' })
   create(@Body() dto: CreateUserDto) {
     // Only allow creating website users (role: 'User')
     // Teachers and Admins must be created through their respective endpoints
@@ -154,6 +157,7 @@ export class UserController {
   @Patch(':id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'user_update', resource: 'user', resourceIdParam: 'id' })
   updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.userService.update(id, dto);
   }
@@ -161,6 +165,7 @@ export class UserController {
   @Delete(':id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'user_remove', resource: 'user', resourceIdParam: 'id' })
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }

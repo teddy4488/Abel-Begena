@@ -45,7 +45,6 @@ const emptyForm = {
   instructorId: "",
   startDate: "",
   endDate: "",
-  capacity: "",
   tuition: "",
   currency: "ETB",
   enrollmentDeadline: "",
@@ -130,9 +129,6 @@ export default function AdminClassesPage() {
         "Branch is required for physical classes.",
       );
     }
-    if (form.capacity && Number(form.capacity) < 0) {
-      next.capacity = t("admin.classes.errors.capacityInvalid", "Capacity must be zero or higher.");
-    }
     if (form.tuition && Number(form.tuition) < 0) {
       next.tuition = t("admin.classes.errors.tuitionInvalid", "Tuition must be zero or higher.");
     }
@@ -155,7 +151,6 @@ export default function AdminClassesPage() {
       instructorId: form.instructorId || undefined,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
-      capacity: form.capacity ? Number(form.capacity) : undefined,
       tuition: form.tuition ? Number(form.tuition) : undefined,
       currency: form.currency || undefined,
       enrollmentDeadline: form.enrollmentDeadline || undefined,
@@ -200,7 +195,6 @@ export default function AdminClassesPage() {
       instructorId: klass.instructorId?._id ?? "",
       startDate: klass.startDate ? klass.startDate.slice(0, 10) : "",
       endDate: klass.endDate ? klass.endDate.slice(0, 10) : "",
-      capacity: (klass.capacity ?? "").toString(),
       tuition: (klass.tuition ?? "").toString(),
       currency: klass.currency ?? "ETB",
       enrollmentDeadline: klass.enrollmentDeadline
@@ -1502,24 +1496,6 @@ export default function AdminClassesPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
-                {t("admin.classes.form.capacity", "Capacity")}
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={form.capacity}
-                onChange={(e) => setForm((prev) => ({ ...prev, capacity: e.target.value }))}
-                placeholder={t("admin.classes.form.capacityPlaceholder", "Max students")}
-                className={`w-full rounded-2xl  card-elevated70 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
-                  fieldErrors.capacity ? "border-red-400" : ""
-                }`}
-              />
-              {fieldErrors.capacity && (
-                <p className="mt-1 text-xs text-red-500">{fieldErrors.capacity}</p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("admin.classes.form.tuition", "Tuition")}
               </label>
               <input
@@ -1704,7 +1680,6 @@ export default function AdminClassesPage() {
                       ? new Date(klass.endDate).toLocaleDateString()
                       : "TBD"}
                   </span>
-                  <span>Capacity: {klass.capacity ?? "∞"}</span>
                   <span>
                     Tuition:{" "}
                     {klass.tuition

@@ -22,6 +22,9 @@ import {
   OrderStatus,
 } from '../order/schemas/order.schema';
 import { ProductService } from '../product/product.service';
+import { notDeletedFilter } from '../common/filters/not-deleted.filter';
+import { MailService } from '../mail/mail.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class PaymentService {
@@ -36,11 +39,9 @@ export class PaymentService {
     private readonly attendanceService: AttendanceService,
     @Inject(forwardRef(() => ProductService))
     private readonly productService: ProductService,
+    private readonly mailService: MailService,
+    private readonly userService: UserService,
   ) {}
-
-  private notDeletedFilter() {
-    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-  }
 
   async create(dto: Omit<CreatePaymentRequestDto, 'userId'>, userId: string) {
     // Idempotency: avoid creating duplicates for the same user/type/target while still pending
@@ -51,7 +52,7 @@ export class PaymentService {
         type: dto.type,
         ...(normalizedTargetId ? { targetId: normalizedTargetId } : {}),
         status: 'pending' as PaymentRequestStatus,
-        ...this.notDeletedFilter(),
+        ...notDeletedFilter(),
       })
       .lean()
       .exec();
@@ -78,13 +79,12 @@ export class PaymentService {
 
   async submitStudentMonthlyPayment(
     dto: import('./dto/submit-student-monthly-payment.dto').SubmitStudentMonthlyPaymentDto,
-    studentParticipantId: string,
+    userId: string,
   ) {
-    // Verify student exists by checking if they have payment records
-    // (this validates the student participant ID)
+    // userId is the authenticated user's ID (JWT sub). Resolve student and validate.
     let existingPayments;
     try {
-      existingPayments = await this.attendanceService.getStudentPayments(studentParticipantId);
+      existingPayments = await this.attendanceService.getStudentPayments(userId);
     } catch (error) {
       throw new NotFoundException('Student not found');
     }
@@ -101,14 +101,14 @@ export class PaymentService {
     }
 
     // Check for existing pending payment request
+    const conversionData = JSON.stringify({ month: dto.month, year: dto.year });
     const existingRequest = await this.paymentModel
       .findOne({
-        userId: new Types.ObjectId(studentParticipantId),
+        userId: new Types.ObjectId(userId),
         type: 'student_monthly_fee',
-        targetId: new Types.ObjectId(studentParticipantId),
         status: 'pending' as PaymentRequestStatus,
-        conversionData: JSON.stringify({ month: dto.month, year: dto.year }),
-        ...this.notDeletedFilter(),
+        conversionData,
+        ...notDeletedFilter(),
       })
       .lean()
       .exec();
@@ -119,16 +119,10 @@ export class PaymentService {
       );
     }
 
-    // Create payment request
-    const conversionData = JSON.stringify({
-      month: dto.month,
-      year: dto.year,
-    });
-
+    // Create payment request (userId only; participant resolved on approval)
     const created = await this.paymentModel.create({
-      userId: new Types.ObjectId(studentParticipantId),
+      userId: new Types.ObjectId(userId),
       type: 'student_monthly_fee',
-      targetId: new Types.ObjectId(studentParticipantId),
       amount: dto.amount,
       currency: 'ETB',
       method: 'offline',
@@ -144,14 +138,14 @@ export class PaymentService {
 
   async listForUser(userId: string) {
     return this.paymentModel
-      .find({ userId: new Types.ObjectId(userId), ...this.notDeletedFilter() })
+      .find({ userId: new Types.ObjectId(userId), ...notDeletedFilter() })
       .sort({ createdAt: -1 })
       .lean()
       .exec();
   }
 
   async listPending(type?: string) {
-    const filter: any = { status: 'pending' as PaymentRequestStatus, ...this.notDeletedFilter() };
+    const filter: any = { status: 'pending' as PaymentRequestStatus, ...notDeletedFilter() };
     if (type) {
       filter.type = type;
     }
@@ -165,7 +159,7 @@ export class PaymentService {
 
   async updateStatus(dto: UpdatePaymentStatusDto, adminUserId: string) {
     const payment = await this.paymentModel
-      .findOne({ _id: dto.id, ...this.notDeletedFilter() })
+      .findOne({ _id: dto.id, ...notDeletedFilter() })
       .exec();
     if (!payment) {
       throw new NotFoundException('Payment request not found');
@@ -258,7 +252,7 @@ export class PaymentService {
     ) {
       try {
         const order = await this.orderModel
-          .findOne({ _id: payment.targetId, ...this.notDeletedFilter() })
+          .findOne({ _id: payment.targetId, ...notDeletedFilter() })
           .exec();
         if (order) {
           // If stock wasn't reserved at checkout (offline payments), reserve it now.
@@ -292,7 +286,7 @@ export class PaymentService {
     ) {
       try {
         const order = await this.orderModel
-          .findOne({ _id: payment.targetId, ...this.notDeletedFilter() })
+          .findOne({ _id: payment.targetId, ...notDeletedFilter() })
           .exec();
         if (order) {
           order.isPaid = false;
@@ -308,68 +302,53 @@ export class PaymentService {
       }
     }
 
-    // If approved and type is student_conversion, trigger user-to-student conversion
-    if (
-      dto.status === 'approved' &&
-      payment.type === 'student_conversion' &&
-      payment.userId &&
-      payment.conversionData
-    ) {
+    // If approved and type is student_monthly_fee, resolve participant by userId and update student payment record
+    if (dto.status === 'approved' && payment.type === 'student_monthly_fee') {
       try {
-        const conversionData = JSON.parse(payment.conversionData);
-        await this.attendanceService.convertUserToStudent(
-          payment.userId.toString(),
-          conversionData,
-        );
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'Failed to convert user to student after payment approval:',
-          error,
-        );
-        // Don't throw - payment is already approved, conversion can be done manually
-      }
-    }
-
-    // If approved and type is student_monthly_fee, update student payment record
-    if (
-      dto.status === 'approved' &&
-      payment.type === 'student_monthly_fee' &&
-      payment.targetId
-    ) {
-      try {
-        let month: number;
-        let year: number;
-        if (payment.conversionData) {
-          const metadata = JSON.parse(payment.conversionData);
-          month = metadata.month;
-          year = metadata.year;
+        const participantId =
+          await this.attendanceService.getParticipantIdByUserId(
+            payment.userId.toString(),
+          );
+        if (!participantId) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            'Student monthly fee approved but no participant found for user',
+            payment.userId.toString(),
+          );
         } else {
-          const now = new Date();
-          month = now.getMonth() + 1;
-          year = now.getFullYear();
+          let month: number;
+          let year: number;
+          if (payment.conversionData) {
+            const metadata = JSON.parse(payment.conversionData);
+            month = metadata.month;
+            year = metadata.year;
+          } else {
+            const now = new Date();
+            month = now.getMonth() + 1;
+            year = now.getFullYear();
+          }
+
+          const next =
+            await this.attendanceService.getNextUnpaidDueDateInMonthYear(
+              participantId,
+              month,
+              year,
+            );
+
+          await this.attendanceService.recordStudentPayment(
+            {
+              participantId,
+              amount: payment.amount,
+              month,
+              year,
+              status: 'paid',
+              period: next?.period,
+              note: `Payment approved via receipt submission. ${payment.reviewNote || ''}`.trim(),
+              receiptUrl: payment.receiptUrl,
+            },
+            adminUserId,
+          );
         }
-
-        // Resolve due date for 30-day rolling schedule (next unpaid period in that month/year)
-        const next = await this.attendanceService.getNextUnpaidDueDateInMonthYear(
-          payment.targetId.toString(),
-          month,
-          year,
-        );
-
-        await this.attendanceService.recordStudentPayment(
-          {
-            participantId: payment.targetId.toString(),
-            amount: payment.amount,
-            month,
-            year,
-            status: 'paid',
-            period: next?.period,
-            note: `Payment approved via receipt submission. ${payment.reviewNote || ''}`.trim(),
-            receiptUrl: payment.receiptUrl,
-          },
-          adminUserId,
-        );
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(
@@ -380,12 +359,8 @@ export class PaymentService {
       }
     }
 
-    // If rejected and type is student_monthly_fee, optionally mark payment as unpaid
-    if (
-      dto.status === 'rejected' &&
-      payment.type === 'student_monthly_fee' &&
-      payment.targetId
-    ) {
+    // If rejected and type is student_monthly_fee, log for admin awareness
+    if (dto.status === 'rejected' && payment.type === 'student_monthly_fee') {
       try {
         let month: number;
         let year: number;
@@ -398,12 +373,9 @@ export class PaymentService {
           month = now.getMonth() + 1;
           year = now.getFullYear();
         }
-
-        // Optionally update payment status to unpaid (or leave as is)
-        // For now, we'll just log it - the admin can manually update if needed
         // eslint-disable-next-line no-console
         console.log(
-          `Student monthly payment rejected for participant ${payment.targetId}, month ${month}/${year}`,
+          `Student monthly payment rejected for user ${payment.userId}, month ${month}/${year}`,
         );
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -411,6 +383,44 @@ export class PaymentService {
           'Failed to process student monthly fee rejection:',
           error,
         );
+      }
+    }
+
+    if (dto.status === 'approved') {
+      try {
+        const user = await this.userService.findById(payment.userId.toString());
+        if (user?.email) {
+          const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
+          await this.mailService.sendPaymentApprovedEmail(
+            user.email,
+            fullName,
+            payment.type,
+            payment.amount,
+            payment.currency ?? 'ETB',
+          );
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to send payment approved email:', e);
+      }
+    }
+
+    if (dto.status === 'approved') {
+      try {
+        const user = await this.userService.findById(payment.userId.toString());
+        if (user?.email) {
+          const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
+          await this.mailService.sendPaymentApprovedEmail(
+            user.email,
+            fullName,
+            payment.type,
+            payment.amount,
+            payment.currency ?? 'ETB',
+          );
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to send payment approved email:', e);
       }
     }
 

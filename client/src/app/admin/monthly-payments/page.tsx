@@ -41,7 +41,7 @@ export default function AdminMonthlyPaymentsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStudentId, setPaymentStudentId] = useState<string>("");
   const [paymentAmount, setPaymentAmount] = useState<string>("0");
-  const [paymentStatus, setPaymentStatus] = useState<"paid" | "partial" | "unpaid">("paid");
+  const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">("paid");
   const [paymentNote, setPaymentNote] = useState<string>("");
   const [overdueSearch, setOverdueSearch] = useState<string>("");
   const [overdueDaysFilter, setOverdueDaysFilter] = useState<string>("all");
@@ -72,7 +72,6 @@ export default function AdminMonthlyPaymentsPage() {
 
   const billingItems = billingSummary?.items ?? [];
   const unpaidCount = billingSummary?.unpaidCount ?? 0;
-  const partialCount = billingSummary?.partialCount ?? 0;
   const paidCount = billingSummary?.paidCount ?? 0;
 
   useEffect(() => {
@@ -392,16 +391,6 @@ export default function AdminMonthlyPaymentsPage() {
 
             <div className="rounded-2xl surface-elevated p-4 shadow-lg">
               <div className="flex items-center gap-3 mb-2">
-                <Clock className="h-5 w-5 text-yellow-600" />
-                <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
-                  {t("monthlyPayments.partial", "Partial")}
-                </p>
-              </div>
-              <p className="text-2xl font-bold text-yellow-600">{partialCount}</p>
-            </div>
-
-            <div className="rounded-2xl surface-elevated p-4 shadow-lg">
-              <div className="flex items-center gap-3 mb-2">
                 <DollarSign className="h-5 w-5 text-secondary" />
                 <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
                   {t("monthlyPayments.unpaid", "Unpaid")}
@@ -544,9 +533,7 @@ export default function AdminMonthlyPaymentsPage() {
                 const statusColor =
                   item.status === "paid"
                     ? "bg-green-500/10 text-green-600"
-                    : item.status === "partial"
-                      ? "bg-amber-500/10 text-amber-600"
-                      : "bg-red-500/10 text-red-600";
+                    : "bg-red-500/10 text-red-600";
                 return (
                   <div
                     key={item.participantId}
@@ -562,9 +549,7 @@ export default function AdminMonthlyPaymentsPage() {
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
                         {item.status === "paid"
                           ? t("monthlyPayments.status.paid", "Paid")
-                          : item.status === "partial"
-                            ? t("monthlyPayments.status.partial", "Partial")
-                            : t("monthlyPayments.status.unpaid", "Unpaid")}
+                          : t("monthlyPayments.status.unpaid", "Unpaid")}
                       </span>
                       <button
                         type="button"
@@ -990,12 +975,11 @@ export default function AdminMonthlyPaymentsPage() {
                   <select
                     value={paymentStatus}
                     onChange={(e) =>
-                      setPaymentStatus(e.target.value as "paid" | "partial" | "unpaid")
+                      setPaymentStatus(e.target.value as "paid" | "unpaid")
                     }
                     className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
                   >
                     <option value="paid">{t("monthlyPayments.status.paid", "Paid")}</option>
-                    <option value="partial">{t("monthlyPayments.status.partial", "Partial")}</option>
                     <option value="unpaid">{t("monthlyPayments.status.unpaid", "Unpaid")}</option>
                   </select>
                 </div>

@@ -30,6 +30,7 @@ import { UpdateScheduleItemDto } from './dto/update-schedule-item.dto';
 import { EnrollClassDto } from './dto/enroll-class.dto';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
 import { Request as ExpressRequest } from 'express';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('classes')
 export class ClassController {
@@ -66,6 +67,7 @@ export class ClassController {
   @Post()
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'class_create', resource: 'class' })
   createClass(@Body() dto: CreateClassDto) {
     return this.classService.createClass(dto);
   }
@@ -73,6 +75,7 @@ export class ClassController {
   @Patch(':id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'class_update', resource: 'class', resourceIdParam: 'id' })
   updateClass(@Param('id') id: string, @Body() dto: UpdateClassDto) {
     return this.classService.updateClass(id, dto);
   }
@@ -80,6 +83,7 @@ export class ClassController {
   @Delete(':id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'class_remove', resource: 'class', resourceIdParam: 'id' })
   removeClass(@Param('id') id: string) {
     return this.classService.removeClass(id);
   }
@@ -87,6 +91,7 @@ export class ClassController {
   @Patch(':id/instructor/:instructorId')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'class_assign_instructor', resource: 'class', resourceIdParam: 'id' })
   assignInstructor(
     @Param('id') id: string,
     @Param('instructorId') instructorId: string,

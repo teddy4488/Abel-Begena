@@ -14,6 +14,7 @@ import {
   ALLOWED_IMAGE_EXTENSIONS,
   MAX_IMAGE_SIZE_BYTES,
 } from '../upload/upload.service';
+import { notDeletedFilter } from '../common/filters/not-deleted.filter';
 
 @Injectable()
 export class ProductService {
@@ -23,14 +24,10 @@ export class ProductService {
     private readonly uploadService: UploadService,
   ) {}
 
-  private notDeletedFilter() {
-    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-  }
-
   async findAll(includeInactive = false) {
     const query = includeInactive
-      ? this.notDeletedFilter()
-      : { ...this.notDeletedFilter(), isActive: true };
+      ? notDeletedFilter()
+      : { ...notDeletedFilter(), isActive: true };
     return this.productModel.find(query).lean().exec();
   }
 
@@ -38,7 +35,7 @@ export class ProductService {
     if (!Types.ObjectId.isValid(id)) {
       return null;
     }
-    return this.productModel.findOne({ _id: id, ...this.notDeletedFilter() }).lean().exec();
+    return this.productModel.findOne({ _id: id, ...notDeletedFilter() }).lean().exec();
   }
 
   async create(createProductDto: CreateProductDto) {
@@ -150,7 +147,7 @@ export class ProductService {
 
   async delete(id: string) {
     const product = await this.productModel
-      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .findOne({ _id: id, ...notDeletedFilter() })
       .exec();
     if (!product) {
       throw new NotFoundException('Product not found');

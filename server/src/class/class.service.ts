@@ -121,7 +121,6 @@ export class ClassService {
     const payload: Partial<Class> = {
       title: dto.title,
       description: dto.description,
-      capacity: dto.capacity,
       instrumentType: dto.instrumentType,
       level: dto.level ?? 'beginner',
     };
@@ -201,10 +200,6 @@ export class ClassService {
       }
     }
 
-    if (typeof dto.capacity === 'number') {
-      update.capacity = dto.capacity;
-    }
-
     if (dto.startDate) {
       update.startDate = new Date(dto.startDate);
     }
@@ -282,7 +277,7 @@ export class ClassService {
       .sort({ createdAt: -1 })
       .limit(limit)
       .select(
-        'title description startDate endDate tuition currency capacity enrollmentDeadline instructorId instrumentType level classType',
+        'title description startDate endDate tuition currency enrollmentDeadline instructorId instrumentType level classType',
       )
       .populate('instructorId', 'firstName lastName')
       .lean()
@@ -312,7 +307,6 @@ export class ClassService {
         description: klass.description ?? null,
         tuition: klass.tuition ?? 0,
         currency: klass.currency ?? 'ETB',
-        capacity: klass.capacity ?? null,
         enrollmentDeadline,
         enrollmentCount,
         instructorName,
@@ -452,16 +446,7 @@ export class ClassService {
       throw new BadRequestException('Enrollment period has ended');
     }
 
-    const activeCount = await this.enrollmentService.countActiveByClass(classId);
     const existing = await this.enrollmentService.findOne(classId, studentId);
-
-    if (
-      classEntity.capacity &&
-      activeCount >= classEntity.capacity &&
-      !existing
-    ) {
-      throw new BadRequestException('This class has reached capacity');
-    }
 
     if (
       typeof classEntity.tuition === 'number' &&
@@ -1061,7 +1046,6 @@ export class ClassService {
         tuition: klass.tuition ?? 0,
         currency: klass.currency ?? 'ETB',
         enrollmentDeadline,
-        capacity: klass.capacity ?? null,
         enrollmentCount,
         myEnrollment: myEnrollment
           ? {

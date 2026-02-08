@@ -16,6 +16,10 @@ export class TeacherAttendance {
   @Prop({ type: Date, required: true })
   checkInAt: Date;
 
+  /** Calendar date of the session (start of day); used for reporting and daily grouping. */
+  @Prop({ type: Date, required: false })
+  sessionDate?: Date;
+
   @Prop({ type: Date })
   checkOutAt?: Date;
 

@@ -9,7 +9,7 @@ type StudentPaymentRow = {
   month: number;
   year: number;
   amount?: number;
-  status: "paid" | "partial" | "unpaid";
+  status: "paid" | "unpaid";
   dueDate?: string | null;
   dueDateInferred?: boolean;
   duedate?: string[];

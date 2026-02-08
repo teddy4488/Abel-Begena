@@ -7,8 +7,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetBranchesQuery } from "@/store/api/branchApi";
-import { useConvertUserToStudentMutation } from "@/store/api/attendanceApi";
-import { useCreatePaymentRequestMutation } from "@/store/api/paymentApi";
+import { useGetPublicClassesQuery, useEnrollInClassWithReceiptMutation } from "@/store/api/classApi";
 import { InstrumentType } from "@/store/api/storeApi";
 import { Loader2, Calendar, Clock, MapPin, Music, GraduationCap, User, Phone, Home, Briefcase, Users } from "lucide-react";
 // PasswordInput not needed in this form
@@ -44,8 +43,8 @@ export default function BecomeStudentPage() {
   const { t } = useI18n();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const { data: branches = [] } = useGetBranchesQuery();
-  const [, { isLoading: isConverting }] = useConvertUserToStudentMutation();
-  const [createPayment, { isLoading: isCreatingPayment }] = useCreatePaymentRequestMutation();
+  const { data: publicClasses = [] } = useGetPublicClassesQuery();
+  const [enrollWithReceipt, { isLoading: isCreatingPayment }] = useEnrollInClassWithReceiptMutation();
 
   const [form, setForm] = useState({
     // Student info
@@ -72,6 +71,9 @@ export default function BecomeStudentPage() {
     paymentMethod: "BankTransfer",
     paymentReference: "",
     note: "",
+    // Class enrollment (required for enrollment flow)
+    classId: "",
+    receiptFile: null as File | null,
   });
 
   const expectedDays = useMemo(() => {
@@ -161,49 +163,59 @@ export default function BecomeStudentPage() {
       return;
     }
 
+    if (!form.classId) {
+      pushToast({
+        title: t("becomeStudent.error", "Validation error"),
+        description: t("becomeStudent.classRequired", "Please select a class to enroll in"),
+        variant: "error",
+      });
+      return;
+    }
+
+    if (!form.receiptFile) {
+      pushToast({
+        title: t("becomeStudent.error", "Validation error"),
+        description: t("becomeStudent.receiptRequired", "Please upload your payment receipt"),
+        variant: "error",
+      });
+      return;
+    }
+
     try {
-      // Prepare conversion data
-      const conversionData = {
+      // Enroll in class with receipt; backend creates enrollment + payment request (type: enrollment) with conversionData
+      const payload = {
+        amount: form.amount,
+        currency: form.currency,
+        paymentMethod: form.paymentMethod,
+        paymentReference: form.paymentReference,
+        note: form.note || undefined,
         fullName: form.fullName,
-        branchId: form.learningType === "physical" ? form.branchId : undefined,
-        learningType: form.learningType,
-        instrumentType: form.instrumentType,
-        programDurationMonths: form.programDurationMonths,
-        preferredLearningDays: form.preferredLearningDays,
-        registrationStartDate: form.registrationStartDate,
-        preferredSchedule: form.preferredSchedule || undefined,
         phone: form.phone || undefined,
         emergencyContactName: form.emergencyContactName || undefined,
         emergencyContactPhone: form.emergencyContactPhone || undefined,
         occupation: form.occupation || undefined,
         city: form.city || undefined,
         address: form.address || undefined,
-        amount: form.amount,
-        currency: form.currency,
-        paymentMethod: form.paymentMethod,
-        paymentReference: form.paymentReference,
-        note: form.note || undefined,
+        preferredSchedule: form.preferredSchedule || undefined,
+        learningType: form.learningType,
+        branchId: form.learningType === "physical" ? form.branchId : undefined,
+        instrumentType: form.instrumentType,
+        programDurationMonths: form.programDurationMonths,
+        preferredLearningDays: form.preferredLearningDays,
+        registrationStartDate: form.registrationStartDate,
       };
 
-      // Create payment request with conversion data
-      await createPayment({
-        type: "student_conversion",
-        amount: form.amount,
-        currency: form.currency,
-        method: form.paymentMethod,
-        reference: form.paymentReference,
-        reviewNote: form.note || undefined,
-        conversionData: JSON.stringify(conversionData),
+      await enrollWithReceipt({
+        classId: form.classId,
+        payload,
+        receipt: form.receiptFile,
       }).unwrap();
 
-      // Then convert user to student (this will be pending until admin approves payment)
-      // For now, we'll just create the payment request and show a message
-      // The actual conversion will happen when admin approves the payment
       pushToast({
         title: t("becomeStudent.submitted", "Application submitted"),
         description: t(
           "becomeStudent.pendingReview",
-          "Your student application has been submitted. An admin will review your payment and complete your registration."
+          "Your enrollment has been submitted. An admin will review your payment receipt and complete your registration."
         ),
         variant: "success",
       });
@@ -263,6 +275,27 @@ export default function BecomeStudentPage() {
           onSubmit={handleSubmit}
           className="space-y-6 rounded-3xl bg-surface-elevated p-6 shadow-lg sm:p-8"
         >
+          {/* Class selection (enrollment flow) */}
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+              <GraduationCap className="mr-2 inline h-4 w-4" />
+              {t("becomeStudent.class", "Class to enroll in")} *
+            </label>
+            <select
+              value={form.classId}
+              onChange={(e) => setForm(prev => ({ ...prev, classId: e.target.value }))}
+              className="w-full rounded-2xl bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+              required
+            >
+              <option value="">{t("becomeStudent.selectClass", "Select a class")}</option>
+              {publicClasses.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.title} {c.tuition != null && c.tuition > 0 ? `(${c.currency ?? "ETB"} ${c.tuition.toLocaleString()})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Instrument & Learning Type */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -546,6 +579,21 @@ export default function BecomeStudentPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                {t("becomeStudent.receipt", "Payment Receipt")} * (image or PDF)
+              </label>
+              <input
+                type="file"
+                accept="image/*,.pdf,application/pdf"
+                onChange={(e) => setForm(prev => ({ ...prev, receiptFile: e.target.files?.[0] ?? null }))}
+                className="w-full rounded-2xl bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                required
+              />
+              {form.receiptFile && (
+                <p className="mt-1 text-xs text-foreground/60">{form.receiptFile.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("becomeStudent.paymentReference", "Payment Reference")} *
               </label>
               <input
@@ -588,10 +636,10 @@ export default function BecomeStudentPage() {
             <motion.button
               type="submit"
               whileTap={{ scale: 0.97 }}
-              disabled={isConverting || isCreatingPayment}
+disabled={isCreatingPayment}
               className="flex-1 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-95 disabled:opacity-60"
             >
-              {isConverting || isCreatingPayment ? (
+              {isCreatingPayment ? (
                 <>
                   <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
                   {t("becomeStudent.submitting", "Submitting...")}

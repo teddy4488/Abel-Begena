@@ -15,6 +15,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { SubmitStudentMonthlyPaymentDto } from './dto/submit-student-monthly-payment.dto';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('payments')
 @UseGuards(JwtAuthGuard)
@@ -55,6 +56,7 @@ export class PaymentController {
   @Post(':id/decision')
   @UseGuards(RoleGuard)
   @Roles('Admin')
+  @AuditLog({ action: 'payment_decision', resource: 'payment', resourceIdParam: 'id' })
   updateStatus(
     @Param('id') id: string,
     @Body() body: Omit<UpdatePaymentStatusDto, 'id'>,
@@ -68,12 +70,13 @@ export class PaymentController {
 
   // Student: submit monthly payment receipt
   @Post('student/monthly')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RoleGuard)
+  @Roles('Student')
   submitStudentMonthlyPayment(
     @Body() dto: SubmitStudentMonthlyPaymentDto,
     @Request() req: { user: { sub: string; userType?: string } },
   ) {
-    // For students, req.user.sub is their student participant ID
+    // req.user.sub is the authenticated user's ID (JWT sub); participant is resolved in service
     return this.paymentService.submitStudentMonthlyPayment(
       dto,
       req.user.sub,

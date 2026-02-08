@@ -10,9 +10,9 @@ import { useGetMyPaymentsQuery, useGetMyUpcomingPaymentsQuery, attendanceApi } f
 import { useSubmitStudentMonthlyPaymentMutation, useGetMyPaymentRequestsQuery } from "@/store/api/paymentApi";
 import { useUploadReceiptMutation } from "@/store/api/storeApi";
 import { useDispatch } from "react-redux";
-import { Receipt, CheckCircle2, Clock, XCircle, Calendar, Filter, AlertTriangle, Upload, X, Loader2 } from "lucide-react";
+import { Receipt, CheckCircle2, XCircle, Calendar, Filter, AlertTriangle, Upload, X, Loader2 } from "lucide-react";
 
-type PaymentStatus = "paid" | "partial" | "unpaid";
+type PaymentStatus = "paid" | "unpaid";
 
 type PaymentRecord = {
   year: number;
@@ -134,13 +134,12 @@ export default function StudentPaymentsPage() {
   const stats = useMemo(() => {
     const total = payments.length;
     const paid = payments.filter((p) => p.status === "paid").length;
-    const partial = payments.filter((p) => p.status === "partial").length;
     const unpaid = payments.filter((p) => p.status === "unpaid").length;
     const totalPaid = payments
-      .filter((p) => p.status === "paid" || p.status === "partial")
+      .filter((p) => p.status === "paid")
       .reduce((sum, p) => sum + p.amount, 0);
     
-    return { total, paid, partial, unpaid, totalPaid };
+    return { total, paid, unpaid, totalPaid };
   }, [payments]);
 
   if (!isLoggedIn || user?.userType !== "student") {
@@ -154,8 +153,6 @@ export default function StudentPaymentsPage() {
     switch (status) {
       case "paid":
         return <CheckCircle2 className="w-5 h-5 text-green-600" />;
-      case "partial":
-        return <Clock className="w-5 h-5 text-yellow-600" />;
       case "unpaid":
         return <XCircle className="w-5 h-5 text-red-600" />;
     }
@@ -165,8 +162,6 @@ export default function StudentPaymentsPage() {
     switch (status) {
       case "paid":
         return t("payments.status.paid", "Paid");
-      case "partial":
-        return t("payments.status.partial", "Partial");
       case "unpaid":
         return t("payments.status.unpaid", "Unpaid");
     }
@@ -419,12 +414,12 @@ export default function StudentPaymentsPage() {
 
             <div className="rounded-2xl surface-elevated p-4 shadow-lg">
               <div className="flex items-center gap-3 mb-2">
-                <Clock className="h-5 w-5 text-yellow-600" />
+                <XCircle className="h-5 w-5 text-red-600" />
                 <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
-                  {t("student.payments.partial", "Partial")}
+                  {t("student.payments.unpaid", "Unpaid")}
                 </p>
               </div>
-              <p className="text-2xl font-bold text-yellow-600">{stats.partial}</p>
+              <p className="text-2xl font-bold text-red-600">{stats.unpaid}</p>
             </div>
 
             <div className="rounded-2xl surface-elevated p-4 shadow-lg">
@@ -449,7 +444,6 @@ export default function StudentPaymentsPage() {
               >
                 <option value="all">{t("student.payments.allStatuses", "All Statuses")}</option>
                 <option value="paid">{t("payments.status.paid", "Paid")}</option>
-                <option value="partial">{t("payments.status.partial", "Partial")}</option>
                 <option value="unpaid">{t("payments.status.unpaid", "Unpaid")}</option>
               </select>
             </div>

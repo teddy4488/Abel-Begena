@@ -3,7 +3,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authorizedBaseQuery } from "./baseQuery";
 
-export type PaymentRequestType = "enrollment" | "order" | "tuition" | "student_conversion" | "student_monthly_fee";
+export type PaymentRequestType = "enrollment" | "order" | "student_monthly_fee";
 export type PaymentRequestStatus = "pending" | "approved" | "rejected";
 
 export type PaymentRequest = {
@@ -34,7 +34,7 @@ export type CreatePaymentRequestBody = {
   reference?: string;
   receiptUrl?: string;
   reviewNote?: string;
-  conversionData?: string; // JSON string for student_conversion type
+  conversionData?: string; // JSON string for enrollment (e.g. student profile for convertUserToStudent)
 };
 
 export type UpdatePaymentStatusBody = {

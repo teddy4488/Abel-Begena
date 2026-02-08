@@ -11,7 +11,7 @@ import {
   ValidationOptions,
 } from 'class-validator';
 
-export type PaymentStatus = 'paid' | 'partial' | 'unpaid';
+export type PaymentStatus = 'paid' | 'unpaid';
 
 export class RecordStudentPaymentDto {
   @IsMongoId()
@@ -27,7 +27,7 @@ export class RecordStudentPaymentDto {
   @IsNumber()
   year: number;
 
-  @IsEnum(['paid', 'partial', 'unpaid'])
+  @IsEnum(['paid', 'unpaid'])
   status: PaymentStatus;
 
   /** Exact due date for this period (30 days after previous). When set, used for overdue/upcoming logic. */
@@ -71,7 +71,6 @@ export class BillingSummaryDto {
   month: number;
   totalActiveStudents: number;
   paidCount: number;
-  partialCount: number;
   unpaidCount: number;
   items: BillingStudentItemDto[];
 }

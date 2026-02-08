@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Branch, BranchDocument } from './schemas/branch.schema';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
+import { notDeletedFilter } from '../common/filters/not-deleted.filter';
 
 @Injectable()
 export class BranchService {
@@ -12,20 +13,16 @@ export class BranchService {
     private readonly branchModel: Model<BranchDocument>,
   ) {}
 
-  private notDeletedFilter() {
-    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-  }
-
   async findAllActive() {
     return this.branchModel
-      .find({ isActive: true, ...this.notDeletedFilter() })
+      .find({ isActive: true, ...notDeletedFilter() })
       .sort({ createdAt: 1 })
       .lean()
       .exec();
   }
 
   async findAll(branchId?: string) {
-    const filter = this.notDeletedFilter();
+    const filter = notDeletedFilter() as Record<string, unknown>;
     if (branchId && Types.ObjectId.isValid(branchId)) {
       (filter as Record<string, unknown>)._id = new Types.ObjectId(branchId);
     }
@@ -79,7 +76,7 @@ export class BranchService {
   async remove(id: string) {
     const updated = await this.branchModel
       .findOneAndUpdate(
-        { _id: id, ...this.notDeletedFilter() },
+        { _id: id, ...notDeletedFilter() },
         { deletedAt: new Date(), isActive: false },
         { new: true },
       )

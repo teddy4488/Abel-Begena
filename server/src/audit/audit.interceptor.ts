@@ -39,7 +39,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     const req = context.switchToHttp().getRequest<RequestWithUser>();
     const user = req?.user;
-    if (!user || user.role !== 'Admin') return;
+    if (!user || (user.role !== 'Admin' && user.role !== 'SuperAdmin')) return;
 
     const adminId = user.sub;
     if (!adminId) return;

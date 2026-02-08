@@ -12,6 +12,7 @@ import { Order, OrderSchema } from '../order/schemas/order.schema';
 import { ProductModule } from '../product/product.module';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UserModule } from '../user/user.module';
     forwardRef(() => ProductModule),
     AuthModule,
     UserModule,
+    MailModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

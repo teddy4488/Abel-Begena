@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('admin/teachers')
 @UseGuards(JwtAuthGuard, RoleGuard)
@@ -35,11 +36,13 @@ export class AdminTeacherController {
   }
 
   @Patch(':id')
+  @AuditLog({ action: 'teacher_update', resource: 'teacher', resourceIdParam: 'id' })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.userService.update(id, { ...dto, role: 'Teacher' });
   }
 
   @Delete(':id')
+  @AuditLog({ action: 'teacher_remove', resource: 'teacher', resourceIdParam: 'id' })
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }

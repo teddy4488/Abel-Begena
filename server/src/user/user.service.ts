@@ -165,6 +165,26 @@ export class UserService {
     return user ? this.toSafeUser(user) : null;
   }
 
+  /** Return a map of userId -> email for the given ids (for payment reminders etc.). */
+  async getEmailsByIds(ids: string[]): Promise<Map<string, string>> {
+    if (ids.length === 0) return new Map();
+    const objectIds = ids
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    const users = await this.userModel
+      .find({ _id: { $in: objectIds }, deletedAt: null })
+      .select('_id email')
+      .lean()
+      .exec();
+    const map = new Map<string, string>();
+    for (const u of users) {
+      const id = (u as { _id: Types.ObjectId })._id.toString();
+      const email = (u as { email?: string }).email;
+      if (email && String(email).trim()) map.set(id, String(email).trim());
+    }
+    return map;
+  }
+
   /** List Users with role Teacher (for admin UI). */
   async findTeachers() {
     const teachers = await this.userModel

@@ -10,6 +10,9 @@ import { Cart, CartDocument } from './schemas/cart.schema';
 import { ProductService } from '../product/product.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { PaymentService } from '../payment/payment.service';
+import { notDeletedFilter } from '../common/filters/not-deleted.filter';
+import { MailService } from '../mail/mail.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class OrderService {
@@ -20,6 +23,8 @@ export class OrderService {
     private readonly cartModel: Model<CartDocument>,
     private readonly productService: ProductService,
     private readonly paymentService: PaymentService,
+    private readonly mailService: MailService,
+    private readonly userService: UserService,
   ) {}
 
   private formatOrder(order: any) {
@@ -347,6 +352,24 @@ export class OrderService {
     // Clear cart
     await this.cartModel.deleteOne({ _id: cart._id });
 
+    // Send order confirmation email
+    try {
+      const user = await this.userService.findById(userId);
+      if (user?.email) {
+        const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined;
+        await this.mailService.sendOrderConfirmationEmail(
+          user.email,
+          fullName ?? '',
+          order._id.toString(),
+          totalAmount,
+          'ETB',
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to send order confirmation email:', e);
+    }
+
     const fullOrder = await this.orderModel
       .findById(order._id)
       .populate('items.productId', 'name images')
@@ -355,13 +378,9 @@ export class OrderService {
     return this.formatOrder(fullOrder ?? order.toObject());
   }
 
-  private notDeletedFilter() {
-    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-  }
-
   /** Phase 5.3: optional branchId filters by pickupBranchId (Admin branch scope). */
   async findAll(branchFilter?: { branchId: string }) {
-    const base = this.notDeletedFilter();
+    const base = notDeletedFilter();
     const filter =
       branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)
         ? { ...base, pickupBranchId: new Types.ObjectId(branchFilter.branchId) }
@@ -383,7 +402,7 @@ export class OrderService {
     }
 
     const order = await this.orderModel
-      .findOne({ _id: new Types.ObjectId(id), ...this.notDeletedFilter() })
+      .findOne({ _id: new Types.ObjectId(id), ...notDeletedFilter() })
       .populate('user', 'email firstName lastName phone')
       .populate('items.productId', 'name images')
       .populate('pickupBranchId', 'name address city region')
@@ -394,7 +413,7 @@ export class OrderService {
 
   async updateStatus(id: string, status?: OrderStatus, isPaid?: boolean) {
     const existing = await this.orderModel
-      .findOne({ _id: new Types.ObjectId(id), ...this.notDeletedFilter() })
+      .findOne({ _id: new Types.ObjectId(id), ...notDeletedFilter() })
       .exec();
     if (!existing) {
       throw new NotFoundException('Order not found');
@@ -435,7 +454,7 @@ export class OrderService {
 
   async getUserOrders(userId: string) {
     const orders = await this.orderModel
-      .find({ user: new Types.ObjectId(userId), ...this.notDeletedFilter() })
+      .find({ user: new Types.ObjectId(userId), ...notDeletedFilter() })
       .populate('items.productId', 'name images')
       .sort({ createdAt: -1 })
       .lean()

@@ -28,7 +28,8 @@ import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useAppSelector } from "@/store/hooks";
-import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap, Plus } from "lucide-react";
+import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap, Plus, FileText } from "lucide-react";
+import Link from "next/link";
 
 type UserTab = "website" | "teachers" | "admins" | "students";
 type UserItem = AuthUser | Teacher | AdminUser | Student;
@@ -557,6 +558,15 @@ export default function AdminUsersPage() {
                       </button>
                     </td>
                     <td className="px-6 py-4 text-right">
+                      {activeTab === "teachers" && (
+                        <Link
+                          href={`/admin/reports/teacher/${item._id ?? item.id ?? ""}`}
+                          className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/10 transition mr-2"
+                        >
+                          <FileText className="w-3 h-3" />
+                          {t("admin.users.attendanceReport", "Attendance report")}
+                        </Link>
+                      )}
                       <button
                         type="button"
                         onClick={() =>

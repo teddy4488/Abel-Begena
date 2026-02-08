@@ -47,7 +47,6 @@ export type ClassSummary = {
   tuition?: number | null;
   currency?: string | null;
   enrollmentDeadline?: string | null;
-  capacity?: number | null;
   enrollmentCount?: number;
   myEnrollment?: EnrollmentSnapshot | null;
 };

@@ -16,6 +16,7 @@ import {
   MAX_IMAGE_SIZE_BYTES,
 } from '../upload/upload.service';
 import { CommentService } from './comment.service';
+import { notDeletedFilter } from '../common/filters/not-deleted.filter';
 
 type Actor = {
   sub: string;
@@ -73,15 +74,11 @@ export class BlogService {
     return this.populateAndFormat(post);
   }
 
-  private notDeletedFilter() {
-    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-  }
-
   async findPublished(search?: string): Promise<BlogPostResponse[]> {
     const query: FilterQuery<BlogPostDocument> = {
       isPublished: true,
       status: 'published',
-      $and: [this.notDeletedFilter()],
+      $and: [notDeletedFilter()],
     };
     if (search) {
       const regex = new RegExp(search, 'i');
@@ -98,7 +95,7 @@ export class BlogService {
 
   async findPublishedBySlug(slug: string): Promise<BlogPostResponse> {
     const post = await this.blogModel
-      .findOne({ slug, isPublished: true, status: 'published', ...this.notDeletedFilter() })
+      .findOne({ slug, isPublished: true, status: 'published', ...notDeletedFilter() })
       .populate('author', 'firstName lastName role email')
       .lean()
       .exec();
@@ -113,7 +110,7 @@ export class BlogService {
   async findAllForManagement(search?: string): Promise<BlogPostResponse[]> {
     const query: FilterQuery<BlogPostDocument> = {
       $and: [
-        this.notDeletedFilter(),
+        notDeletedFilter(),
         ...(search
           ? [{ $or: [{ title: new RegExp(search, 'i') }, { content: new RegExp(search, 'i') }] }]
           : []),
@@ -136,7 +133,7 @@ export class BlogService {
     }
 
     const post = await this.blogModel
-      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .findOne({ _id: id, ...notDeletedFilter() })
       .populate('author', 'firstName lastName role email')
       .lean()
       .exec();
@@ -154,7 +151,7 @@ export class BlogService {
     actor: Actor,
   ): Promise<BlogPostResponse> {
     const post = await this.blogModel
-      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .findOne({ _id: id, ...notDeletedFilter() })
       .exec();
 
     if (!post) {

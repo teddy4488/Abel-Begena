@@ -80,7 +80,6 @@ type AnalyticsOverview = {
       thisMonthAmount: number;
       paid: number;
       unpaid: number;
-      partial: number;
     };
   };
   orders: {
@@ -174,7 +173,6 @@ export class AdminService {
       thisMonthStudentPaymentsAmount,
       paidStudentPayments,
       unpaidStudentPayments,
-      partialStudentPayments,
     ] = await Promise.all([
       this.orderModel.aggregate<MonthlyAggregate>([
         {
@@ -197,7 +195,7 @@ export class AdminService {
       this.studentPaymentModel.aggregate<MonthlyAggregate>([
         {
           $match: {
-            status: { $in: ['paid', 'partial'] },
+            status: 'paid',
             ...paymentMatch,
           },
         },
@@ -291,7 +289,6 @@ export class AdminService {
       ]),
       this.studentPaymentModel.countDocuments({ status: 'paid', ...paymentMatch }),
       this.studentPaymentModel.countDocuments({ status: 'unpaid', ...paymentMatch }),
-      this.studentPaymentModel.countDocuments({ status: 'partial', ...paymentMatch }),
     ]);
 
     const orderRevenue =
@@ -361,7 +358,6 @@ export class AdminService {
           thisMonthAmount: thisMonthStudentPaymentsAmountValue,
           paid: paidStudentPayments,
           unpaid: unpaidStudentPayments,
-          partial: partialStudentPayments,
         },
       },
       orders: {

@@ -6,6 +6,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { BlogPost } from './schemas/blog-post.schema';
 import { UpdateCommentStatusDto } from './dto/update-comment-status.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { notDeletedFilter } from '../common/filters/not-deleted.filter';
 
 @Injectable()
 export class CommentService {
@@ -34,16 +35,12 @@ export class CommentService {
     return created.toObject();
   }
 
-  private notDeletedFilter() {
-    return { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-  }
-
   async listPublicForPost(postId: string) {
     return this.commentModel
       .find({
         postId: new Types.ObjectId(postId),
         status: 'approved',
-        ...this.notDeletedFilter(),
+        ...notDeletedFilter(),
       })
       .sort({ createdAt: -1 })
       .populate('authorId', 'firstName lastName email avatarUrl')
@@ -54,7 +51,7 @@ export class CommentService {
   async listManage(search?: string) {
     const query: Record<string, unknown> = {
       $and: [
-        this.notDeletedFilter(),
+        notDeletedFilter(),
         ...(search ? [{ $or: [{ content: new RegExp(search, 'i') }] }] : []),
       ],
     };
@@ -73,7 +70,7 @@ export class CommentService {
     }
     const updated = await this.commentModel
       .findOneAndUpdate(
-        { _id: id, ...this.notDeletedFilter() },
+        { _id: id, ...notDeletedFilter() },
         {
           status: dto.status,
           ...(dto.note ? { note: dto.note } : {}),
@@ -95,7 +92,7 @@ export class CommentService {
       throw new BadRequestException('Invalid comment id');
     }
     const comment = await this.commentModel
-      .findOne({ _id: id, ...this.notDeletedFilter() })
+      .findOne({ _id: id, ...notDeletedFilter() })
       .lean()
       .exec();
     if (!comment) {

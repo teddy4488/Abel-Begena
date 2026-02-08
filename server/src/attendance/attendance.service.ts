@@ -38,7 +38,6 @@ import { RegisterStudentParticipantDto } from './dto/register-student-participan
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
 import { RecordStudentAttendanceDto } from './dto/record-student-attendance.dto';
 import { MailService } from '../mail/mail.service';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AttendanceService {
@@ -61,11 +60,6 @@ export class AttendanceService {
     private readonly userService: UserService,
     private readonly mailService: MailService,
   ) { }
-
-  // Helper to hash passwords
-  private async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 10);
-  }
 
   // Helpers
   private async generateAttendanceNumber(): Promise<string> {
@@ -329,6 +323,12 @@ export class AttendanceService {
     };
   }
 
+  /**
+   * Converts a User to a Student: updates User.role and User.studentProfile, and creates
+   * StudentAttendanceParticipant. Callers (e.g. enrollment payment approval) should use the
+   * returned student._id to record the first StudentPayment for minimal triple sync
+   * (User + StudentAttendanceParticipant + first payment).
+   */
   async convertUserToStudent(
     userId: string,
     dto: import('./dto/convert-user-to-student.dto').ConvertUserToStudentDto,
@@ -599,6 +599,7 @@ export class AttendanceService {
     const created = await this.teacherAttendanceModel.create({
       participantId: participant._id,
       checkInAt: now,
+      sessionDate: today,
       recordedBy: new Types.ObjectId(adminUserId),
     });
 
@@ -749,7 +750,8 @@ export class AttendanceService {
   }
 
   async getStudentAttendanceRecords(studentId: string) {
-    const participant = await this.studentParticipantModel.findById(studentId).exec();
+    // studentId is the User's _id, so lookup participant by userId field
+    const participant = await this.studentParticipantModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
     if (!participant) {
       throw new NotFoundException('Student participant not found');
     }
@@ -779,7 +781,8 @@ export class AttendanceService {
   }
 
   async getStudentPayments(studentId: string) {
-    const participant = await this.studentParticipantModel.findById(studentId).exec();
+    // studentId is the User's _id, so lookup participant by userId field
+    const participant = await this.studentParticipantModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
     if (!participant) {
       throw new NotFoundException('Student participant not found');
     }
@@ -794,6 +797,26 @@ export class AttendanceService {
       ...p,
       isOverdue: this.isPaymentOverdue(p),
     }));
+  }
+
+  /** Resolve student participant id by user id (for payment approval etc.). Returns null if not found. */
+  async getParticipantIdByUserId(userId: string): Promise<string | null> {
+    const participant = await this.studentParticipantModel
+      .findOne({ userId: new Types.ObjectId(userId) })
+      .select('_id')
+      .lean()
+      .exec();
+    return participant ? participant._id.toString() : null;
+  }
+
+  /** Resolve teacher participant id by user id (for reports etc.). Returns null if not found. */
+  async getTeacherParticipantIdByUserId(userId: string): Promise<string | null> {
+    const participant = await this.teacherParticipantModel
+      .findOne({ userId: new Types.ObjectId(userId) })
+      .select('_id')
+      .lean()
+      .exec();
+    return participant ? participant._id.toString() : null;
   }
 
   async listInstrumentLessons(classId?: string) {
@@ -945,13 +968,13 @@ export class AttendanceService {
       attendanceByParticipant.set(String(row._id), row.totalSessions ?? 0);
     });
 
-    // Aggregate payments (count months with status paid/partial)
+    // Aggregate payments (count months with status paid)
     const paymentsAgg = await this.studentPaymentModel
       .aggregate([
         {
           $match: {
             participantId: { $in: participantIds },
-            status: { $in: ['paid', 'partial'] },
+            status: 'paid',
           },
         },
         {
@@ -1167,12 +1190,9 @@ export class AttendanceService {
       existing.amount = dto.amount;
       existing.status = dto.status;
       existing.note = dto.note;
-      existing.paidAt =
-        dto.status === 'paid' || dto.status === 'partial'
-          ? new Date()
-          : undefined;
+      existing.paidAt = dto.status === 'paid' ? new Date() : undefined;
       // If an existing record was updated to paid and has no dueDates array, generate it
-      if ((dto.status === 'paid' || dto.status === 'partial') && (!existing.dueDates || existing.dueDates.length === 0)) {
+      if (dto.status === 'paid' && (!existing.dueDates || existing.dueDates.length === 0)) {
         let dueDatesArr: Date[] = [];
         // If admin provided a period, generate schedule from registration so it aligns with enrollment schedule
         if (dto.period) {
@@ -1244,13 +1264,13 @@ export class AttendanceService {
       periodToSet = (lastPeriod[0]?.period ?? 0) + 1 || 1;
     }
 
-    const paidAtDate = (dto.status === 'paid' || dto.status === 'partial') ? new Date() : undefined;
+    const paidAtDate = dto.status === 'paid' ? new Date() : undefined;
 
     // Build duedate schedule:
     // - If a period is provided (admin-approved monthly payment), derive the 24-item schedule from registrationStartDate so entries align with enrollment schedule.
     // - Otherwise, if paid right now, generate a schedule from paidAt as a fallback (existing behavior).
     let duedates: Date[] | undefined = undefined;
-    if (dto.status === 'paid' || dto.status === 'partial') {
+    if (dto.status === 'paid') {
       if (periodToSet) {
         const regDate = new Date(participant.registrationStartDate || new Date());
         const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
@@ -1318,7 +1338,6 @@ export class AttendanceService {
         month: targetMonth,
         totalActiveStudents: 0,
         paidCount: 0,
-        partialCount: 0,
         unpaidCount: 0,
       };
     }
@@ -1335,10 +1354,9 @@ export class AttendanceService {
       .lean()
       .exec();
 
-    const paymentByParticipant = new Map<string, 'paid' | 'partial' | 'unpaid'>();
+    const paymentByParticipant = new Map<string, 'paid' | 'unpaid'>();
     payments.forEach((p) => {
       const key = String(p.participantId);
-      // If multiple records somehow exist, prefer "paid" over "partial"/"unpaid"
       const existing = paymentByParticipant.get(key);
       if (!existing || p.status === 'paid') {
         paymentByParticipant.set(key, p.status);
@@ -1346,7 +1364,6 @@ export class AttendanceService {
     });
 
     let paidCount = 0;
-    let partialCount = 0;
     let unpaidCount = 0;
 
     const items: {
@@ -1354,7 +1371,7 @@ export class AttendanceService {
       fullName: string;
       attendanceNumber: string;
       instrumentType: string;
-      status: 'paid' | 'partial' | 'unpaid';
+      status: 'paid' | 'unpaid';
     }[] = [];
 
     students.forEach((student) => {
@@ -1369,16 +1386,7 @@ export class AttendanceService {
           instrumentType: student.instrumentType,
           status: 'unpaid',
         });
-      } else if (status === 'partial') {
-        partialCount += 1;
-        items.push({
-          participantId: String(id),
-          fullName: student.fullName,
-          attendanceNumber: student.attendanceNumber,
-          instrumentType: student.instrumentType,
-          status: 'partial',
-        });
-      } else if (status === 'paid') {
+      } else {
         paidCount += 1;
         items.push({
           participantId: String(id),
@@ -1395,7 +1403,6 @@ export class AttendanceService {
       month: targetMonth,
       totalActiveStudents,
       paidCount,
-      partialCount,
       unpaidCount,
       items,
     };
@@ -1410,11 +1417,13 @@ export class AttendanceService {
     }
     const students = await this.studentParticipantModel
       .find(participantFilter)
-      .select('_id fullName attendanceNumber instrumentType registrationStartDate email')
+      .select('_id userId fullName attendanceNumber instrumentType registrationStartDate')
       .lean()
       .exec();
 
     const studentIds = students.map((s) => s._id);
+    const userIds = [...new Set(students.map((s) => String((s as { userId?: Types.ObjectId }).userId)).filter(Boolean))];
+    const emailByUserId = await this.userService.getEmailsByIds(userIds);
     // include dueDates array and other metadata in the payments map so overdue logic can match by period/index
     const paymentsByParticipant = new Map<string, Array<{ dueDate?: Date; dueDates?: Date[]; period?: number; month?: number; year?: number; paidAt?: Date; status: string; amount?: number }>>();
     const allPayments = await this.studentPaymentModel
@@ -1448,7 +1457,7 @@ export class AttendanceService {
       dueDate: Date;
       daysOverdue: number;
       amount?: number;
-      status?: 'paid' | 'partial' | 'unpaid';
+      status?: 'paid' | 'unpaid';
     }> = [];
 
     for (const student of students) {
@@ -1485,7 +1494,7 @@ export class AttendanceService {
             : (matchedPayment.status === 'paid' && ((matchedPayment.paidAt && this.sameDay(new Date(matchedPayment.paidAt), dueDate)) || (matchedPayment.month === dueDate.getMonth() + 1 && matchedPayment.year === dueDate.getFullYear())))
         ) : false;
 
-        const partialOrUnpaid = matchedPayment && (matchedPayment.status === 'partial' || matchedPayment.status === 'unpaid') ? matchedPayment : undefined;
+        const unpaidPayment = matchedPayment && matchedPayment.status === 'unpaid' ? matchedPayment : undefined;
 
         if (!paidForThisDue) {
           const daysOverdue = Math.floor(
@@ -1496,13 +1505,13 @@ export class AttendanceService {
             fullName: student.fullName,
             attendanceNumber: student.attendanceNumber,
             instrumentType: student.instrumentType,
-            email: (student as { email?: string }).email,
+            email: emailByUserId.get(String((student as { userId?: Types.ObjectId }).userId)),
             year: dueDate.getFullYear(),
             month: dueDate.getMonth() + 1,
             dueDate,
             daysOverdue,
-            amount: partialOrUnpaid?.amount,
-            status: (partialOrUnpaid?.status as 'unpaid' | 'partial') || 'unpaid',
+            amount: unpaidPayment?.amount,
+            status: unpaidPayment?.status ?? 'unpaid',
           });
         }
       }
@@ -1513,7 +1522,8 @@ export class AttendanceService {
   }
 
   async getUpcomingPayments(studentId: string, daysAhead: number = 14) {
-    const participant = await this.studentParticipantModel.findById(studentId).exec();
+    // studentId is the User's _id, so lookup participant by userId field
+    const participant = await this.studentParticipantModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
     if (!participant) {
       throw new NotFoundException('Student participant not found');
     }
@@ -1541,7 +1551,7 @@ export class AttendanceService {
       dueDateInferred?: boolean;
       daysUntilDue: number;
       amount?: number;
-      status?: 'paid' | 'partial' | 'unpaid';
+      status?: 'paid' | 'unpaid';
     }> = [];
 
     for (const dueDate of dueDates) {
@@ -1570,14 +1580,12 @@ export class AttendanceService {
       }
 
       const paidForThisDue = matchedPayment ? (
-        // If the matched payment specifies a period, require that its period points to this index
         (matchedPayment.period && matchedIndex !== null)
           ? (matchedPayment.period - 1 === matchedIndex && matchedPayment.status === 'paid')
-          // otherwise, consider it paid only if its status is paid and paidAt or month/year aligns
           : (matchedPayment.status === 'paid' && ((matchedPayment.paidAt && this.sameDay(new Date(matchedPayment.paidAt), dueDate)) || (matchedPayment.month === dueDate.getMonth() + 1 && matchedPayment.year === dueDate.getFullYear())))
       ) : false;
 
-      const partialOrUnpaid = matchedPayment && (matchedPayment.status === 'partial' || matchedPayment.status === 'unpaid') ? matchedPayment : undefined;
+      const unpaidPayment = matchedPayment && matchedPayment.status === 'unpaid' ? matchedPayment : undefined;
 
       if (!paidForThisDue) {
         const daysUntilDue = Math.floor(
@@ -1591,8 +1599,8 @@ export class AttendanceService {
           period: matchedPayment?.period ?? undefined,
           dueDateInferred: !matchedPayment,
           daysUntilDue,
-          amount: partialOrUnpaid?.amount,
-          status: (partialOrUnpaid?.status as 'unpaid' | 'partial') || 'unpaid',
+          amount: unpaidPayment?.amount,
+          status: unpaidPayment?.status ?? 'unpaid',
         });
       }
     }
@@ -1605,9 +1613,11 @@ export class AttendanceService {
   async getUpcomingPaymentsForAllStudents(daysAhead: number = 7) {
     const students = await this.studentParticipantModel
       .find({ isActive: true })
-      .select('_id fullName email')
+      .select('_id userId fullName')
       .lean()
       .exec();
+    const userIds = [...new Set(students.map((s) => String((s as { userId?: Types.ObjectId }).userId)).filter(Boolean))];
+    const emailByUserId = await this.userService.getEmailsByIds(userIds);
     const result: Array<{
       participantId: string;
       fullName: string;
@@ -1619,8 +1629,8 @@ export class AttendanceService {
       month: number;
     }> = [];
     for (const student of students) {
-      const email = (student as { email?: string }).email;
-      if (!email || !email.trim()) continue;
+      const email = emailByUserId.get(String((student as { userId?: Types.ObjectId }).userId));
+      if (!email) continue;
       try {
         const upcoming = await this.getUpcomingPayments(String(student._id), daysAhead);
         for (const u of upcoming) {

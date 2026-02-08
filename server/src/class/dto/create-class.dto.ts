@@ -52,11 +52,6 @@ export class CreateClassDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  capacity?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
   tuition?: number;
 
   @IsOptional()

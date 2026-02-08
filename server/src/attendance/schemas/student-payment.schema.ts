@@ -4,7 +4,7 @@ import { StudentAttendanceParticipant } from './student-attendance-participant.s
 
 export type StudentPaymentDocument = StudentPayment & Document;
 
-export type PaymentStatus = 'paid' | 'partial' | 'unpaid';
+export type PaymentStatus = 'paid' | 'unpaid';
 
 @Schema({ timestamps: true })
 export class StudentPayment {
@@ -28,7 +28,7 @@ export class StudentPayment {
 
   @Prop({
     type: String,
-    enum: ['paid', 'partial', 'unpaid'],
+    enum: ['paid', 'unpaid'],
     default: 'paid',
   })
   status: PaymentStatus;

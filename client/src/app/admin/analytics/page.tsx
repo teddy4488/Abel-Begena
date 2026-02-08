@@ -458,14 +458,10 @@ export default function AdminAnalyticsPage() {
                 }) || "0 ETB"}
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg bg-green-500/10 p-3 text-center">
                 <p className="text-xs text-foreground/60 mb-1">{t("admin.analytics.paid", "Paid")}</p>
                 <p className="text-lg font-bold text-green-600">{data.payments?.studentPayments?.paid ?? 0}</p>
-              </div>
-              <div className="rounded-lg bg-yellow-500/10 p-3 text-center">
-                <p className="text-xs text-foreground/60 mb-1">{t("admin.analytics.partial", "Partial")}</p>
-                <p className="text-lg font-bold text-yellow-600">{data.payments?.studentPayments?.partial ?? 0}</p>
               </div>
               <div className="rounded-lg bg-red-500/10 p-3 text-center">
                 <p className="text-xs text-foreground/60 mb-1">{t("admin.analytics.unpaid", "Unpaid")}</p>

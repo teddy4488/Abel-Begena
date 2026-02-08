@@ -453,11 +453,7 @@ export default function ClassesPage() {
               </h2>
               <div className="grid gap-6 md:grid-cols-1">
                   {classes.map((klass) => {
-              const seatsTaken = klass.enrollmentCount ?? 0;
-              const capacityLabel =
-                klass.capacity && klass.capacity > 0
-                  ? `${Math.min(seatsTaken, klass.capacity)} / ${klass.capacity}`
-                  : `${seatsTaken}`;
+              const enrollmentCount = klass.enrollmentCount ?? 0;
               const status = klass.myEnrollment?.status ?? null;
               const deadline = klass.enrollmentDeadline
                 ? new Date(klass.enrollmentDeadline)
@@ -484,7 +480,7 @@ export default function ClassesPage() {
                     <div className="inline-flex items-center gap-2">
                       <Users className="h-4 w-4 text-secondary" />
                       <span>
-                        {t("classes.capacity", "Capacity")}: {capacityLabel}
+                        {t("classes.enrolled", "Enrolled")}: {enrollmentCount}
                       </span>
                     </div>
                     <div className="inline-flex items-center gap-2">

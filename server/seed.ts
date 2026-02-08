@@ -104,7 +104,6 @@ const ClassSchema = new mongoose.Schema(
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
     startDate: { type: Date },
     endDate: { type: Date },
-    capacity: { type: Number, min: 0 },
     materials: { type: [{ title: String, url: String, uploadedAt: { type: Date, default: Date.now } }], default: [] },
     isLive: { type: Boolean, default: false },
     liveRoomCode: { type: String },
@@ -225,7 +224,7 @@ const StudentPaymentSchema = new mongoose.Schema(
     amount: { type: Number, min: 2000, max: 999999, required: true },
     month: { type: Number, min: 1, max: 12, required: true },
     year: { type: Number, min: 2000, max: 9999, required: true },
-    status: { type: String, enum: ['paid', 'partial', 'unpaid'], default: 'paid' },
+    status: { type: String, enum: ['paid', 'unpaid'], default: 'paid' },
     dueDate: { type: Date },
     dueDates: { type: [Date] },
     paidAt: { type: Date },
@@ -292,7 +291,7 @@ const InstrumentMaterialSchema = new mongoose.Schema(
 const PaymentRequestSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    type: { type: String, enum: ['enrollment', 'order', 'tuition', 'student_conversion', 'student_monthly_fee'], required: true },
+    type: { type: String, enum: ['enrollment', 'order', 'student_monthly_fee'], required: true },
     targetId: { type: mongoose.Schema.Types.ObjectId },
     amount: { type: Number, min: 0, required: true },
     currency: { type: String, trim: true, maxlength: 12, default: 'ETB' },

@@ -71,9 +71,6 @@ export class Class {
   @Prop()
   endDate?: Date;
 
-  @Prop({ min: 0 })
-  capacity?: number;
-
   @Prop({
     type: [
       {

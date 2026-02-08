@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -21,6 +22,7 @@ import { RegisterStudentParticipantDto } from './dto/register-student-participan
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
 import { RecordStudentAttendanceDto } from './dto/record-student-attendance.dto';
 import { RecordStudentPaymentDto } from './dto/student-payment.dto';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RoleGuard)
@@ -31,6 +33,7 @@ export class AttendanceController {
   @Post('teachers/register')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'teacher_register', resource: 'teacher_participant' })
   registerTeacher(@Body() dto: RegisterTeacherParticipantDto) {
     return this.attendanceService.registerTeacherParticipant(dto);
   }
@@ -38,6 +41,7 @@ export class AttendanceController {
   @Post('students/register')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_register', resource: 'student_participant' })
   registerStudent(@Body() dto: RegisterStudentParticipantDto) {
     return this.attendanceService.registerStudentParticipant(dto);
   }
@@ -94,6 +98,7 @@ export class AttendanceController {
   @Patch('students/participants/:id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_participant_update', resource: 'student_participant', resourceIdParam: 'id' })
   updateStudentParticipant(
     @Param('id') id: string,
     @Body() updateData: Partial<{ isActive?: boolean; isVerified?: boolean }>,
@@ -104,6 +109,7 @@ export class AttendanceController {
   @Delete('students/participants/:id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_participant_remove', resource: 'student_participant', resourceIdParam: 'id' })
   removeStudentParticipant(@Param('id') id: string) {
     return this.attendanceService.removeStudentParticipant(id);
   }
@@ -112,6 +118,7 @@ export class AttendanceController {
   @Post('teachers/check-in')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'teacher_check_in', resource: 'teacher_attendance', resourceIdBody: 'participantId' })
   checkInTeacher(
     @Body() dto: TeacherCheckInDto,
     @Request() req: { user: { sub: string } },
@@ -122,6 +129,7 @@ export class AttendanceController {
   @Post('teachers/check-out')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'teacher_check_out', resource: 'teacher_attendance', resourceIdBody: 'participantId' })
   checkOutTeacher(
     @Body() dto: TeacherCheckOutDto,
     @Request() req: { user: { sub: string } },
@@ -140,6 +148,7 @@ export class AttendanceController {
   @Post('students/record')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_attendance_record', resource: 'student_attendance', resourceIdBody: 'participantId' })
   recordStudentAttendance(
     @Body() dto: RecordStudentAttendanceDto,
     @Request() req: { user: { sub: string } },
@@ -151,6 +160,7 @@ export class AttendanceController {
   @Post('billing/pay')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_payment_record', resource: 'student_payment', resourceIdBody: 'participantId' })
   recordStudentPayment(
     @Body() dto: RecordStudentPaymentDto,
     @Request() req: { user: { sub: string } },
@@ -207,6 +217,7 @@ export class AttendanceController {
   @Post('lessons')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'lesson_create', resource: 'lesson', resourceIdBody: 'classId' })
   createLesson(
     @Body()
     body: {
@@ -223,6 +234,7 @@ export class AttendanceController {
   @Put('lessons/:id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'lesson_update', resource: 'lesson', resourceIdParam: 'id' })
   updateLesson(
     @Param('id') id: string,
     @Body()
@@ -240,6 +252,7 @@ export class AttendanceController {
   @Delete('lessons/:id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'lesson_delete', resource: 'lesson', resourceIdParam: 'id' })
   deleteLesson(@Param('id') id: string) {
     return this.attendanceService.deleteLesson(id);
   }
@@ -340,5 +353,23 @@ export class AttendanceController {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
     return this.attendanceService.generateTeacherAttendanceReport(teacherId, start, end);
+  }
+
+  /** Teacher attendance report by User id (for admin users page). Resolves participant by userId. */
+  @Get('reports/teacher/by-user/:userId/attendance')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  async generateTeacherAttendanceReportByUserId(
+    @Param('userId') userId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const participant = await this.attendanceService.getTeacherParticipantIdByUserId(userId);
+    if (!participant) {
+      throw new NotFoundException('Teacher participant not found for this user');
+    }
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.attendanceService.generateTeacherAttendanceReport(participant, start, end);
   }
 }
