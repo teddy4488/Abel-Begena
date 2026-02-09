@@ -33,6 +33,7 @@ import {
   StudentPaymentDocument,
 } from './schemas/student-payment.schema';
 import { Class, ClassDocument } from '../class/schemas/class.schema';
+import { Enrollment, EnrollmentDocument } from '../enrollment/schemas/enrollment.schema';
 import { RegisterTeacherParticipantDto } from './dto/register-teacher-participant.dto';
 import { RegisterStudentParticipantDto } from './dto/register-student-participant.dto';
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
@@ -56,6 +57,8 @@ export class AttendanceService {
     private readonly classModel: Model<ClassDocument>,
     @InjectModel(StudentPayment.name)
     private readonly studentPaymentModel: Model<StudentPaymentDocument>,
+    @InjectModel(Enrollment.name)
+    private readonly enrollmentModel: Model<EnrollmentDocument>,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     private readonly mailService: MailService,
@@ -137,6 +140,47 @@ export class AttendanceService {
     return programDurationMonths === 3 ? 5
       : programDurationMonths === 6 ? 3
         : 2;
+  }
+
+  /**
+   * Syncs the User.studentProfile projection from a StudentAttendanceParticipant record.
+   * StudentAttendanceParticipant is treated as the canonical operational student record.
+   */
+  private async syncUserStudentProfileFromParticipant(
+    participantId: string | Types.ObjectId,
+  ): Promise<void> {
+    const participant = await this.studentParticipantModel
+      .findById(participantId)
+      .lean()
+      .exec();
+    if (!participant) {
+      return;
+    }
+    const rawUserId = (participant as { userId?: Types.ObjectId | string }).userId;
+    if (!rawUserId) {
+      return;
+    }
+    const userId =
+      typeof rawUserId === 'string' ? rawUserId : rawUserId.toString();
+
+    const studentProfile: import('../user/dto/update-user.dto').UpdateUserDto['studentProfile'] =
+      {
+        attendanceNumber: (participant as { attendanceNumber: string }).attendanceNumber,
+        fullName: (participant as { fullName: string }).fullName,
+        branchId: (participant as { branchId?: Types.ObjectId }).branchId,
+        learningType: (participant as { learningType?: 'physical' | 'online' }).learningType,
+        instrumentType: (participant as { instrumentType?: string }).instrumentType,
+        programDurationMonths: (participant as { programDurationMonths?: 3 | 6 | 9 }).programDurationMonths,
+        preferredLearningDays: (participant as { preferredLearningDays?: string[] }).preferredLearningDays,
+        registrationStartDate: (participant as { registrationStartDate?: Date }).registrationStartDate,
+        learningDaysPerWeek: (participant as { learningDaysPerWeek?: number }).learningDaysPerWeek,
+        isActive: (participant as { isActive?: boolean }).isActive ?? true,
+        missedLessonsCount: (participant as { missedLessonsCount?: number }).missedLessonsCount ?? 0,
+      };
+
+    await this.userService.update(userId, {
+      studentProfile,
+    } as import('../user/dto/update-user.dto').UpdateUserDto);
   }
 
   // Participants
@@ -343,9 +387,13 @@ export class AttendanceService {
       console.error('Failed to send credentials email:', error);
     }
 
+    // Keep User.studentProfile in sync with the canonical participant record
+    await this.syncUserStudentProfileFromParticipant(created._id);
+
     return {
       ...created.toObject(),
-      generatedPassword: process.env.NODE_ENV !== 'production' ? generatedPassword : undefined, // Only in dev
+      generatedPassword:
+        process.env.NODE_ENV !== 'production' ? generatedPassword : undefined, // Only in dev
     };
   }
 
@@ -399,23 +447,9 @@ export class AttendanceService {
       dto.programDurationMonths,
     );
 
-    // Update User: set role Student and studentProfile
-    const studentProfile = {
-      attendanceNumber,
-      fullName: dto.fullName.trim(),
-      branchId: dto.branchId ? new Types.ObjectId(dto.branchId) : undefined,
-      learningType: dto.learningType,
-      instrumentType: dto.instrumentType,
-      programDurationMonths: dto.programDurationMonths,
-      preferredLearningDays: dto.preferredLearningDays,
-      registrationStartDate: new Date(dto.registrationStartDate),
-      learningDaysPerWeek,
-      isActive: true,
-      missedLessonsCount: 0,
-    };
+    // Update User: set role Student (studentProfile will be synced from participant)
     await this.userService.update(userId, {
       role: 'Student',
-      studentProfile,
     } as import('../user/dto/update-user.dto').UpdateUserDto);
 
     // Create attendance participant with userId reference (no auth fields)
@@ -432,6 +466,9 @@ export class AttendanceService {
       learningDaysPerWeek,
       isActive: true,
     });
+
+    // Sync User.studentProfile from the canonical participant record
+    await this.syncUserStudentProfileFromParticipant(student._id);
 
     return {
       message: 'User converted to student successfully',
@@ -569,11 +606,245 @@ export class AttendanceService {
 
     Object.assign(student, updateData);
     await student.save();
+
+    // Keep User.studentProfile in sync with the canonical participant record
+    await this.syncUserStudentProfileFromParticipant(student._id);
+
     return this.studentParticipantModel
       .findOne({ _id: id, deletedAt: null })
       .populate('branchId', 'name slug')
       .lean()
       .exec();
+  }
+
+  /**
+   * Computes the list of students expected to attend on a given date based on:
+   * - Active enrollments
+   * - Active student participants
+   * - Preferred learning days
+   */
+  async getExpectedStudentsForDate(date: Date) {
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
+    const dayOfWeekIndex = target.getDay(); // 0 = Sunday
+    const dayNames: string[] = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
+    const dayName = dayNames[dayOfWeekIndex];
+
+    // Find all active enrollments
+    const activeEnrollments = await this.enrollmentModel
+      .find({ status: 'active' })
+      .select('classId studentId')
+      .lean()
+      .exec();
+
+    if (!activeEnrollments.length) {
+      return [];
+    }
+
+    const userIds = Array.from(
+      new Set(
+        activeEnrollments
+          .map((e) => (e.studentId as Types.ObjectId)?.toString?.())
+          .filter((id): id is string => !!id),
+      ),
+    );
+
+    if (!userIds.length) {
+      return [];
+    }
+
+    const participants = await this.studentParticipantModel
+      .find({
+        userId: { $in: userIds.map((id) => new Types.ObjectId(id)) },
+        isActive: true,
+        deletedAt: null,
+        preferredLearningDays: dayName,
+      })
+      .select('_id userId branchId preferredLearningDays')
+      .lean()
+      .exec();
+
+    const participantsByUserId = new Map<string, (typeof participants)[number]>();
+    for (const p of participants) {
+      const uid = (p.userId as Types.ObjectId)?.toString?.() ?? '';
+      if (uid) {
+        participantsByUserId.set(uid, p);
+      }
+    }
+
+    const expected: Array<{
+      participantId: string;
+      userId: string;
+      classId: string;
+      date: string;
+    }> = [];
+
+    for (const enrollment of activeEnrollments) {
+      const studentId =
+        (enrollment.studentId as Types.ObjectId)?.toString?.() ?? '';
+      const participant = participantsByUserId.get(studentId);
+      if (!participant) continue;
+      const classId =
+        (enrollment.classId as Types.ObjectId)?.toString?.() ?? '';
+      if (!classId) continue;
+
+      expected.push({
+        participantId: (participant._id as Types.ObjectId).toString(),
+        userId: studentId,
+        classId,
+        date: target.toISOString().split('T')[0],
+      });
+    }
+
+    return expected;
+  }
+
+  /**
+   * Computes per-lesson progress for a student in a given class based on attendance.
+   * Returns total/completed counts and per-lesson completion flags.
+   */
+  async getLessonProgressForStudentInClass(userId: string, classId: string) {
+    if (!Types.ObjectId.isValid(classId)) {
+      throw new BadRequestException('Invalid classId');
+    }
+
+    // Resolve the student participant for this user
+    const participant = await this.studentParticipantModel
+      .findOne({
+        userId: new Types.ObjectId(userId),
+        isActive: true,
+        deletedAt: null,
+      })
+      .lean()
+      .exec();
+
+    if (!participant) {
+      throw new NotFoundException('Student participant not found for this user');
+    }
+
+    // Load all active lessons for the class
+    const lessons = await this.lessonModel
+      .find({
+        classId: new Types.ObjectId(classId),
+        isActive: true,
+      })
+      .sort({ order: 1 })
+      .lean()
+      .exec();
+
+    if (!lessons.length) {
+      return {
+        totalLessons: 0,
+        completedLessons: 0,
+        percentage: 0,
+        lessons: [],
+      };
+    }
+
+    const lessonIds = lessons.map((l) => l._id);
+
+    // Find attendance records where the student was present/late for lessons in this class
+    const attendanceRecords = await this.studentAttendanceModel
+      .find({
+        participantId: new Types.ObjectId(participant._id),
+        lessonId: { $in: lessonIds },
+        status: { $in: ['present', 'late'] },
+      })
+      .lean()
+      .exec();
+
+    const attendanceByLesson = new Map<
+      string,
+      { lastAttendedAt: Date | null }
+    >();
+
+    for (const rec of attendanceRecords) {
+      const lessonId = (rec.lessonId as Types.ObjectId).toString();
+      const current = attendanceByLesson.get(lessonId);
+      const sessionDate = rec.sessionDate as Date | undefined;
+      if (!current) {
+        attendanceByLesson.set(lessonId, {
+          lastAttendedAt: sessionDate ?? null,
+        });
+      } else if (
+        sessionDate &&
+        (!current.lastAttendedAt ||
+          new Date(sessionDate) > new Date(current.lastAttendedAt))
+      ) {
+        current.lastAttendedAt = sessionDate;
+      }
+    }
+
+    let completedLessons = 0;
+    const lessonProgress = lessons.map((lesson) => {
+      const info = attendanceByLesson.get(lesson._id.toString());
+      const isCompleted = !!info;
+      if (isCompleted) {
+        completedLessons += 1;
+      }
+      return {
+        _id: lesson._id.toString(),
+        title: lesson.title,
+        code: lesson.code,
+        order: lesson.order,
+        isCompleted,
+        lastAttendedAt: info?.lastAttendedAt ?? null,
+      };
+    });
+
+    const totalLessons = lessons.length;
+    const percentage =
+      totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+    return {
+      totalLessons,
+      completedLessons,
+      percentage,
+      lessons: lessonProgress,
+    };
+  }
+
+  /**
+   * Ensures that there is at least one attendance record for the given participant on the given date.
+   * If none exists with status present/late/excused/absent, an 'absent' record is inserted.
+   */
+  async ensureAbsenceRecordForParticipantOnDate(
+    participantId: string,
+    date: Date,
+  ) {
+    if (!Types.ObjectId.isValid(participantId)) {
+      throw new BadRequestException('Invalid participant id');
+    }
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const existing = await this.studentAttendanceModel
+      .findOne({
+        participantId: new Types.ObjectId(participantId),
+        sessionDate: { $gte: startOfDay, $lt: endOfDay },
+      })
+      .lean()
+      .exec();
+
+    if (existing) {
+      return;
+    }
+
+    await this.studentAttendanceModel.create({
+      participantId: new Types.ObjectId(participantId),
+      sessionDate: startOfDay,
+      status: 'absent',
+    });
   }
 
   async removeStudentParticipant(id: string) {
@@ -1637,10 +1908,17 @@ export class AttendanceService {
     return upcomingPayments;
   }
 
-  /** For payment reminders: all students with upcoming payments in the next daysAhead days, with email. */
-  async getUpcomingPaymentsForAllStudents(daysAhead: number = 7) {
+  /** For payment reminders and admin dashboards: upcoming payments for all students (optionally branch-scoped). */
+  async getUpcomingPaymentsForAllStudents(
+    daysAhead: number = 7,
+    branchFilter?: { branchId: string },
+  ) {
+    const participantFilter: Record<string, unknown> = { isActive: true };
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      participantFilter.branchId = new Types.ObjectId(branchFilter.branchId);
+    }
     const students = await this.studentParticipantModel
-      .find({ isActive: true })
+      .find(participantFilter)
       .select('_id userId fullName')
       .lean()
       .exec();

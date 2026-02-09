@@ -21,6 +21,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { UploadModule } from './upload/upload.module';
 import { EnrollmentModule } from './enrollment/enrollment.module';
+import { NotificationModule } from './notifications/notification.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
     MaterialsModule,
     UploadModule,
     EnrollmentModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [

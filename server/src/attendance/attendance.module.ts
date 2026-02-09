@@ -31,6 +31,7 @@ import {
   StudentPaymentSchema,
 } from './schemas/student-payment.schema';
 import { Class, ClassSchema } from '../class/schemas/class.schema';
+import { Enrollment, EnrollmentSchema } from '../enrollment/schemas/enrollment.schema';
 
 @Module({
   imports: [
@@ -52,6 +53,8 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
       { name: StudentPayment.name, schema: StudentPaymentSchema },
       // Register Class model so AttendanceService can inject it
       { name: Class.name, schema: ClassSchema },
+      // Register Enrollment model for expected-attendance calculations
+      { name: Enrollment.name, schema: EnrollmentSchema },
     ]),
   ],
   controllers: [AttendanceController],

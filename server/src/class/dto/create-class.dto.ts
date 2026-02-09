@@ -41,6 +41,22 @@ export class CreateClassDto {
   @IsMongoId()
   instructorId?: string;
 
+   /**
+    * Optional list of additional teachers for this class (multi-teacher support).
+    * The first teacher can be treated as primary if primaryInstructorId is not set.
+    */
+  @IsOptional()
+  @IsMongoId({ each: true })
+  teacherIds?: string[];
+
+  /**
+   * Optional primary instructor for display purposes when multiple teachers are assigned.
+   * When provided, this should usually also appear in teacherIds.
+   */
+  @IsOptional()
+  @IsMongoId()
+  primaryInstructorId?: string;
+
   @IsOptional()
   @IsDateString()
   startDate?: string;

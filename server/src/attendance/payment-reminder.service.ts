@@ -22,6 +22,36 @@ export class PaymentReminderService {
     await this.sendDueSoonReminders(daysAhead);
   }
 
+  /**
+   * Runs daily in the evening to auto-mark students as absent when they were
+   * expected to attend but have no attendance record for the day.
+   * The cron expression can be overridden via AUTO_ABSENCE_CRON if needed.
+   */
+  @Cron(process.env.AUTO_ABSENCE_CRON || '0 19 * * *')
+  async handleDailyAutoAbsences() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expected = await this.attendanceService.getExpectedStudentsForDate(today);
+    if (!expected.length) {
+      return;
+    }
+
+    const participantIds = expected.map((e) => e.participantId);
+    // For each expected participant/class pair, ensure we have at least one attendance record today.
+    for (const session of expected) {
+      try {
+        await this.attendanceService.ensureAbsenceRecordForParticipantOnDate(
+          session.participantId,
+          today,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Failed to auto-mark absence for participant ${session.participantId}: ${err}`,
+        );
+      }
+    }
+  }
+
   async sendOverdueReminders() {
     try {
       const overdue = await this.attendanceService.getOverduePayments();

@@ -63,7 +63,11 @@ export default function TeacherSchedulePage() {
   const teacherClasses = useMemo(
     () =>
       (classes ?? []).filter(
-        (klass) => klass.instructorId === user?._id || klass.instructorId === user?.id,
+        (klass) =>
+          klass.instructorId === user?._id ||
+          klass.instructorId === user?.id ||
+          klass.teacherIds?.includes(user?._id ?? "") ||
+          klass.teacherIds?.includes(user?.id ?? ""),
       ),
     [classes, user?._id, user?.id],
   );

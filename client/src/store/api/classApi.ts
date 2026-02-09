@@ -43,6 +43,7 @@ export type ClassSummary = {
   liveRoomCode?: string | null;
   createdAt?: string;
   instructorId?: string | null;
+  teacherIds?: string[] | null;
   description?: string | null;
   tuition?: number | null;
   currency?: string | null;

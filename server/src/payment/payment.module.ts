@@ -13,6 +13,7 @@ import { ProductModule } from '../product/product.module';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { MailModule } from '../mail/mail.module';
+import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MailModule } from '../mail/mail.module';
     AuthModule,
     UserModule,
     MailModule,
+    NotificationModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

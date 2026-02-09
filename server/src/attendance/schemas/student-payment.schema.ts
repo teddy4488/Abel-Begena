@@ -72,7 +72,7 @@ StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 });
 StudentPaymentSchema.index({ userId: 1, year: 1, month: 1 });
 StudentPaymentSchema.index({ participantId: 1, dueDate: 1 });
 StudentPaymentSchema.index({ year: 1, month: 1 });
-StudentPaymentSchema.index({ status: 1 });
+StudentPaymentSchema.index({ status: 1, dueDate: 1 });
 // Index for quick lookup by enrollment period
 StudentPaymentSchema.index({ participantId: 1, period: 1 });
 // Prevent duplicate paid records per participant/month/year

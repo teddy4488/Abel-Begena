@@ -68,8 +68,16 @@ export class ClassService {
     }
 
     if (role === 'Teacher') {
+      const teacherObjectId = new Types.ObjectId(userId);
       const classes = await this.classModel
-        .find({ instructorId: new Types.ObjectId(userId), ...notDeleted })
+        .find({
+          ...notDeleted,
+          $or: [
+            { instructorId: teacherObjectId },
+            { primaryInstructorId: teacherObjectId },
+            { teacherIds: teacherObjectId },
+          ],
+        })
         .sort({ createdAt: -1 })
         .lean()
         .exec();
@@ -140,7 +148,42 @@ export class ClassService {
       if (!Types.ObjectId.isValid(dto.instructorId)) {
         throw new BadRequestException('Invalid instructor id');
       }
-      payload.instructorId = new Types.ObjectId(dto.instructorId);
+      const instructorObjectId = new Types.ObjectId(dto.instructorId);
+      payload.instructorId = instructorObjectId;
+      // Ensure the lead instructor is also included in teacherIds for multi-teacher support
+      (payload as any).teacherIds = [instructorObjectId];
+      (payload as any).primaryInstructorId = instructorObjectId;
+    }
+
+    if (dto.teacherIds?.length) {
+      const validTeacherIds: Types.ObjectId[] = [];
+      for (const id of dto.teacherIds) {
+        if (!Types.ObjectId.isValid(id)) {
+          throw new BadRequestException('Invalid teacher id in teacherIds');
+        }
+        validTeacherIds.push(new Types.ObjectId(id));
+      }
+      (payload as any).teacherIds = validTeacherIds;
+      // If no primaryInstructorId was provided, default to the first teacher
+      if (!dto.primaryInstructorId && !dto.instructorId && validTeacherIds.length > 0) {
+        (payload as any).primaryInstructorId = validTeacherIds[0];
+        payload.instructorId = validTeacherIds[0];
+      }
+    }
+
+    if (dto.primaryInstructorId) {
+      if (!Types.ObjectId.isValid(dto.primaryInstructorId)) {
+        throw new BadRequestException('Invalid primary instructor id');
+      }
+      const primary = new Types.ObjectId(dto.primaryInstructorId);
+      (payload as any).primaryInstructorId = primary;
+      // Keep legacy instructorId in sync where possible
+      payload.instructorId = primary;
+      // Ensure primary instructor is part of teacherIds
+      const existingTeachers: Types.ObjectId[] = ((payload as any).teacherIds as Types.ObjectId[]) ?? [];
+      if (!existingTeachers.some((id) => id.equals(primary))) {
+        (payload as any).teacherIds = [...existingTeachers, primary];
+      }
     }
 
     if (dto.startDate) {
@@ -224,7 +267,34 @@ export class ClassService {
       if (!Types.ObjectId.isValid(dto.instructorId)) {
         throw new BadRequestException('Invalid instructor id');
       }
-      update.instructorId = new Types.ObjectId(dto.instructorId);
+      const instructorObjectId = new Types.ObjectId(dto.instructorId);
+      update.instructorId = instructorObjectId;
+      // Keep teacherIds/primaryInstructorId aligned with new instructor when explicitly set
+      (update as any).primaryInstructorId = instructorObjectId;
+      (update as any).teacherIds = [instructorObjectId];
+    }
+
+    if (dto.teacherIds) {
+      const teacherIds: Types.ObjectId[] = [];
+      for (const id of dto.teacherIds) {
+        if (!Types.ObjectId.isValid(id)) {
+          throw new BadRequestException('Invalid teacher id in teacherIds');
+        }
+        teacherIds.push(new Types.ObjectId(id));
+      }
+      (update as any).teacherIds = teacherIds;
+    }
+
+    if (dto.primaryInstructorId) {
+      if (!Types.ObjectId.isValid(dto.primaryInstructorId)) {
+        throw new BadRequestException('Invalid primary instructor id');
+      }
+      const primary = new Types.ObjectId(dto.primaryInstructorId);
+      (update as any).primaryInstructorId = primary;
+      // Keep legacy instructorId in sync if not explicitly overridden
+      if (!dto.instructorId) {
+        (update as any).instructorId = primary;
+      }
     }
 
     const updated = await this.classModel
@@ -765,10 +835,16 @@ export class ClassService {
       throw new BadRequestException('Invalid instructor id');
     }
 
+    const instructorObjectId = new Types.ObjectId(instructorId);
+
     const updated = await this.classModel
       .findByIdAndUpdate(
         classId,
-        { instructorId: new Types.ObjectId(instructorId) },
+        {
+          instructorId: instructorObjectId,
+          primaryInstructorId: instructorObjectId,
+          $addToSet: { teacherIds: instructorObjectId },
+        },
         { new: true },
       )
       .populate('instructorId', 'firstName lastName email avatarUrl')
@@ -1026,6 +1102,11 @@ export class ClassService {
           : typeof klass.instructorId === 'string'
             ? klass.instructorId
             : null;
+      const teacherIds: string[] = Array.isArray((klass as any).teacherIds)
+        ? ((klass as any).teacherIds as Array<Types.ObjectId | string>).map((id) =>
+            id instanceof Types.ObjectId ? id.toString() : String(id),
+          )
+        : [];
       const createdAt =
         klass.createdAt instanceof Date ? (klass.createdAt as Date).toISOString() : null;
       const enrollmentDeadline =
@@ -1045,6 +1126,7 @@ export class ClassService {
         level: (klass as any).level ?? 'beginner',
         createdAt,
         instructorId: instructorId ?? null,
+        teacherIds,
         tuition: klass.tuition ?? 0,
         currency: klass.currency ?? 'ETB',
         enrollmentDeadline,

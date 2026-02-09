@@ -214,6 +214,22 @@ export class AttendanceController {
     return this.attendanceService.listInstrumentLessons(classId);
   }
 
+  @Get('lessons/progress')
+  @Roles('Student')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getLessonProgressForStudentInClass(
+    @Query('classId') classId: string,
+    @Request() req: { user: { sub: string } },
+  ) {
+    if (!classId) {
+      throw new BadRequestException('classId is required');
+    }
+    return this.attendanceService.getLessonProgressForStudentInClass(
+      req.user.sub,
+      classId,
+    );
+  }
+
   @Post('lessons')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
@@ -297,6 +313,22 @@ export class AttendanceController {
   getOverduePayments(@Request() req: { user?: { branchId?: string } }) {
     const branchFilter = req.user?.branchId ? { branchId: req.user.branchId } : undefined;
     return this.attendanceService.getOverduePayments(branchFilter);
+  }
+
+  // Upcoming payments summary for admins (branch-scoped for Admin, global for SuperAdmin)
+  @Get('payments/upcoming-summary')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getUpcomingPaymentsSummary(
+    @Request() req: { user?: { branchId?: string } },
+    @Query('daysAhead') daysAhead?: string,
+  ) {
+    const days = daysAhead ? parseInt(daysAhead, 10) : 14;
+    if (isNaN(days) || days < 0) {
+      throw new BadRequestException('Invalid daysAhead parameter');
+    }
+    const branchFilter = req.user?.branchId ? { branchId: req.user.branchId } : undefined;
+    return this.attendanceService.getUpcomingPaymentsForAllStudents(days, branchFilter);
   }
 
   @Get('students/me/upcoming-payments')

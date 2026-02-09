@@ -65,6 +65,22 @@ export class Class {
   @Prop({ type: Types.ObjectId, ref: 'User' })
   instructorId?: Types.ObjectId;
 
+  /**
+   * Optional primary instructor for display purposes when multiple teachers are assigned.
+   * Kept separate from instructorId to ease migration; both will typically point
+   * to the same user during the transition period.
+   */
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  primaryInstructorId?: Types.ObjectId;
+
+  /**
+   * List of teachers assigned to this class. Supports multi-teacher classes where
+   * more than one instructor can teach the same class. instructorId/primaryInstructorId
+   * are treated as the main/lead teacher for backwards compatibility.
+   */
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+  teacherIds?: Types.ObjectId[];
+
   @Prop()
   startDate?: Date;
 

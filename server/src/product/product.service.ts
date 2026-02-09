@@ -51,6 +51,10 @@ export class ProductService {
       attributes: createProductDto.attributes ?? {},
       promoActive: createProductDto.promoActive ?? false,
       isActive: createProductDto.isActive ?? true,
+      lowStockThreshold:
+        typeof createProductDto.lowStockThreshold === 'number'
+          ? createProductDto.lowStockThreshold
+          : 0,
     });
     return product.toObject();
   }
@@ -75,6 +79,9 @@ export class ProductService {
     }
     if (typeof updateProductDto.stock === 'number') {
       product.stock = updateProductDto.stock;
+    }
+    if (typeof updateProductDto.lowStockThreshold === 'number') {
+      product.lowStockThreshold = updateProductDto.lowStockThreshold;
     }
     if (Array.isArray(updateProductDto.images)) {
       product.images = updateProductDto.images;

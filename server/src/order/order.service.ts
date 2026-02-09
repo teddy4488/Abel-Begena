@@ -449,6 +449,25 @@ export class OrderService {
       { path: 'pickupBranchId', select: 'name address city region' },
     ]);
 
+    // Notify the customer when the order status changes
+    try {
+      const user: any = existing.user;
+      if (user?.email) {
+        const fullName =
+          [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
+        await this.mailService.sendOrderStatusUpdatedEmail(
+          user.email,
+          fullName,
+          existing._id.toString(),
+          existing.status,
+          existing.isPaid,
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to send order status updated email:', e);
+    }
+
     return this.formatOrder(existing.toObject());
   }
 

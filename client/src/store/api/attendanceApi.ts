@@ -561,6 +561,28 @@ export const attendanceApi = createApi({
       }),
       providesTags: ["StudentPayments"],
     }),
+    getLessonProgress: builder.query<
+      {
+        totalLessons: number;
+        completedLessons: number;
+        percentage: number;
+        lessons: Array<{
+          _id: string;
+          title: string;
+          code?: string;
+          order?: number;
+          isCompleted: boolean;
+          lastAttendedAt: string | null;
+        }>;
+      },
+      { classId: string }
+    >({
+      query: ({ classId }) => ({
+        url: "/attendance/lessons/progress",
+        params: { classId },
+      }),
+      providesTags: ["StudentAttendance"],
+    }),
   }),
 });
 
@@ -593,4 +615,5 @@ export const {
   useGetTeacherAttendanceReportByUserIdQuery,
   useGetStudentUpcomingPaymentsQuery,
   useGetMyUpcomingPaymentsQuery,
+  useGetLessonProgressQuery,
 } = attendanceApi;

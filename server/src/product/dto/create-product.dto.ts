@@ -30,6 +30,11 @@ export class CreateProductDto {
   stock: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  lowStockThreshold?: number;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];

@@ -108,3 +108,4 @@ export class Order {
 export const OrderSchema = SchemaFactory.createForClass(Order);
 // Index to support user order history and admin reporting
 OrderSchema.index({ user: 1, status: 1, createdAt: -1 });
+OrderSchema.index({ status: 1, createdAt: -1 });

@@ -33,6 +33,13 @@ export class Product {
   @Prop({ required: true, min: 0, default: 0 })
   stock: number;
 
+  /**
+   * When stock falls to or below this value, the product should be considered
+   * low on inventory and surfaced in admin dashboards/alerts.
+   */
+  @Prop({ min: 0, default: 0 })
+  lowStockThreshold?: number;
+
   @Prop({ type: [String], default: [] })
   images: string[];
 

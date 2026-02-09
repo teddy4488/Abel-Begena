@@ -9,8 +9,8 @@ import { useI18n } from "@/components/providers/I18nProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useGetClassesQuery } from "@/store/api/classApi";
 import { useGetMaterialsQuery } from "@/store/api/materialsApi";
-import { useGetInstrumentLessonsQuery } from "@/store/api/attendanceApi";
-import { BookOpen, FileText, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { useGetInstrumentLessonsQuery, useGetLessonProgressQuery } from "@/store/api/attendanceApi";
+import { BookOpen, CheckCircle2, FileText, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 
 export default function StudentLessonsPage() {
   const router = useRouter();
@@ -126,6 +126,13 @@ function ClassLessonsCard({
     expanded ? { classId } : undefined,
     { skip: !expanded },
   );
+  const { data: progress } = useGetLessonProgressQuery(
+    { classId },
+    { skip: !expanded },
+  );
+
+  const nextLessonId =
+    progress?.lessons.find((l) => !l.isCompleted)?._id ?? null;
 
   return (
     <motion.div
@@ -172,6 +179,27 @@ function ClassLessonsCard({
             exit={{ opacity: 0, y: 10 }}
             className="mt-4 border-t border-border/60 pt-4 space-y-5"
           >
+            {progress && progress.totalLessons > 0 && (
+              <div className="flex flex-col gap-1 rounded-2xl bg-background/60 p-3 text-xs text-foreground/80 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-primary">
+                  {t(
+                    "student.lessons.progressSummary",
+                    "Completed {{completed}} of {{total}} lessons ({{percent}}%)",
+                  )
+                    .replace("{{completed}}", String(progress.completedLessons))
+                    .replace("{{total}}", String(progress.totalLessons))
+                    .replace("{{percent}}", String(progress.percentage))}
+                </p>
+                {nextLessonId && (
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-secondary/80">
+                    {t(
+                      "student.lessons.nextLessonLabel",
+                      "Next recommended lesson highlighted below",
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
             {isLoading ? (
               <div className="flex items-center gap-2 text-sm text-foreground/70">
                 <Loader2 className="h-4 w-4 animate-spin text-secondary" />
@@ -193,10 +221,19 @@ function ClassLessonsCard({
                     const lessonMaterials = materials.filter(
                       (m) => m.lessonId === lesson._id,
                     );
+                    const lessonProgress = progress?.lessons.find(
+                      (lp) => lp._id === lesson._id,
+                    );
+                    const isCompleted = lessonProgress?.isCompleted ?? false;
+                    const isNext = !isCompleted && nextLessonId === lesson._id;
                     return (
                       <li
                         key={lesson._id}
-                        className="rounded-2xl surface-elevated px-4 py-3 text-sm space-y-2"
+                        className={`rounded-2xl surface-elevated px-4 py-3 text-sm space-y-2 border ${
+                          isNext
+                            ? "border-secondary/70 shadow-[0_0_0_1px_rgba(180,134,75,0.35)]"
+                            : "border-transparent"
+                        }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div>
@@ -213,22 +250,47 @@ function ClassLessonsCard({
                                   )}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-secondary/80">
-                            <FileText className="h-3.5 w-3.5" />
-                            <span>
-                              {lessonMaterials.length
-                                ? t(
-                                    "student.lessons.materialsCount",
-                                    "{{count}} material(s)",
-                                  ).replace(
-                                    "{{count}}",
-                                    String(lessonMaterials.length),
-                                  )
-                                : t(
-                                    "student.lessons.noMaterialsForLesson",
-                                    "No materials yet",
-                                  )}
-                            </span>
+                          <div className="flex flex-col items-end gap-1 text-xs text-secondary/80">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>
+                                {lessonMaterials.length
+                                  ? t(
+                                      "student.lessons.materialsCount",
+                                      "{{count}} material(s)",
+                                    ).replace(
+                                      "{{count}}",
+                                      String(lessonMaterials.length),
+                                    )
+                                  : t(
+                                      "student.lessons.noMaterialsForLesson",
+                                      "No materials yet",
+                                    )}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] text-foreground/70">
+                              {isCompleted ? (
+                                <>
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                  <span>
+                                    {t(
+                                      "student.lessons.lessonCompleted",
+                                      "Completed",
+                                    )}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="h-2 w-2 rounded-full bg-secondary/40" />
+                                  <span>
+                                    {t(
+                                      "student.lessons.lessonNotCompleted",
+                                      "Not completed yet",
+                                    )}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                         {lessonMaterials.length > 0 && (

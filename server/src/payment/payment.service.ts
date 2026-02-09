@@ -25,6 +25,7 @@ import { ProductService } from '../product/product.service';
 import { notDeletedFilter } from '../common/filters/not-deleted.filter';
 import { MailService } from '../mail/mail.service';
 import { UserService } from '../user/user.service';
+import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
 export class PaymentService {
@@ -41,6 +42,7 @@ export class PaymentService {
     private readonly productService: ProductService,
     private readonly mailService: MailService,
     private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(dto: Omit<CreatePaymentRequestDto, 'userId'>, userId: string) {
@@ -359,68 +361,59 @@ export class PaymentService {
       }
     }
 
-    // If rejected and type is student_monthly_fee, log for admin awareness
-    if (dto.status === 'rejected' && payment.type === 'student_monthly_fee') {
-      try {
-        let month: number;
-        let year: number;
-        if (payment.conversionData) {
-          const metadata = JSON.parse(payment.conversionData);
-          month = metadata.month;
-          year = metadata.year;
-        } else {
-          const now = new Date();
-          month = now.getMonth() + 1;
-          year = now.getFullYear();
-        }
-        // eslint-disable-next-line no-console
-        console.log(
-          `Student monthly payment rejected for user ${payment.userId}, month ${month}/${year}`,
-        );
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'Failed to process student monthly fee rejection:',
-          error,
-        );
-      }
-    }
-
-    if (dto.status === 'approved') {
+    // If rejected, send a rejection email for transparency
+    if (dto.status === 'rejected') {
       try {
         const user = await this.userService.findById(payment.userId.toString());
         if (user?.email) {
-          const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
-          await this.mailService.sendPaymentApprovedEmail(
+          const fullName =
+            [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
+          await this.mailService.sendPaymentRejectedEmail(
             user.email,
             fullName,
             payment.type,
+            dto.reason,
             payment.amount,
             payment.currency ?? 'ETB',
           );
         }
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('Failed to send payment approved email:', e);
+        console.warn('Failed to send payment rejected email:', e);
       }
     }
 
+    // On any approved payment, send a generic approval email and in-app notification
     if (dto.status === 'approved') {
       try {
         const user = await this.userService.findById(payment.userId.toString());
-        if (user?.email) {
-          const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
-          await this.mailService.sendPaymentApprovedEmail(
-            user.email,
-            fullName,
-            payment.type,
-            payment.amount,
-            payment.currency ?? 'ETB',
-          );
+        if (user) {
+          const fullName =
+            [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
+          if (user.email) {
+            await this.mailService.sendPaymentApprovedEmail(
+              user.email,
+              fullName,
+              payment.type,
+              payment.amount,
+              payment.currency ?? 'ETB',
+            );
+          }
+          await this.notificationService.createForUser(user._id.toString(), {
+            type: 'payment_approved',
+            title: 'Payment approved',
+            message: `Your ${payment.type} payment has been approved.`,
+            data: {
+              paymentId: payment._id.toString(),
+              amount: payment.amount,
+              status: payment.status,
+              type: payment.type,
+            },
+          });
         }
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('Failed to send payment approved email:', e);
+        console.warn('Failed to send payment approved notification:', e);
       }
     }
 

@@ -202,6 +202,83 @@ export class MailService {
     });
   }
 
+  async sendEnrollmentApprovedEmail(
+    to: string,
+    fullName: string,
+    classTitle: string,
+    enrollmentId: string | null,
+    amount?: number,
+    currency: string = 'ETB',
+  ) {
+    await this.sendMail({
+      to,
+      subject: 'Enrollment approved – Abel Begena Conservatory',
+      html: this.renderPaymentReminderTemplate({
+        greeting: fullName ? `Peace be with you, ${fullName}` : 'Peace be with you,',
+        intro: enrollmentId
+          ? `Your enrollment for "${classTitle}" (ID: ${enrollmentId}) has been approved. You now have access to your class, lessons, and materials.`
+          : `Your enrollment for "${classTitle}" has been approved. You now have access to your class, lessons, and materials.`,
+        ...(typeof amount === 'number' ? { amount, currency } : {}),
+        outro:
+          'Thank you for joining Abel Begena Conservatory. We look forward to supporting your musical journey.',
+      }),
+    });
+  }
+
+  async sendPaymentRejectedEmail(
+    to: string,
+    fullName: string,
+    paymentType: string,
+    reason?: string,
+    amount?: number,
+    currency: string = 'ETB',
+  ) {
+    const typeLabel =
+      paymentType === 'enrollment'
+        ? 'Enrollment'
+        : paymentType === 'order'
+          ? 'Order'
+          : paymentType === 'student_monthly_fee'
+            ? 'Monthly fee'
+            : paymentType;
+    const intro = reason
+      ? `Your ${typeLabel} payment could not be approved for the following reason: ${reason}.`
+      : `Your ${typeLabel} payment could not be approved. Please contact the school for more details or upload a new receipt.`;
+    await this.sendMail({
+      to,
+      subject: 'Payment not approved – Abel Begena Conservatory',
+      html: this.renderPaymentReminderTemplate({
+        greeting: fullName ? `Peace be with you, ${fullName}` : 'Peace be with you,',
+        intro,
+        ...(typeof amount === 'number' ? { amount, currency } : {}),
+        outro:
+          'If you believe this is an error or have already paid, please reach out to us or upload a new receipt so we can review it again.',
+      }),
+    });
+  }
+
+  async sendOrderStatusUpdatedEmail(
+    to: string,
+    fullName: string,
+    orderId: string,
+    status: string,
+    isPaid: boolean,
+  ) {
+    const statusLabel = status;
+    const intro = isPaid
+      ? `The status of your order ${orderId} has been updated to "${statusLabel}".`
+      : `The status of your order ${orderId} has been updated to "${statusLabel}". Please note that payment is still pending.`;
+    await this.sendMail({
+      to,
+      subject: 'Order update – Abel Begena Conservatory',
+      html: this.renderPaymentReminderTemplate({
+        greeting: fullName ? `Peace be with you, ${fullName}` : 'Peace be with you,',
+        intro,
+        outro: 'Thank you for your order. We will keep you updated as it progresses.',
+      }),
+    });
+  }
+
   private renderOrderConfirmationTemplate(payload: {
     greeting: string;
     intro: string;
