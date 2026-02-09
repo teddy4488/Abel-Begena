@@ -103,8 +103,6 @@ export class StudentAttendanceParticipant {
 export const StudentAttendanceParticipantSchema =
   SchemaFactory.createForClass(StudentAttendanceParticipant);
 
-// Index for quick lookup by attendance number
-StudentAttendanceParticipantSchema.index({ attendanceNumber: 1 });
 StudentAttendanceParticipantSchema.index({ branchId: 1 });
 StudentAttendanceParticipantSchema.index({ instrumentType: 1 });
 StudentAttendanceParticipantSchema.index({ isActive: 1 });

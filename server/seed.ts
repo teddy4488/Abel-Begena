@@ -387,36 +387,29 @@ const Cart = mongoose.model('Cart', CartSchema);
 
 async function seed() {
   try {
-    console.log('🌱 Starting Phase 5 database seed...');
+    console.log('🌱 Starting database reset and base SuperAdmin seed...');
 
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
     if (mongoose.connection.db) {
-      const collections = await mongoose.connection.db.listCollections().toArray();
+      const collections =
+        await mongoose.connection.db.listCollections().toArray();
       for (const collection of collections) {
-        await mongoose.connection.db.dropCollection(collection.name).catch(() => { });
+        await mongoose.connection.db
+          .dropCollection(collection.name)
+          .catch(() => {});
       }
       console.log('🗑️  Dropped all existing collections');
     }
 
     const hashedPassword = await bcrypt.hash('password123', SALT_ROUNDS);
 
-    // ----- Branches -----
-    const branches = await Branch.insertMany([
-      { name: 'Bole Main Studio', slug: 'bole-main-studio', description: 'Primary conservatory studio near Bole Medhane Alem.', address: 'Bole Medhane Alem area', city: 'Addis Ababa', region: 'Addis Ababa', location: { type: 'Point', coordinates: [38.788, 8.993] }, radiusMeters: 600, isActive: true },
-      { name: 'Piassa Heritage Branch', slug: 'piassa-heritage-branch', description: 'Heritage-focused atelier near Piassa.', address: 'Piassa, near St. George Cathedral', city: 'Addis Ababa', region: 'Addis Ababa', location: { type: 'Point', coordinates: [38.753, 9.037] }, radiusMeters: 500, isActive: true },
-      { name: 'CMC Practice Studio', slug: 'cmc-practice-studio', description: 'Quiet practice studio in CMC.', address: 'CMC area, Yeka Sub-City', city: 'Addis Ababa', region: 'Addis Ababa', location: { type: 'Point', coordinates: [38.86, 9.03] }, radiusMeters: 700, isActive: true },
-    ]);
-    console.log('✅ Created branches:', branches.map((b) => b.name).join(', '));
-
-    const [branch1, branch2] = branches;
-
-    // ----- Users (single collection, all roles) -----
+    // Create only a single SuperAdmin; everything else will be created via the app.
     const superAdmin = await User.create({
-      email: 'superadmin@abelbegena.com',
+      email: 'abel@abelbegena.com',
       password: hashedPassword,
-      firstName: 'Super',
+      firstName: 'Abel',
       lastName: 'Admin',
       role: 'SuperAdmin',
       isActive: true,
@@ -424,228 +417,10 @@ async function seed() {
     });
     console.log('✅ Created SuperAdmin:', superAdmin.email);
 
-    const adminBranch = await User.create({
-      email: 'admin-bole@abelbegena.com',
-      password: hashedPassword,
-      firstName: 'Bole',
-      lastName: 'Admin',
-      role: 'Admin',
-      branchId: branch1._id,
-      isActive: true,
-      isVerified: true,
-    });
-    console.log('✅ Created Admin (branch-scoped):', adminBranch.email);
-
-    const teacher = await User.create({
-      email: 'teacher@abelbegena.com',
-      password: hashedPassword,
-      firstName: 'Master',
-      lastName: 'Instructor',
-      role: 'Teacher',
-      teacherProfile: { teacherStatus: 'approved' },
-      isActive: true,
-      isVerified: true,
-      bio: 'Experienced Begena master with 20+ years of teaching experience.',
-    });
-    console.log('✅ Created Teacher:', teacher.email);
-
-    const websiteUser = await User.create({
-      email: 'user@abelbegena.com',
-      password: hashedPassword,
-      firstName: 'Test',
-      lastName: 'User',
-      role: 'User',
-      isActive: true,
-      isVerified: true,
-    });
-    console.log('✅ Created Website user:', websiteUser.email);
-
-    const studentUser = await User.create({
-      email: 'student@abelbegena.com',
-      password: hashedPassword,
-      firstName: 'Test',
-      lastName: 'Student',
-      role: 'Student',
-      isActive: true,
-      isVerified: true,
-      studentProfile: {
-        attendanceNumber: '1',
-        fullName: 'Test Student',
-        branchId: branch1._id,
-        learningType: 'physical',
-        instrumentType: InstrumentType.BEGENA,
-        programDurationMonths: 6,
-        preferredLearningDays: ['monday', 'wednesday', 'friday'],
-        registrationStartDate: new Date(),
-        learningDaysPerWeek: 3,
-        isActive: true,
-      },
-    });
-    console.log('✅ Created Student (User):', studentUser.email);
-
-    // ----- TeacherAttendanceParticipant (with required userId, no auth fields) -----
-    const teacherParticipant = await TeacherAttendanceParticipant.create({
-      userId: teacher._id,
-      fullName: 'Master Instructor',
-      instruments: [InstrumentType.BEGENA, InstrumentType.MASINKO],
-      teachingDays: ['monday', 'wednesday', 'friday'],
-      timeRanges: [
-        { day: 'monday', startTime: '09:00', endTime: '12:00' },
-        { day: 'wednesday', startTime: '09:00', endTime: '12:00' },
-        { day: 'friday', startTime: '09:00', endTime: '12:00' },
-      ],
-      isActive: true,
-    });
-    console.log('✅ Created Teacher Attendance Participant');
-
-    // ----- StudentAttendanceParticipant (with required userId, no auth fields) -----
-    const studentParticipant = await StudentAttendanceParticipant.create({
-      userId: studentUser._id,
-      fullName: 'Test Student',
-      attendanceNumber: '1',
-      branchId: branch1._id,
-      learningType: 'physical',
-      instrumentType: InstrumentType.BEGENA,
-      programDurationMonths: 6,
-      preferredLearningDays: ['monday', 'wednesday', 'friday'],
-      registrationStartDate: new Date(),
-      learningDaysPerWeek: 3,
-      phone: '+251911234567',
-      city: 'Addis Ababa',
-      isActive: true,
-    });
-    console.log('✅ Created Student Attendance Participant (linked to User)');
-
-    // ----- Class (instructorId = User) -----
-    const sampleClass = await Class.create({
-      title: 'Introduction to Begena: The Harp of David',
-      description: 'Learn the fundamentals of playing the Begena, Ethiopia\'s sacred harp.',
-      classType: 'both',
-      instrumentType: InstrumentType.BEGENA,
-      level: 'beginner',
-      instructorId: teacher._id,
-      branchId: branch1._id,
-      startDate: new Date(),
-      isLive: false,
-      liveRoomCode: 'begena-101',
-      materials: [{ title: 'Week 1: Historical Context', url: 'https://example.com/material1.pdf', uploadedAt: new Date() }],
-      tuition: 5000,
-      currency: 'ETB',
-      enrollments: [],
-    });
-    console.log('✅ Created sample class:', sampleClass.title);
-
-    // ----- Enrollments (Phase 5.2 collection) -----
-    await Enrollment.create({
-      classId: sampleClass._id,
-      studentId: websiteUser._id,
-      status: 'active',
-      amountPaid: 5000,
-      currency: 'ETB',
-      enrolledAt: new Date(),
-    });
-    await Enrollment.create({
-      classId: sampleClass._id,
-      studentId: studentUser._id,
-      status: 'active',
-      amountPaid: 5000,
-      currency: 'ETB',
-      enrolledAt: new Date(),
-    });
-    console.log('✅ Created enrollments (Enrollment collection)');
-
-    // ----- Lessons -----
-    const begenaLessons = await InstrumentLesson.insertMany([
-      { classId: sampleClass._id, instrumentType: InstrumentType.BEGENA, level: 'beginner', title: 'Introduction to Begena', code: 'BEG-001', order: 1, isActive: true },
-      { classId: sampleClass._id, instrumentType: InstrumentType.BEGENA, level: 'beginner', title: 'Basic Posture and Holding', code: 'BEG-002', order: 2, isActive: true },
-      { classId: sampleClass._id, instrumentType: InstrumentType.BEGENA, level: 'beginner', title: 'String Tuning Fundamentals', code: 'BEG-003', order: 3, isActive: true },
-      { classId: sampleClass._id, instrumentType: InstrumentType.BEGENA, level: 'beginner', title: 'First Melodies', code: 'BEG-004', order: 4, isActive: true },
-    ]);
-    console.log('✅ Created lessons linked to class');
-
-    // ----- Blog (author = User) -----
-    const [blogPost1] = await BlogPost.create([
-      { title: 'The Sacred History of Begena', slug: 'sacred-history-begena', content: 'The Begena, also known as the Harp of David...', author: teacher._id, coverImage: 'https://example.com/begena-history.jpg', isPublished: true, status: 'published', publishedAt: new Date() },
-      { title: 'Learning Traditional Ethiopian Instruments', slug: 'learning-traditional-instruments', content: 'Ethiopia has a rich musical heritage...', author: teacher._id, coverImage: 'https://example.com/instruments.jpg', isPublished: true, status: 'published', publishedAt: new Date() },
-    ]);
-    console.log('✅ Created blog posts');
-
-    await Comment.create({
-      postId: blogPost1._id,
-      authorId: websiteUser._id,
-      content: 'This is a wonderful article about Begena! Thank you for sharing.',
-      status: 'approved',
-    });
-    console.log('✅ Created sample comment');
-
-    await Faq.insertMany([
-      { question: 'What instruments do you teach?', answer: 'We teach Begena, Masinko, Kebero, Kirar, Washint, and other traditional Ethiopian instruments.', order: 1, isActive: true },
-      { question: 'Do you offer online classes?', answer: 'Yes, we offer both online and physical classes.', order: 2, isActive: true },
-      { question: 'What is the duration of the programs?', answer: 'We offer 3-month, 6-month, and 9-month programs.', order: 3, isActive: true },
-      { question: 'How do I enroll as a student?', answer: 'You can register on our website and fill out the enrollment form.', order: 4, isActive: true },
-    ]);
-    console.log('✅ Created FAQs');
-
-    const products = await Product.insertMany([
-      { name: 'Traditional Begena', instrumentType: InstrumentType.BEGENA, shortDescription: 'Handcrafted traditional Begena', description: 'Beautifully crafted traditional Begena.', price: 15000, currency: 'ETB', stock: 5, images: ['https://images.unsplash.com/photo-1525283117698-859fc07a86e8?auto=format&fit=crop&w=800&q=80'], isActive: true },
-      { name: 'Masinko Instrument', instrumentType: InstrumentType.MASINKO, shortDescription: 'Authentic Masinko', description: 'Traditional Masinko with high-quality materials.', price: 3000, currency: 'ETB', stock: 10, images: ['https://images.unsplash.com/photo-1445985543470-41fba5c3144a?auto=format&fit=crop&w=800&q=80'], isActive: true },
-    ]);
-
-    await InstrumentMaterial.create({
-      title: 'Begena Basic Exercises',
-      url: 'https://example.com/begena-exercises.pdf',
-      classId: sampleClass._id,
-      instrumentType: InstrumentType.BEGENA,
-      lessonId: begenaLessons[0]._id,
-      uploadedBy: teacher._id,
-      description: 'Basic exercises for beginners',
-      fileType: 'pdf',
-      isActive: true,
-    });
-    console.log('✅ Created instrument material');
-
-    await Order.create({
-      user: websiteUser._id,
-      items: [{ productId: products[0]._id, quantity: 1, priceAtCheckout: 15000 }],
-      totalAmount: 15000,
-      deliveryOption: 'Pickup',
-      pickupBranchId: branch1._id,
-      paymentMethod: 'BankTransfer',
-      status: 'Pending',
-      isPaid: false,
-    });
-    console.log('✅ Created sample order');
-
-    const now = new Date();
-    await StudentAttendance.create({
-      participantId: studentParticipant._id,
-      attendanceNumber: studentParticipant.attendanceNumber,
-      studentName: studentParticipant.fullName,
-      sessionDate: now,
-      lessonId: begenaLessons[0]._id,
-      status: 'present',
-      recordedBy: superAdmin._id,
-    });
-    await StudentPayment.create({
-      participantId: studentParticipant._id,
-      amount: 2500,
-      month: now.getMonth() + 1,
-      year: now.getFullYear(),
-      status: 'paid',
-      paidAt: now,
-      recordedBy: superAdmin._id,
-      note: 'Seed tuition payment',
-    });
-    console.log('✅ Created student attendance and payment');
-
-    console.log('\n🎉 Phase 5 seed completed successfully!');
-    console.log('\n📋 Test credentials (password for all: password123):');
-    console.log('   SuperAdmin:    superadmin@abelbegena.com');
-    console.log('   Admin (Bole):   admin-bole@abelbegena.com');
-    console.log('   Teacher:       teacher@abelbegena.com');
-    console.log('   Website user:  user@abelbegena.com');
-    console.log('   Student:       student@abelbegena.com');
-    console.log('\n💡 No migrations needed when starting from an empty DB; seed creates data in current shape.');
+    console.log('\n🎉 Seed completed successfully!');
+    console.log('\n📋 Credentials:');
+    console.log('   SuperAdmin: abel@abelbegena.com');
+    console.log('   Password:   password123');
 
     await mongoose.disconnect();
     console.log('\n👋 Disconnected from MongoDB');
