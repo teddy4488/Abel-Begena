@@ -40,10 +40,12 @@ export function BlogStudio({
   const [updatePost, { isLoading: isUpdating }] = useUpdatePostMutation();
   const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation();
   const [uploadImage, { isLoading: isUploadingImage }] = useUploadBlogImageMutation();
-  const { data: allComments = [] } = useGetManageCommentsQuery();
   const { pushToast } = useToast();
   const { user } = useAppSelector((state) => state.auth);
-  const isAdmin = user?.role === "Admin";
+  const isAdmin = user?.role === "Admin" || user?.role === "SuperAdmin";
+  const { data: allComments = [] } = useGetManageCommentsQuery(undefined, {
+    skip: !isAdmin,
+  });
   const [search, setSearch] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [, setCoverImageFile] = useState<File | null>(null);

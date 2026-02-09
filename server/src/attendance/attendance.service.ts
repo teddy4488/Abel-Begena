@@ -85,6 +85,32 @@ export class AttendanceService {
     return (lastNumber + 1).toString();
   }
 
+  /**
+   * Deactivate any attendance participants (teacher or student) linked to the given User id.
+   * Used when a User is removed so they no longer appear in attendance lists.
+   */
+  async deactivateParticipantsForUser(userId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(userId)) {
+      return;
+    }
+    const objectId = new Types.ObjectId(userId);
+    const now = new Date();
+
+    await this.teacherParticipantModel
+      .updateMany(
+        { userId: objectId },
+        { $set: { isActive: false } },
+      )
+      .exec();
+
+    await this.studentParticipantModel
+      .updateMany(
+        { userId: objectId },
+        { $set: { isActive: false, deletedAt: now } },
+      )
+      .exec();
+  }
+
   private generateRandomPassword(): string {
     // Generate a secure random password (12 characters: letters, numbers, symbols)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';

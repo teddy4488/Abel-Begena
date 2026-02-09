@@ -23,6 +23,13 @@ export type AuthUser = {
   instrumentType?: string;
   branchId?: string | { _id: string; name: string };
   learningType?: "physical" | "online";
+  studentProfile?: {
+    attendanceNumber?: string;
+    fullName?: string;
+    branchId?: unknown;
+    learningType?: "physical" | "online";
+    instrumentType?: string;
+  };
   mustChangePassword?: boolean;
 };
 

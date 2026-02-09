@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
@@ -34,7 +34,7 @@ import { Class, ClassSchema } from '../class/schemas/class.schema';
 
 @Module({
   imports: [
-    UserModule,
+    forwardRef(() => UserModule),
     AuthModule,
     MailModule,
     MongooseModule.forFeature([

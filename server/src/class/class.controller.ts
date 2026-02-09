@@ -3,7 +3,9 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -68,15 +70,45 @@ export class ClassController {
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'class_create', resource: 'class' })
-  createClass(@Body() dto: CreateClassDto) {
-    return this.classService.createClass(dto);
+  createClass(
+    @Body() dto: CreateClassDto,
+    @Request() req: ExpressRequest & { user: { role: string; branchId?: string } },
+  ) {
+    const payload: CreateClassDto = { ...dto };
+    // Branch Admins can only create classes for their own branch
+    if (req.user.role === 'Admin' && req.user.branchId) {
+      payload.branchId = req.user.branchId;
+    }
+    return this.classService.createClass(payload);
   }
 
   @Patch(':id')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'class_update', resource: 'class', resourceIdParam: 'id' })
-  updateClass(@Param('id') id: string, @Body() dto: UpdateClassDto) {
+  async updateClass(
+    @Param('id') id: string,
+    @Body() dto: UpdateClassDto,
+    @Request() req: ExpressRequest & { user: { role: string; branchId?: string } },
+  ) {
+    // Branch Admins can only update classes belonging to their branch
+    if (req.user.role === 'Admin' && req.user.branchId) {
+      const klass = await this.classService.findById(id);
+      if (!klass) {
+        throw new NotFoundException('Class not found');
+      }
+      const branchIdRaw = (klass as { branchId?: { toString: () => string } | string }).branchId;
+      const branchId =
+        typeof branchIdRaw === 'string'
+          ? branchIdRaw
+          : branchIdRaw?.toString?.();
+      if (branchId && branchId !== req.user.branchId) {
+        throw new ForbiddenException(
+          'You can only manage classes for your own branch',
+        );
+      }
+      dto.branchId = req.user.branchId;
+    }
     return this.classService.updateClass(id, dto);
   }
 
@@ -84,7 +116,26 @@ export class ClassController {
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'class_remove', resource: 'class', resourceIdParam: 'id' })
-  removeClass(@Param('id') id: string) {
+  async removeClass(
+    @Param('id') id: string,
+    @Request() req: ExpressRequest & { user: { role: string; branchId?: string } },
+  ) {
+    if (req.user.role === 'Admin' && req.user.branchId) {
+      const klass = await this.classService.findById(id);
+      if (!klass) {
+        throw new NotFoundException('Class not found');
+      }
+      const branchIdRaw = (klass as { branchId?: { toString: () => string } | string }).branchId;
+      const branchId =
+        typeof branchIdRaw === 'string'
+          ? branchIdRaw
+          : branchIdRaw?.toString?.();
+      if (branchId && branchId !== req.user.branchId) {
+        throw new ForbiddenException(
+          'You can only remove classes for your own branch',
+        );
+      }
+    }
     return this.classService.removeClass(id);
   }
 
@@ -92,10 +143,27 @@ export class ClassController {
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'class_assign_instructor', resource: 'class', resourceIdParam: 'id' })
-  assignInstructor(
+  async assignInstructor(
     @Param('id') id: string,
     @Param('instructorId') instructorId: string,
+    @Request() req: ExpressRequest & { user: { role: string; branchId?: string } },
   ) {
+    if (req.user.role === 'Admin' && req.user.branchId) {
+      const klass = await this.classService.findById(id);
+      if (!klass) {
+        throw new NotFoundException('Class not found');
+      }
+      const branchIdRaw = (klass as { branchId?: { toString: () => string } | string }).branchId;
+      const branchId =
+        typeof branchIdRaw === 'string'
+          ? branchIdRaw
+          : branchIdRaw?.toString?.();
+      if (branchId && branchId !== req.user.branchId) {
+        throw new ForbiddenException(
+          'You can only assign instructors for classes in your own branch',
+        );
+      }
+    }
     return this.classService.assignInstructor(id, instructorId);
   }
 

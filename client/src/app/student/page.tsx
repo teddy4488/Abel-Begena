@@ -15,17 +15,27 @@ export default function StudentDashboardPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
   const { t } = useI18n();
+  const studentProfile = (user as unknown as { studentProfile?: { attendanceNumber?: string; instrumentType?: string; learningType?: string } })?.studentProfile;
   
   // Get materials (accessible to all students)
   const { data: materials = [], isLoading: materialsLoading } = useGetPublicMaterialsQuery();
   
   // Get classes and filter live classes for online learners only
   const { data: classes = [] } = useGetClassesQuery();
-  const { data: upcomingPayments = [] } = useGetMyUpcomingPaymentsQuery({ daysAhead: 14 }, {
-    skip: !isLoggedIn || user?.userType !== "student",
-  });
-  const isOnlineLearner = user?.learningType === "online";
-  const studentInstrumentType = user?.instrumentType;
+  const { data: upcomingPayments = [] } = useGetMyUpcomingPaymentsQuery(
+    { daysAhead: 14 },
+    {
+      skip: !isLoggedIn || user?.userType !== "student",
+    },
+  );
+
+  const attendanceNumber =
+    user?.attendanceNumber || studentProfile?.attendanceNumber || "";
+  const learningType =
+    user?.learningType || (studentProfile?.learningType as "physical" | "online" | undefined);
+  const studentInstrumentType =
+    user?.instrumentType || studentProfile?.instrumentType;
+  const isOnlineLearner = learningType === "online";
 
   const filteredMaterials = useMemo(
     () =>
@@ -117,7 +127,7 @@ export default function StudentDashboardPage() {
                 </p>
               </div>
               <p className="text-2xl font-bold text-primary font-mono">
-                {user?.attendanceNumber || "—"}
+                {attendanceNumber || "—"}
               </p>
             </div>
 
@@ -129,7 +139,7 @@ export default function StudentDashboardPage() {
                 </p>
               </div>
               <p className="text-xl font-semibold text-primary">
-                {user?.instrumentType || "—"}
+                {studentInstrumentType || "—"}
               </p>
             </div>
 
@@ -141,7 +151,7 @@ export default function StudentDashboardPage() {
                 </p>
               </div>
               <p className="text-xl font-semibold text-primary capitalize">
-                {user?.learningType || "—"}
+                {learningType || "—"}
               </p>
             </div>
           </div>

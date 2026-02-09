@@ -8,6 +8,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useGetClassesQuery } from "@/store/api/classApi";
+import { useGetMaterialsQuery } from "@/store/api/materialsApi";
 import { useGetInstrumentLessonsQuery } from "@/store/api/attendanceApi";
 import { BookOpen, FileText, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -121,6 +122,10 @@ function ClassLessonsCard({
     { classId },
     { skip: !expanded },
   );
+  const { data: materials = [], isLoading: materialsLoading } = useGetMaterialsQuery(
+    expanded ? { classId } : undefined,
+    { skip: !expanded },
+  );
 
   return (
     <motion.div
@@ -165,7 +170,7 @@ function ClassLessonsCard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="mt-4 border-t border-border/60 pt-4 space-y-3"
+            className="mt-4 border-t border-border/60 pt-4 space-y-5"
           >
             {isLoading ? (
               <div className="flex items-center gap-2 text-sm text-foreground/70">
@@ -180,39 +185,116 @@ function ClassLessonsCard({
                 )}
               </p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {lessons
                   .slice()
                   .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-                  .map((lesson) => (
-                    <li
-                      key={lesson._id}
-                      className="flex items-center justify-between rounded-2xl surface-elevated px-4 py-3 text-sm"
-                    >
-                      <div>
-                        <p className="font-semibold text-primary">
-                          {lesson.title}
-                          {lesson.code ? ` (${lesson.code})` : ""}
-                        </p>
-                        <p className="text-xs text-foreground/60">
-                          {lesson.level === "advanced"
-                            ? t("student.lessons.levelAdvanced", "Advanced lesson")
-                            : t("student.lessons.levelBeginner", "Beginner lesson")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-secondary/80">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>
-                          {t(
-                            "student.lessons.materialsHint",
-                            "Materials appear in your dashboard and class room.",
-                          )}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
+                  .map((lesson) => {
+                    const lessonMaterials = materials.filter(
+                      (m) => m.lessonId === lesson._id,
+                    );
+                    return (
+                      <li
+                        key={lesson._id}
+                        className="rounded-2xl surface-elevated px-4 py-3 text-sm space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-primary">
+                              {lesson.title}
+                              {lesson.code ? ` (${lesson.code})` : ""}
+                            </p>
+                            <p className="text-xs text-foreground/60">
+                              {lesson.level === "advanced"
+                                ? t("student.lessons.levelAdvanced", "Advanced lesson")
+                                : t(
+                                    "student.lessons.levelBeginner",
+                                    "Beginner lesson",
+                                  )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-secondary/80">
+                            <FileText className="h-3.5 w-3.5" />
+                            <span>
+                              {lessonMaterials.length
+                                ? t(
+                                    "student.lessons.materialsCount",
+                                    "{{count}} material(s)",
+                                  ).replace(
+                                    "{{count}}",
+                                    String(lessonMaterials.length),
+                                  )
+                                : t(
+                                    "student.lessons.noMaterialsForLesson",
+                                    "No materials yet",
+                                  )}
+                            </span>
+                          </div>
+                        </div>
+                        {lessonMaterials.length > 0 && (
+                          <div className="space-y-1">
+                            {lessonMaterials.map((material) => (
+                              <a
+                                key={material._id}
+                                href={material.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between rounded-xl surface-elevated px-3 py-2 text-xs hover:shadow-md transition"
+                              >
+                                <span className="truncate">{material.title}</span>
+                                <span className="ml-3 text-secondary text-[10px] uppercase tracking-[0.2em]">
+                                  {material.fileType ?? "file"}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
               </ul>
             )}
+
+            {/* Class-wide materials (not tied to a specific lesson) */}
+            <div className="pt-2 border-t border-border/40 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
+                {t("student.lessons.classMaterials", "Class materials")}
+              </p>
+              {materialsLoading ? (
+                <div className="flex items-center gap-2 text-sm text-foreground/70">
+                  <Loader2 className="h-4 w-4 animate-spin text-secondary" />
+                  {t("student.lessons.loadingMaterials", "Loading materials...")}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {materials.filter((m) => !m.lessonId).length === 0 ? (
+                    <p className="text-sm text-foreground/70">
+                      {t(
+                        "student.lessons.noClassMaterials",
+                        "No class-wide materials uploaded yet.",
+                      )}
+                    </p>
+                  ) : (
+                    materials
+                      .filter((m) => !m.lessonId)
+                      .map((material) => (
+                        <a
+                          key={material._id}
+                          href={material.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between rounded-xl surface-elevated px-3 py-2 text-xs hover:shadow-md transition"
+                        >
+                          <span className="truncate">{material.title}</span>
+                          <span className="ml-3 text-secondary text-[10px] uppercase tracking-[0.2em]">
+                            {material.fileType ?? "file"}
+                          </span>
+                        </a>
+                      ))
+                  )}
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

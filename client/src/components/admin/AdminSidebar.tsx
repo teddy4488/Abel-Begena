@@ -112,7 +112,9 @@ export function AdminSidebar() {
             <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/80">
               {user?.role === "SuperAdmin"
                 ? t("admin.sidebar.roleSuperAdmin", "Super Admin")
-                : t("admin.sidebar.role", "Admin")}
+                : user?.role === "Admin" && user?.branchId
+                  ? t("admin.sidebar.roleBranchAdmin", "Branch Admin")
+                  : t("admin.sidebar.role", "Admin")}
             </p>
             {user?.role === "Admin" && user?.branchId && (
               <p className="text-[10px] text-secondary/80 truncate mt-0.5">

@@ -531,7 +531,7 @@ export default function AdminStorePage() {
 
       {/* Add Product Form */}
       {showAddForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => {
@@ -547,9 +547,9 @@ export default function AdminStorePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={handleSubmit}
-          className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto space-y-4 rounded-3xl surface-elevated p-6 card-elevated shadow-2xl"
+          className="relative z-10 flex flex-col w-full max-w-4xl max-h-[90vh] rounded-3xl surface-elevated card-elevated shadow-2xl overflow-hidden"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex-none flex items-center justify-between p-6 pb-0">
             <div>
               <p className="text-xs uppercase tracking-[0.4em] text-secondary/70">
                 {editingId
@@ -576,6 +576,7 @@ export default function AdminStorePage() {
             </button>
           </div>
 
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
@@ -787,6 +788,7 @@ export default function AdminStorePage() {
                 </>
               )}
             </button>
+          </div>
           </div>
         </motion.form>
         </div>

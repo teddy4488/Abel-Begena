@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AttendanceService } from '../attendance/attendance.service';
 
 const SALT_ROUNDS = 10;
 
@@ -13,6 +14,8 @@ export class UserService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @Inject(forwardRef(() => AttendanceService))
+    private readonly attendanceService: AttendanceService,
   ) {}
 
   async findAll() {
@@ -79,6 +82,8 @@ export class UserService {
     if (!result) {
       throw new NotFoundException('User not found');
     }
+    // Also deactivate any attendance participants linked to this user (teachers or students)
+    await this.attendanceService.deactivateParticipantsForUser(id);
     return { message: 'User removed' };
   }
 
@@ -196,7 +201,7 @@ export class UserService {
   }
 
   /** Phase 5.3: List Users with role Admin, optionally filtered by branchId. Include branch name. */
-  async findAdmins(branchFilter?: { branchId: string }) {
+  async findAdmins(branchFilter?: { branchId?: string }) {
     const filter: Record<string, unknown> = { role: 'Admin', deletedAt: null };
     if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
       filter.branchId = new Types.ObjectId(branchFilter.branchId);
