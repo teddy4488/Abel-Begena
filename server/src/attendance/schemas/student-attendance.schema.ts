@@ -15,6 +15,10 @@ export class StudentAttendance {
   })
   participantId: Types.ObjectId;
 
+   // Direct reference to User (canonical student identity) for unified queries
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false, index: true })
+  userId?: Types.ObjectId;
+
   // Store attendance number for quick lookup and audit trail
   @Prop({ required: true, trim: true, index: true })
   attendanceNumber: string;
@@ -54,4 +58,5 @@ export const StudentAttendanceSchema =
 // Indexes for efficient queries
 StudentAttendanceSchema.index({ participantId: 1, sessionDate: -1 });
 StudentAttendanceSchema.index({ attendanceNumber: 1, sessionDate: -1 });
+StudentAttendanceSchema.index({ userId: 1, sessionDate: -1 });
 StudentAttendanceSchema.index({ sessionDate: -1 });

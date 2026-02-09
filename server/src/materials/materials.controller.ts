@@ -19,10 +19,14 @@ import { CreateInstrumentMaterialDto } from './dto/create-instrument-material.dt
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
+import { ClassService } from '../class/class.service';
 
 @Controller('materials')
 export class MaterialsController {
-  constructor(private readonly materialsService: MaterialsService) {}
+  constructor(
+    private readonly materialsService: MaterialsService,
+    private readonly classService: ClassService,
+  ) {}
 
   @Post('upload')
   @Roles('Teacher', 'Admin')
@@ -51,11 +55,23 @@ export class MaterialsController {
     );
   }
 
-  /** List instrument materials. Use ?classId= to restrict to a class (includes both class-scoped and lesson-scoped materials for that class). */
+  /** List instrument materials for a class. Includes both class-scoped and lesson-scoped materials.
+   *  Access control:
+   *   - Admins can access any class.
+   *   - Teachers can access classes they instruct.
+   *   - Students must be actively enrolled in the class.
+   */
   @Get()
+  @UseGuards(JwtAuthGuard)
   async getMaterials(
-    @Query('classId') classId?: string,
+    @Query('classId') classId: string,
+    @Request() req: { user: { sub: string; role: string } },
   ) {
+    // Reuse class access logic (throws if user is neither admin, instructor, nor active enrollee)
+    await this.classService.getAccessPayload(classId, {
+      sub: req.user.sub,
+      role: req.user.role,
+    });
     return this.materialsService.getMaterialsByClass(classId);
   }
 

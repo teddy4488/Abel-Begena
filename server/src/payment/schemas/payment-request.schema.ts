@@ -66,4 +66,5 @@ export const PaymentRequestSchema =
   SchemaFactory.createForClass(PaymentRequest);
 
 PaymentRequestSchema.index({ type: 1, status: 1, createdAt: -1 });
+PaymentRequestSchema.index({ userId: 1, status: 1, createdAt: -1 });
 

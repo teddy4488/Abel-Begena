@@ -169,6 +169,58 @@ export default function AdminPaymentsPage() {
     return "Unknown";
   };
 
+  // Try to infer a human-friendly context (class title or order summary) for a payment request
+  const getRequestContextLabel = (request: PaymentRequest): string | null => {
+    // Normalize userId string for joins
+    const userIdStr =
+      typeof request.userId === "string"
+        ? request.userId
+        : request.userId?._id ?? "";
+
+    if (request.type === "enrollment") {
+      // Find any enrollment for this user; use the most recent class title as context
+      const enrollment = enrollments.find(
+        (e) => e.student.id === userIdStr && e.status !== "withdrawn",
+      );
+      if (enrollment?.classTitle) {
+        return enrollment.classTitle;
+      }
+      return t("admin.payments.context.enrollmentFallback", "Class enrollment");
+    }
+
+    if (request.type === "order" && request.targetId) {
+      const targetIdStr =
+        typeof request.targetId === "string"
+          ? request.targetId
+          : String(request.targetId);
+      const order = orders.find((o) => o._id === targetIdStr);
+      if (order) {
+        const itemCount = order.items.length;
+        const itemsLabel =
+          itemCount === 1
+            ? t("store.item", "item")
+            : t("store.items", "items");
+        return t(
+          "admin.payments.context.orderSummary",
+          "{{count}} store {{itemsLabel}}",
+        )
+          .replace("{{count}}", String(itemCount))
+          .replace("{{itemsLabel}}", itemsLabel);
+      }
+      return t("admin.payments.context.orderFallback", "Store order payment");
+    }
+
+    if (request.type === "student_monthly_fee") {
+      // Month/year are stored in conversionData; keep it simple for the card
+      return t(
+        "admin.payments.context.monthlyFee",
+        "Student monthly tuition payment",
+      );
+    }
+
+    return null;
+  };
+
   const enrollmentRecords: AdminPaymentRecord[] = useMemo(
     () =>
       enrollments
@@ -477,6 +529,11 @@ export default function AdminPaymentsPage() {
                         {formatAmount(request.amount, request.currency)}
                       </span>
                     </p>
+                    {getRequestContextLabel(request) && (
+                      <p className="text-xs text-foreground/70">
+                        {getRequestContextLabel(request)}
+                      </p>
+                    )}
                     {request.reference && (
                       <p className="text-xs text-foreground/60">
                         {t("admin.payments.reference", "Reference")}: {request.reference}
@@ -858,6 +915,19 @@ export default function AdminPaymentsPage() {
                       </p>
                       <p className="mt-1 text-foreground/80">
                         {formatDate(selectedRequest.createdAt)}
+                      </p>
+                    </div>
+                  )}
+                  {getRequestContextLabel(selectedRequest) && (
+                    <div className="md:col-span-2">
+                      <p className="text-xs uppercase tracking-wide text-secondary/70">
+                        {t(
+                          "admin.payments.review.context",
+                          "Payment context",
+                        )}
+                      </p>
+                      <p className="mt-1 text-foreground/80">
+                        {getRequestContextLabel(selectedRequest)}
                       </p>
                     </div>
                   )}

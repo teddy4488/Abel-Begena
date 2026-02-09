@@ -111,3 +111,5 @@ export const EnrollmentSchema = SchemaFactory.createForClass(Enrollment);
 EnrollmentSchema.index({ classId: 1, studentId: 1 }, { unique: true });
 EnrollmentSchema.index({ status: 1 });
 EnrollmentSchema.index({ enrolledAt: -1 });
+// Efficient queries for active enrollments per class
+EnrollmentSchema.index({ status: 1, classId: 1 });

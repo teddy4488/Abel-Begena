@@ -382,6 +382,8 @@ export class ClassService {
     }
 
     return {
+      // materials are now provided by InstrumentMaterial collection; this field is kept
+      // for backward compatibility and will be removed once all clients migrate.
       materials: classEntity.materials ?? [],
       isLive: classEntity.isLive ?? false,
       liveLink,

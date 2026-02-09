@@ -754,6 +754,7 @@ export class AttendanceService {
     const status = dto.status || 'present';
     const created = await this.studentAttendanceModel.create({
       participantId: participant._id,
+      userId: participant.userId,
       attendanceNumber: participant.attendanceNumber,
       studentName: participant.fullName,
       sessionDate: now,
@@ -1329,6 +1330,7 @@ export class AttendanceService {
 
     const created = await this.studentPaymentModel.create({
       participantId: participant._id,
+      userId: participant.userId,
       amount: dto.amount,
       month,
       year,

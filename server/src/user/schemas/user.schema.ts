@@ -127,3 +127,7 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// Indexes to support role- and branch-scoped queries and fast lookup by attendance number
+UserSchema.index({ role: 1, branchId: 1 });
+UserSchema.index({ 'studentProfile.attendanceNumber': 1 });

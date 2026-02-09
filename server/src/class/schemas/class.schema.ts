@@ -81,6 +81,8 @@ export class Class {
     ],
     default: [],
   })
+  // Deprecated: class-level materials are now stored in InstrumentMaterial.
+  // Kept temporarily for backward compatibility and will be removed after migration.
   materials: { title: string; url: string; uploadedAt: Date }[];
 
   @Prop({ default: false })

@@ -16,6 +16,10 @@ export class StudentPayment {
   })
   participantId: Types.ObjectId;
 
+  // Direct reference to User (canonical student identity) for unified queries
+  @Prop({ type: Types.ObjectId, ref: 'User', index: true })
+  userId?: Types.ObjectId;
+
   @Prop({ type: Number, min: 2000, max: 999_999, required: true })
   amount: number;
 
@@ -65,6 +69,7 @@ export const StudentPaymentSchema =
 
 // 30-day rolling: multiple payments per month possible (e.g. due March 1 and March 31)
 StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 });
+StudentPaymentSchema.index({ userId: 1, year: 1, month: 1 });
 StudentPaymentSchema.index({ participantId: 1, dueDate: 1 });
 StudentPaymentSchema.index({ year: 1, month: 1 });
 StudentPaymentSchema.index({ status: 1 });
