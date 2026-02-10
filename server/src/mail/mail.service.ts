@@ -1,34 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
   private readonly fromAddress: string;
-  /**
-   * Required HTTP email relay endpoint (e.g. Cloudflare Worker, Resend, etc).
-   * This service NEVER uses SMTP; all mail is sent via HTTPS JSON POST.
-   */
-  private readonly httpEndpoint: string | null;
-  private readonly httpApiKey: string | null;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Optional() private readonly mailerService?: MailerService,
+  ) {
     this.fromAddress =
       this.configService.get<string>('EMAIL_FROM') ??
       'Abel Begena Conservatory <no-reply@abelbegena.com>';
 
-    this.httpEndpoint =
-      this.configService.get<string>('EMAIL_HTTP_ENDPOINT') ?? null;
-    this.httpApiKey =
-      this.configService.get<string>('EMAIL_HTTP_API_KEY') ?? null;
-
-    if (!this.httpEndpoint) {
-      this.logger.error(
-        'EMAIL_HTTP_ENDPOINT is not set. Outbound email (OTP, verification, password reset) will NOT work until this is configured.',
+    if (this.mailerService) {
+      this.logger.log(
+        'Using Gmail/SMTP for outbound mail. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env.',
       );
     } else {
-      this.logger.log(
-        `Using HTTP email relay at ${this.httpEndpoint} for outbound mail.`,
+      this.logger.error(
+        'MailerService is not available. Outbound email will not work until MailerModule is configured.',
       );
     }
   }
@@ -326,40 +319,20 @@ export class MailService {
     subject: string;
     html: string;
   }) {
-    if (!this.httpEndpoint) {
-      this.logger.error(
-        `Cannot send email to ${options.to}: EMAIL_HTTP_ENDPOINT is not configured.`,
-      );
-      return;
-    }
-
     try {
-      const payload = {
-        from: this.fromAddress,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-      };
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (this.httpApiKey) {
-        headers['Authorization'] = `Bearer ${this.httpApiKey}`;
+      if (this.mailerService) {
+        await this.mailerService.sendMail({
+          from: this.fromAddress,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        });
+        return;
       }
 
-      const response = await fetch(this.httpEndpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(
-          `HTTP email relay responded with ${response.status} ${response.statusText}: ${text}`,
-        );
-      }
+      this.logger.error(
+        `Cannot send email to ${options.to}: SMTP is not configured.`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to send email to ${options.to}: ${this.describeError(error)}`,

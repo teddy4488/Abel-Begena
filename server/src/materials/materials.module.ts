@@ -10,6 +10,7 @@ import { UploadModule } from '../upload/upload.module';
 import { Class, ClassSchema } from '../class/schemas/class.schema';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
+import { ClassModule } from '../class/class.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UserModule } from '../user/user.module';
     UploadModule,
     AuthModule,
     UserModule,
+    ClassModule,
   ],
   controllers: [MaterialsController],
   providers: [MaterialsService],
