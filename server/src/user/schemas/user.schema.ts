@@ -93,9 +93,13 @@ export class User {
   @Prop({ type: StudentProfileSchema })
   studentProfile?: StudentProfile;
 
-  /** Branch-scoped Admin (Phase 5.3). SuperAdmin has no branchId. */
+  /** Branch-scoped Admin. SuperAdmin has no branchId. */
   @Prop({ type: Types.ObjectId, ref: 'Branch', index: true })
   branchId?: Types.ObjectId;
+
+  /** Branches a Teacher is assigned to. SuperAdmin-managed. At least one required for Teacher role. */
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Branch' }], default: [] })
+  branchIds?: Types.ObjectId[];
 
   @Prop()
   avatarUrl?: string;

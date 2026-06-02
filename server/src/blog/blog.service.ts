@@ -107,10 +107,15 @@ export class BlogService {
     return post as BlogPostResponse;
   }
 
-  async findAllForManagement(search?: string): Promise<BlogPostResponse[]> {
+  async findAllForManagement(
+    search?: string,
+    actor?: { sub: string; role: string },
+  ): Promise<BlogPostResponse[]> {
     const query: FilterQuery<BlogPostDocument> = {
       $and: [
         notDeletedFilter(),
+        // Teachers only see their own posts; Admins see everything
+        ...(actor?.role === 'Teacher' ? [{ author: new Types.ObjectId(actor.sub) }] : []),
         ...(search
           ? [{ $or: [{ title: new RegExp(search, 'i') }, { content: new RegExp(search, 'i') }] }]
           : []),

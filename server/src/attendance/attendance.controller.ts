@@ -11,8 +11,10 @@ import {
   Put,
   Query,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -22,6 +24,9 @@ import { RegisterStudentParticipantDto } from './dto/register-student-participan
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
 import { RecordStudentAttendanceDto } from './dto/record-student-attendance.dto';
 import { RecordStudentPaymentDto } from './dto/student-payment.dto';
+import { NoShowActionDto } from './dto/no-show.dto';
+import { CreateClosedDayDto } from './dto/closed-day.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('attendance')
@@ -46,13 +51,19 @@ export class AttendanceController {
     return this.attendanceService.registerStudentParticipant(dto);
   }
 
-  @Post('students/convert')
-  @UseGuards(JwtAuthGuard)
+  /**
+   * Admin-only manual conversion of a specific user to a student. The normal flow
+   * converts automatically on payment approval; this is the manual recovery tool.
+   */
+  @Post('students/convert/:userId')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_convert', resource: 'student_participant', resourceIdParam: 'userId' })
   convertUserToStudent(
+    @Param('userId') userId: string,
     @Body() dto: import('./dto/convert-user-to-student.dto').ConvertUserToStudentDto,
-    @Request() req: { user: { sub: string } },
   ) {
-    return this.attendanceService.convertUserToStudent(req.user.sub, dto);
+    return this.attendanceService.convertUserToStudent(userId, dto);
   }
 
   @Get('teachers/participants')
@@ -68,6 +79,27 @@ export class AttendanceController {
   listStudentParticipants(@Request() req: { user?: { branchId?: string } }) {
     const branchFilter = req.user?.branchId ? { branchId: req.user.branchId } : undefined;
     return this.attendanceService.listStudentParticipants(branchFilter);
+  }
+
+  /** Past (reverted) students — preserved history. */
+  @Get('students/past')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  listPastStudents(@Request() req: { user?: { branchId?: string } }) {
+    const branchFilter = req.user?.branchId ? { branchId: req.user.branchId } : undefined;
+    return this.attendanceService.listPastStudents(branchFilter);
+  }
+
+  /** Admin reverts a student back to a regular user (package finished / withdrew / dropped). */
+  @Post('students/:userId/revert')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_revert', resource: 'student_participant', resourceIdParam: 'userId' })
+  revertStudentToUser(
+    @Param('userId') userId: string,
+    @Body() dto: import('./dto/revert-student.dto').RevertStudentDto,
+  ) {
+    return this.attendanceService.revertStudentToUser(userId, dto.reason);
   }
 
   @Get('students/lookup/:attendanceNumber')
@@ -91,7 +123,7 @@ export class AttendanceController {
   @Get('students/:id/details')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  getStudentDetails(@Param('id') id: string) {
+  getStudentDetails(@Param('id') id: string): Promise<unknown> {
     return this.attendanceService.getStudentDetails(id);
   }
 
@@ -156,6 +188,136 @@ export class AttendanceController {
     return this.attendanceService.recordStudentAttendance(dto, req.user.sub);
   }
 
+  @Patch('students/record/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_attendance_update', resource: 'student_attendance', resourceIdParam: 'id' })
+  updateAttendanceRecord(
+    @Param('id') id: string,
+    @Body() dto: UpdateAttendanceDto,
+  ) {
+    return this.attendanceService.updateAttendanceRecord(id, dto);
+  }
+
+  @Delete('students/record/:id')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'student_attendance_delete', resource: 'student_attendance', resourceIdParam: 'id' })
+  deleteAttendanceRecord(@Param('id') id: string) {
+    return this.attendanceService.deleteAttendanceRecord(id);
+  }
+
+  // No-show review
+  @Get('no-shows')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getNoShows(
+    @Query('date') date: string,
+    @Request() req: { user?: { role?: string; branchId?: string } },
+  ): Promise<unknown> {
+    const branchId = req.user?.role === 'Admin' ? req.user.branchId : undefined;
+    return this.attendanceService.getNoShowsForDate(date, branchId);
+  }
+
+  @Post('no-shows/mark-absent')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'no_show_mark_absent', resource: 'student_attendance' })
+  markNoShowsAbsent(
+    @Body() dto: NoShowActionDto,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.attendanceService.markNoShowsAbsent(
+      dto.date,
+      dto.participantIds,
+      req.user.sub,
+    );
+  }
+
+  @Post('no-shows/revert')
+  @Roles('Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'no_show_revert', resource: 'student_attendance' })
+  revertNoShows(@Body() dto: NoShowActionDto) {
+    return this.attendanceService.revertNoShows(dto.date, dto.participantIds);
+  }
+
+  // Closed days
+  @Get('closed-days')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  listClosedDays(@Request() req: { user?: { role?: string; branchId?: string } }) {
+    const branchFilter =
+      req.user?.role === 'Admin' && req.user.branchId
+        ? { branchId: String(req.user.branchId) }
+        : undefined;
+    return this.attendanceService.listClosedDays(branchFilter);
+  }
+
+  @Post('closed-days')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'closed_day_create', resource: 'closed_day' })
+  createClosedDay(
+    @Body() dto: CreateClosedDayDto,
+    @Request() req: { user: { sub: string; role?: string; branchId?: string } },
+  ) {
+    // Branch admins can only close their own branch.
+    const branchId =
+      req.user.role === 'Admin' && req.user.branchId
+        ? String(req.user.branchId)
+        : dto.branchId;
+    return this.attendanceService.createClosedDay(
+      { date: dto.date, branchId, reason: dto.reason },
+      req.user.sub,
+    );
+  }
+
+  @Delete('closed-days/:id')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'closed_day_delete', resource: 'closed_day', resourceIdParam: 'id' })
+  deleteClosedDay(@Param('id') id: string) {
+    return this.attendanceService.deleteClosedDay(id);
+  }
+
+  // Reporting — static 'me' route MUST be declared before the ':userId' route.
+  @Get('students/me/summary')
+  @Roles('Student', 'Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getMySummary(@Request() req: { user: { sub: string } }): Promise<unknown> {
+    return this.attendanceService.getStudentAttendanceSummary(req.user.sub);
+  }
+
+  @Get('students/:userId/summary')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getStudentSummary(@Param('userId') userId: string): Promise<unknown> {
+    return this.attendanceService.getStudentAttendanceSummary(userId);
+  }
+
+  @Get('export')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  async exportAttendance(
+    @Res() res: Response,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('participantId') participantId?: string,
+    @Request() req?: { user?: { role?: string; branchId?: string } },
+  ): Promise<void> {
+    const branchId = req?.user?.role === 'Admin' ? req.user.branchId : undefined;
+    const csv = await this.attendanceService.exportAttendanceCsv({
+      from,
+      to,
+      participantId,
+      branchId,
+    });
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="attendance.csv"');
+    res.send(csv);
+  }
+
   // Billing / payments
   @Post('billing/pay')
   @Roles('Admin')
@@ -200,8 +362,16 @@ export class AttendanceController {
   @Get('students/me/payments')
   @Roles('Student', 'Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  getMyPayments(@Request() req: { user: { sub: string; userType?: string } }) {
+  getMyPayments(@Request() req: { user: { sub: string; userType?: string } }): Promise<unknown> {
     return this.attendanceService.getStudentPayments(req.user.sub);
+  }
+
+  // Consumption-based billing state for the logged-in student ("what you owe").
+  @Get('students/me/billing')
+  @Roles('Student', 'Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getMyBilling(@Request() req: { user: { sub: string } }): Promise<unknown> {
+    return this.attendanceService.getStudentBillingState(req.user.sub);
   }
 
   // Lessons
@@ -291,7 +461,7 @@ export class AttendanceController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   getAttendanceReport(
     @Query('studentId') studentId?: string,
-  ) {
+  ): Promise<unknown> {
     if (studentId) {
       // Return both attendance and payment reports for a specific student
       return Promise.all([

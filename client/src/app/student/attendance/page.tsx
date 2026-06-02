@@ -61,9 +61,10 @@ export default function StudentAttendancePage() {
     const present = attendanceRecords.filter((r) => r.status === "present").length;
     const late = attendanceRecords.filter((r) => r.status === "late").length;
     const excused = attendanceRecords.filter((r) => r.status === "excused").length;
+    const absent = attendanceRecords.filter((r) => r.status === "absent").length;
     const attendanceRate = total > 0 ? ((present + late) / total) * 100 : 0;
-    
-    return { total, present, late, excused, attendanceRate };
+
+    return { total, present, late, excused, absent, attendanceRate };
   }, [attendanceRecords]);
 
   if (!isLoggedIn || user?.userType !== "student") {

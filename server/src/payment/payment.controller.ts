@@ -12,8 +12,8 @@ import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
-import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
+import { CreatePaymentRequestBodyDto } from './dto/create-payment-request-body.dto';
+import { UpdatePaymentStatusBodyDto } from './dto/update-payment-status-body.dto';
 import { SubmitStudentMonthlyPaymentDto } from './dto/submit-student-monthly-payment.dto';
 import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
@@ -25,7 +25,7 @@ export class PaymentController {
   // User creates a payment request (e.g., for enrollment/order/tuition)
   @Post()
   createPaymentRequest(
-    @Body() dto: Omit<CreatePaymentRequestDto, 'userId'>,
+    @Body() dto: CreatePaymentRequestBodyDto,
     @Request() req: { user: { sub: string } },
   ) {
     return this.paymentService.create(dto, req.user.sub);
@@ -37,19 +37,19 @@ export class PaymentController {
     return this.paymentService.listForUser(req.user.sub);
   }
 
-  // Admin: list pending or filtered payment requests
+  // Admin: payment history with filters (status pending|approved|rejected|all, type,
+  // date range, text search). Defaults to pending to preserve the approval inbox.
   @Get()
   @UseGuards(RoleGuard)
   @Roles('Admin')
   getAll(
     @Query('status') status?: string,
     @Query('type') type?: string,
-  ) {
-    if (status && status !== 'pending') {
-      // For now we only support listing pending; can be extended later
-      return this.paymentService.listPending(type);
-    }
-    return this.paymentService.listPending(type);
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('q') q?: string,
+  ): Promise<unknown[]> {
+    return this.paymentService.listRequests({ status, type, from, to, q });
   }
 
   // Admin: approve or reject a payment request
@@ -59,13 +59,22 @@ export class PaymentController {
   @AuditLog({ action: 'payment_decision', resource: 'payment', resourceIdParam: 'id' })
   updateStatus(
     @Param('id') id: string,
-    @Body() body: Omit<UpdatePaymentStatusDto, 'id'>,
+    @Body() body: UpdatePaymentStatusBodyDto,
     @Request() req: { user: { sub: string } },
   ) {
-    return this.paymentService.updateStatus(
-      { ...body, id },
-      req.user.sub,
-    );
+    return this.paymentService.updateStatus({ ...body, id }, req.user.sub);
+  }
+
+  // Admin: re-run the side effects of an already-approved payment (repair).
+  @Post(':id/retry-side-effects')
+  @UseGuards(RoleGuard)
+  @Roles('Admin')
+  @AuditLog({ action: 'payment_retry', resource: 'payment', resourceIdParam: 'id' })
+  retrySideEffects(
+    @Param('id') id: string,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.paymentService.retrySideEffects(id, req.user.sub);
   }
 
   // Student: submit monthly payment receipt

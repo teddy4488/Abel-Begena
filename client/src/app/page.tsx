@@ -100,7 +100,7 @@ export default function Home() {
     useGetPublicClassesQuery();
   const { data: branches } = useGetBranchesQuery();
   const { data: faqItems } = useGetFaqQuery();
-  const featuredProducts = (products ?? []).slice(0, 3);
+  const featuredProducts = (products?.items ?? []).slice(0, 3);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 

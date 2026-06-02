@@ -1,10 +1,17 @@
 "use client";
 
 import { MapContainer, TileLayer, Marker, Circle } from "react-leaflet";
-import type { LatLngExpression } from "leaflet";
+import L, { type LatLngExpression } from "leaflet";
 import { useMemo } from "react";
 import type { Branch } from "@/store/api/branchApi";
 import "leaflet/dist/leaflet.css";
+
+const branchIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.35)"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
 
 type Props = {
   branches: Branch[];
@@ -44,7 +51,7 @@ export default function BranchesPublicMap({ branches }: Props) {
               fillOpacity: 0.18,
             }}
           >
-            <Marker position={pos} />
+            <Marker position={pos} icon={branchIcon} />
           </Circle>
         );
       })}

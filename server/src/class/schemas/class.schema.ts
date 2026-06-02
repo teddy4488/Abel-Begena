@@ -51,6 +51,13 @@ export class Class {
   })
   level: 'beginner' | 'advanced';
 
+  /**
+   * Package duration in months. Determines sessions/week (3→5, 6→3, 9→2).
+   * Optional for legacy classes created before the package model.
+   */
+  @Prop({ type: Number, enum: [3, 6, 9], index: true })
+  durationMonths?: 3 | 6 | 9;
+
   // Physical cohorts can be tied to a branch
   @Prop({ type: Types.ObjectId, ref: 'Branch', index: true })
   branchId?: Types.ObjectId;

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ClassService } from '../../class/class.service';
+import { userMatchesClassTeacher } from '../../class/class.constants';
 
 type RequestWithUser = Request & {
   user?: { sub: string; role: string };
@@ -25,7 +26,8 @@ export class ClassOwnerGuard implements CanActivate {
       throw new UnauthorizedException('Missing authentication context');
     }
 
-    if (user.role === 'Admin') {
+    // SuperAdmin and Admin can manage any class (branch scoping handled elsewhere).
+    if (user.role === 'Admin' || user.role === 'SuperAdmin') {
       return true;
     }
 
@@ -35,6 +37,7 @@ export class ClassOwnerGuard implements CanActivate {
       throw new NotFoundException('Class not found');
     }
 
-    return classEntity.instructorId?.toString() === user.sub;
+    // Any assigned teacher (lead, primary, or co-teacher) may manage the class.
+    return userMatchesClassTeacher(classEntity, user.sub);
   }
 }

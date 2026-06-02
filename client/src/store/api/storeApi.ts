@@ -8,8 +8,10 @@ export type Product = {
   name: string;
   instrumentType: InstrumentType;
   shortDescription?: string;
+  description?: string;
   price: number;
   stock: number;
+  lowStockThreshold?: number;
   images?: string[];
   attributes?: Record<string, unknown>;
   discountPrice?: number;
@@ -18,8 +20,21 @@ export type Product = {
   createdAt?: string;
 };
 
+export type ProductListResponse = {
+  items: Product[];
+  total: number;
+};
+
+export type ProductListArgs = {
+  search?: string;
+  type?: string;
+  page?: number;
+  limit?: number;
+};
+
 export type CartItemResponse = {
   productId: string;
+  productName?: string | null;
   product: { name: string; images?: string[] } | null;
   quantity: number;
   priceAtCheckout: number;
@@ -64,22 +79,34 @@ export type Order = {
         lastName?: string;
         phone?: string;
       };
+  trackingNumber?: string;
+  trackingCarrier?: string;
   createdAt: string;
   updatedAt?: string;
   items: CartItemResponse[];
 };
+
+function buildProductQuery(args?: ProductListArgs): string {
+  const params = new URLSearchParams();
+  if (args?.search) params.set("search", args.search);
+  if (args?.type) params.set("type", args.type);
+  if (args?.page) params.set("page", String(args.page));
+  if (args?.limit) params.set("limit", String(args.limit));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
 
 export const storeApi = createApi({
   reducerPath: "storeApi",
   baseQuery: authorizedBaseQuery,
   tagTypes: ["Products", "Cart", "Orders"],
   endpoints: (builder) => ({
-    getProducts: builder.query<Product[], void>({
-      query: () => "/products",
+    getProducts: builder.query<ProductListResponse, ProductListArgs | void>({
+      query: (args) => `/products${buildProductQuery(args ?? undefined)}`,
       providesTags: ["Products"],
     }),
-    getManageProducts: builder.query<Product[], void>({
-      query: () => "/products/manage",
+    getManageProducts: builder.query<ProductListResponse, ProductListArgs | void>({
+      query: (args) => `/products/manage${buildProductQuery(args ?? undefined)}`,
       providesTags: ["Products"],
     }),
     getProductById: builder.query<Product, string>({
@@ -170,12 +197,25 @@ export const storeApi = createApi({
     }),
     updateOrderStatus: builder.mutation<
       Order,
-      { id: string; status?: string; isPaid?: boolean }
+      {
+        id: string;
+        status?: string;
+        isPaid?: boolean;
+        trackingNumber?: string;
+        trackingCarrier?: string;
+      }
     >({
       query: ({ id, ...body }) => ({
         url: `/orders/${id}/status`,
         method: "PATCH",
         body,
+      }),
+      invalidatesTags: ["Orders"],
+    }),
+    cancelOrder: builder.mutation<Order, string>({
+      query: (id) => ({
+        url: `/orders/${id}/cancel`,
+        method: "POST",
       }),
       invalidatesTags: ["Orders"],
     }),
@@ -192,6 +232,17 @@ export const storeApi = createApi({
           body: formData,
         };
       },
+      invalidatesTags: ["Products"],
+    }),
+    updateProductImages: builder.mutation<
+      Product,
+      { id: string; images: string[] }
+    >({
+      query: ({ id, images }) => ({
+        url: `/products/${id}/images`,
+        method: "PATCH",
+        body: { images },
+      }),
       invalidatesTags: ["Products"],
     }),
   }),
@@ -211,6 +262,8 @@ export const {
   useUpdateProductMutation,
   useDeleteProductMutation,
   useUpdateOrderStatusMutation,
+  useCancelOrderMutation,
   useUploadProductImageMutation,
+  useUpdateProductImagesMutation,
 } = storeApi;
 

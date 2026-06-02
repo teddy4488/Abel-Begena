@@ -9,6 +9,12 @@ import { config } from 'dotenv';
 
 config({ path: '.env' });
 
+if (process.env.NODE_ENV === 'production') {
+  console.error('ERROR: seed.ts must not be run in production.');
+  process.exit(1);
+}
+const FORCE_DROP = process.argv.includes('--force-drop');
+
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/abel-begena';
 const SALT_ROUNDS = 10;
 
@@ -392,18 +398,26 @@ async function seed() {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
-    if (mongoose.connection.db) {
-      const collections =
-        await mongoose.connection.db.listCollections().toArray();
-      for (const collection of collections) {
-        await mongoose.connection.db
-          .dropCollection(collection.name)
-          .catch(() => {});
+    if (FORCE_DROP) {
+      if (mongoose.connection.db) {
+        const collections =
+          await mongoose.connection.db.listCollections().toArray();
+        for (const collection of collections) {
+          await mongoose.connection.db
+            .dropCollection(collection.name)
+            .catch(() => {});
+        }
+        console.log('🗑️  Dropped all existing collections');
       }
-      console.log('🗑️  Dropped all existing collections');
+    } else {
+      console.log('Skipping drop. Pass --force-drop to enable.');
     }
 
-    const hashedPassword = await bcrypt.hash('password123', SALT_ROUNDS);
+    const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('SEED_ADMIN_PASSWORD env var is not set. Set it before seeding.');
+    }
+    const hashedPassword = await bcrypt.hash(adminPassword, SALT_ROUNDS);
 
     // Create only a single SuperAdmin; everything else will be created via the app.
     const superAdmin = await User.create({
@@ -420,7 +434,7 @@ async function seed() {
     console.log('\n🎉 Seed completed successfully!');
     console.log('\n📋 Credentials:');
     console.log('   SuperAdmin: abel@abelbegena.com');
-    console.log('   Password:   password123');
+    console.log('   Password:   (value of SEED_ADMIN_PASSWORD)');
 
     await mongoose.disconnect();
     console.log('\n👋 Disconnected from MongoDB');

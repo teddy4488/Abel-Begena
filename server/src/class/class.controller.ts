@@ -33,6 +33,7 @@ import { EnrollClassDto } from './dto/enroll-class.dto';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
 import { Request as ExpressRequest } from 'express';
 import { AuditLog } from '../audit/decorators/audit-log.decorator';
+import { MAX_RECEIPT_SIZE_BYTES } from '../upload/upload.service';
 
 @Controller('classes')
 export class ClassController {
@@ -62,8 +63,32 @@ export class ClassController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   findManaged(
     @Request() req: ExpressRequest & { user: { sub: string; role?: string; branchId?: string } },
-  ) {
+  ): Promise<unknown> {
     return this.classService.getManagedCatalog(req.user?.branchId);
+  }
+
+  /** Admin occupancy visualization: students-in-session by time for a selected day. */
+  @Get('occupancy')
+  @Roles('Admin', 'SuperAdmin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  getOccupancy(
+    @Query('day') day: string,
+    @Request() req: ExpressRequest & { user?: { role?: string; branchId?: string } },
+    @Query('instrumentType') instrumentType?: string,
+    @Query('branchId') branchId?: string,
+  ): Promise<unknown> {
+    // Branch Admins are scoped to their own branch; SuperAdmin may filter freely.
+    const effectiveBranch =
+      req.user?.role === 'Admin' && req.user.branchId
+        ? String(req.user.branchId)
+        : branchId;
+    // Occupancy is computed from active student participants (covers both
+    // self-service enrollees and admin-registered students).
+    return this.attendanceService.getDayOccupancy({
+      day,
+      branchId: effectiveBranch,
+      instrumentType,
+    });
   }
 
   @Post()
@@ -90,7 +115,7 @@ export class ClassController {
     @Param('id') id: string,
     @Body() dto: UpdateClassDto,
     @Request() req: ExpressRequest & { user: { role: string; branchId?: string } },
-  ) {
+  ): Promise<unknown> {
     // Branch Admins can only update classes belonging to their branch
     if (req.user.role === 'Admin' && req.user.branchId) {
       const klass = await this.classService.findById(id);
@@ -147,7 +172,7 @@ export class ClassController {
     @Param('id') id: string,
     @Param('instructorId') instructorId: string,
     @Request() req: ExpressRequest & { user: { role: string; branchId?: string } },
-  ) {
+  ): Promise<unknown> {
     if (req.user.role === 'Admin' && req.user.branchId) {
       const klass = await this.classService.findById(id);
       if (!klass) {
@@ -346,6 +371,7 @@ export class ClassController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: MAX_RECEIPT_SIZE_BYTES },
     }),
   )
   async uploadMaterial(

@@ -8,9 +8,10 @@ import { Model, Types } from 'mongoose';
 import { InstrumentMaterial, InstrumentMaterialDocument } from './schemas/instrument-material.schema';
 import {
   UploadService,
-  ALLOWED_RECEIPT_MIMES,
-  ALLOWED_RECEIPT_EXTENSIONS,
-  MAX_RECEIPT_SIZE_BYTES,
+  ALLOWED_MATERIAL_MIMES,
+  ALLOWED_MATERIAL_EXTENSIONS,
+  ALLOWED_VIDEO_EXTENSIONS,
+  MAX_VIDEO_SIZE_BYTES,
 } from '../upload/upload.service';
 import { InstrumentType } from '../product/schemas/product.schema';
 import { Class, ClassDocument } from '../class/schemas/class.schema';
@@ -57,14 +58,14 @@ export class MaterialsService {
     }
     const instrumentType = (klass as any).instrumentType as InstrumentType | undefined;
 
-    // Upload file (validates: images + PDF only, max size)
+    // Upload file (validates: images + PDF + video, max size)
     const url = await this.uploadService.uploadMaterial(
       file,
       `abel-begena/materials/${instrumentType ? instrumentType.toLowerCase() : 'class'}`,
       {
-        allowedMimeTypes: [...ALLOWED_RECEIPT_MIMES],
-        allowedExtensions: [...ALLOWED_RECEIPT_EXTENSIONS],
-        maxSizeBytes: MAX_RECEIPT_SIZE_BYTES,
+        allowedMimeTypes: [...ALLOWED_MATERIAL_MIMES],
+        allowedExtensions: [...ALLOWED_MATERIAL_EXTENSIONS],
+        maxSizeBytes: MAX_VIDEO_SIZE_BYTES,
       },
     );
 
@@ -75,6 +76,8 @@ export class MaterialsService {
       fileType = 'pdf';
     } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
       fileType = 'image';
+    } else if (ALLOWED_VIDEO_EXTENSIONS.includes(`.${fileExtension}` as never)) {
+      fileType = 'video';
     }
 
     // Create material record

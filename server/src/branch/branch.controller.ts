@@ -15,6 +15,7 @@ import { UpdateBranchDto } from './dto/update-branch.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('branches')
 export class BranchController {
@@ -44,6 +45,7 @@ export class BranchController {
   @Post()
   @UseGuards(JwtAuthGuard, RoleGuard)
   @Roles('SuperAdmin')
+  @AuditLog({ action: 'branch_create', resource: 'branch' })
   create(@Body() dto: CreateBranchDto) {
     return this.branchService.create(dto);
   }
@@ -51,6 +53,7 @@ export class BranchController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @Roles('SuperAdmin')
+  @AuditLog({ action: 'branch_update', resource: 'branch', resourceIdParam: 'id' })
   update(@Param('id') id: string, @Body() dto: UpdateBranchDto) {
     return this.branchService.update(id, dto);
   }
@@ -58,6 +61,7 @@ export class BranchController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @Roles('SuperAdmin')
+  @AuditLog({ action: 'branch_delete', resource: 'branch', resourceIdParam: 'id' })
   remove(@Param('id') id: string) {
     return this.branchService.remove(id);
   }

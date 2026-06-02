@@ -27,6 +27,9 @@ export class Product {
   @Prop()
   shortDescription?: string;
 
+  @Prop({ trim: true, maxlength: 5000 })
+  description?: string;
+
   @Prop({ required: true, min: 0 })
   price: number;
 

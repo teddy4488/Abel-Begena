@@ -6,6 +6,7 @@ import { useAppSelector } from "@/store/hooks";
 import { useGetClassAccessQuery } from "@/store/api/classApi";
 import { X, Share2 } from "lucide-react";
 import { LiveRoom } from "@/components/live/LiveRoom";
+import { PreJoinLobby, type DeviceSelection } from "@/components/live/PreJoinLobby";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -21,6 +22,8 @@ export default function LiveClassPage() {
   const { t } = useI18n();
   const { pushToast } = useToast();
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+  const [joined, setJoined] = useState(false);
+  const [devices, setDevices] = useState<DeviceSelection>({});
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -89,6 +92,25 @@ export default function LiveClassPage() {
           </button>
         </div>
       </div>
+    );
+  }
+
+  const resolvedDisplayName =
+    `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
+    user?.email ||
+    "Guest";
+
+  if (!joined) {
+    return (
+      <PreJoinLobby
+        classTitle={data.class.title}
+        displayName={resolvedDisplayName}
+        onJoin={(selection) => {
+          setDevices(selection);
+          setJoined(true);
+        }}
+        onCancel={() => router.push("/dashboard")}
+      />
     );
   }
 
@@ -212,15 +234,13 @@ export default function LiveClassPage() {
           <LiveRoom
             classId={classId}
             userId={resolvedUserId}
-            displayName={
-              `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
-              user?.email ||
-              "Guest"
-            }
+            displayName={resolvedDisplayName}
             role={resolvedRole}
             externalLink={data.liveLink}
             onLeave={() => router.push("/dashboard")}
             isTeacherSession={isTeacher}
+            cameraId={devices.cameraId}
+            micId={devices.micId}
           />
         </div>
       </div>

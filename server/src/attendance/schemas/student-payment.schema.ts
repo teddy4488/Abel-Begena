@@ -4,7 +4,7 @@ import { StudentAttendanceParticipant } from './student-attendance-participant.s
 
 export type StudentPaymentDocument = StudentPayment & Document;
 
-export type PaymentStatus = 'paid' | 'unpaid';
+export type PaymentStatus = 'paid' | 'unpaid' | 'waived';
 
 @Schema({ timestamps: true })
 export class StudentPayment {
@@ -20,8 +20,15 @@ export class StudentPayment {
   @Prop({ type: Types.ObjectId, ref: 'User', index: true })
   userId?: Types.ObjectId;
 
-  @Prop({ type: Number, min: 2000, max: 999_999, required: true })
+  // Fee recorded for this period (ETB). No hard floor — validated against the
+  // participant's agreed monthlyFee at the service layer, not by a magic minimum.
+  @Prop({ type: Number, min: 0, max: 999_999, required: true })
   amount: number;
+
+  // Cumulative amount actually received for this period (supports partial payments).
+  // A period is settled (status 'paid') once paidToDate >= amount.
+  @Prop({ type: Number, min: 0, default: 0 })
+  paidToDate?: number;
 
   // Calendar month for which this payment applies (1-12)
   @Prop({ type: Number, min: 1, max: 12, required: true })
@@ -32,18 +39,15 @@ export class StudentPayment {
 
   @Prop({
     type: String,
-    enum: ['paid', 'unpaid'],
+    enum: ['paid', 'unpaid', 'waived'],
     default: 'paid',
   })
   status: PaymentStatus;
 
-  // Optional exact due date for bookkeeping
+  // Window-start date for this billing period (display/sort only — billing is
+  // attendance-driven, not date-driven). No longer a scheduled "due date".
   @Prop({ type: Date })
   dueDate?: Date;
-
-  // Array of scheduled due dates (30-day rolling schedule) for multi-month tracking
-  @Prop({ type: [Date] })
-  dueDates?: Date[];
 
   // When the payment was actually received
   @Prop({ type: Date })
@@ -67,17 +71,14 @@ export class StudentPayment {
 export const StudentPaymentSchema =
   SchemaFactory.createForClass(StudentPayment);
 
-// 30-day rolling: multiple payments per month possible (e.g. due March 1 and March 31)
+// Billing is keyed by enrollment `period` (1..N). month/year are metadata only.
 StudentPaymentSchema.index({ participantId: 1, year: 1, month: 1 });
 StudentPaymentSchema.index({ userId: 1, year: 1, month: 1 });
 StudentPaymentSchema.index({ participantId: 1, dueDate: 1 });
-StudentPaymentSchema.index({ year: 1, month: 1 });
-StudentPaymentSchema.index({ status: 1, dueDate: 1 });
-// Index for quick lookup by enrollment period
-StudentPaymentSchema.index({ participantId: 1, period: 1 });
-// Prevent duplicate paid records per participant/month/year
+StudentPaymentSchema.index({ status: 1 });
+// One ledger row per participant per billing period (the upsert key).
 StudentPaymentSchema.index(
-  { participantId: 1, month: 1, year: 1 },
-  { unique: true, partialFilterExpression: { status: 'paid' } },
+  { participantId: 1, period: 1 },
+  { unique: true, partialFilterExpression: { period: { $exists: true } } },
 );
 

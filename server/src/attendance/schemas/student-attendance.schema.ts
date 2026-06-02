@@ -27,13 +27,17 @@ export class StudentAttendance {
   @Prop({ required: true, trim: true })
   studentName: string;
 
+  /** Denormalized class/package this attendance belongs to (for direct reporting). */
+  @Prop({ type: Types.ObjectId, ref: 'Class', index: true })
+  classId?: Types.ObjectId;
+
   // Date and time of the attendance session
   @Prop({ type: Date, required: true, index: true })
   sessionDate: Date;
 
-  // Lesson for this session
-  @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson', required: true })
-  lessonId: Types.ObjectId;
+  // Lesson covered this session. Optional: an absence has no specific lesson.
+  @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson' })
+  lessonId?: Types.ObjectId;
 
   // Optional revised lesson
   @Prop({ type: Types.ObjectId, ref: 'InstrumentLesson' })
@@ -47,9 +51,13 @@ export class StudentAttendance {
   })
   status: AttendanceStatus;
 
-  // Admin who recorded this attendance
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  recordedBy: Types.ObjectId;
+  /** Optional reason/notes (e.g. why excused/absent). */
+  @Prop({ trim: true, maxlength: 400 })
+  note?: string;
+
+  // Admin who recorded this attendance. Optional for system/no-show absences.
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  recordedBy?: Types.ObjectId;
 }
 
 export const StudentAttendanceSchema =

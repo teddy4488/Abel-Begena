@@ -8,9 +8,11 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
@@ -21,6 +23,23 @@ export enum ClassPaymentMethod {
   BANK = 'BankTransfer',
   MANUAL = 'Manual',
   OTHER = 'Other',
+}
+
+export class TimeSlotDto {
+  @IsEnum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
+  day:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
+
+  /** Local start time "HH:mm" (24h). */
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'startTime must be HH:mm (24h)' })
+  startTime: string;
 }
 
 export class EnrollClassDto {
@@ -167,4 +186,25 @@ export class EnrollClassDto {
   @IsOptional()
   @IsDateString()
   registrationStartDate?: string;
+
+  /**
+   * Authoritative weekly schedule. One slot per session/week. May arrive as a JSON
+   * string when submitted via multipart/form-data (enroll-with-receipt).
+   */
+  @IsOptional()
+  @IsArray()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return Array.isArray(value) ? value : value == null ? [] : [value];
+  })
+  @ValidateNested({ each: true })
+  @Type(() => TimeSlotDto)
+  timeSlots?: TimeSlotDto[];
 }

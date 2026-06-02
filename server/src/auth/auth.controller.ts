@@ -60,7 +60,7 @@ export class AuthController {
 
   @Post('login')
   @UseGuards(LocalAuthGuard)
-  @Throttle({ default: { limit: 10, ttl: 60 } })
+  @Throttle({ default: { limit: 5, ttl: 300_000 } })  // 5 attempts per 5 minutes
   login(
     @Request() req: { user: Record<string, unknown> },
     @Res({ passthrough: true }) res: Response,
@@ -100,11 +100,11 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @Throttle({ default: { limit: 20, ttl: 60 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })  // 20 refreshes per minute
   async refresh(
     @Request() req: { cookies?: Record<string, string | undefined> },
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<unknown> {
     const token = req.cookies?.refresh_token;
     const { accessToken, refreshToken, expiresAt, user } =
       await this.authService.refreshSession(token ?? '');
@@ -119,7 +119,7 @@ export class AuthController {
     @Request() req: {
       user: { sub: string; exp?: number; userType?: string };
     },
-  ) {
+  ): Promise<unknown> {
     const userType = req.user.userType as
       | 'website_user'
       | 'teacher'

@@ -79,6 +79,9 @@ export class AuthService {
     if (!passwordHash) return null; // e.g. Student without password set yet
     const isValid = await this.userService.comparePassword(password, passwordHash);
     if (!isValid) return null;
+    if (!(userObj as { isActive?: boolean }).isActive) {
+      throw new UnauthorizedException('Your account has been deactivated. Please contact support.');
+    }
     if (!(userObj as { isVerified?: boolean }).isVerified) {
       throw new UnauthorizedException(
         'Please verify your email before signing in.',
@@ -148,7 +151,7 @@ export class AuthService {
   }
 
   /** Phase 5.1: refresh always loads from User by payload.sub. */
-  async refreshSession(refreshToken: string) {
+  async refreshSession(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; expiresAt: string; user: unknown }> {
     let payload: { sub?: string; role?: string; userType?: UserType; typ?: string };
     try {
       payload = this.jwtService.verify(refreshToken);
@@ -174,12 +177,18 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token does not match');
     }
     const currentUser = await this.userService.findById(userId);
+    if (!currentUser || !(currentUser as { isActive?: boolean }).isActive) {
+      throw new UnauthorizedException('Account deactivated or not found');
+    }
+    // Use live role from DB so role changes take effect on next refresh
+    const liveRole = (currentUser as { role?: string })?.role ?? payload.role ?? 'User';
+    const liveUserType = roleToUserType(liveRole);
     const branchIdRaw = (currentUser as { branchId?: { toString: () => string } } | null)?.branchId;
     const branchId = branchIdRaw ? (typeof branchIdRaw === 'string' ? branchIdRaw : branchIdRaw?.toString?.()) : undefined;
     const accessPayload = {
       sub: userId,
-      role: payload.role,
-      userType,
+      role: liveRole,
+      userType: liveUserType,
       ...(branchId && { branchId }),
     };
     const newAccessToken = this.jwtService.sign(accessPayload, { expiresIn: '15m' });
@@ -191,13 +200,13 @@ export class AuthService {
     const expiresAt = this.hasExpiry(decoded)
       ? new Date(decoded.exp * 1000).toISOString()
       : new Date(Date.now() + 15 * 60 * 1000).toISOString();
-    await this.persistRefreshToken(userId, userType, newRefreshToken);
+    await this.persistRefreshToken(userId, liveUserType, newRefreshToken);
     const user = await this.getSession(userId, userType);
     return { accessToken: newAccessToken, refreshToken: newRefreshToken, expiresAt, user };
   }
 
   /** Phase 5.1: single User collection; userType derived from user.role. */
-  async getSession(userId: string, userType?: UserType) {
+  async getSession(userId: string, userType?: UserType): Promise<unknown> {
     const user = await this.userService.findById(userId);
     if (!user) return null;
     const role = (user as { role?: string })?.role ?? 'User';
@@ -323,6 +332,8 @@ export class AuthService {
       throw new BadRequestException('Current password is incorrect');
     }
     await this.userService.update(userId, { password: dto.newPassword } as import('../user/dto/update-user.dto').UpdateUserDto);
+    // Invalidate all active sessions after password change
+    await this.clearRefreshToken(userId, 'website_user');
     return { message: 'Password changed successfully.' };
   }
 
@@ -336,7 +347,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + this.verificationTtlMinutes * 60 * 1000);
     await this.userService.assignVerificationCode(userId, hash, expiresAt);
     await this.mailService.sendVerificationEmail(email, code);
-    return process.env.NODE_ENV !== 'production' ? code : undefined;
+    return process.env.EXPOSE_DEV_CODES === 'true' ? code : undefined;
   }
 
   private generateVerificationCode() {
@@ -352,7 +363,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await this.userService.assignPasswordResetCode(email, hash, expiresAt);
     await this.mailService.sendPasswordResetEmail(email, code);
-    return process.env.NODE_ENV !== 'production' ? code : undefined;
+    return process.env.EXPOSE_DEV_CODES === 'true' ? code : undefined;
   }
 
   private extractUserId(source: unknown) {

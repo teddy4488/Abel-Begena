@@ -34,6 +34,7 @@ export type CreateEnrollmentDto = {
   programDurationMonths?: 3 | 6 | 9;
   preferredLearningDays?: string[];
   preferredTime?: string;
+  timeSlots?: { day: string; startTime: string }[];
   registrationStartDate?: Date;
 };
 
@@ -95,6 +96,7 @@ export class EnrollmentService {
     if (dto.programDurationMonths != null) doc.programDurationMonths = dto.programDurationMonths;
     if (dto.preferredLearningDays?.length) doc.preferredLearningDays = dto.preferredLearningDays;
     if (dto.preferredTime) doc.preferredTime = dto.preferredTime;
+    if (dto.timeSlots) doc.timeSlots = dto.timeSlots;
     if (dto.registrationStartDate) doc.registrationStartDate = new Date(dto.registrationStartDate);
     const created = await this.enrollmentModel.create(doc);
     return created.toObject();
@@ -223,6 +225,7 @@ export class EnrollmentService {
     if (dto.programDurationMonths !== undefined) enrollment.programDurationMonths = dto.programDurationMonths;
     if (dto.preferredLearningDays !== undefined) enrollment.preferredLearningDays = dto.preferredLearningDays;
     if (dto.preferredTime !== undefined) enrollment.preferredTime = dto.preferredTime;
+    if (dto.timeSlots !== undefined) enrollment.timeSlots = dto.timeSlots;
     if (dto.registrationStartDate !== undefined) enrollment.registrationStartDate = dto.registrationStartDate ? new Date(dto.registrationStartDate) : undefined;
     await enrollment.save();
     return enrollment.toObject();
@@ -255,4 +258,5 @@ export class EnrollmentService {
     }
     return map;
   }
+
 }

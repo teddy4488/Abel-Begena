@@ -1,10 +1,20 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
-import { authorizedBaseQuery } from "./baseQuery";
+import { authorizedBaseQuery, baseUrl } from "./baseQuery";
 import type { InstrumentType } from "./storeApi";
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 export type LearningType = 'physical' | 'online';
-export type AttendanceStatus = 'present' | 'late' | 'excused';
+export type AttendanceStatus = 'present' | 'late' | 'excused' | 'absent';
+
+/** URL for the admin attendance CSV export (cookie-authed download). */
+export function getAttendanceExportUrl(filters: { from?: string; to?: string; participantId?: string }): string {
+  const p = new URLSearchParams();
+  if (filters.from) p.set("from", filters.from);
+  if (filters.to) p.set("to", filters.to);
+  if (filters.participantId) p.set("participantId", filters.participantId);
+  const qs = p.toString();
+  return `${baseUrl}/attendance/export${qs ? `?${qs}` : ""}`;
+}
 
 export type TeachingTimeRange = {
   day: DayOfWeek;
@@ -23,8 +33,11 @@ export type TeacherParticipant = {
   updatedAt?: string;
 };
 
+export type TimeSlot = { day: DayOfWeek; startTime: string };
+
 export type StudentParticipant = {
   _id: string;
+  userId?: string;
   fullName: string;
   attendanceNumber: string;
   branchId: {
@@ -36,9 +49,12 @@ export type StudentParticipant = {
   instrumentType: InstrumentType;
   programDurationMonths: 3 | 6 | 9;
   preferredLearningDays: DayOfWeek[];
+  timeSlots?: TimeSlot[];
   registrationStartDate: string;
   learningDaysPerWeek: number;
   isActive: boolean;
+  completionStatus?: "active" | "completed" | "withdrawn" | "dropped";
+  completedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -97,38 +113,97 @@ export type RegisterStudentParticipantBody = {
   instrumentType: InstrumentType;
   programDurationMonths: 3 | 6 | 9;
   preferredLearningDays: DayOfWeek[];
+  timeSlots?: TimeSlot[];
   registrationStartDate: string;
   attendanceNumber?: string;
 };
 
 export type RecordStudentAttendanceBody = {
   participantId: string;
-  lessonId: string;
+  lessonId?: string;
   revisedLessonId?: string;
   status?: AttendanceStatus;
+  sessionDate?: string;
+  note?: string;
+};
+
+export type NoShow = {
+  participantId: string;
+  userId: string | null;
+  fullName: string;
+  attendanceNumber: string;
+  instrumentType: InstrumentType;
+};
+
+export type NoShowResponse = {
+  date: string;
+  closed: boolean;
+  noShows: NoShow[];
+};
+
+export type ClosedDay = {
+  _id: string;
+  date: string;
+  branchId?: { _id: string; name: string } | string | null;
+  reason?: string;
+};
+
+export type AttendanceSummary = {
+  total: number;
+  present: number;
+  late: number;
+  excused: number;
+  absent: number;
+  attendanceRate: number;
 };
 
 export type BillingSummary = {
   year: number;
   month: number;
   totalActiveStudents: number;
-  paidCount: number;
-  unpaidCount: number;
+  paidCount: number; // up-to-date students
+  unpaidCount: number; // students with an outstanding (suggested) balance
   items: {
     participantId: string;
     fullName: string;
     attendanceNumber: string;
     instrumentType: InstrumentType;
+    monthlyFee?: number;
+    periodsConsumed: number;
+    periodsSettled: number;
+    suggestedOwed: number;
+    nextDuePeriod: number;
+    windowExceeded: boolean;
     status: "paid" | "unpaid";
   }[];
+};
+
+/** Consumption-based billing state for a student (advisory). */
+export type StudentBillingState = {
+  periodsConsumed: number;
+  periodsSettled: number;
+  suggestedOwed: number;
+  overdue: boolean;
+  nextDuePeriod: number;
+  monthlyFee?: number;
+  maxBillable: number;
+  windowExceeded: boolean;
+  expectedSessionsPerPeriod: number;
+  currentWindowAttended: number;
+  programDurationMonths?: number;
 };
 
 export type RecordStudentPaymentBody = {
   participantId: string;
   amount: number;
-  month: number;
-  year: number;
-  status: "paid" | "unpaid";
+  status: "paid" | "unpaid" | "waived";
+  // Optional: billing period to settle (defaults to next unsettled period server-side).
+  period?: number;
+  // Optional: number of consecutive periods this payment covers (advance payment).
+  coversPeriods?: number;
+  // Optional metadata (server derives from the period window when omitted).
+  month?: number;
+  year?: number;
   note?: string;
   receiptUrl?: string;
 };
@@ -164,12 +239,15 @@ export type OverduePaymentAdmin = {
   fullName: string;
   attendanceNumber: string;
   instrumentType: string;
+  email?: string;
   year: number;
   month: number;
   dueDate: string;
-  duedate?: string[];
   period?: number;
-  dueDateInferred?: boolean;
+  nextDuePeriod?: number;
+  periodsOwed?: number;
+  windowExceeded?: boolean;
+  autoReminders?: boolean;
   daysOverdue: number;
   amount?: number;
   status?: "paid" | "unpaid";
@@ -280,7 +358,63 @@ export const attendanceApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["StudentParticipants"],
+      invalidatesTags: ["StudentParticipants", "StudentAttendance"],
+    }),
+    updateAttendanceRecord: builder.mutation<
+      unknown,
+      { id: string; status?: AttendanceStatus; lessonId?: string; note?: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/attendance/students/record/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["StudentAttendance"],
+    }),
+    deleteAttendanceRecord: builder.mutation<unknown, string>({
+      query: (id) => ({ url: `/attendance/students/record/${id}`, method: "DELETE" }),
+      invalidatesTags: ["StudentAttendance"],
+    }),
+    getNoShows: builder.query<NoShowResponse, string>({
+      query: (date) => `/attendance/no-shows?date=${date}`,
+      providesTags: ["StudentAttendance"],
+    }),
+    markNoShowsAbsent: builder.mutation<
+      { marked: number },
+      { date: string; participantIds: string[] }
+    >({
+      query: (body) => ({ url: "/attendance/no-shows/mark-absent", method: "POST", body }),
+      invalidatesTags: ["StudentAttendance", "StudentParticipants"],
+    }),
+    revertNoShows: builder.mutation<
+      { reverted: number },
+      { date: string; participantIds: string[] }
+    >({
+      query: (body) => ({ url: "/attendance/no-shows/revert", method: "POST", body }),
+      invalidatesTags: ["StudentAttendance", "StudentParticipants"],
+    }),
+    getClosedDays: builder.query<ClosedDay[], void>({
+      query: () => "/attendance/closed-days",
+      providesTags: ["StudentAttendance"],
+    }),
+    createClosedDay: builder.mutation<
+      ClosedDay,
+      { date: string; branchId?: string; reason?: string }
+    >({
+      query: (body) => ({ url: "/attendance/closed-days", method: "POST", body }),
+      invalidatesTags: ["StudentAttendance"],
+    }),
+    deleteClosedDay: builder.mutation<unknown, string>({
+      query: (id) => ({ url: `/attendance/closed-days/${id}`, method: "DELETE" }),
+      invalidatesTags: ["StudentAttendance"],
+    }),
+    getStudentSummary: builder.query<AttendanceSummary, string>({
+      query: (userId) => `/attendance/students/${userId}/summary`,
+      providesTags: ["StudentAttendance"],
+    }),
+    getMyAttendanceSummary: builder.query<AttendanceSummary, void>({
+      query: () => "/attendance/students/me/summary",
+      providesTags: ["StudentAttendance"],
     }),
     getInstrumentLessons: builder.query<
       InstrumentLesson[],
@@ -370,11 +504,11 @@ export const attendanceApi = createApi({
         year: number;
         month: number;
         amount: number;
-        status: "paid" | "unpaid";
+        paidToDate?: number;
+        status: "paid" | "unpaid" | "waived";
         dueDate?: string;
-        duedate?: string[];
         period?: number;
-        dueDateInferred?: boolean;
+        isOverdue?: boolean;
         note?: string;
         createdAt?: string;
       }>,
@@ -383,15 +517,22 @@ export const attendanceApi = createApi({
       query: () => "/attendance/students/me/payments",
       providesTags: ["StudentPayments"],
     }),
+    getMyBilling: builder.query<StudentBillingState, void>({
+      query: () => "/attendance/students/me/billing",
+      providesTags: ["StudentPayments"],
+    }),
+    // Admin-only manual conversion of a specific user (recovery tool).
     convertUserToStudent: builder.mutation<
       { message: string; student: StudentParticipant },
       {
+        userId: string;
         fullName: string;
         branchId?: string;
         learningType: LearningType;
         instrumentType: InstrumentType;
         programDurationMonths: 3 | 6 | 9;
         preferredLearningDays: DayOfWeek[];
+        timeSlots?: TimeSlot[];
         registrationStartDate: string;
         preferredSchedule?: string;
         phone?: string;
@@ -407,12 +548,28 @@ export const attendanceApi = createApi({
         note?: string;
       }
     >({
-      query: (body) => ({
-        url: "/attendance/students/convert",
+      query: ({ userId, ...body }) => ({
+        url: `/attendance/students/convert/${userId}`,
         method: "POST",
         body,
       }),
       invalidatesTags: ["StudentParticipants"],
+    }),
+    // Admin reverts a student back to a regular user (history preserved).
+    revertStudentToUser: builder.mutation<
+      { message: string; reason: string; participantId: string },
+      { userId: string; reason: "completed" | "withdrawn" | "dropped" }
+    >({
+      query: ({ userId, reason }) => ({
+        url: `/attendance/students/${userId}/revert`,
+        method: "POST",
+        body: { reason },
+      }),
+      invalidatesTags: ["StudentParticipants"],
+    }),
+    getPastStudents: builder.query<StudentParticipant[], void>({
+      query: () => "/attendance/students/past",
+      providesTags: ["StudentParticipants"],
     }),
     getOverduePayments: builder.query<OverduePaymentAdmin[], void>({
       query: () => "/attendance/payments/overdue",
@@ -598,6 +755,16 @@ export const {
   useTeacherCheckOutMutation,
   useGetTodayTeacherAttendanceQuery,
   useRecordStudentAttendanceMutation,
+  useUpdateAttendanceRecordMutation,
+  useDeleteAttendanceRecordMutation,
+  useGetNoShowsQuery,
+  useMarkNoShowsAbsentMutation,
+  useRevertNoShowsMutation,
+  useGetClosedDaysQuery,
+  useCreateClosedDayMutation,
+  useDeleteClosedDayMutation,
+  useGetStudentSummaryQuery,
+  useGetMyAttendanceSummaryQuery,
   useGetInstrumentLessonsQuery,
   useCreateLessonMutation,
   useUpdateLessonMutation,
@@ -607,7 +774,10 @@ export const {
   useGetGraduationEligibilityQuery,
   useGetMyAttendanceQuery,
   useGetMyPaymentsQuery,
+  useGetMyBillingQuery,
   useConvertUserToStudentMutation,
+  useRevertStudentToUserMutation,
+  useGetPastStudentsQuery,
   useGetOverduePaymentsQuery,
   useGetStudentAttendanceReportQuery,
   useGetStudentPaymentReportQuery,

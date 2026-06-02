@@ -5,7 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Order, OrderDocument, OrderStatus, PaymentMethod } from './schemas/order.schema';
+import {
+  Order,
+  OrderDocument,
+  OrderStatus,
+  PaymentMethod,
+  isStockReserved,
+} from './schemas/order.schema';
 import { Cart, CartDocument } from './schemas/cart.schema';
 import { ProductService } from '../product/product.service';
 import { CheckoutDto } from './dto/checkout.dto';
@@ -13,6 +19,7 @@ import { PaymentService } from '../payment/payment.service';
 import { notDeletedFilter } from '../common/filters/not-deleted.filter';
 import { MailService } from '../mail/mail.service';
 import { UserService } from '../user/user.service';
+import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
 export class OrderService {
@@ -25,7 +32,50 @@ export class OrderService {
     private readonly paymentService: PaymentService,
     private readonly mailService: MailService,
     private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
   ) {}
+
+  /**
+   * After stock has been reduced, notify all admins ONLY when this reduction
+   * crossed the low-stock threshold (so admins aren't spammed on every order
+   * while a product sits below threshold). Best-effort; never blocks the order.
+   */
+  private async maybeNotifyLowStock(
+    product: {
+      _id?: unknown;
+      name?: string;
+      stock?: number;
+      lowStockThreshold?: number;
+    },
+    reducedBy: number,
+  ): Promise<void> {
+    try {
+      const threshold = product?.lowStockThreshold ?? 0;
+      const stock = product?.stock ?? 0;
+      const previousStock = stock + reducedBy;
+      // Only fire on the transition from above-threshold to at/below-threshold.
+      if (threshold <= 0 || stock > threshold || previousStock <= threshold) {
+        return;
+      }
+      const admins = await this.userService.findAdmins();
+      await Promise.all(
+        admins.map((admin) => {
+          const adminId = (admin as { _id?: { toString: () => string } })._id?.toString();
+          if (!adminId) return Promise.resolve();
+          return this.notificationService
+            .createForUser(adminId, {
+              type: 'low_stock',
+              title: 'Low stock alert',
+              message: `${product.name ?? 'A product'} is low on stock (${stock} left).`,
+              data: { productId: product._id, stock, threshold },
+            })
+            .catch(() => undefined);
+        }),
+      );
+    } catch {
+      // best-effort; never block the order flow
+    }
+  }
 
   private formatOrder(order: any) {
     const items = (order?.items ?? []).map((item: any) => {
@@ -40,14 +90,19 @@ export class OrderService {
       const priceAtCheckout =
         typeof item?.priceAtCheckout === 'number' ? item.priceAtCheckout : 0;
       const subtotal = quantity * priceAtCheckout;
+      const snapshotName =
+        typeof item?.productName === 'string' ? item.productName : undefined;
       return {
         productId,
+        productName: snapshotName ?? populatedProduct?.name ?? null,
         product: populatedProduct
           ? {
               name: populatedProduct.name,
               images: populatedProduct.images,
             }
-          : null,
+          : snapshotName
+            ? { name: snapshotName, images: [] }
+            : null,
         quantity,
         priceAtCheckout,
         subtotal,
@@ -126,7 +181,11 @@ export class OrderService {
     if (!product.isActive) {
       throw new BadRequestException('Product is not available');
     }
-    if (product.stock < Math.abs(quantity)) {
+    // Validate the PROJECTED cart quantity (existing + delta), not just the delta,
+    // so the cart can never hold more units than are in stock.
+    const existingQty = idx >= 0 ? cartItems[idx].quantity : 0;
+    const projectedQty = existingQty + quantity;
+    if (projectedQty > product.stock) {
       throw new BadRequestException('Insufficient stock');
     }
 
@@ -237,6 +296,7 @@ export class OrderService {
     const normalizedItems: Array<{
       _id: Types.ObjectId;
       productId: Types.ObjectId;
+      productName: string;
       quantity: number;
       priceAtCheckout: number;
     }> = [];
@@ -270,6 +330,7 @@ export class OrderService {
             ? new Types.ObjectId(String((item as any)._id))
             : new Types.ObjectId(),
         productId: new Types.ObjectId(item.productId),
+        productName: product.name,
         quantity: item.quantity,
         priceAtCheckout:
           latestPrice !== priceAtCheckout ? latestPrice : priceAtCheckout,
@@ -342,10 +403,11 @@ export class OrderService {
     } else {
       // For non-bank-transfer orders (e.g. Cash on Delivery), reserve stock immediately.
       for (const item of cartItems) {
-        await this.productService.reduceStock(
+        const updatedProduct = await this.productService.reduceStock(
           item.productId.toString(),
           item.quantity,
         );
+        await this.maybeNotifyLowStock(updatedProduct, item.quantity);
       }
     }
 
@@ -396,13 +458,25 @@ export class OrderService {
     return orders.map((o) => this.formatOrder(o));
   }
 
-  async findById(id: string) {
+  /**
+   * Fetch a single order. When `requestingUserId` is provided, the order must
+   * belong to that user (ownership enforcement for non-admin callers).
+   */
+  async findById(id: string, requestingUserId?: string) {
     if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
+    const filter: Record<string, unknown> = {
+      _id: new Types.ObjectId(id),
+      ...notDeletedFilter(),
+    };
+    if (requestingUserId && Types.ObjectId.isValid(requestingUserId)) {
+      filter.user = new Types.ObjectId(requestingUserId);
+    }
+
     const order = await this.orderModel
-      .findOne({ _id: new Types.ObjectId(id), ...notDeletedFilter() })
+      .findOne(filter)
       .populate('user', 'email firstName lastName phone')
       .populate('items.productId', 'name images')
       .populate('pickupBranchId', 'name address city region')
@@ -411,7 +485,12 @@ export class OrderService {
     return order ? this.formatOrder(order) : null;
   }
 
-  async updateStatus(id: string, status?: OrderStatus, isPaid?: boolean) {
+  async updateStatus(
+    id: string,
+    status?: OrderStatus,
+    isPaid?: boolean,
+    tracking?: { trackingNumber?: string; trackingCarrier?: string },
+  ) {
     const existing = await this.orderModel
       .findOne({ _id: new Types.ObjectId(id), ...notDeletedFilter() })
       .exec();
@@ -438,8 +517,28 @@ export class OrderService {
       throw new BadRequestException('Paid orders cannot be marked as unpaid');
     }
 
+    // Restore stock when cancelling an order that currently holds reserved stock.
+    if (
+      nextStatus === OrderStatus.CANCELLED &&
+      isStockReserved(existing.status)
+    ) {
+      for (const item of existing.items ?? []) {
+        await this.productService.restoreStock(
+          item.productId.toString(),
+          item.quantity,
+        );
+      }
+    }
+
     existing.status = nextStatus;
     existing.isPaid = nextIsPaid;
+
+    if (typeof tracking?.trackingNumber === 'string') {
+      existing.trackingNumber = tracking.trackingNumber;
+    }
+    if (typeof tracking?.trackingCarrier === 'string') {
+      existing.trackingCarrier = tracking.trackingCarrier;
+    }
 
     await existing.save();
 
@@ -479,6 +578,57 @@ export class OrderService {
       .lean()
       .exec();
     return orders.map((o) => this.formatOrder(o));
+  }
+
+  /**
+   * Customer-initiated cancellation. Ownership is enforced by the query.
+   * Only orders that are still Pending (COD) or PaymentPending (offline) may
+   * be cancelled by the customer. Stock is restored only when it was reserved.
+   */
+  async cancelOrder(orderId: string, userId: string) {
+    if (!Types.ObjectId.isValid(orderId)) {
+      throw new NotFoundException('Order not found');
+    }
+    const order = await this.orderModel
+      .findOne({
+        _id: new Types.ObjectId(orderId),
+        user: new Types.ObjectId(userId),
+        ...notDeletedFilter(),
+      })
+      .exec();
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (
+      order.status !== OrderStatus.PENDING &&
+      order.status !== OrderStatus.PAYMENT_PENDING
+    ) {
+      throw new BadRequestException(
+        'Only pending orders can be cancelled. Please contact support for assistance.',
+      );
+    }
+
+    // Restore stock only if it was reserved (COD orders reserve at checkout).
+    if (isStockReserved(order.status)) {
+      for (const item of order.items ?? []) {
+        await this.productService.restoreStock(
+          item.productId.toString(),
+          item.quantity,
+        );
+      }
+    }
+
+    order.status = OrderStatus.CANCELLED;
+    await order.save();
+
+    await order.populate([
+      { path: 'items.productId', select: 'name images' },
+      { path: 'pickupBranchId', select: 'name address city region' },
+    ]);
+
+    return this.formatOrder(order.toObject());
   }
 
   private resolveProductPrice(product: {

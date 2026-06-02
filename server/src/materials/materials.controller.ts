@@ -2,7 +2,9 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -18,8 +20,11 @@ import { MaterialsService } from './materials.service';
 import { CreateInstrumentMaterialDto } from './dto/create-instrument-material.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { MAX_VIDEO_SIZE_BYTES } from '../upload/upload.service';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { ClassService } from '../class/class.service';
+import { userMatchesClassTeacher } from '../class/class.constants';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('materials')
 export class MaterialsController {
@@ -31,9 +36,11 @@ export class MaterialsController {
   @Post('upload')
   @Roles('Teacher', 'Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'material_upload', resource: 'material', resourceIdBody: 'classId' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: MAX_VIDEO_SIZE_BYTES },
     }),
   )
   async uploadMaterial(
@@ -43,6 +50,20 @@ export class MaterialsController {
   ) {
     if (!file) {
       throw new BadRequestException('Material file is required');
+    }
+
+    // A teacher may only upload to classes they actually teach (multi-teacher aware).
+    // Admins/SuperAdmins are unrestricted.
+    if (req.user.role !== 'Admin' && req.user.role !== 'SuperAdmin') {
+      const klass = await this.classService.findById(dto.classId);
+      if (!klass) {
+        throw new NotFoundException('Class not found');
+      }
+      if (!userMatchesClassTeacher(klass, req.user.sub)) {
+        throw new ForbiddenException(
+          'You can only upload materials to classes you teach',
+        );
+      }
     }
 
     return this.materialsService.uploadMaterial(
@@ -85,6 +106,7 @@ export class MaterialsController {
   @Delete(':id')
   @Roles('Teacher', 'Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'material_delete', resource: 'material', resourceIdParam: 'id' })
   async deleteMaterial(
     @Param('id') id: string,
     @Request() req: { user: { sub: string; role: string } },

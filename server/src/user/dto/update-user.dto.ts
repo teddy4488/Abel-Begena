@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsIn,
   IsOptional,
@@ -18,7 +19,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password?: string;
 
   @IsOptional()
@@ -69,4 +70,10 @@ export class UpdateUserDto {
 
   @IsOptional()
   branchId?: string;
+
+  /** Branches for Teacher. SuperAdmin only — stripped from general update endpoint. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  branchIds?: string[];
 }

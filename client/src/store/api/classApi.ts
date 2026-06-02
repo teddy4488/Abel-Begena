@@ -34,11 +34,24 @@ export type EnrollmentSnapshot = {
   receiptUrl?: string | null;
 };
 
+export type WeekDay =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
+
+export type TimeSlot = { day: WeekDay; startTime: string };
+
 export type ClassSummary = {
   _id: string;
   title: string;
   instrumentType: InstrumentType;
   level?: "beginner" | "advanced";
+  durationMonths?: 3 | 6 | 9 | null;
+  sessionsPerWeek?: number | null;
   isLive?: boolean;
   liveRoomCode?: string | null;
   createdAt?: string;
@@ -51,6 +64,9 @@ export type ClassSummary = {
   enrollmentCount?: number;
   myEnrollment?: EnrollmentSnapshot | null;
 };
+
+/** Duration (months) → sessions a student attends per week. */
+export const SESSIONS_PER_WEEK: Record<number, number> = { 3: 5, 6: 3, 9: 2 };
 
 export type ClassRosterResponse = {
   classId: string;
@@ -135,6 +151,8 @@ type EnrollmentRequest = {
   preferredTime?: string;
   learningGoals?: string;
   notesForTeacher?: string;
+  /** Authoritative weekly schedule: one slot per session/week. */
+  timeSlots?: TimeSlot[];
 };
 
 export const classApi = createApi({
@@ -250,7 +268,11 @@ export const classApi = createApi({
         const formData = new FormData();
         formData.append("receipt", receipt);
         Object.entries(payload).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
+          if (value === undefined || value === null) return;
+          // Arrays/objects (e.g. timeSlots) are sent as JSON; the server parses them.
+          if (typeof value === "object") {
+            formData.append(key, JSON.stringify(value));
+          } else {
             formData.append(key, String(value));
           }
         });

@@ -6,7 +6,9 @@ import { useGetAllEnrollmentsQuery } from "@/store/api/adminApi";
 import { useGetAllOrdersQuery } from "@/store/api/storeApi";
 import {
   useGetPendingPaymentRequestsQuery,
+  useGetPaymentHistoryQuery,
   useUpdatePaymentStatusMutation,
+  useRetryPaymentSideEffectsMutation,
   type PaymentRequest,
 } from "@/store/api/paymentApi";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -49,10 +51,37 @@ export default function AdminPaymentsPage() {
   const { data: orders = [], isLoading: ordersLoading } = useGetAllOrdersQuery();
   const { data: pendingRequests = [], isLoading: pendingRequestsLoading } =
     useGetPendingPaymentRequestsQuery();
+  // Approved requests whose side effects didn't fully apply — surfaced for one-click repair.
+  const { data: approvedRequests = [] } = useGetPaymentHistoryQuery({
+    status: "approved",
+  });
   const [updatePaymentStatus, { isLoading: isUpdating }] =
     useUpdatePaymentStatusMutation();
+  const [retrySideEffects, { isLoading: isRetrying }] =
+    useRetryPaymentSideEffectsMutation();
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
   const [reviewNote, setReviewNote] = useState("");
+
+  const needsAttention = useMemo(
+    () => approvedRequests.filter((r) => r.sideEffectsApplied === false),
+    [approvedRequests],
+  );
+
+  const handleRetry = async (id: string) => {
+    try {
+      await retrySideEffects({ id }).unwrap();
+      pushToast({
+        title: t("admin.payments.retry.done", "Side effects re-applied"),
+        variant: "success",
+      });
+    } catch {
+      pushToast({
+        title: t("admin.payments.retry.error", "Retry failed"),
+        description: t("admin.payments.retry.errorDesc", "Please try again."),
+        variant: "error",
+      });
+    }
+  };
 
   const [filterType, setFilterType] = useState<AdminPaymentType | "all">("all");
   const [filterStatus, setFilterStatus] = useState<AdminPaymentStatus | "all">(
@@ -470,6 +499,48 @@ export default function AdminPaymentsPage() {
           </button>
         </header>
 
+        {/* Needs attention — approved payments whose side effects failed to fully apply */}
+        {needsAttention.length > 0 && (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-rose-600" />
+              <h2 className="text-lg font-serif text-rose-700">
+                {t("admin.payments.needsAttention.title", "Needs attention")}
+              </h2>
+            </div>
+            <p className="mb-3 text-sm text-foreground/75">
+              {t(
+                "admin.payments.needsAttention.subtitle",
+                "These payments were approved but their follow-up actions didn't fully apply. Retry to reconcile.",
+              )}
+            </p>
+            <div className="space-y-2">
+              {needsAttention.map((request) => (
+                <div
+                  key={request._id}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-background/50 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-primary">
+                      {getUserDisplayName(request.userId)} —{" "}
+                      {formatAmount(request.amount, request.currency)}
+                    </p>
+                    <p className="text-xs text-foreground/60">{request.type}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isRetrying}
+                    onClick={() => handleRetry(request._id)}
+                    className="shrink-0 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                  >
+                    {t("admin.payments.retry", "Retry")}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Pending Payment Requests Section */}
         {pendingRequests.length > 0 && (
           <div className="rounded-2xl surface-elevated/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
@@ -528,7 +599,29 @@ export default function AdminPaymentsPage() {
                       <span className="font-semibold">
                         {formatAmount(request.amount, request.currency)}
                       </span>
+                      {typeof request.expectedFee === "number" &&
+                        request.expectedFee > 0 && (
+                          <span className="ml-2 text-xs text-foreground/60">
+                            {t("admin.payments.expected", "expected")}:{" "}
+                            {formatAmount(request.expectedFee, request.currency)}
+                          </span>
+                        )}
                     </p>
+                    {typeof request.expectedFee === "number" &&
+                      request.expectedFee > 0 &&
+                      request.amount !== request.expectedFee && (
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            request.amount < request.expectedFee
+                              ? "bg-amber-500/10 text-amber-600"
+                              : "bg-blue-500/10 text-blue-600"
+                          }`}
+                        >
+                          {request.amount < request.expectedFee
+                            ? t("admin.payments.partial", "Partial / underpaid")
+                            : t("admin.payments.overpaid", "Overpaid")}
+                        </span>
+                      )}
                     {getRequestContextLabel(request) && (
                       <p className="text-xs text-foreground/70">
                         {getRequestContextLabel(request)}
@@ -546,16 +639,48 @@ export default function AdminPaymentsPage() {
                     )}
                   </div>
                   {request.receiptUrl && (
-                    <a
-                      href={request.receiptUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mb-3 inline-flex items-center gap-1 text-xs text-secondary transition hover:text-primary"
-                    >
-                      <FileText className="h-3 w-3" />
-                      {t("admin.payments.viewReceipt", "View Receipt")}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                    <div className="mb-3">
+                      {/\.(png|jpe?g|gif|webp|avif)$/i.test(request.receiptUrl) ? (
+                        <a
+                          href={request.receiptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={request.receiptUrl}
+                            alt={t("admin.payments.receipt", "Receipt")}
+                            className="max-h-40 w-full rounded-xl border border-border object-contain"
+                          />
+                        </a>
+                      ) : /\.pdf$/i.test(request.receiptUrl) ? (
+                        <object
+                          data={request.receiptUrl}
+                          type="application/pdf"
+                          className="h-40 w-full rounded-xl border border-border"
+                        >
+                          <a
+                            href={request.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-secondary hover:text-primary"
+                          >
+                            {t("admin.payments.viewReceipt", "View Receipt")}
+                          </a>
+                        </object>
+                      ) : null}
+                      <a
+                        href={request.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-xs text-secondary transition hover:text-primary"
+                      >
+                        <FileText className="h-3 w-3" />
+                        {t("admin.payments.viewReceipt", "View Receipt")}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
                   )}
                   <div className="flex gap-2">
                     <button

@@ -13,6 +13,7 @@ import { useLogoutMutation } from "@/store/api/authApi";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetCartQuery } from "@/store/api/storeApi";
+import NotificationBell from "@/components/layout/NotificationBell";
 
 type RoleKey = "guest" | "User" | "Teacher" | "Admin" | "Student" | "SuperAdmin";
 type NavLink = { labelKey: string; href: string };
@@ -393,18 +394,21 @@ export default function Navbar() {
           <ThemeSwitcher />
           <LanguageToggle />
           {isLoggedIn && (
-            <Link
-              href="/cart"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-(--color-secondary-soft) transition hover:opacity-80 dark:bg-(--color-secondary-soft) dark:hover:opacity-80"
-              aria-label="Shopping Cart"
-            >
-              <ShoppingCart className="h-5 w-5 text-foreground" />
-              {cartItemCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-primary-foreground shadow">
-                  {cartItemCount > 9 ? "9+" : cartItemCount}
-                </span>
-              )}
-            </Link>
+            <>
+              <NotificationBell />
+              <Link
+                href="/cart"
+                className="relative flex h-10 w-10 items-center justify-center rounded-full bg-(--color-secondary-soft) transition hover:opacity-80 dark:bg-(--color-secondary-soft) dark:hover:opacity-80"
+                aria-label="Shopping Cart"
+              >
+                <ShoppingCart className="h-5 w-5 text-foreground" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-primary-foreground shadow">
+                    {cartItemCount > 9 ? "9+" : cartItemCount}
+                  </span>
+                )}
+              </Link>
+            </>
           )}
           {!isLoggedIn ? (
             <>

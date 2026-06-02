@@ -11,8 +11,11 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { InstrumentType } from '../../product/schemas/product.schema';
+import { TimeSlotDto } from './time-slot.dto';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 export type LearningType = 'physical' | 'online';
@@ -47,7 +50,14 @@ export class ConvertUserToStudentDto {
   @IsString()
   @MaxLength(240)
   @IsOptional()
-  preferredSchedule?: string; // Time preferences per day
+  preferredSchedule?: string; // Time preferences per day (free text)
+
+  /** Authoritative per-day session times (one per preferred learning day). */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TimeSlotDto)
+  timeSlots?: TimeSlotDto[];
 
   @IsDateString()
   registrationStartDate: string;

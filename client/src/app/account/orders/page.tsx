@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useGetMyOrdersQuery, useUploadReceiptMutation } from "@/store/api/storeApi";
+import { useGetMyOrdersQuery, useUploadReceiptMutation, useCancelOrderMutation } from "@/store/api/storeApi";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 import { motion } from "framer-motion";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { Package, ShoppingBag, ArrowRight, CheckCircle, Clock, Truck, XCircle, CreditCard, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { useToast } from "@/components/providers/ToastProvider";
 import { useEffect, useState } from "react";
 import { useCreatePaymentRequestMutation } from "@/store/api/paymentApi";
+
+const CANCELLABLE_STATUSES = ["Pending", "PaymentPending"];
 
 const statusConfig: Record<
   string,
@@ -34,10 +38,35 @@ export default function OrdersPage() {
   const [uploadReceipt, { isLoading: isUploading }] = useUploadReceiptMutation();
   const [createPaymentRequest, { isLoading: isSubmittingPayment }] =
     useCreatePaymentRequestMutation();
+  const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
+  const { pushToast } = useToast();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptNote, setReceiptNote] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
+
+  const handleCancelOrder = async () => {
+    if (!cancelTargetId) return;
+    try {
+      await cancelOrder(cancelTargetId).unwrap();
+      pushToast({
+        title: t("orders.cancel.success", "Order cancelled"),
+        variant: "success",
+      });
+      setCancelTargetId(null);
+    } catch {
+      pushToast({
+        title: t("orders.cancel.error", "Unable to cancel order"),
+        description: t(
+          "orders.cancel.errorDesc",
+          "This order can no longer be cancelled. Please contact support.",
+        ),
+        variant: "error",
+      });
+      setCancelTargetId(null);
+    }
+  };
 
   useEffect(() => {
     if (!isLoggedIn) router.replace("/login");
@@ -275,7 +304,30 @@ export default function OrdersPage() {
                   {t("orders.resubmit.button", "Resubmit receipt")}
                 </button>
               )}
+              {CANCELLABLE_STATUSES.includes(order.status) && (
+                <button
+                  type="button"
+                  onClick={() => setCancelTargetId(order._id)}
+                  className="inline-flex items-center gap-2 rounded-full border border-red-400/50 bg-red-500/5 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-500/10"
+                >
+                  <XCircle className="h-3 w-3" />
+                  {t("orders.cancel.button", "Cancel order")}
+                </button>
+              )}
                 </div>
+
+                {order.status === "Shipped" && order.trackingNumber && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-400/30 bg-indigo-500/5 px-4 py-3 text-sm">
+                    <Truck className="h-4 w-4 text-indigo-600" />
+                    <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+                      {t("orders.tracking.label", "Tracking")}:
+                    </span>
+                    <span className="text-foreground/80">
+                      {order.trackingCarrier ? `${order.trackingCarrier} · ` : ""}
+                      {order.trackingNumber}
+                    </span>
+                  </div>
+                )}
 
                 <div className="mt-6 space-y-3 rounded-2xl surface-elevated p-4 shadow-sm">
                   <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -292,7 +344,7 @@ export default function OrdersPage() {
                         </div>
                         <div>
                           <p className="font-semibold text-primary">
-                            {item.product?.name ?? "Unknown item"}
+                            {item.product?.name ?? item.productName ?? "Unknown item"}
                           </p>
                           <p className="text-xs text-foreground/60">
                             {t("cart.quantity")}: {item.quantity}
@@ -313,6 +365,20 @@ export default function OrdersPage() {
           })}
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!cancelTargetId}
+        title={t("orders.cancel.title", "Cancel this order?")}
+        description={t(
+          "orders.cancel.confirm",
+          "This will cancel your order. Any reserved stock will be released. This action cannot be undone.",
+        )}
+        confirmLabel={t("orders.cancel.button", "Cancel order")}
+        cancelLabel={t("orders.cancel.keep", "Keep order")}
+        isLoading={isCancelling}
+        onConfirm={handleCancelOrder}
+        onCancel={() => setCancelTargetId(null)}
+      />
 
       {selectedOrderId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">

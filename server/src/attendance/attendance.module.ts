@@ -6,6 +6,8 @@ import { PaymentReminderService } from './payment-reminder.service';
 import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
+import { NotificationModule } from '../notifications/notification.module';
+import { ClosedDay, ClosedDaySchema } from './schemas/closed-day.schema';
 import {
   TeacherAttendanceParticipant,
   TeacherAttendanceParticipantSchema,
@@ -38,7 +40,9 @@ import { Enrollment, EnrollmentSchema } from '../enrollment/schemas/enrollment.s
     forwardRef(() => UserModule),
     AuthModule,
     MailModule,
+    NotificationModule,
     MongooseModule.forFeature([
+      { name: ClosedDay.name, schema: ClosedDaySchema },
       {
         name: TeacherAttendanceParticipant.name,
         schema: TeacherAttendanceParticipantSchema,

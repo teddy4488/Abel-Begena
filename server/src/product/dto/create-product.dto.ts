@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsArray,
   Min,
+  MaxLength,
   IsObject,
 } from 'class-validator';
 import { InstrumentType } from '../schemas/product.schema';
@@ -20,6 +21,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   shortDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  description?: string;
 
   @IsNumber()
   @Min(0)

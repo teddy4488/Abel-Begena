@@ -11,6 +11,7 @@ import { UserModule } from '../user/user.module';
 import { PaymentModule } from '../payment/payment.module';
 import { AttendanceModule } from '../attendance/attendance.module';
 import { EnrollmentModule } from '../enrollment/enrollment.module';
+import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { EnrollmentModule } from '../enrollment/enrollment.module';
     forwardRef(() => PaymentModule),
     AttendanceModule,
     EnrollmentModule,
+    NotificationModule,
   ],
   providers: [ClassService, ClassOwnerGuard],
   controllers: [ClassController],

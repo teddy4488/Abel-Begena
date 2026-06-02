@@ -30,7 +30,7 @@ export class CommentService {
       postId: new Types.ObjectId(postId),
       authorId: new Types.ObjectId(authorId),
       content: dto.content,
-      status: 'approved', // Auto-approve comments
+      status: 'pending', // Pending admin approval before appearing publicly
     });
     return created.toObject();
   }

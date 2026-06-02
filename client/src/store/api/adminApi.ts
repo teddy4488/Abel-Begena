@@ -63,9 +63,12 @@ export type ManagedClass = ClassSummary & {
   classType?: "online" | "physical" | "both";
   instrumentType: InstrumentType;
   level?: "beginner" | "advanced";
+  durationMonths?: 3 | 6 | 9 | null;
   startDate?: string;
   endDate?: string;
   branchId?: string | null;
+  teacherIds?: string[] | null;
+  primaryInstructorId?: string | null;
   instructorId?: {
     _id: string;
     firstName?: string;
@@ -73,6 +76,16 @@ export type ManagedClass = ClassSummary & {
     email?: string;
     avatarUrl?: string;
   } | null;
+};
+
+export type DayOccupancy = {
+  day: string;
+  operatingHours: { start: string; end: string };
+  sessionMinutes: number;
+  buckets: { time: string; count: number }[];
+  bySlot: { startTime: string; count: number }[];
+  totalStudents: number;
+  totalSessions: number;
 };
 
 export type AdminEnrollment = {
@@ -216,6 +229,20 @@ export const adminApi = createApi({
       invalidatesTags: ["AdminClasses"],
     }),
 
+    getDayOccupancy: builder.query<
+      DayOccupancy,
+      { day: string; branchId?: string; instrumentType?: string }
+    >({
+      query: ({ day, branchId, instrumentType }) => ({
+        url: "/classes/occupancy",
+        params: {
+          day,
+          ...(branchId ? { branchId } : {}),
+          ...(instrumentType ? { instrumentType } : {}),
+        },
+      }),
+    }),
+
     getAllEnrollments: builder.query<
       AdminEnrollment[],
       { status?: "active" | "pending" | "withdrawn" } | void
@@ -327,6 +354,7 @@ export const {
   useCreateManagedClassMutation,
   useUpdateManagedClassMutation,
   useDeleteManagedClassMutation,
+  useGetDayOccupancyQuery,
   useAssignClassInstructorMutation,
   useGetAllEnrollmentsQuery,
   useGetTeachersQuery,

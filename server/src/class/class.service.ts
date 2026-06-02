@@ -28,12 +28,28 @@ import { EnrollClassDto, ClassPaymentMethod } from './dto/enroll-class.dto';
 import { PaymentService } from '../payment/payment.service';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
 import { EnrollmentService } from '../enrollment/enrollment.service';
+import { UserService } from '../user/user.service';
+import { NotificationService } from '../notifications/notification.service';
+import {
+  WeekDay,
+  WEEK_DAYS,
+  sessionsPerWeek,
+  toMinutes,
+  toHHmm,
+  isStartWithinHours,
+  userMatchesClassTeacher,
+  DAY_START_MIN,
+  DAY_END_MIN,
+  SESSION_MINUTES,
+} from './class.constants';
 
 type AuthenticatedUser = {
   sub: string;
   role?: string;
   branchId?: string;
 };
+
+type NormalizedTimeSlot = { day: WeekDay; startTime: string };
 
 @Injectable()
 export class ClassService {
@@ -44,7 +60,110 @@ export class ClassService {
     private readonly uploadService: UploadService,
     private readonly paymentService: PaymentService,
     private readonly enrollmentService: EnrollmentService,
+    private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
   ) {}
+
+  /**
+   * Validate the student's chosen weekly slots against the package duration.
+   * Enforces: correct slot count (sessions/week), valid in-hours start times,
+   * and distinct days. Returns normalized slots + derived legacy fields.
+   */
+  private validateTimeSlots(
+    classEntity: { durationMonths?: number | null },
+    slots: { day: string; startTime: string }[] | undefined,
+  ): {
+    timeSlots: NormalizedTimeSlot[];
+    preferredLearningDays: WeekDay[];
+    preferredTime?: string;
+  } {
+    const required = sessionsPerWeek(classEntity.durationMonths);
+    const provided = slots ?? [];
+
+    // Legacy classes without a duration: accept whatever slots are given (if any)
+    // but still validate their shape.
+    if (required !== undefined && provided.length !== required) {
+      throw new BadRequestException(
+        `This package requires exactly ${required} weekly session${required === 1 ? '' : 's'}; you provided ${provided.length}.`,
+      );
+    }
+
+    const seenDays = new Set<string>();
+    const normalized: NormalizedTimeSlot[] = [];
+    for (const slot of provided) {
+      const day = slot.day as WeekDay;
+      if (!WEEK_DAYS.includes(day)) {
+        throw new BadRequestException(`Invalid day: ${slot.day}`);
+      }
+      if (seenDays.has(day)) {
+        throw new BadRequestException(
+          `Each day can be chosen only once (duplicate: ${day}).`,
+        );
+      }
+      seenDays.add(day);
+
+      const startMin = toMinutes(slot.startTime);
+      if (Number.isNaN(startMin) || !isStartWithinHours(startMin)) {
+        throw new BadRequestException(
+          `Session time ${slot.startTime} must be between ${toHHmm(DAY_START_MIN)} and ${toHHmm(DAY_END_MIN - SESSION_MINUTES)} (sessions are ${SESSION_MINUTES} minutes).`,
+        );
+      }
+      normalized.push({ day, startTime: slot.startTime });
+    }
+
+    return {
+      timeSlots: normalized,
+      preferredLearningDays: normalized.map((s) => s.day),
+      preferredTime: normalized.length ? normalized[0].startTime : undefined,
+    };
+  }
+
+  /**
+   * Validate teacher assignments: each id must belong to a Teacher (hard reject
+   * otherwise). If the class is branch-scoped and a teacher isn't assigned to that
+   * branch, collect a non-blocking warning (assignment is still allowed).
+   */
+  private async validateTeacherAssignment(
+    teacherIds: Types.ObjectId[],
+    classBranchId?: Types.ObjectId | string,
+  ): Promise<string[]> {
+    const warnings: string[] = [];
+    const branchStr = classBranchId
+      ? typeof classBranchId === 'string'
+        ? classBranchId
+        : classBranchId.toString()
+      : undefined;
+
+    for (const tid of teacherIds) {
+      const user = await this.userService.findById(tid.toString());
+      if (!user || (user as { role?: string }).role !== 'Teacher') {
+        throw new BadRequestException(
+          'One or more assigned users are not teachers',
+        );
+      }
+      if (branchStr) {
+        const branchIds = (
+          (user as { branchIds?: Array<{ toString(): string } | string> })
+            .branchIds ?? []
+        ).map((b) => (typeof b === 'string' ? b : b.toString()));
+        if (!branchIds.includes(branchStr)) {
+          const u = user as {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+          };
+          const name =
+            [u.firstName, u.lastName].filter(Boolean).join(' ') ||
+            u.email ||
+            tid.toString();
+          warnings.push(
+            `${name} is not assigned to this class's branch — assigned anyway.`,
+          );
+        }
+      }
+    }
+    return warnings;
+  }
 
   async findForUser(user: AuthenticatedUser) {
     const userId = user.sub;
@@ -108,7 +227,7 @@ export class ClassService {
     return this.mapClassSummariesFromEnrollments(classes, userId, activeEnrollments, countMap);
   }
 
-  async getManagedCatalog(branchId?: string) {
+  async getManagedCatalog(branchId?: string): Promise<unknown> {
     const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
     const branchFilter = branchId && Types.ObjectId.isValid(branchId) ? { branchId: new Types.ObjectId(branchId) } : {};
     const classes = await this.classModel
@@ -132,6 +251,10 @@ export class ClassService {
       instrumentType: dto.instrumentType,
       level: dto.level ?? 'beginner',
     };
+
+    if (dto.durationMonths) {
+      payload.durationMonths = dto.durationMonths;
+    }
 
     if (dto.classType) {
       payload.classType = dto.classType;
@@ -206,11 +329,19 @@ export class ClassService {
       payload.enrollmentDeadline = new Date(dto.enrollmentDeadline);
     }
 
+    // Validate assigned teachers (reject non-teachers; warn on out-of-branch).
+    const finalTeacherIds: Types.ObjectId[] =
+      ((payload as { teacherIds?: Types.ObjectId[] }).teacherIds) ?? [];
+    const warnings = await this.validateTeacherAssignment(
+      finalTeacherIds,
+      (payload as { branchId?: Types.ObjectId }).branchId,
+    );
+
     const created = await this.classModel.create(payload);
-    return created.toObject();
+    return { ...created.toObject(), warnings };
   }
 
-  async updateClass(id: string, dto: UpdateClassDto) {
+  async updateClass(id: string, dto: UpdateClassDto): Promise<unknown> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class id');
     }
@@ -226,6 +357,10 @@ export class ClassService {
 
     if (dto.level) {
       update.level = dto.level;
+    }
+
+    if (dto.durationMonths) {
+      update.durationMonths = dto.durationMonths;
     }
 
     if (dto.classType) {
@@ -263,38 +398,71 @@ export class ClassService {
       update.enrollmentDeadline = new Date(dto.enrollmentDeadline);
     }
 
-    if (dto.instructorId) {
-      if (!Types.ObjectId.isValid(dto.instructorId)) {
-        throw new BadRequestException('Invalid instructor id');
-      }
-      const instructorObjectId = new Types.ObjectId(dto.instructorId);
-      update.instructorId = instructorObjectId;
-      // Keep teacherIds/primaryInstructorId aligned with new instructor when explicitly set
-      (update as any).primaryInstructorId = instructorObjectId;
-      (update as any).teacherIds = [instructorObjectId];
-    }
+    // Unified teacher-assignment handling (multi-teacher aware).
+    let warnings: string[] = [];
+    const teacherFieldsChanged =
+      dto.instructorId !== undefined ||
+      dto.teacherIds !== undefined ||
+      dto.primaryInstructorId !== undefined;
 
-    if (dto.teacherIds) {
-      const teacherIds: Types.ObjectId[] = [];
-      for (const id of dto.teacherIds) {
-        if (!Types.ObjectId.isValid(id)) {
-          throw new BadRequestException('Invalid teacher id in teacherIds');
+    if (teacherFieldsChanged) {
+      const existing = await this.classModel.findById(id).lean().exec();
+      if (!existing) {
+        throw new NotFoundException('Class not found');
+      }
+
+      // Determine the authoritative teacher set.
+      let finalTeacherIds: Types.ObjectId[];
+      if (dto.teacherIds !== undefined) {
+        finalTeacherIds = dto.teacherIds.map((tid) => {
+          if (!Types.ObjectId.isValid(tid)) {
+            throw new BadRequestException('Invalid teacher id in teacherIds');
+          }
+          return new Types.ObjectId(tid);
+        });
+      } else if (dto.instructorId) {
+        if (!Types.ObjectId.isValid(dto.instructorId)) {
+          throw new BadRequestException('Invalid instructor id');
         }
-        teacherIds.push(new Types.ObjectId(id));
+        finalTeacherIds = [new Types.ObjectId(dto.instructorId)];
+      } else {
+        // Only primaryInstructorId changed — preserve existing co-teachers.
+        finalTeacherIds = (
+          (existing as { teacherIds?: Types.ObjectId[] }).teacherIds ?? []
+        ).map((t) => new Types.ObjectId(t.toString()));
       }
-      (update as any).teacherIds = teacherIds;
-    }
 
-    if (dto.primaryInstructorId) {
-      if (!Types.ObjectId.isValid(dto.primaryInstructorId)) {
-        throw new BadRequestException('Invalid primary instructor id');
+      // Resolve the primary/lead instructor.
+      let primary: Types.ObjectId | undefined;
+      if (dto.primaryInstructorId) {
+        if (!Types.ObjectId.isValid(dto.primaryInstructorId)) {
+          throw new BadRequestException('Invalid primary instructor id');
+        }
+        primary = new Types.ObjectId(dto.primaryInstructorId);
+      } else if (dto.instructorId) {
+        primary = new Types.ObjectId(dto.instructorId);
+      } else if (finalTeacherIds.length) {
+        primary = finalTeacherIds[0];
       }
-      const primary = new Types.ObjectId(dto.primaryInstructorId);
-      (update as any).primaryInstructorId = primary;
-      // Keep legacy instructorId in sync if not explicitly overridden
-      if (!dto.instructorId) {
-        (update as any).instructorId = primary;
+      if (primary && !finalTeacherIds.some((t) => t.equals(primary as Types.ObjectId))) {
+        finalTeacherIds.push(primary);
       }
+
+      (update as { teacherIds?: Types.ObjectId[] }).teacherIds = finalTeacherIds;
+      if (primary) {
+        (update as { primaryInstructorId?: Types.ObjectId }).primaryInstructorId = primary;
+        update.instructorId = primary;
+      }
+
+      // Warn when an assigned teacher isn't in the class's (effective) branch.
+      const effectiveBranch =
+        dto.branchId !== undefined
+          ? (update as { branchId?: Types.ObjectId }).branchId
+          : (existing as { branchId?: Types.ObjectId }).branchId;
+      warnings = await this.validateTeacherAssignment(
+        finalTeacherIds,
+        effectiveBranch,
+      );
     }
 
     const updated = await this.classModel
@@ -307,7 +475,7 @@ export class ClassService {
       throw new NotFoundException('Class not found');
     }
 
-    return updated;
+    return { ...updated, warnings };
   }
 
   async removeClass(id: string) {
@@ -334,7 +502,8 @@ export class ClassService {
     instrumentType?: string,
     level?: 'beginner' | 'advanced',
   ) {
-    const filter: Record<string, unknown> = {};
+    const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const filter: Record<string, unknown> = { ...notDeleted };
     if (instrumentType) {
       filter.instrumentType = instrumentType;
     }
@@ -347,7 +516,7 @@ export class ClassService {
       .sort({ createdAt: -1 })
       .limit(limit)
       .select(
-        'title description startDate endDate tuition currency enrollmentDeadline instructorId instrumentType level classType',
+        'title description startDate endDate tuition currency enrollmentDeadline instructorId instrumentType level classType durationMonths',
       )
       .populate('instructorId', 'firstName lastName')
       .lean()
@@ -384,6 +553,8 @@ export class ClassService {
         instrumentType: (klass as any).instrumentType,
         level: (klass as any).level ?? 'beginner',
         classType: (klass as any).classType ?? 'online',
+        durationMonths: (klass as any).durationMonths ?? null,
+        sessionsPerWeek: sessionsPerWeek((klass as any).durationMonths) ?? null,
       };
     });
   }
@@ -407,7 +578,7 @@ export class ClassService {
     const isAdmin = user.role === 'Admin';
     const isInstructor =
       user.role === 'Teacher' &&
-      classEntity.instructorId?.toString() === userId;
+      userMatchesClassTeacher(classEntity, userId);
     const enrollment = await this.enrollmentService.findOne(
       (classEntity as { _id: Types.ObjectId })._id.toString(),
       userId,
@@ -570,6 +741,14 @@ export class ClassService {
       );
     }
 
+    // Validate the chosen weekly schedule against the package duration.
+    const slotResult = this.validateTimeSlots(classEntity, dto.timeSlots);
+    const hasSlots = slotResult.timeSlots.length > 0;
+    // Duration is a property of the package; fall back to the dto for legacy classes.
+    const effectiveDuration =
+      (classEntity.durationMonths as 3 | 6 | 9 | undefined) ??
+      dto.programDurationMonths;
+
     const registrationStartDate = dto.registrationStartDate
       ? new Date(dto.registrationStartDate)
       : undefined;
@@ -591,15 +770,18 @@ export class ClassService {
       address: dto.address,
       preferredDaysPerWeek: dto.preferredDaysPerWeek,
       preferredSchedule: dto.preferredSchedule,
-      preferredTime: dto.preferredTime,
+      preferredTime: hasSlots ? slotResult.preferredTime : dto.preferredTime,
       learningGoals: dto.learningGoals,
       notesForTeacher: dto.notesForTeacher,
       receiptUrl: dto.receiptUrl,
       learningType: dto.learningType,
       branchId: dto.branchId,
-      instrumentType: dto.instrumentType,
-      programDurationMonths: dto.programDurationMonths,
-      preferredLearningDays: dto.preferredLearningDays,
+      instrumentType: dto.instrumentType ?? classEntity.instrumentType,
+      programDurationMonths: effectiveDuration,
+      preferredLearningDays: hasSlots
+        ? slotResult.preferredLearningDays
+        : dto.preferredLearningDays,
+      timeSlots: slotResult.timeSlots,
       registrationStartDate,
     };
     const enrollmentRecord = existing
@@ -635,6 +817,17 @@ export class ClassService {
       receiptUrl,
     };
 
+    // Validate the weekly schedule up-front so we never create an orphan payment
+    // request when the slots are invalid (enrollStudent re-validates downstream).
+    const classForValidation = await this.classModel
+      .findById(classId)
+      .lean()
+      .exec();
+    if (!classForValidation) {
+      throw new NotFoundException('Class not found');
+    }
+    this.validateTimeSlots(classForValidation, dto.timeSlots);
+
     // Build conversion data if the user provided student conversion fields
     let conversionData: string | undefined;
     if (
@@ -651,6 +844,7 @@ export class ClassService {
         instrumentType: dto.instrumentType,
         programDurationMonths: dto.programDurationMonths,
         preferredLearningDays: dto.preferredLearningDays,
+        timeSlots: dto.timeSlots,
         registrationStartDate: dto.registrationStartDate ?? new Date().toISOString(),
         phone: dto.phone,
         emergencyContactName: dto.emergencyContactName,
@@ -696,6 +890,13 @@ export class ClassService {
       throw new NotFoundException('Class not found');
     }
 
+    // Detect a false -> true transition so we only notify on actual go-live.
+    const before = await this.classModel
+      .findById(id, { isLive: 1 })
+      .lean()
+      .exec();
+    const wasLive = (before as { isLive?: boolean } | null)?.isLive ?? false;
+
     const updatePayload: Partial<Class> = {};
 
     if (typeof dto.isLive === 'boolean') {
@@ -716,7 +917,42 @@ export class ClassService {
       throw new NotFoundException('Class not found');
     }
 
+    // Notify enrolled students when the class goes live (false -> true only).
+    if (!wasLive && updated.isLive) {
+      void this.notifyClassLive(id, (updated as { title?: string }).title);
+    }
+
     return updated;
+  }
+
+  /** Best-effort: notify active enrollees that their class is now live. */
+  private async notifyClassLive(classId: string, title?: string): Promise<void> {
+    try {
+      const enrollments = await this.enrollmentService.findByClass(classId);
+      await Promise.all(
+        enrollments
+          .filter((e) => (e as { status?: string }).status === 'active')
+          .map((e) => {
+            const studentId = (
+              e as { studentId?: { _id?: { toString(): string }; toString?: () => string } }
+            ).studentId;
+            const sid =
+              (studentId as { _id?: { toString(): string } })?._id?.toString?.() ??
+              (studentId as { toString?: () => string })?.toString?.();
+            if (!sid) return Promise.resolve();
+            return this.notificationService
+              .createForUser(sid, {
+                type: 'class_live',
+                title: 'Class is live',
+                message: `${title ?? 'Your class'} is live now — join the session.`,
+                data: { classId, link: `/live/class/${classId}` },
+              })
+              .catch(() => undefined);
+          }),
+      );
+    } catch {
+      // best-effort; never block the live-state update
+    }
   }
 
   async getEnrollmentDetail(classId: string, studentId: string) {
@@ -827,7 +1063,10 @@ export class ClassService {
     };
   }
 
-  async assignInstructor(classId: string, instructorId: string) {
+  async assignInstructor(
+    classId: string,
+    instructorId: string,
+  ): Promise<unknown> {
     if (!Types.ObjectId.isValid(classId)) {
       throw new BadRequestException('Invalid class id');
     }
@@ -836,6 +1075,19 @@ export class ClassService {
     }
 
     const instructorObjectId = new Types.ObjectId(instructorId);
+
+    // Validate the assignee is a Teacher and warn if not in the class's branch.
+    const existing = await this.classModel
+      .findById(classId, { branchId: 1 })
+      .lean()
+      .exec();
+    if (!existing) {
+      throw new NotFoundException('Class not found');
+    }
+    const warnings = await this.validateTeacherAssignment(
+      [instructorObjectId],
+      (existing as { branchId?: Types.ObjectId }).branchId,
+    );
 
     const updated = await this.classModel
       .findByIdAndUpdate(
@@ -855,7 +1107,7 @@ export class ClassService {
       throw new NotFoundException('Class not found');
     }
 
-    return updated;
+    return { ...updated, warnings };
   }
 
   async getClassRoster(classId: string) {

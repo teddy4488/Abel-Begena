@@ -17,6 +17,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UpdateCommentStatusDto } from './dto/update-comment-status.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { AuditLog } from '../audit/decorators/audit-log.decorator';
 
 @Controller('blog')
 export class CommentController {
@@ -52,6 +53,7 @@ export class CommentController {
   @Patch('comments/:id/status')
   @Roles('Admin')
   @UseGuards(JwtAuthGuard, RoleGuard)
+  @AuditLog({ action: 'comment_status', resource: 'comment', resourceIdParam: 'id' })
   updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateCommentStatusDto,

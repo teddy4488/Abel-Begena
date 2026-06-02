@@ -236,6 +236,14 @@ export default function CheckoutPage() {
                     )}
                   </label>
                 </div>
+                {form.deliveryOption === "Delivery" && (
+                  <p className="mt-3 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
+                    {t(
+                      "checkout.page.shippingNote",
+                      "Shipping cost is not included. Our team will contact you with the shipping fee before dispatch.",
+                    )}
+                  </p>
+                )}
               </div>
 
               {form.deliveryOption === "Pickup" ? (

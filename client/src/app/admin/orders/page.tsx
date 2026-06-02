@@ -97,6 +97,8 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [trackingCarrier, setTrackingCarrier] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -131,6 +133,12 @@ export default function AdminOrdersPage() {
   }, [search, statusFilter, paymentFilter]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // Sync tracking inputs to the order opened in the detail modal.
+  useEffect(() => {
+    setTrackingNumber(selectedOrder?.trackingNumber ?? "");
+    setTrackingCarrier(selectedOrder?.trackingCarrier ?? "");
+  }, [selectedOrder]);
+
   // Calculate pagination
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -141,12 +149,15 @@ export default function AdminOrdersPage() {
     orderId: string,
     status: string,
     isPaid: boolean,
+    tracking?: { trackingNumber?: string; trackingCarrier?: string },
   ) => {
     try {
       await updateStatus({
         id: orderId,
         status,
         isPaid,
+        trackingNumber: tracking?.trackingNumber,
+        trackingCarrier: tracking?.trackingCarrier,
       }).unwrap();
       pushToast({
         title: t("admin.orders.statusUpdated", "Order updated"),
@@ -967,6 +978,55 @@ export default function AdminOrdersPage() {
                   >
                     {t("admin.payments.approve", "Approve")}
                   </button>
+                </div>
+              )}
+
+              {/* Fulfillment / shipment tracking */}
+              {selectedOrder.deliveryOption === "Delivery" && (
+                <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background/50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                    {t("admin.orders.fulfillment", "Shipment Tracking")}
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder={t("admin.orders.trackingNumber", "Tracking number")}
+                      className="rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    />
+                    <input
+                      type="text"
+                      value={trackingCarrier}
+                      onChange={(e) => setTrackingCarrier(e.target.value)}
+                      placeholder={t("admin.orders.trackingCarrier", "Carrier (optional)")}
+                      className="rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!selectedOrder.isPaid || isUpdating}
+                    onClick={async () => {
+                      await handleStatusChange(
+                        selectedOrder._id,
+                        "Shipped",
+                        selectedOrder.isPaid,
+                        {
+                          trackingNumber: trackingNumber.trim() || undefined,
+                          trackingCarrier: trackingCarrier.trim() || undefined,
+                        },
+                      );
+                      setSelectedOrder(null);
+                    }}
+                    className="w-full rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
+                  >
+                    {t("admin.orders.markShipped", "Mark as Shipped")}
+                  </button>
+                  {!selectedOrder.isPaid && (
+                    <p className="text-xs text-amber-600">
+                      {t("admin.orders.mustBePaid", "Order must be paid before it can be shipped.")}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

@@ -1,5 +1,4 @@
 import {
-  IsDateString,
   IsEnum,
   IsMongoId,
   IsNumber,
@@ -7,44 +6,50 @@ import {
   IsString,
   MaxLength,
   Min,
-  IsArray,
-  ValidationOptions,
 } from 'class-validator';
 
-export type PaymentStatus = 'paid' | 'unpaid';
+export type PaymentStatus = 'paid' | 'unpaid' | 'waived';
 
 export class RecordStudentPaymentDto {
   @IsMongoId()
   participantId: string;
 
+  // Amount actually received now (ETB). For partial payments this is the partial
+  // amount; for a waive it is ignored. 0 is allowed (e.g. waive).
   @IsNumber()
   @Min(0)
   amount: number;
 
+  // Calendar month/year are optional metadata; billing is keyed by `period`.
+  // When omitted, the service derives them from the period's window-start date.
+  @IsOptional()
   @IsNumber()
-  month: number; // 1-12
+  month?: number; // 1-12
 
+  @IsOptional()
   @IsNumber()
-  year: number;
+  year?: number;
 
-  @IsEnum(['paid', 'unpaid'])
+  @IsEnum(['paid', 'unpaid', 'waived'])
   status: PaymentStatus;
 
-  /** Exact due date for this period (30 days after previous). When set, used for overdue/upcoming logic. */
-  @IsOptional()
-  @IsDateString()
-  dueDate?: string;
-
-  // Optional enrollment period (1..24)
+  /**
+   * Billing period (1..N) this payment settles. When omitted, the service targets
+   * the next unsettled period for the participant.
+   */
   @IsOptional()
   @IsNumber()
+  @Min(1)
   period?: number;
 
-  // Optional array of due dates (ISO date strings)
+  /**
+   * Advance payment: number of consecutive periods this payment covers (default 1).
+   * When > 1, the service settles `coversPeriods` periods starting at `period`.
+   */
   @IsOptional()
-  @IsArray()
-  @IsDateString({}, { each: true })
-  duedate?: string[];
+  @IsNumber()
+  @Min(1)
+  coversPeriods?: number;
 
   @IsOptional()
   @IsString()

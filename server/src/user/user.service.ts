@@ -47,6 +47,11 @@ export class UserService {
     if (role === 'Admin' && createUserDto.branchId && Types.ObjectId.isValid(createUserDto.branchId)) {
       payload.branchId = new Types.ObjectId(createUserDto.branchId);
     }
+    if (role === 'Teacher' && createUserDto.branchIds && createUserDto.branchIds.length > 0) {
+      payload.branchIds = createUserDto.branchIds
+        .filter((id) => Types.ObjectId.isValid(id))
+        .map((id) => new Types.ObjectId(id));
+    }
     const user = await this.userModel.create(payload);
     return this.toSafeUser(user.toObject());
   }
@@ -157,6 +162,9 @@ export class UserService {
     user.password = await this.hashPassword(newPassword);
     user.passwordResetCode = undefined;
     user.passwordResetCodeExpiresAt = undefined;
+    // Invalidate all active sessions after password reset
+    user.refreshTokenHash = null;
+    user.refreshTokenExpiresAt = null;
     await user.save();
     return this.toSafeUser(user.toObject());
   }
@@ -190,10 +198,14 @@ export class UserService {
     return map;
   }
 
-  /** List Users with role Teacher (for admin UI). */
-  async findTeachers() {
+  /** List Teachers. Admin sees only teachers in their branch; SuperAdmin sees all. */
+  async findTeachers(options?: { branchId?: string }) {
+    const filter: Record<string, unknown> = { role: 'Teacher', deletedAt: null };
+    if (options?.branchId && Types.ObjectId.isValid(options.branchId)) {
+      filter.branchIds = new Types.ObjectId(options.branchId);
+    }
     const teachers = await this.userModel
-      .find({ role: 'Teacher', deletedAt: null })
+      .find(filter)
       .sort({ createdAt: -1 })
       .lean()
       .exec();

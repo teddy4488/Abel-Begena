@@ -118,7 +118,7 @@ export default function AdminConsolePage() {
     },
     {
       label: t("admin.console.products", "Products"),
-      value: productsLoading ? "..." : products?.length ?? "—",
+      value: productsLoading ? "..." : products?.total ?? "—",
       icon: ShoppingBag,
       color: "text-orange-600",
       bgColor: "bg-orange-500/10",

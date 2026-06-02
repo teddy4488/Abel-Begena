@@ -12,7 +12,7 @@ import {
   PaymentRequestDocument,
   PaymentRequestStatus,
 } from './schemas/payment-request.schema';
-import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
+import { CreatePaymentRequestBodyDto } from './dto/create-payment-request-body.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { ClassService } from '../class/class.service';
 import { AttendanceService } from '../attendance/attendance.service';
@@ -20,6 +20,7 @@ import {
   Order,
   OrderDocument,
   OrderStatus,
+  isStockReserved,
 } from '../order/schemas/order.schema';
 import { ProductService } from '../product/product.service';
 import { notDeletedFilter } from '../common/filters/not-deleted.filter';
@@ -45,7 +46,45 @@ export class PaymentService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async create(dto: Omit<CreatePaymentRequestDto, 'userId'>, userId: string) {
+  /**
+   * Notify all admins only when a stock reduction crossed the low-stock
+   * threshold (avoids spamming on every reduction). Best-effort.
+   */
+  private async notifyLowStock(
+    product: {
+      _id?: unknown;
+      name?: string;
+      stock?: number;
+      lowStockThreshold?: number;
+    },
+    reducedBy: number,
+  ): Promise<void> {
+    try {
+      const threshold = product?.lowStockThreshold ?? 0;
+      const stock = product?.stock ?? 0;
+      const previousStock = stock + reducedBy;
+      if (threshold <= 0 || stock > threshold || previousStock <= threshold) return;
+      const admins = await this.userService.findAdmins();
+      await Promise.all(
+        admins.map((admin) => {
+          const adminId = (admin as { _id?: { toString: () => string } })._id?.toString();
+          if (!adminId) return Promise.resolve();
+          return this.notificationService
+            .createForUser(adminId, {
+              type: 'low_stock',
+              title: 'Low stock alert',
+              message: `${product.name ?? 'A product'} is low on stock (${stock} left).`,
+              data: { productId: product._id, stock, threshold },
+            })
+            .catch(() => undefined);
+        }),
+      );
+    } catch {
+      // best-effort; never block payment approval
+    }
+  }
+
+  async create(dto: CreatePaymentRequestBodyDto, userId: string) {
     // Idempotency: avoid creating duplicates for the same user/type/target while still pending
     const normalizedTargetId = dto.targetId ? new Types.ObjectId(dto.targetId) : undefined;
     const existing = await this.paymentModel
@@ -74,7 +113,7 @@ export class PaymentService {
       receiptUrl: dto.receiptUrl,
       status: 'pending' as PaymentRequestStatus,
       reviewNote: dto.reviewNote,
-      conversionData: (dto as any).conversionData,
+      conversionData: dto.conversionData,
     });
     return created.toObject();
   }
@@ -177,247 +216,371 @@ export class PaymentService {
 
     await payment.save();
 
-    // If approved and type is enrollment, activate the enrollment
-    if (
-      dto.status === 'approved' &&
-      payment.type === 'enrollment' &&
-      payment.targetId
-    ) {
+    if (dto.status === 'approved') {
+      await this.applyApprovalSideEffects(payment, adminUserId, dto.reason);
+    } else if (dto.status === 'rejected') {
+      await this.applyRejectionSideEffects(payment, dto.reason);
+    }
+
+    return payment.toObject();
+  }
+
+  /**
+   * Admin repair: re-run the post-approval side effects for an already-approved request.
+   * Idempotent — enrollment activation, conversion, and the ledger write all upsert.
+   */
+  async retrySideEffects(id: string, adminUserId: string) {
+    const payment = await this.paymentModel
+      .findOne({ _id: id, ...notDeletedFilter() })
+      .exec();
+    if (!payment) {
+      throw new NotFoundException('Payment request not found');
+    }
+    if (payment.status !== 'approved') {
+      throw new BadRequestException(
+        'Only approved payments can have their side effects retried',
+      );
+    }
+    await this.applyApprovalSideEffects(payment, adminUserId, payment.reviewNote);
+    return payment.toObject();
+  }
+
+  /**
+   * Apply the side effects of an approved payment. Each effect is wrapped so a failure
+   * never rolls back the approval; instead admins are alerted and can retry. Idempotent.
+   */
+  private async applyApprovalSideEffects(
+    payment: PaymentRequestDocument,
+    adminUserId: string,
+    reason?: string,
+  ): Promise<void> {
+    // 1) Enrollment → activate + convert user→student + record the initial (period 1) payment.
+    if (payment.type === 'enrollment' && payment.targetId) {
       try {
         await this.classService.updateEnrollmentStatus(
           payment.targetId.toString(),
           payment.userId.toString(),
-          { status: 'active', note: dto.reason },
+          { status: 'active', note: reason },
           adminUserId,
         );
 
-        // If enrollment has conversionData, trigger user-to-student conversion
         if (payment.conversionData) {
-          try {
-            const conversionPayload = JSON.parse(payment.conversionData);
-            // Use approval date as student's registration start so due-date logic is correct
-            const approvedAt = payment.reviewedAt || new Date();
-            conversionPayload.registrationStartDate =
-              typeof approvedAt === 'string'
-                ? approvedAt
-                : new Date(approvedAt).toISOString().split('T')[0];
+          const conversionPayload = JSON.parse(payment.conversionData);
+          const approvedAt = payment.reviewedAt || new Date();
+          conversionPayload.registrationStartDate = new Date(approvedAt)
+            .toISOString()
+            .split('T')[0];
+          // Capture the agreed monthly fee from the payment amount if not already set.
+          if (
+            conversionPayload.amount == null ||
+            conversionPayload.amount === 0
+          ) {
+            conversionPayload.amount = payment.amount;
+          }
 
+          // Resolve an existing participant (idempotent retry) before converting.
+          let participantId =
+            await this.attendanceService.getParticipantIdByUserId(
+              payment.userId.toString(),
+            );
+          if (!participantId) {
             const conversionResult =
               await this.attendanceService.convertUserToStudent(
                 payment.userId.toString(),
                 conversionPayload,
               );
+            participantId = conversionResult?.student?._id?.toString() ?? null;
+          }
 
-            // Record the first (enrollment) payment as a StudentPayment so it appears in
-            // student payment history and in revenue. Due date = approval date (next due = +30 days).
-            if (conversionResult?.student?._id) {
-              const approvedAtDate = new Date(approvedAt);
-              const approvalYear = approvedAtDate.getFullYear();
-              const approvalMonth = approvedAtDate.getMonth() + 1;
-              await this.attendanceService.recordStudentPayment(
-                {
-                  participantId: conversionResult.student._id.toString(),
-                  amount: payment.amount,
-                  month: approvalMonth,
-                  year: approvalYear,
-                  status: 'paid',
-                  note: 'Initial enrollment payment (approved with receipt).',
-                },
-                adminUserId,
-              );
-            }
-          } catch (conversionError) {
-            // eslint-disable-next-line no-console
-            console.error(
-              'Failed to convert user to student after enrollment approval:',
-              conversionError,
+          if (participantId) {
+            // Initial enrollment payment is always billing period 1 (idempotent upsert).
+            await this.attendanceService.recordStudentPayment(
+              {
+                participantId,
+                amount: payment.amount,
+                status: 'paid',
+                period: 1,
+                note: 'Initial enrollment payment (approved with receipt).',
+                receiptUrl: payment.receiptUrl,
+              },
+              adminUserId,
             );
-            // Don't throw - enrollment is approved, conversion can be done manually
           }
         }
       } catch (error) {
-        // Log error but don't fail the payment update
-        // The enrollment might not exist or might already be active
-        // eslint-disable-next-line no-console
-        console.error(
-          'Failed to activate enrollment after payment approval:',
+        await this.notifyAdminsSideEffectFailure(
+          payment,
+          'enrollment/conversion',
           error,
         );
       }
     }
 
-    // If approved and type is order, mark order as paid
-    if (
-      dto.status === 'approved' &&
-      payment.type === 'order' &&
-      payment.targetId
-    ) {
+    // 2) Order → reserve stock if needed + mark paid/processing.
+    if (payment.type === 'order' && payment.targetId) {
       try {
         const order = await this.orderModel
           .findOne({ _id: payment.targetId, ...notDeletedFilter() })
           .exec();
-        if (order) {
-          // If stock wasn't reserved at checkout (offline payments), reserve it now.
+        if (order && !order.isPaid) {
           if (order.status === OrderStatus.PAYMENT_PENDING) {
             for (const item of order.items ?? []) {
-              await this.productService.reduceStock(
+              const updatedProduct = await this.productService.reduceStock(
                 item.productId.toString(),
                 item.quantity,
               );
+              await this.notifyLowStock(updatedProduct, item.quantity);
             }
           }
-
           order.isPaid = true;
           order.status = OrderStatus.PROCESSING;
           await order.save();
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'Failed to mark order as paid after payment approval:',
-          error,
-        );
+        await this.notifyAdminsSideEffectFailure(payment, 'order', error);
       }
     }
 
-    // If rejected and type is order, mark order as payment rejected (still unpaid)
-    if (
-      dto.status === 'rejected' &&
-      payment.type === 'order' &&
-      payment.targetId
-    ) {
-      try {
-        const order = await this.orderModel
-          .findOne({ _id: payment.targetId, ...notDeletedFilter() })
-          .exec();
-        if (order) {
-          order.isPaid = false;
-          order.status = OrderStatus.PAYMENT_REJECTED;
-          await order.save();
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'Failed to mark order as payment rejected after payment rejection:',
-          error,
-        );
-      }
-    }
-
-    // If approved and type is student_monthly_fee, resolve participant by userId and update student payment record
-    if (dto.status === 'approved' && payment.type === 'student_monthly_fee') {
+    // 3) Student monthly fee → record against the next unsettled billing period.
+    if (payment.type === 'student_monthly_fee') {
       try {
         const participantId =
           await this.attendanceService.getParticipantIdByUserId(
             payment.userId.toString(),
           );
         if (!participantId) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            'Student monthly fee approved but no participant found for user',
-            payment.userId.toString(),
-          );
-        } else {
-          let month: number;
-          let year: number;
-          if (payment.conversionData) {
-            const metadata = JSON.parse(payment.conversionData);
-            month = metadata.month;
-            year = metadata.year;
-          } else {
-            const now = new Date();
-            month = now.getMonth() + 1;
-            year = now.getFullYear();
-          }
-
+          throw new Error('No student participant found for user');
+        }
+        // Reuse the previously-applied period on retry for idempotency.
+        let period = payment.appliedPeriod;
+        if (period == null) {
           const next =
             await this.attendanceService.getNextUnpaidDueDateInMonthYear(
               participantId,
-              month,
-              year,
             );
-
-          await this.attendanceService.recordStudentPayment(
-            {
-              participantId,
-              amount: payment.amount,
-              month,
-              year,
-              status: 'paid',
-              period: next?.period,
-              note: `Payment approved via receipt submission. ${payment.reviewNote || ''}`.trim(),
-              receiptUrl: payment.receiptUrl,
-            },
-            adminUserId,
-          );
+          period = next?.period;
+        }
+        await this.attendanceService.recordStudentPayment(
+          {
+            participantId,
+            amount: payment.amount,
+            status: 'paid',
+            period,
+            note: `Payment approved via receipt submission. ${payment.reviewNote || ''}`.trim(),
+            receiptUrl: payment.receiptUrl,
+          },
+          adminUserId,
+        );
+        if (period != null && payment.appliedPeriod == null) {
+          payment.appliedPeriod = period;
+          await payment.save();
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'Failed to update student payment after monthly fee approval:',
+        await this.notifyAdminsSideEffectFailure(
+          payment,
+          'student_monthly_fee',
           error,
         );
-        // Don't throw - payment is already approved, can be updated manually
       }
     }
 
-    // If rejected, send a rejection email for transparency
-    if (dto.status === 'rejected') {
-      try {
-        const user = await this.userService.findById(payment.userId.toString());
-        if (user?.email) {
-          const fullName =
-            [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
-          await this.mailService.sendPaymentRejectedEmail(
+    // 4) Notify the payer (best-effort; not a tracked side effect).
+    try {
+      const user = await this.userService.findById(payment.userId.toString());
+      if (user) {
+        const fullName =
+          [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
+        if (user.email) {
+          await this.mailService.sendPaymentApprovedEmail(
             user.email,
             fullName,
             payment.type,
-            dto.reason,
             payment.amount,
             payment.currency ?? 'ETB',
           );
         }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('Failed to send payment rejected email:', e);
+        await this.notificationService.createForUser(user._id.toString(), {
+          type: 'payment_approved',
+          title: 'Payment approved',
+          message: `Your ${payment.type} payment has been approved.`,
+          data: {
+            paymentId: payment._id.toString(),
+            amount: payment.amount,
+            status: payment.status,
+            type: payment.type,
+          },
+        });
       }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to send payment approved notification:', e);
     }
 
-    // On any approved payment, send a generic approval email and in-app notification
-    if (dto.status === 'approved') {
+    if (!payment.sideEffectsApplied) {
+      payment.sideEffectsApplied = true;
+      await payment.save();
+    }
+  }
+
+  /** Side effects when a payment is rejected: release any order + email the payer. */
+  private async applyRejectionSideEffects(
+    payment: PaymentRequestDocument,
+    reason?: string,
+  ): Promise<void> {
+    if (payment.type === 'order' && payment.targetId) {
       try {
-        const user = await this.userService.findById(payment.userId.toString());
-        if (user) {
-          const fullName =
-            [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
-          if (user.email) {
-            await this.mailService.sendPaymentApprovedEmail(
-              user.email,
-              fullName,
-              payment.type,
-              payment.amount,
-              payment.currency ?? 'ETB',
-            );
+        const order = await this.orderModel
+          .findOne({ _id: payment.targetId, ...notDeletedFilter() })
+          .exec();
+        if (order) {
+          if (isStockReserved(order.status)) {
+            for (const item of order.items ?? []) {
+              await this.productService.restoreStock(
+                item.productId.toString(),
+                item.quantity,
+              );
+            }
           }
-          await this.notificationService.createForUser(user._id.toString(), {
-            type: 'payment_approved',
-            title: 'Payment approved',
-            message: `Your ${payment.type} payment has been approved.`,
-            data: {
-              paymentId: payment._id.toString(),
-              amount: payment.amount,
-              status: payment.status,
-              type: payment.type,
-            },
-          });
+          order.isPaid = false;
+          order.status = OrderStatus.PAYMENT_REJECTED;
+          await order.save();
         }
-      } catch (e) {
+      } catch (error) {
         // eslint-disable-next-line no-console
-        console.warn('Failed to send payment approved notification:', e);
+        console.error('Failed to mark order rejected:', error);
       }
     }
 
-    return payment.toObject();
+    try {
+      const user = await this.userService.findById(payment.userId.toString());
+      if (user?.email) {
+        const fullName =
+          [user.firstName, user.lastName].filter(Boolean).join(' ') || '';
+        await this.mailService.sendPaymentRejectedEmail(
+          user.email,
+          fullName,
+          payment.type,
+          reason,
+          payment.amount,
+          payment.currency ?? 'ETB',
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to send payment rejected email:', e);
+    }
+  }
+
+  /** Alert all admins that an approved payment's side effect failed (best-effort). */
+  private async notifyAdminsSideEffectFailure(
+    payment: PaymentRequestDocument,
+    effect: string,
+    error: unknown,
+  ): Promise<void> {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Payment ${payment._id.toString()} side-effect '${effect}' failed:`,
+      error,
+    );
+    try {
+      const admins = await this.userService.findAdmins();
+      await Promise.all(
+        admins.map((admin) => {
+          const adminId = (
+            admin as { _id?: { toString: () => string } }
+          )._id?.toString();
+          if (!adminId) return Promise.resolve();
+          return this.notificationService
+            .createForUser(adminId, {
+              type: 'payment_side_effect_failed',
+              title: 'Approved payment needs attention',
+              message: `An approved ${payment.type} payment could not be fully applied (${effect}). Open the payment and use "Retry".`,
+              data: {
+                paymentId: payment._id.toString(),
+                userId: payment.userId.toString(),
+                effect,
+              },
+            })
+            .catch(() => undefined);
+        }),
+      );
+    } catch {
+      // best-effort; never block approval
+    }
+  }
+
+  /**
+   * Admin payment history with filters. `status`: pending|approved|rejected|all
+   * (defaults to pending to preserve the inbox). Optional type, date range, and a text
+   * query over reference + payer name/email. Returns the populated rows (newest first).
+   */
+  async listRequests(filters: {
+    status?: string;
+    type?: string;
+    from?: string;
+    to?: string;
+    q?: string;
+  }): Promise<unknown[]> {
+    const f: Record<string, unknown> = { ...notDeletedFilter() };
+    const status = filters.status ?? 'pending';
+    if (status !== 'all') {
+      f.status = status as PaymentRequestStatus;
+    }
+    if (filters.type) {
+      f.type = filters.type;
+    }
+    if (filters.from || filters.to) {
+      const createdAt: Record<string, Date> = {};
+      if (filters.from) createdAt.$gte = new Date(filters.from);
+      if (filters.to) {
+        const t = new Date(filters.to);
+        t.setHours(23, 59, 59, 999);
+        createdAt.$lte = t;
+      }
+      f.createdAt = createdAt;
+    }
+
+    const docs = await this.paymentModel
+      .find(f)
+      .sort({ createdAt: -1 })
+      .populate('userId', 'firstName lastName email')
+      .lean()
+      .exec();
+
+    // Surface the agreed monthly fee (expected) next to the submitted amount so the
+    // admin can compare at a glance (full / partial / overpaid) before approving.
+    const userIds = [
+      ...new Set(
+        docs
+          .map((p) => {
+            const u = p.userId as { _id?: unknown } | string | undefined;
+            return u && typeof u === 'object' && '_id' in u
+              ? String(u._id)
+              : String(u ?? '');
+          })
+          .filter(Boolean),
+      ),
+    ];
+    const feeMap = await this.attendanceService.getMonthlyFeesByUserIds(userIds);
+    const enriched = docs.map((p) => {
+      const u = p.userId as { _id?: unknown } | string | undefined;
+      const uid =
+        u && typeof u === 'object' && '_id' in u ? String(u._id) : String(u ?? '');
+      const expectedFee = feeMap.get(uid);
+      return { ...p, expectedFee };
+    });
+
+    if (!filters.q) return enriched;
+    const q = filters.q.toLowerCase();
+    return enriched.filter((p) => {
+      const u = p.userId as
+        | { firstName?: string; lastName?: string; email?: string }
+        | undefined;
+      const name = u
+        ? `${u.firstName ?? ''} ${u.lastName ?? ''} ${u.email ?? ''}`.toLowerCase()
+        : '';
+      return (p.reference ?? '').toLowerCase().includes(q) || name.includes(q);
+    });
   }
 }
 

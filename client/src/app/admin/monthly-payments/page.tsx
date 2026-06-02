@@ -41,7 +41,12 @@ export default function AdminMonthlyPaymentsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStudentId, setPaymentStudentId] = useState<string>("");
   const [paymentAmount, setPaymentAmount] = useState<string>("0");
-  const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">("paid");
+  const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid" | "waived">(
+    "paid",
+  );
+  // Optional billing-period override (blank = next unsettled period) and advance count.
+  const [paymentPeriod, setPaymentPeriod] = useState<string>("");
+  const [paymentCoversPeriods, setPaymentCoversPeriods] = useState<string>("1");
   const [paymentNote, setPaymentNote] = useState<string>("");
   const [overdueSearch, setOverdueSearch] = useState<string>("");
   const [overdueDaysFilter, setOverdueDaysFilter] = useState<string>("all");
@@ -297,16 +302,13 @@ export default function AdminMonthlyPaymentsPage() {
     );
   }
 
-  // Calculate total revenue from paid payments
+  // Estimated collected tuition = settled periods × monthly fee, summed across students.
   const totalRevenue = useMemo(() => {
-    return billingItems
-      .filter((item) => item.status === "paid")
-      .reduce((sum, item) => {
-        // Get payment amount from student payments if available
-        // For now, we'll use a default amount or calculate from billing summary
-        return sum + (billingSummary?.items?.find((i) => i.participantId === item.participantId) ? 5000 : 0);
-      }, 0);
-  }, [billingItems, billingSummary]);
+    return billingItems.reduce(
+      (sum, item) => sum + (item.periodsSettled ?? 0) * (item.monthlyFee ?? 0),
+      0,
+    );
+  }, [billingItems]);
 
   return (
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
@@ -555,8 +557,12 @@ export default function AdminMonthlyPaymentsPage() {
                         type="button"
                         onClick={() => {
                           setPaymentStudentId(item.participantId);
-                          setPaymentStatus(item.status);
-                          setPaymentAmount("0");
+                          setPaymentStatus("paid");
+                          setPaymentAmount(
+                            item.monthlyFee ? String(item.monthlyFee) : "0",
+                          );
+                          setPaymentPeriod("");
+                          setPaymentCoversPeriods("1");
                           setPaymentNote("");
                           setShowPaymentModal(true);
                         }}
@@ -564,27 +570,17 @@ export default function AdminMonthlyPaymentsPage() {
                       >
                         {t("monthlyPayments.record", "Record")}
                       </button>
-                      {/* Overdue badge (if this student has an overdue payment for the selected period) */}
-                      {billingSummary && (
-                        (() => {
-                          const overdueEntry = overduePayments.find(
-                            (p) => p.participantId === item.participantId && p.year === billingSummary.year && p.month === billingSummary.month,
-                          );
-                          if (overdueEntry) {
-                            const daysColor =
-                              overdueEntry.daysOverdue > 30
-                                ? "bg-red-600 text-white"
-                                : overdueEntry.daysOverdue > 14
-                                  ? "bg-orange-600 text-white"
-                                  : "bg-yellow-600 text-white";
-                            return (
-                              <span className={`rounded-full px-3 py-1 text-xs font-bold ${daysColor}`}>
-                                {overdueEntry.daysOverdue} {t("monthlyPayments.daysOverdue", "days")}
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()
+                      {/* Owed badge — consumption-based (months consumed but not yet settled) */}
+                      {item.suggestedOwed > 0 && (
+                        <span className="rounded-full bg-amber-600 px-3 py-1 text-xs font-bold text-white">
+                          {item.suggestedOwed}{" "}
+                          {t("monthlyPayments.monthsOwed", "mo. owed")}
+                        </span>
+                      )}
+                      {item.windowExceeded && (
+                        <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
+                          {t("monthlyPayments.overWindow", "over window")}
+                        </span>
                       )}
 
                       {/* Next due quick peek */}
@@ -975,13 +971,53 @@ export default function AdminMonthlyPaymentsPage() {
                   <select
                     value={paymentStatus}
                     onChange={(e) =>
-                      setPaymentStatus(e.target.value as "paid" | "unpaid")
+                      setPaymentStatus(
+                        e.target.value as "paid" | "unpaid" | "waived",
+                      )
                     }
                     className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
                   >
-                    <option value="paid">{t("monthlyPayments.status.paid", "Paid")}</option>
-                    <option value="unpaid">{t("monthlyPayments.status.unpaid", "Unpaid")}</option>
+                    <option value="paid">{t("monthlyPayments.status.paid", "Paid (full)")}</option>
+                    <option value="unpaid">{t("monthlyPayments.status.partial", "Partial payment")}</option>
+                    <option value="waived">{t("monthlyPayments.status.waived", "Waive this month")}</option>
                   </select>
+                  <p className="mt-1 text-[11px] text-foreground/50">
+                    {paymentStatus === "unpaid"
+                      ? t("monthlyPayments.partialHint", "Records a partial amount; the month stays owed until the full fee is covered.")
+                      : paymentStatus === "waived"
+                        ? t("monthlyPayments.waiveHint", "Marks the month settled with no charge (admin discretion).")
+                        : t("monthlyPayments.paidHint", "Settles the month in full.")}
+                  </p>
+                </div>
+
+                {/* Billing period override + advance payment */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("monthlyPayments.periodOverride", "Period (optional)")}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder={t("monthlyPayments.nextDue", "Next due")}
+                      value={paymentPeriod}
+                      onChange={(e) => setPaymentPeriod(e.target.value)}
+                      className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                      {t("monthlyPayments.coversPeriods", "Months covered")}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={paymentCoversPeriods}
+                      onChange={(e) => setPaymentCoversPeriods(e.target.value)}
+                      disabled={paymentStatus === "waived"}
+                      className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30 disabled:opacity-50"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -1033,12 +1069,22 @@ export default function AdminMonthlyPaymentsPage() {
                           receiptUrl = uploaded.url;
                         }
 
+                        const periodOverride = parseInt(paymentPeriod, 10);
+                        const covers = parseInt(paymentCoversPeriods, 10);
                         await recordStudentPayment({
                           participantId: paymentStudentId,
                           amount: Number(paymentAmount) || 0,
-                          month: billingSummary.month,
-                          year: billingSummary.year,
                           status: paymentStatus,
+                          period:
+                            Number.isInteger(periodOverride) && periodOverride >= 1
+                              ? periodOverride
+                              : undefined,
+                          coversPeriods:
+                            paymentStatus !== "waived" &&
+                            Number.isInteger(covers) &&
+                            covers > 1
+                              ? covers
+                              : undefined,
                           note: paymentNote || undefined,
                           receiptUrl,
                         }).unwrap();

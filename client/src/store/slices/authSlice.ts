@@ -45,8 +45,9 @@ export const AUTH_STORAGE_KEY = "abel-begena-auth";
 const persistState = (state: AuthState) => {
   if (typeof window === "undefined") return;
   try {
-    const payload: AuthState = {
-      token: state.token,
+    // token is intentionally excluded — the httpOnly cookie is the auth source of truth.
+    // Storing the raw JWT in localStorage exposes it to XSS.
+    const payload = {
       user: state.user,
       isLoggedIn: state.isLoggedIn,
       sessionExpiresAt: state.sessionExpiresAt,
@@ -83,7 +84,7 @@ const authSlice = createSlice({
         const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw) as Partial<AuthState>;
-        state.token = typeof parsed.token === "string" ? parsed.token : null;
+        state.token = null; // never restored from storage — httpOnly cookie handles auth
         state.user = (parsed.user ?? null) as AuthUser | null;
         state.isLoggedIn = Boolean(parsed.user);
         state.sessionExpiresAt =

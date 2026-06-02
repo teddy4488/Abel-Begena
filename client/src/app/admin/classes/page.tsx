@@ -25,6 +25,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import OccupancyVisualizer from "@/components/admin/OccupancyVisualizer";
 
 const INSTRUMENTS: InstrumentType[] = [
   "Begena",
@@ -40,15 +41,19 @@ const emptyForm = {
   description: "",
   instrumentType: "Begena" as InstrumentType,
   level: "beginner" as "beginner" | "advanced",
+  durationMonths: "" as "" | "3" | "6" | "9",
   classType: "online" as "online" | "physical" | "both",
   branchId: "",
-  instructorId: "",
+  teacherIds: [] as string[],
+  primaryInstructorId: "",
   startDate: "",
   endDate: "",
   tuition: "",
   currency: "ETB",
   enrollmentDeadline: "",
 };
+
+const SESSIONS_BY_DURATION: Record<string, number> = { "3": 5, "6": 3, "9": 2 };
 
 export default function AdminClassesPage() {
   const { data: classes, isLoading } = useGetManagedClassesQuery();
@@ -88,7 +93,7 @@ export default function AdminClassesPage() {
   const [viewFilter, setViewFilter] = useState<"all" | "unassigned" | "live">(
     "all",
   );
-  const [activeTab, setActiveTab] = useState<"classes" | "lessons">("classes");
+  const [activeTab, setActiveTab] = useState<"classes" | "lessons" | "occupancy">("classes");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [lessonsCurrentPage, setLessonsCurrentPage] = useState(1);
@@ -132,6 +137,12 @@ export default function AdminClassesPage() {
     if (form.tuition && Number(form.tuition) < 0) {
       next.tuition = t("admin.classes.errors.tuitionInvalid", "Tuition must be zero or higher.");
     }
+    if (!form.durationMonths) {
+      next.durationMonths = t(
+        "admin.classes.errors.durationRequired",
+        "Choose a package duration.",
+      );
+    }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -141,14 +152,21 @@ export default function AdminClassesPage() {
     if (!validate()) {
       return;
     }
+    // Primary defaults to the first selected teacher if not explicitly chosen.
+    const primary =
+      form.primaryInstructorId && form.teacherIds.includes(form.primaryInstructorId)
+        ? form.primaryInstructorId
+        : form.teacherIds[0];
     const payload = {
       title: form.title,
       description: form.description || undefined,
       instrumentType: form.instrumentType,
       level: form.level,
+      durationMonths: form.durationMonths ? Number(form.durationMonths) : undefined,
       classType: form.classType || "online",
       branchId: form.branchId || undefined,
-      instructorId: form.instructorId || undefined,
+      teacherIds: form.teacherIds.length ? form.teacherIds : undefined,
+      primaryInstructorId: primary || undefined,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
       tuition: form.tuition ? Number(form.tuition) : undefined,
@@ -156,19 +174,20 @@ export default function AdminClassesPage() {
       enrollmentDeadline: form.enrollmentDeadline || undefined,
     };
     try {
-      if (editingId) {
-        await updateClass({ id: editingId, data: payload }).unwrap();
-        pushToast({
-          title: t("admin.classes.toast.updated", "Class updated"),
-          variant: "success",
-        });
-      } else {
-        await createClass(payload).unwrap();
-        pushToast({
-          title: t("admin.classes.toast.created", "Class created"),
-          variant: "success",
-        });
-      }
+      const result = editingId
+        ? await updateClass({ id: editingId, data: payload }).unwrap()
+        : await createClass(payload).unwrap();
+      pushToast({
+        title: editingId
+          ? t("admin.classes.toast.updated", "Class updated")
+          : t("admin.classes.toast.created", "Class created"),
+        variant: "success",
+      });
+      // Surface non-blocking branch warnings from the server.
+      const warnings = (result as { warnings?: string[] })?.warnings ?? [];
+      warnings.forEach((w) =>
+        pushToast({ title: t("admin.classes.warning", "Heads up"), description: w, variant: "default" }),
+      );
       setForm(emptyForm);
       setEditingId(null);
       setFieldErrors({});
@@ -190,9 +209,13 @@ export default function AdminClassesPage() {
       description: klass.description ?? "",
       instrumentType: klass.instrumentType ?? "Begena",
       level: klass.level ?? "beginner",
+      durationMonths: klass.durationMonths
+        ? (String(klass.durationMonths) as "3" | "6" | "9")
+        : "",
       classType: klass.classType ?? "online",
-      branchId: klass.branchId ?? "",
-      instructorId: klass.instructorId?._id ?? "",
+      branchId: (typeof klass.branchId === "string" ? klass.branchId : "") ?? "",
+      teacherIds: klass.teacherIds ?? (klass.instructorId?._id ? [klass.instructorId._id] : []),
+      primaryInstructorId: klass.primaryInstructorId ?? klass.instructorId?._id ?? "",
       startDate: klass.startDate ? klass.startDate.slice(0, 10) : "",
       endDate: klass.endDate ? klass.endDate.slice(0, 10) : "",
       tuition: (klass.tuition ?? "").toString(),
@@ -473,7 +496,20 @@ export default function AdminClassesPage() {
         >
           {t("admin.classes.tabs.lessons", "Lessons")}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("occupancy")}
+          className={`px-4 py-2 text-sm font-semibold transition ${
+            activeTab === "occupancy"
+              ? "border-b-2 border-primary text-primary"
+              : "text-foreground/60 hover:text-foreground"
+          }`}
+        >
+          {t("admin.classes.tabs.occupancy", "Occupancy")}
+        </button>
       </div>
+
+      {activeTab === "occupancy" && <OccupancyVisualizer />}
 
       {/* Classes Tab */}
       {activeTab === "classes" && (
@@ -1417,6 +1453,31 @@ export default function AdminClassesPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
+              {t("admin.classes.form.duration", "Package Duration")} *
+            </label>
+            <select
+              value={form.durationMonths}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  durationMonths: e.target.value as "" | "3" | "6" | "9",
+                }))
+              }
+              className={`w-full rounded-2xl card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 ${
+                fieldErrors.durationMonths ? "border border-red-400" : ""
+              }`}
+            >
+              <option value="">{t("admin.classes.form.durationSelect", "Select duration")}</option>
+              <option value="3">{t("admin.classes.form.duration3", "3 months · 5 sessions/week")}</option>
+              <option value="6">{t("admin.classes.form.duration6", "6 months · 3 sessions/week")}</option>
+              <option value="9">{t("admin.classes.form.duration9", "9 months · 2 sessions/week")}</option>
+            </select>
+            {fieldErrors.durationMonths && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.durationMonths}</p>
+            )}
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
               {t("admin.classes.form.branch", "Branch")}
             </label>
             <select
@@ -1441,20 +1502,76 @@ export default function AdminClassesPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary">
-              {t("admin.classes.form.instructor", "Instructor")}
+              {t("admin.classes.form.teachers", "Teachers")}
             </label>
-          <select
-            value={form.instructorId}
-            onChange={(e) => setForm((prev) => ({ ...prev, instructorId: e.target.value }))}
-              className="w-full rounded-2xl  card-elevated70 px-4 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-          >
-              <option value="">{t("admin.classes.form.assignInstructor", "Assign instructor")}</option>
-            {teachers.map((teacher) => (
-              <option key={teacher._id ?? teacher.id} value={teacher._id ?? teacher.id}>
-                {teacher.firstName} {teacher.lastName}
-              </option>
-            ))}
-          </select>
+            <div className="space-y-1 rounded-2xl card-elevated70 p-3">
+              {teachers.length === 0 ? (
+                <p className="text-xs text-foreground/50">
+                  {t("admin.classes.form.noTeachers", "No teachers available.")}
+                </p>
+              ) : (
+                teachers.map((teacher) => {
+                  const tid = (teacher._id ?? teacher.id) as string;
+                  const checked = form.teacherIds.includes(tid);
+                  // Warn (visually) when this teacher isn't in the class's selected branch.
+                  const teacherBranches = (
+                    (teacher as { branchIds?: Array<string | { _id?: string }> }).branchIds ?? []
+                  ).map((b) => (typeof b === "string" ? b : b?._id ?? ""));
+                  const outOfBranch =
+                    !!form.branchId && checked && !teacherBranches.includes(form.branchId);
+                  return (
+                    <div key={tid} className="flex items-center justify-between gap-2 py-1">
+                      <label className="flex flex-1 items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            setForm((prev) => {
+                              const nextIds = e.target.checked
+                                ? [...prev.teacherIds, tid]
+                                : prev.teacherIds.filter((x) => x !== tid);
+                              return {
+                                ...prev,
+                                teacherIds: nextIds,
+                                primaryInstructorId: nextIds.includes(prev.primaryInstructorId)
+                                  ? prev.primaryInstructorId
+                                  : nextIds[0] ?? "",
+                              };
+                            })
+                          }
+                          className="h-4 w-4 rounded border-border accent-secondary"
+                        />
+                        <span>
+                          {teacher.firstName} {teacher.lastName}
+                        </span>
+                        {outOfBranch && (
+                          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
+                            {t("admin.classes.form.outOfBranch", "Other branch")}
+                          </span>
+                        )}
+                      </label>
+                      {checked && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({ ...prev, primaryInstructorId: tid }))
+                          }
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${
+                            form.primaryInstructorId === tid
+                              ? "bg-secondary text-primary-foreground"
+                              : "bg-secondary/10 text-secondary hover:bg-secondary/20"
+                          }`}
+                        >
+                          {form.primaryInstructorId === tid
+                            ? t("admin.classes.form.primary", "Primary")
+                            : t("admin.classes.form.makePrimary", "Make primary")}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>

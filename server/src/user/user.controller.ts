@@ -81,6 +81,7 @@ export class UserController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
     }),
   )
   async uploadOwnAvatar(
@@ -110,6 +111,7 @@ export class UserController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
     }),
   )
   async uploadAvatarForUser(
@@ -159,7 +161,10 @@ export class UserController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'user_update', resource: 'user', resourceIdParam: 'id' })
   updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.userService.update(id, dto);
+    // Strip privileged fields — role and branch changes go through dedicated endpoints
+    const { role: _r, branchId: _b, branchIds: _bi, ...safe } = dto as UpdateUserDto & { branchIds?: unknown };
+    void _r; void _b; void _bi;
+    return this.userService.update(id, safe as UpdateUserDto);
   }
 
   @Delete(':id')

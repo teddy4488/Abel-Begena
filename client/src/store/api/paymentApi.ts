@@ -21,8 +21,20 @@ export type PaymentRequest = {
   reviewedBy?: string;
   reviewNote?: string;
   conversionData?: string; // JSON string for storing metadata (e.g., month/year for student monthly fees)
+  /** Agreed monthly fee for the payer (expected amount) — for expected-vs-submitted display. */
+  expectedFee?: number;
+  sideEffectsApplied?: boolean;
+  appliedPeriod?: number;
   createdAt: string;
   updatedAt?: string;
+};
+
+export type PaymentHistoryFilters = {
+  status?: "pending" | "approved" | "rejected" | "all";
+  type?: PaymentRequestType;
+  from?: string;
+  to?: string;
+  q?: string;
 };
 
 export type CreatePaymentRequestBody = {
@@ -61,6 +73,14 @@ export const paymentApi = createApi({
       }),
       providesTags: ["PaymentRequests"],
     }),
+    // Admin payment history/ledger with filters (status pending|approved|rejected|all).
+    getPaymentHistory: builder.query<PaymentRequest[], PaymentHistoryFilters | void>({
+      query: (params) => ({
+        url: "/payments",
+        params: params ?? { status: "all" },
+      }),
+      providesTags: ["PaymentRequests"],
+    }),
     createPaymentRequest: builder.mutation<PaymentRequest, CreatePaymentRequestBody>({
       query: (body) => ({
         url: "/payments",
@@ -77,6 +97,14 @@ export const paymentApi = createApi({
         url: `/payments/${id}/decision`,
         method: "POST",
         body,
+      }),
+      invalidatesTags: ["PaymentRequests"],
+    }),
+    // Admin repair: re-run the side effects of an already-approved payment.
+    retryPaymentSideEffects: builder.mutation<PaymentRequest, { id: string }>({
+      query: ({ id }) => ({
+        url: `/payments/${id}/retry-side-effects`,
+        method: "POST",
       }),
       invalidatesTags: ["PaymentRequests"],
     }),
@@ -104,7 +132,9 @@ export const paymentApi = createApi({
 export const {
   useGetMyPaymentRequestsQuery,
   useGetPendingPaymentRequestsQuery,
+  useGetPaymentHistoryQuery,
   useCreatePaymentRequestMutation,
   useUpdatePaymentStatusMutation,
+  useRetryPaymentSideEffectsMutation,
   useSubmitStudentMonthlyPaymentMutation,
 } = paymentApi;

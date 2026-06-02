@@ -27,6 +27,23 @@ export enum OrderStatus {
   CANCELLED = 'Cancelled',
 }
 
+/**
+ * Statuses in which product stock has been reserved/decremented for an order.
+ * - COD orders reserve stock at checkout (PENDING).
+ * - Offline-payment orders reserve stock on approval (PROCESSING onward).
+ * PAYMENT_PENDING / PAYMENT_REJECTED / CANCELLED hold no reserved stock.
+ */
+export const STOCK_RESERVED_STATUSES: ReadonlySet<OrderStatus> = new Set([
+  OrderStatus.PENDING,
+  OrderStatus.PROCESSING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+]);
+
+export function isStockReserved(status: OrderStatus): boolean {
+  return STOCK_RESERVED_STATUSES.has(status);
+}
+
 @Schema({ _id: true })
 export class OrderItem {
   @Prop({ type: Types.ObjectId, default: () => new Types.ObjectId() })
@@ -34,6 +51,10 @@ export class OrderItem {
 
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId: Types.ObjectId;
+
+  /** Snapshot of the product name at checkout time (survives later rename/delete). */
+  @Prop({ trim: true, maxlength: 200 })
+  productName: string;
 
   @Prop({ required: true, min: 1 })
   quantity: number;
@@ -100,6 +121,12 @@ export class Order {
 
   @Prop({ trim: true, maxlength: 500 })
   receiptUrl?: string;
+
+  @Prop({ trim: true, maxlength: 120 })
+  trackingNumber?: string;
+
+  @Prop({ trim: true, maxlength: 80 })
+  trackingCarrier?: string;
 
   @Prop({ type: Date, required: false, default: null })
   deletedAt?: Date | null;

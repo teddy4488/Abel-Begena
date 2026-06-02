@@ -85,6 +85,7 @@ type EnrollmentForm = {
   instrumentType: InstrumentType;
   programDurationMonths: '3' | '6' | '9';
   preferredLearningDays: DayOfWeek[];
+  slotTimes: Record<string, string>;
   registrationStartDate: string;
 };
 
@@ -129,6 +130,7 @@ export default function ClassesPage() {
     instrumentType: "Begena",
     programDurationMonths: "6",
     preferredLearningDays: [],
+    slotTimes: {},
     registrationStartDate: "",
   });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -173,9 +175,12 @@ export default function ClassesPage() {
       preferredTime: "",
       learningType: "online",
       branchId: "",
-      instrumentType: "Begena",
-      programDurationMonths: "6",
+      instrumentType: (klass.instrumentType ?? "Begena") as InstrumentType,
+      programDurationMonths: (klass.durationMonths
+        ? String(klass.durationMonths)
+        : "6") as "3" | "6" | "9",
       preferredLearningDays: [],
+      slotTimes: {},
       registrationStartDate: today,
     });
     setReceiptFile(null);
@@ -205,6 +210,7 @@ export default function ClassesPage() {
       instrumentType: "Begena",
       programDurationMonths: "6",
       preferredLearningDays: [],
+      slotTimes: {},
       registrationStartDate: "",
     });
     setReceiptFile(null);
@@ -271,6 +277,29 @@ export default function ClassesPage() {
       return;
     }
 
+    // Each chosen day needs a valid in-hours session time (08:00–18:00 start).
+    const timeOk = (hhmm: string) => {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hhmm)) return false;
+      const [h, m] = hhmm.split(":").map(Number);
+      const mins = h * 60 + m;
+      return mins >= 8 * 60 && mins <= 18 * 60;
+    };
+    if (
+      form.preferredLearningDays.some(
+        (d) => !form.slotTimes[d] || !timeOk(form.slotTimes[d]),
+      )
+    ) {
+      pushToast({
+        title: t("classes.modal.timesError", "Session times required"),
+        description: t(
+          "classes.modal.timesErrorDesc",
+          "Choose a time (08:00–18:00) for each selected day.",
+        ),
+        variant: "error",
+      });
+      return;
+    }
+
     const isPaidClass = (selectedClass.tuition ?? 0) > 0;
 
     // For paid cohorts we ALWAYS require a receipt image/PDF that admins can review.
@@ -308,6 +337,10 @@ export default function ClassesPage() {
       instrumentType: form.instrumentType,
       programDurationMonths: Number(form.programDurationMonths) as 3 | 6 | 9,
       preferredLearningDays: form.preferredLearningDays,
+      timeSlots: form.preferredLearningDays.map((day) => ({
+        day,
+        startTime: form.slotTimes[day],
+      })),
       registrationStartDate: form.registrationStartDate,
     };
     try {
@@ -471,6 +504,20 @@ export default function ClassesPage() {
                       {klass.title}
                     </h2>
                     {renderStatusChip(status)}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-secondary/10 px-3 py-0.5 text-xs font-semibold text-secondary">
+                      {klass.instrumentType}
+                    </span>
+                    {klass.durationMonths && (
+                      <span className="rounded-full bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary">
+                        {klass.durationMonths}{" "}
+                        {t("classes.monthsShort", "mo")}
+                        {klass.sessionsPerWeek
+                          ? ` · ${klass.sessionsPerWeek}${t("classes.perWeekShort", "/wk")}`
+                          : ""}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-2 text-sm text-foreground/70">
                     {klass.description ??
@@ -785,8 +832,9 @@ export default function ClassesPage() {
                             name="programDurationMonths"
                             value={duration}
                             checked={isSelected}
+                            disabled={!!selectedClass?.durationMonths}
                             onChange={(e) =>
-                              setForm({ ...form, programDurationMonths: e.target.value as "3" | "6" | "9", preferredLearningDays: [] })
+                              setForm({ ...form, programDurationMonths: e.target.value as "3" | "6" | "9", preferredLearningDays: [], slotTimes: {} })
                             }
                             className="sr-only"
                           />
@@ -867,13 +915,19 @@ export default function ClassesPage() {
                                 setForm({
                                   ...form,
                                   preferredLearningDays: [...form.preferredLearningDays, day.value],
+                                  slotTimes: { ...form.slotTimes, [day.value]: form.slotTimes[day.value] ?? "12:00" },
                                 });
                                 return;
                               }
-                              setForm({
-                                ...form,
-                                preferredLearningDays: form.preferredLearningDays.filter((d) => d !== day.value),
-                              });
+                              {
+                                const nextTimes = { ...form.slotTimes };
+                                delete nextTimes[day.value];
+                                setForm({
+                                  ...form,
+                                  preferredLearningDays: form.preferredLearningDays.filter((d) => d !== day.value),
+                                  slotTimes: nextTimes,
+                                });
+                              }
                             }}
                             className="sr-only"
                           />
@@ -889,10 +943,45 @@ export default function ClassesPage() {
                   </div>
                 </div>
 
-                {/* Preferred time of learning (e.g. 12:00 PM LT) */}
+                {/* Per-day session time (each session is 1.5h, 08:00–18:00 start) */}
+                {form.preferredLearningDays.length > 0 && (
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                      {t("classes.modal.sessionTimes", "Session Time per Day")} *
+                    </label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {DAYS_OF_WEEK.filter((d) =>
+                        form.preferredLearningDays.includes(d.value),
+                      ).map((d) => (
+                        <div
+                          key={d.value}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3 py-2"
+                        >
+                          <span className="text-sm font-medium text-foreground">{d.label}</span>
+                          <input
+                            type="time"
+                            min="08:00"
+                            max="18:00"
+                            step={1800}
+                            value={form.slotTimes[d.value] ?? ""}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                slotTimes: { ...form.slotTimes, [d.value]: e.target.value },
+                              })
+                            }
+                            className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional time notes (free text) */}
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
-                    {t("classes.modal.preferredTime", "Preferred time of learning")}
+                    {t("classes.modal.preferredTime", "Additional time notes")}
                   </label>
                   <input
                     type="text"

@@ -24,11 +24,47 @@ export class ProductService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async findAll(includeInactive = false) {
-    const query = includeInactive
-      ? notDeletedFilter()
+  async findAll(options?: {
+    includeInactive?: boolean;
+    search?: string;
+    instrumentType?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: ProductDocument[]; total: number }> {
+    const {
+      includeInactive = false,
+      search,
+      instrumentType,
+      page,
+      limit,
+    } = options ?? {};
+
+    const query: Record<string, unknown> = includeInactive
+      ? { ...notDeletedFilter() }
       : { ...notDeletedFilter(), isActive: true };
-    return this.productModel.find(query).lean().exec();
+
+    if (instrumentType) {
+      query.instrumentType = instrumentType;
+    }
+    if (search && search.trim()) {
+      const regex = new RegExp(search.trim(), 'i');
+      query.$or = [{ name: regex }, { shortDescription: regex }];
+    }
+
+    const cursor = this.productModel.find(query).sort({ createdAt: -1 });
+
+    // Apply pagination only when a positive limit is provided.
+    if (typeof limit === 'number' && limit > 0) {
+      const safePage = typeof page === 'number' && page > 0 ? page : 1;
+      cursor.skip((safePage - 1) * limit).limit(limit);
+    }
+
+    const [items, total] = await Promise.all([
+      cursor.lean<ProductDocument[]>().exec(),
+      this.productModel.countDocuments(query).exec(),
+    ]);
+
+    return { items, total };
   }
 
   async findById(id: string) {
@@ -135,21 +171,55 @@ export class ProductService {
     return product.toObject();
   }
 
+  /**
+   * Atomically decrement stock. The conditional filter (`stock >= quantity`)
+   * makes the check-and-decrement a single DB operation, eliminating the
+   * oversell race between two concurrent checkouts.
+   */
   async reduceStock(id: string, quantity: number) {
-    const product = await this.productModel.findById(id).exec();
-
-    if (!product) {
+    if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Product not found');
     }
+    const updated = await this.productModel
+      .findOneAndUpdate(
+        { _id: id, stock: { $gte: quantity } },
+        { $inc: { stock: -quantity } },
+        { new: true },
+      )
+      .lean()
+      .exec();
 
-    if (product.stock < quantity) {
+    if (!updated) {
       throw new BadRequestException('Insufficient stock');
     }
 
-    product.stock -= quantity;
-    await product.save();
+    return updated;
+  }
 
-    return product.toObject();
+  /** Atomically return stock to inventory (order cancellation / payment rejection). */
+  async restoreStock(id: string, quantity: number): Promise<void> {
+    if (!Types.ObjectId.isValid(id) || quantity <= 0) {
+      return;
+    }
+    await this.productModel
+      .updateOne({ _id: id }, { $inc: { stock: quantity } })
+      .exec();
+  }
+
+  /** Replace the full ordered images array (handles delete + reorder in one call). */
+  async updateImages(id: string, images: string[]) {
+    const product = await this.productModel
+      .findOneAndUpdate(
+        { _id: id, ...notDeletedFilter() },
+        { images },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    return product;
   }
 
   async delete(id: string) {

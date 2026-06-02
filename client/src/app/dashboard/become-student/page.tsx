@@ -54,6 +54,7 @@ export default function BecomeStudentPage() {
     branchId: "",
     programDurationMonths: 6 as 3 | 6 | 9,
     preferredLearningDays: [] as DayOfWeek[],
+    slotTimes: {} as Record<string, string>,
     preferredSchedule: "",
     registrationStartDate: new Date().toISOString().split('T')[0],
     
@@ -76,11 +77,17 @@ export default function BecomeStudentPage() {
     receiptFile: null as File | null,
   });
 
+  // The selected class (package) drives the duration in the package model.
+  const selectedClass = useMemo(
+    () => publicClasses.find((c) => c._id === form.classId),
+    [publicClasses, form.classId],
+  );
+  const effectiveDuration = (selectedClass?.durationMonths ??
+    form.programDurationMonths) as 3 | 6 | 9;
+
   const expectedDays = useMemo(() => {
-    return form.programDurationMonths === 3 ? 5 
-      : form.programDurationMonths === 6 ? 3 
-      : 2;
-  }, [form.programDurationMonths]);
+    return effectiveDuration === 3 ? 5 : effectiveDuration === 6 ? 3 : 2;
+  }, [effectiveDuration]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -88,17 +95,39 @@ export default function BecomeStudentPage() {
     }
   }, [isLoggedIn, router]);
 
+  // When a class with a fixed duration is picked, sync the package + reset slots.
+  useEffect(() => {
+    if (selectedClass?.durationMonths) {
+      setForm((prev) =>
+        prev.programDurationMonths === selectedClass.durationMonths
+          ? prev
+          : {
+              ...prev,
+              programDurationMonths: selectedClass.durationMonths as 3 | 6 | 9,
+              preferredLearningDays: [],
+              slotTimes: {},
+            },
+      );
+    }
+  }, [selectedClass?.durationMonths]);
+
   const handleDayToggle = (day: DayOfWeek) => {
     if (form.preferredLearningDays.includes(day)) {
-      setForm(prev => ({
-        ...prev,
-        preferredLearningDays: prev.preferredLearningDays.filter(d => d !== day),
-      }));
+      setForm(prev => {
+        const nextTimes = { ...prev.slotTimes };
+        delete nextTimes[day];
+        return {
+          ...prev,
+          preferredLearningDays: prev.preferredLearningDays.filter(d => d !== day),
+          slotTimes: nextTimes,
+        };
+      });
     } else {
       if (form.preferredLearningDays.length < expectedDays) {
         setForm(prev => ({
           ...prev,
           preferredLearningDays: [...prev.preferredLearningDays, day],
+          slotTimes: { ...prev.slotTimes, [day]: prev.slotTimes[day] ?? "12:00" },
         }));
       }
     }
@@ -154,6 +183,28 @@ export default function BecomeStudentPage() {
       return;
     }
 
+    // Every chosen day needs a valid time within operating hours (08:00–18:00 start).
+    const timeOk = (hhmm: string) => {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hhmm)) return false;
+      const [h, m] = hhmm.split(":").map(Number);
+      const mins = h * 60 + m;
+      return mins >= 8 * 60 && mins <= 18 * 60;
+    };
+    const missingOrInvalid = form.preferredLearningDays.some(
+      (d) => !form.slotTimes[d] || !timeOk(form.slotTimes[d]),
+    );
+    if (missingOrInvalid) {
+      pushToast({
+        title: t("becomeStudent.error", "Validation error"),
+        description: t(
+          "becomeStudent.timesRequired",
+          "Choose a time (08:00–18:00) for each selected day.",
+        ),
+        variant: "error",
+      });
+      return;
+    }
+
     if (!form.paymentReference.trim()) {
       pushToast({
         title: t("becomeStudent.error", "Validation error"),
@@ -200,8 +251,12 @@ export default function BecomeStudentPage() {
         learningType: form.learningType,
         branchId: form.learningType === "physical" ? form.branchId : undefined,
         instrumentType: form.instrumentType,
-        programDurationMonths: form.programDurationMonths,
+        programDurationMonths: effectiveDuration,
         preferredLearningDays: form.preferredLearningDays,
+        timeSlots: form.preferredLearningDays.map((day) => ({
+          day,
+          startTime: form.slotTimes[day],
+        })),
         registrationStartDate: form.registrationStartDate,
       };
 
@@ -353,36 +408,50 @@ export default function BecomeStudentPage() {
             </div>
           )}
 
-          {/* Package Selection */}
+          {/* Package Selection — locked to the chosen class's duration when set. */}
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
               <Calendar className="mr-2 inline h-4 w-4" />
               {t("becomeStudent.package", "Program Package")} *
             </label>
+            {selectedClass?.durationMonths && (
+              <p className="mb-2 text-xs text-foreground/60">
+                {t(
+                  "becomeStudent.packageFromClass",
+                  "Duration is set by the selected package class.",
+                )}
+              </p>
+            )}
             <div className="grid gap-3 sm:grid-cols-3">
-              {PACKAGES.map(pkg => (
-                <button
-                  key={pkg.months}
-                  type="button"
-                  onClick={() => {
-                    setForm(prev => ({
-                      ...prev,
-                      programDurationMonths: pkg.months as 3 | 6 | 9,
-                      preferredLearningDays: [],
-                    }));
-                  }}
-                  className={`rounded-2xl border-2 p-4 text-left transition ${
-                    form.programDurationMonths === pkg.months
-                      ? "border-secondary bg-secondary/10 shadow-md"
-                      : "border-border bg-background/50 hover:border-secondary/50"
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-primary">{pkg.label}</p>
-                  <p className="mt-1 text-xs text-foreground/60">
-                    {t("becomeStudent.daysPerWeek", `${pkg.daysPerWeek} days per week`)}
-                  </p>
-                </button>
-              ))}
+              {PACKAGES.map(pkg => {
+                const lockedByClass = !!selectedClass?.durationMonths;
+                const isActive = effectiveDuration === pkg.months;
+                return (
+                  <button
+                    key={pkg.months}
+                    type="button"
+                    disabled={lockedByClass}
+                    onClick={() => {
+                      setForm(prev => ({
+                        ...prev,
+                        programDurationMonths: pkg.months as 3 | 6 | 9,
+                        preferredLearningDays: [],
+                        slotTimes: {},
+                      }));
+                    }}
+                    className={`rounded-2xl border-2 p-4 text-left transition ${
+                      isActive
+                        ? "border-secondary bg-secondary/10 shadow-md"
+                        : "border-border bg-background/50 hover:border-secondary/50"
+                    } ${lockedByClass && !isActive ? "opacity-40" : ""} ${lockedByClass ? "cursor-not-allowed" : ""}`}
+                  >
+                    <p className="text-sm font-semibold text-primary">{pkg.label}</p>
+                    <p className="mt-1 text-xs text-foreground/60">
+                      {t("becomeStudent.daysPerWeek", `${pkg.daysPerWeek} days per week`)}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -417,11 +486,53 @@ export default function BecomeStudentPage() {
             </div>
           </div>
 
-          {/* Time Preferences */}
+          {/* Per-day session time (each session is 1.5h, 08:00–18:00 start) */}
+          {form.preferredLearningDays.length > 0 && (
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
+                <Clock className="mr-2 inline h-4 w-4" />
+                {t("becomeStudent.sessionTimes", "Session Time per Day")} *
+              </label>
+              <p className="mb-2 text-xs text-foreground/60">
+                {t(
+                  "becomeStudent.sessionTimesHint",
+                  "Each session is 1.5 hours. Choose a start time between 08:00 and 18:00.",
+                )}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {DAYS_OF_WEEK.filter((d) =>
+                  form.preferredLearningDays.includes(d.value),
+                ).map((d) => (
+                  <div
+                    key={d.value}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2"
+                  >
+                    <span className="text-sm font-medium text-foreground">{d.label}</span>
+                    <input
+                      type="time"
+                      min="08:00"
+                      max="18:00"
+                      step={1800}
+                      value={form.slotTimes[d.value] ?? ""}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          slotTimes: { ...prev.slotTimes, [d.value]: e.target.value },
+                        }))
+                      }
+                      className="rounded-lg bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Additional time notes (free text) */}
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary">
               <Clock className="mr-2 inline h-4 w-4" />
-              {t("becomeStudent.timePreferences", "Time Preferences")}
+              {t("becomeStudent.timePreferences", "Additional Time Notes")}
             </label>
             <textarea
               value={form.preferredSchedule}

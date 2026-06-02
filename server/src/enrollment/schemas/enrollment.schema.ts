@@ -3,6 +3,22 @@ import { Document, Types } from 'mongoose';
 
 export type EnrollmentDocument = Enrollment & Document;
 
+/** A single weekly session the student attends: a day + a start time (HH:mm, local). */
+@Schema({ _id: false })
+export class TimeSlot {
+  @Prop({
+    type: String,
+    enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+    required: true,
+  })
+  day: string;
+
+  /** Local start time "HH:mm" (24h). Session runs 90 minutes from here. */
+  @Prop({ type: String, required: true, trim: true, maxlength: 5 })
+  startTime: string;
+}
+export const TimeSlotSchema = SchemaFactory.createForClass(TimeSlot);
+
 @Schema({ timestamps: true })
 export class Enrollment {
   @Prop({ type: Types.ObjectId, ref: 'Class', required: true, index: true })
@@ -102,6 +118,13 @@ export class Enrollment {
 
   @Prop({ trim: true, maxlength: 40 })
   preferredTime?: string;
+
+  /**
+   * Authoritative weekly schedule: one slot per session/week (3mo→5, 6mo→3, 9mo→2).
+   * preferredLearningDays / preferredTime are kept in sync for backward-compat display.
+   */
+  @Prop({ type: [TimeSlotSchema], default: [] })
+  timeSlots?: TimeSlot[];
 
   @Prop({ type: Date })
   registrationStartDate?: Date;

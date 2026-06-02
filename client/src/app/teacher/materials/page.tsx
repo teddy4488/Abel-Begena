@@ -510,7 +510,7 @@ export default function TeacherMaterialsPage() {
               >
                 <input
                   type="file"
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.avi,.jpg,.jpeg,.png,.gif,.webp"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFileSelect(file);

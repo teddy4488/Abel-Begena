@@ -3,10 +3,12 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   useAddToCartMutation,
   useGetProductByIdQuery,
+  useGetProductsQuery,
 } from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -23,6 +25,16 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const { pushToast } = useToast();
   const { t } = useI18n();
+
+  // Related products: same instrument type, excluding the current product.
+  const { data: relatedData } = useGetProductsQuery(
+    data ? { type: data.instrumentType, limit: 5 } : undefined,
+    { skip: !data },
+  );
+  const relatedProducts = useMemo(
+    () => (relatedData?.items ?? []).filter((p) => p._id !== productId).slice(0, 4),
+    [relatedData, productId],
+  );
 
   const attributes = useMemo(() => {
     if (!data?.attributes) return [] as [string, unknown][];
@@ -90,6 +102,9 @@ export default function ProductDetailPage() {
   const onPromo =
     data.promoActive && typeof data.discountPrice === "number";
   const displayPrice = onPromo ? data.discountPrice! : data.price;
+  const stock = data.stock ?? 0;
+  const outOfStock = stock <= 0;
+  const atStockLimit = quantity >= stock;
 
   return (
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
@@ -138,9 +153,20 @@ export default function ProductDetailPage() {
 
         <div className="flex-1 space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:space-y-6 sm:p-6 md:p-8">
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-secondary">
-              {data.instrumentType}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                {data.instrumentType}
+              </p>
+              {outOfStock ? (
+                <span className="rounded-full bg-red-500/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
+                  {t("store.outOfStock", "Out of Stock")}
+                </span>
+              ) : stock <= (data.lowStockThreshold ?? 0) && (data.lowStockThreshold ?? 0) > 0 ? (
+                <span className="rounded-full bg-amber-500/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                  {t("store.lowStock", "Low Stock")}
+                </span>
+              ) : null}
+            </div>
             <h1 className="text-2xl font-serif text-primary sm:text-3xl">{data.name}</h1>
             <p className="text-xs text-foreground/70 sm:text-sm">{data.shortDescription}</p>
           </div>
@@ -150,14 +176,14 @@ export default function ProductDetailPage() {
               <span className="mr-3 text-lg text-foreground/50 line-through">
                 {data.price.toLocaleString("en-US", {
                   style: "currency",
-                  currency: "USD",
+                  currency: "ETB",
                 })}
               </span>
             )}
             <span>
               {displayPrice.toLocaleString("en-US", {
                 style: "currency",
-                currency: "USD",
+                currency: "ETB",
               })}
             </span>
           </div>
@@ -178,22 +204,30 @@ export default function ProductDetailPage() {
                 {quantity}
               </span>
               <button
-                onClick={() => setQuantity((prev) => prev + 1)}
-                className="px-3 py-2 text-base transition hover:bg-secondary/10 sm:px-4 sm:text-lg"
+                onClick={() => setQuantity((prev) => Math.min(stock, prev + 1))}
+                disabled={atStockLimit || outOfStock}
+                className="px-3 py-2 text-base transition hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4 sm:text-lg"
                 aria-label={t("store.increaseQuantity", "Increase quantity")}
               >
                 +
               </button>
             </div>
+            {!outOfStock && (
+              <span className="text-xs text-foreground/50">
+                {t("store.inStock", "In stock")}: {stock}
+              </span>
+            )}
           </div>
 
           <motion.button
             onClick={handleAddToCart}
-            disabled={isAdding}
+            disabled={isAdding || outOfStock}
             whileTap={{ scale: 0.97 }}
             className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/40 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 sm:py-4 sm:text-base"
           >
-            {isAdding ? (
+            {outOfStock ? (
+              t("store.outOfStock", "Out of Stock")
+            ) : isAdding ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {t("store.adding", "Adding...")}
@@ -230,8 +264,66 @@ export default function ProductDetailPage() {
               </p>
             )}
           </div>
+
+          {data.description && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-secondary sm:text-sm">
+                {t("store.description", "Description")}
+              </p>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/80">
+                {data.description}
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {relatedProducts.length > 0 && (
+        <div className="mx-auto mt-12 max-w-5xl">
+          <h2 className="mb-4 text-lg font-serif text-primary sm:text-xl">
+            {t("store.related", "You may also like")}
+          </h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {relatedProducts.map((p) => {
+              const pPromo =
+                p.promoActive && typeof p.discountPrice === "number";
+              const pPrice = pPromo ? p.discountPrice! : p.price;
+              return (
+                <Link
+                  key={p._id}
+                  href={`/store/${p._id}`}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition hover:shadow-md"
+                >
+                  <div className="aspect-square overflow-hidden bg-background/80">
+                    {p.images?.length ? (
+                      <Image
+                        src={p.images[0]}
+                        alt={p.name}
+                        width={300}
+                        height={300}
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-foreground/40">
+                        {t("store.page.imageSoon", "Image soon")}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1 p-3">
+                    <p className="truncate text-sm font-medium text-primary">{p.name}</p>
+                    <p className="text-sm font-semibold text-secondary">
+                      {pPrice.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "ETB",
+                      })}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -61,9 +61,24 @@ export class OrderController {
     return this.orderService.getUserOrders(req.user.sub);
   }
 
+  @Post(':id/cancel')
+  cancelOrder(
+    @Param('id') id: string,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.orderService.cancelOrder(id, req.user.sub);
+  }
+
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const order = await this.orderService.findById(id);
+  async findOne(
+    @Param('id') id: string,
+    @Request() req: { user: { sub: string; role: string } },
+  ) {
+    const isAdmin = req.user.role === 'Admin' || req.user.role === 'SuperAdmin';
+    const order = await this.orderService.findById(
+      id,
+      isAdmin ? undefined : req.user.sub,
+    );
     if (!order) {
       throw new NotFoundException('Order not found');
     }
@@ -82,6 +97,10 @@ export class OrderController {
       id,
       updateOrderStatusDto.status,
       updateOrderStatusDto.isPaid,
+      {
+        trackingNumber: updateOrderStatusDto.trackingNumber,
+        trackingCarrier: updateOrderStatusDto.trackingCarrier,
+      },
     );
   }
 }

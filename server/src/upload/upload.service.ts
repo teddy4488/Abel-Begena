@@ -35,11 +35,35 @@ export const ALLOWED_RECEIPT_EXTENSIONS = [
   '.pdf',
 ] as const;
 
+/** MIME types allowed for video materials. */
+export const ALLOWED_VIDEO_MIMES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+] as const;
+
+/** File extensions allowed for video materials. */
+export const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov'] as const;
+
+/** Lesson materials: images + PDF + video. */
+export const ALLOWED_MATERIAL_MIMES = [
+  ...ALLOWED_RECEIPT_MIMES,
+  ...ALLOWED_VIDEO_MIMES,
+] as const;
+
+export const ALLOWED_MATERIAL_EXTENSIONS = [
+  ...ALLOWED_RECEIPT_EXTENSIONS,
+  ...ALLOWED_VIDEO_EXTENSIONS,
+] as const;
+
 /** Default max size for images (e.g. avatars, covers): 5MB */
 export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 /** Default max size for receipts/materials: 10MB */
 export const MAX_RECEIPT_SIZE_BYTES = 10 * 1024 * 1024;
+
+/** Max size for video materials: 100MB (mind Cloudinary free-tier limits). */
+export const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024;
 
 export interface UploadValidationOptions {
   allowedMimeTypes: readonly string[];

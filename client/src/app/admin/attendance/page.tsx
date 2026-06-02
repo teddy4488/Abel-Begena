@@ -14,6 +14,8 @@ import {
   useRecordStudentAttendanceMutation,
   useRegisterTeacherParticipantMutation,
   useRegisterStudentParticipantMutation,
+  useRevertStudentToUserMutation,
+  useGetPastStudentsQuery,
   useGetGraduationEligibilityQuery,
   attendanceApi,
   type DayOfWeek,
@@ -40,6 +42,7 @@ import {
   Loader2,
 } from "lucide-react";
 import type { InstrumentType } from "@/store/api/storeApi";
+import NoShowReview from "@/components/admin/NoShowReview";
 
 type AttendanceMode = "student" | "teacher" | "eligibility";
 
@@ -106,6 +109,32 @@ export default function AdminAttendancePage() {
     useRegisterTeacherParticipantMutation();
   const [registerStudent, { isLoading: registeringStudent }] =
     useRegisterStudentParticipantMutation();
+  const [revertStudent, { isLoading: revertingStudent }] =
+    useRevertStudentToUserMutation();
+  const [showPastStudents, setShowPastStudents] = useState(false);
+  const { data: pastStudents = [] } = useGetPastStudentsQuery(undefined, {
+    skip: !showPastStudents,
+  });
+  const [revertTarget, setRevertTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [revertReason, setRevertReason] = useState<"completed" | "withdrawn" | "dropped">("completed");
+
+  const handleRevertStudent = async () => {
+    if (!revertTarget) return;
+    try {
+      await revertStudent({ userId: revertTarget.userId, reason: revertReason }).unwrap();
+      pushToast({
+        title: t("attendance.students.reverted", "Student reverted to user"),
+        variant: "success",
+      });
+      setRevertTarget(null);
+      setRevertReason("completed");
+    } catch {
+      pushToast({
+        title: t("attendance.students.revertError", "Unable to revert student"),
+        variant: "error",
+      });
+    }
+  };
   const [checkIn, { isLoading: checkingIn }] = useTeacherCheckInMutation();
   const [checkOut, { isLoading: checkingOut }] = useTeacherCheckOutMutation();
 
@@ -117,6 +146,11 @@ export default function AdminAttendancePage() {
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [revisedLessonId, setRevisedLessonId] = useState<string>("");
   const [status, setStatus] = useState<AttendanceStatus>("present");
+  const [recordDate, setRecordDate] = useState<string>(() => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  });
+  const [recordNote, setRecordNote] = useState<string>("");
   const [selectedStudentForDetails, setSelectedStudentForDetails] = useState<string | null>(null);
 
   // Attendance history modal state
@@ -236,6 +270,7 @@ export default function AdminAttendancePage() {
     instrumentType: "Begena" as InstrumentType,
     programDurationMonths: 3 as 3 | 6 | 9,
     preferredLearningDays: [] as DayOfWeek[],
+    slotTimes: {} as Record<string, string>,
     registrationStartDate: new Date().toISOString().split("T")[0],
     attendanceNumber: "",
   });
@@ -338,7 +373,9 @@ export default function AdminAttendancePage() {
 
   const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentId || !selectedLessonId) {
+    // Lesson required only for present/late.
+    const lessonRequired = status === "present" || status === "late";
+    if (!selectedStudentId || (lessonRequired && !selectedLessonId)) {
       pushToast({
         title: t("attendance.student.missing", "Missing student or lesson"),
         variant: "error",
@@ -349,9 +386,11 @@ export default function AdminAttendancePage() {
     try {
       await recordStudentAttendance({
         participantId: selectedStudentId,
-        lessonId: selectedLessonId,
+        lessonId: selectedLessonId || undefined,
         revisedLessonId: revisedLessonId || undefined,
         status,
+        sessionDate: recordDate || undefined,
+        note: recordNote || undefined,
       }).unwrap();
 
       pushToast({
@@ -365,6 +404,7 @@ export default function AdminAttendancePage() {
       setSelectedLessonId("");
       setRevisedLessonId("");
       setStatus("present");
+      setRecordNote("");
       setSelectedStudentForDetails(null);
       setShowRecordAttendanceModal(false);
     } catch (err: unknown) {
@@ -393,6 +433,26 @@ export default function AdminAttendancePage() {
       return;
     }
 
+    // Each chosen day needs a valid in-hours session time (08:00–18:00 start).
+    const timeOk = (hhmm: string) => {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hhmm)) return false;
+      const [h, m] = hhmm.split(":").map(Number);
+      const mins = h * 60 + m;
+      return mins >= 8 * 60 && mins <= 18 * 60;
+    };
+    if (
+      studentForm.preferredLearningDays.some(
+        (d) => !studentForm.slotTimes[d] || !timeOk(studentForm.slotTimes[d]),
+      )
+    ) {
+      pushToast({
+        title: t("attendance.error", "Invalid selection"),
+        description: t("attendance.students.timesRequired", "Choose a time (08:00–18:00) for each selected day."),
+        variant: "error",
+      });
+      return;
+    }
+
     try {
       await registerStudent({
         fullName: studentForm.fullName.trim(),
@@ -408,6 +468,10 @@ export default function AdminAttendancePage() {
         instrumentType: studentForm.instrumentType,
         programDurationMonths: studentForm.programDurationMonths,
         preferredLearningDays: studentForm.preferredLearningDays,
+        timeSlots: studentForm.preferredLearningDays.map((day) => ({
+          day,
+          startTime: studentForm.slotTimes[day],
+        })),
         registrationStartDate: studentForm.registrationStartDate,
         attendanceNumber: studentForm.attendanceNumber.trim() || undefined,
       }).unwrap();
@@ -432,6 +496,7 @@ export default function AdminAttendancePage() {
         instrumentType: "Begena",
         programDurationMonths: 3,
         preferredLearningDays: [],
+        slotTimes: {},
         registrationStartDate: new Date().toISOString().split("T")[0],
         attendanceNumber: "",
       });
@@ -686,16 +751,69 @@ export default function AdminAttendancePage() {
                     {t("attendance.students.registered", "Registered Students")}
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAddStudentModal(true)}
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg hover:opacity-90"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  {t("attendance.addStudent", "Add Student")}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPastStudents((v) => !v)}
+                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      showPastStudents
+                        ? "bg-secondary/20 text-secondary"
+                        : "bg-background/60 text-foreground/70 hover:bg-background/80"
+                    }`}
+                  >
+                    {showPastStudents
+                      ? t("attendance.students.showActive", "Active students")
+                      : t("attendance.students.showPast", "Past students")}
+                  </button>
+                  {!showPastStudents && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddStudentModal(true)}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg hover:opacity-90"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      {t("attendance.addStudent", "Add Student")}
+                    </button>
+                  )}
+                </div>
               </div>
 
+              {/* Past (reverted) students — read-only history */}
+              {showPastStudents && (
+                <div className="space-y-3">
+                  {pastStudents.length === 0 ? (
+                    <p className="rounded-xl card-elevated px-4 py-6 text-center text-sm text-foreground/60">
+                      {t("attendance.students.noPast", "No past students yet.")}
+                    </p>
+                  ) : (
+                    pastStudents.map((p) => {
+                      const branchName =
+                        typeof p.branchId === "object" && p.branchId !== null
+                          ? p.branchId.name
+                          : "—";
+                      return (
+                        <div
+                          key={p._id}
+                          className="flex items-center justify-between rounded-xl card-elevated px-4 py-3 opacity-80"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-primary">{p.fullName}</span>
+                            <span className="text-xs text-foreground/60">
+                              {p.attendanceNumber} • {p.instrumentType} • {branchName}
+                            </span>
+                          </div>
+                          <span className="rounded-full bg-secondary/10 px-3 py-1 text-[10px] font-semibold uppercase text-secondary">
+                            {p.completionStatus ?? "completed"}
+                            {p.completedAt ? ` · ${new Date(p.completedAt).toLocaleDateString()}` : ""}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {!showPastStudents && (
               <div className="space-y-3">
                 {studentParticipants.length > 0 ? (
                   <>
@@ -739,7 +857,7 @@ export default function AdminAttendancePage() {
                               {p.attendanceNumber} • {p.instrumentType} • {branchName}
                             </span>
                           </div>
-                          <div>
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => handleShowAttendanceHistory(p._id)}
@@ -748,6 +866,17 @@ export default function AdminAttendancePage() {
                             >
                               <Clock className="h-4 w-4" />
                             </button>
+                            {p.userId && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setRevertTarget({ userId: p.userId as string, name: p.fullName })
+                                }
+                                className="inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+                              >
+                                {t("attendance.students.revert", "Revert to user")}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -777,7 +906,11 @@ export default function AdminAttendancePage() {
                   </p>
                 )}
               </div>
+              )}
             </div>
+
+            {/* No-show review */}
+            <NoShowReview />
 
             {/* Student attendance recording form */}
             <div className="rounded-2xl surface-elevated p-6">
@@ -923,25 +1056,40 @@ export default function AdminAttendancePage() {
                         )}
 
                         <form onSubmit={handleStudentSubmit} className="space-y-4">
-                          <div>
-                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
-                              {t("attendance.students.lesson", "Today's Lesson")}
-                            </label>
-                            <select
-                              value={selectedLessonId}
-                              onChange={(e) => setSelectedLessonId(e.target.value)}
-                              className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                              required
-                            >
-                              <option value="">
-                                {t("attendance.students.chooseLesson", "Select lesson")}
-                              </option>
-                              {eligibleLessons.map((lesson) => (
-                                <option key={lesson._id} value={lesson._id}>
-                                  {lesson.title} {lesson.code ? `(${lesson.code})` : ""}
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                                {t("attendance.students.date", "Session Date")}
+                              </label>
+                              <input
+                                type="date"
+                                value={recordDate}
+                                max={recordDate > new Date().toISOString().slice(0, 10) ? recordDate : new Date().toISOString().slice(0, 10)}
+                                onChange={(e) => setRecordDate(e.target.value)}
+                                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                                {t("attendance.students.lesson", "Lesson")}
+                                {status === "present" || status === "late" ? " *" : ""}
+                              </label>
+                              <select
+                                value={selectedLessonId}
+                                onChange={(e) => setSelectedLessonId(e.target.value)}
+                                className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                                required={status === "present" || status === "late"}
+                              >
+                                <option value="">
+                                  {t("attendance.students.chooseLesson", "Select lesson")}
                                 </option>
-                              ))}
-                            </select>
+                                {eligibleLessons.map((lesson) => (
+                                  <option key={lesson._id} value={lesson._id}>
+                                    {lesson.title} {lesson.code ? `(${lesson.code})` : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
 
                           <div className="grid gap-4 md:grid-cols-2">
@@ -982,8 +1130,24 @@ export default function AdminAttendancePage() {
                                 <option value="excused">
                                   {t("attendance.status.excused", "Excused")}
                                 </option>
+                                <option value="absent">
+                                  {t("attendance.status.absent", "Absent")}
+                                </option>
                               </select>
                             </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                              {t("attendance.students.note", "Note (optional)")}
+                            </label>
+                            <input
+                              type="text"
+                              value={recordNote}
+                              onChange={(e) => setRecordNote(e.target.value)}
+                              placeholder={t("attendance.students.notePlaceholder", "e.g. reason for excused/absent")}
+                              className="w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                            />
                           </div>
 
                           <div className="flex justify-end gap-3 pt-2">
@@ -996,7 +1160,10 @@ export default function AdminAttendancePage() {
                             </button>
                             <button
                               type="submit"
-                              disabled={recordingStudent || !selectedLessonId}
+                              disabled={
+                                recordingStudent ||
+                                ((status === "present" || status === "late") && !selectedLessonId)
+                              }
                               className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg disabled:opacity-60"
                             >
                               {recordingStudent && (
@@ -1534,6 +1701,62 @@ export default function AdminAttendancePage() {
       </AnimatePresence>
 
       {/* Add Student Modal */}
+      {revertTarget && (
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setRevertTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-serif text-primary">
+              {t("attendance.students.revertTitle", "Revert student to user")}
+            </h3>
+            <p className="mt-2 text-sm text-foreground/70">
+              {t(
+                "attendance.students.revertConfirm",
+                "This moves the student back to a regular user. Their record is soft-deleted, but all attendance and payment history is preserved.",
+              )}{" "}
+              <span className="font-semibold text-foreground">{revertTarget.name}</span>
+            </p>
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+              {t("attendance.students.revertReason", "Reason")}
+            </label>
+            <select
+              value={revertReason}
+              onChange={(e) =>
+                setRevertReason(e.target.value as "completed" | "withdrawn" | "dropped")
+              }
+              className="mt-1 w-full rounded-2xl card-elevated px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+            >
+              <option value="completed">{t("attendance.students.reasonCompleted", "Completed package")}</option>
+              <option value="withdrawn">{t("attendance.students.reasonWithdrawn", "Withdrawn")}</option>
+              <option value="dropped">{t("attendance.students.reasonDropped", "Dropped")}</option>
+            </select>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRevertTarget(null)}
+                className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground/80 hover:bg-background/60"
+              >
+                {t("button.cancel", "Cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleRevertStudent}
+                disabled={revertingStudent}
+                className="flex-1 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {revertingStudent
+                  ? t("attendance.students.reverting", "Reverting...")
+                  : t("attendance.students.revert", "Revert to user")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddStudentModal && (
         <div
           className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -1770,13 +1993,22 @@ export default function AdminAttendancePage() {
                       key={day}
                       type="button"
                       onClick={() => {
-                        const current = studentForm.preferredLearningDays;
-                        const newDays = current.includes(day)
-                          ? current.filter((d) => d !== day)
-                          : current.length < expectedDaysPerWeek
-                            ? [...current, day]
-                            : current;
-                        setStudentForm((prev) => ({ ...prev, preferredLearningDays: newDays }));
+                        setStudentForm((prev) => {
+                          const current = prev.preferredLearningDays;
+                          const isOn = current.includes(day);
+                          const newDays = isOn
+                            ? current.filter((d) => d !== day)
+                            : current.length < expectedDaysPerWeek
+                              ? [...current, day]
+                              : current;
+                          const nextTimes = { ...prev.slotTimes };
+                          if (isOn) {
+                            delete nextTimes[day];
+                          } else if (newDays.includes(day)) {
+                            nextTimes[day] = nextTimes[day] ?? "12:00";
+                          }
+                          return { ...prev, preferredLearningDays: newDays, slotTimes: nextTimes };
+                        });
                       }}
                       className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         studentForm.preferredLearningDays.includes(day)
@@ -1792,6 +2024,43 @@ export default function AdminAttendancePage() {
                   ))}
                 </div>
               </div>
+
+              {studentForm.preferredLearningDays.length > 0 && (
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+                    {t("attendance.students.sessionTimes", "Session Time per Day")} *
+                  </label>
+                  <p className="mb-2 text-xs text-foreground/60">
+                    {t("attendance.students.sessionTimesHint", "1.5-hour sessions. Start time between 08:00 and 18:00.")}
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {DAYS_OF_WEEK.filter((d) =>
+                      studentForm.preferredLearningDays.includes(d),
+                    ).map((d) => (
+                      <div
+                        key={d}
+                        className="flex items-center justify-between gap-3 rounded-xl card-elevated px-3 py-2"
+                      >
+                        <span className="text-sm font-medium text-foreground">{DAY_LABELS[d]}</span>
+                        <input
+                          type="time"
+                          min="08:00"
+                          max="18:00"
+                          step={1800}
+                          value={studentForm.slotTimes[d] ?? ""}
+                          onChange={(e) =>
+                            setStudentForm((prev) => ({
+                              ...prev,
+                              slotTimes: { ...prev.slotTimes, [d]: e.target.value },
+                            }))
+                          }
+                          className="rounded-lg bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">

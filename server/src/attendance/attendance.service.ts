@@ -23,6 +23,7 @@ import {
 import {
   StudentAttendance,
   StudentAttendanceDocument,
+  AttendanceStatus,
 } from './schemas/student-attendance.schema';
 import {
   InstrumentLesson,
@@ -32,6 +33,7 @@ import {
   StudentPayment,
   StudentPaymentDocument,
 } from './schemas/student-payment.schema';
+import { ClosedDay, ClosedDayDocument } from './schemas/closed-day.schema';
 import { Class, ClassDocument } from '../class/schemas/class.schema';
 import { Enrollment, EnrollmentDocument } from '../enrollment/schemas/enrollment.schema';
 import { RegisterTeacherParticipantDto } from './dto/register-teacher-participant.dto';
@@ -39,6 +41,21 @@ import { RegisterStudentParticipantDto } from './dto/register-student-participan
 import { TeacherCheckInDto, TeacherCheckOutDto } from './dto/teacher-attendance.dto';
 import { RecordStudentAttendanceDto } from './dto/record-student-attendance.dto';
 import { MailService } from '../mail/mail.service';
+import { NotificationService } from '../notifications/notification.service';
+import {
+  WEEK_DAYS,
+  WeekDay,
+  toMinutes,
+  toHHmm,
+  isStartWithinHours,
+  slotOverlapsBucket,
+  DAY_START_MIN,
+  DAY_END_MIN,
+  BUCKET_MINUTES,
+  SESSION_MINUTES,
+} from '../class/class.constants';
+
+type NormalizedSlot = { day: string; startTime: string };
 
 @Injectable()
 export class AttendanceService {
@@ -59,10 +76,54 @@ export class AttendanceService {
     private readonly studentPaymentModel: Model<StudentPaymentDocument>,
     @InjectModel(Enrollment.name)
     private readonly enrollmentModel: Model<EnrollmentDocument>,
+    @InjectModel(ClosedDay.name)
+    private readonly closedDayModel: Model<ClosedDayDocument>,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     private readonly mailService: MailService,
+    private readonly notificationService: NotificationService,
   ) { }
+
+  /** Local-midnight day window [start, nextDay) for a given date. */
+  private dayWindow(date: Date): { start: Date; end: Date } {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+
+  /** Resolve the class/package a student is currently enrolled in (for denormalizing attendance). */
+  private async resolveActiveClassId(
+    userId?: Types.ObjectId,
+  ): Promise<Types.ObjectId | undefined> {
+    if (!userId) return undefined;
+    const enr = await this.enrollmentModel
+      .findOne({ studentId: userId, status: 'active' }, { classId: 1 })
+      .lean()
+      .exec();
+    return (enr as { classId?: Types.ObjectId } | null)?.classId;
+  }
+
+  /** Best-effort in-app notification to a student that they were marked absent. */
+  private async notifyStudentAbsent(
+    participant: { userId?: Types.ObjectId; fullName?: string; missedLessonsCount?: number },
+    sessionDate: Date,
+    note?: string,
+  ): Promise<void> {
+    try {
+      const userId = participant.userId?.toString();
+      if (!userId) return;
+      await this.notificationService.createForUser(userId, {
+        type: 'attendance_absent',
+        title: 'Marked absent',
+        message: `You were marked absent for ${sessionDate.toLocaleDateString()}.${note ? ` Note: ${note}` : ''}`,
+        data: { sessionDate: sessionDate.toISOString(), note },
+      });
+    } catch {
+      // best-effort; never block attendance recording
+    }
+  }
 
   // Helpers
   private async generateAttendanceNumber(): Promise<string> {
@@ -140,6 +201,77 @@ export class AttendanceService {
     return programDurationMonths === 3 ? 5
       : programDurationMonths === 6 ? 3
         : 2;
+  }
+
+  /**
+   * Shared validation for student schedule input (used by convert, register, and update).
+   * Enforces: correct day count for the program, no duplicate days, branch for physical,
+   * and — when time slots are provided — valid in-hours times whose days match the chosen
+   * learning days. Returns the normalized slots to persist.
+   */
+  private validateLearningSchedule(input: {
+    programDurationMonths: 3 | 6 | 9;
+    preferredLearningDays: string[];
+    learningType?: 'physical' | 'online';
+    branchId?: string;
+    timeSlots?: { day: string; startTime: string }[];
+  }): { timeSlots: NormalizedSlot[] } {
+    const expectedDays = this.calculateLearningDaysPerWeek(
+      input.programDurationMonths,
+    );
+    if (input.preferredLearningDays.length !== expectedDays) {
+      throw new BadRequestException(
+        `Program duration of ${input.programDurationMonths} months requires exactly ${expectedDays} learning days per week. Provided: ${input.preferredLearningDays.length}`,
+      );
+    }
+
+    const uniqueDays = new Set(input.preferredLearningDays);
+    if (uniqueDays.size !== input.preferredLearningDays.length) {
+      throw new BadRequestException('Duplicate learning days are not allowed');
+    }
+    for (const d of input.preferredLearningDays) {
+      if (!WEEK_DAYS.includes(d as WeekDay)) {
+        throw new BadRequestException(`Invalid day: ${d}`);
+      }
+    }
+
+    if (input.learningType === 'physical' && !input.branchId) {
+      throw new BadRequestException('Branch is required for physical learning');
+    }
+
+    const slots = input.timeSlots ?? [];
+    if (slots.length > 0) {
+      if (slots.length !== expectedDays) {
+        throw new BadRequestException(
+          `Provide exactly ${expectedDays} session time(s) — one per learning day.`,
+        );
+      }
+      const slotDays = new Set<string>();
+      for (const slot of slots) {
+        if (!WEEK_DAYS.includes(slot.day as WeekDay)) {
+          throw new BadRequestException(`Invalid day: ${slot.day}`);
+        }
+        if (!uniqueDays.has(slot.day)) {
+          throw new BadRequestException(
+            `Time slot day ${slot.day} is not among the chosen learning days.`,
+          );
+        }
+        if (slotDays.has(slot.day)) {
+          throw new BadRequestException(
+            `Duplicate time slot for ${slot.day}.`,
+          );
+        }
+        slotDays.add(slot.day);
+        const startMin = toMinutes(slot.startTime);
+        if (Number.isNaN(startMin) || !isStartWithinHours(startMin)) {
+          throw new BadRequestException(
+            `Session time ${slot.startTime} must be between ${toHHmm(DAY_START_MIN)} and ${toHHmm(DAY_END_MIN - SESSION_MINUTES)}.`,
+          );
+        }
+      }
+    }
+
+    return { timeSlots: slots.map((s) => ({ day: s.day, startTime: s.startTime })) };
   }
 
   /**
@@ -271,19 +403,14 @@ export class AttendanceService {
   }
 
   async registerStudentParticipant(dto: RegisterStudentParticipantDto) {
-    // Validate learning days count matches program duration
-    const expectedDays = this.calculateLearningDaysPerWeek(dto.programDurationMonths);
-    if (dto.preferredLearningDays.length !== expectedDays) {
-      throw new BadRequestException(
-        `Program duration of ${dto.programDurationMonths} months requires exactly ${expectedDays} learning days per week. Provided: ${dto.preferredLearningDays.length}`,
-      );
-    }
-
-    // Validate no duplicate days
-    const uniqueDays = new Set(dto.preferredLearningDays);
-    if (uniqueDays.size !== dto.preferredLearningDays.length) {
-      throw new BadRequestException('Duplicate learning days are not allowed');
-    }
+    // Shared schedule validation (days/duration, duplicates, branch, time slots).
+    const { timeSlots } = this.validateLearningSchedule({
+      programDurationMonths: dto.programDurationMonths,
+      preferredLearningDays: dto.preferredLearningDays,
+      learningType: dto.learningType,
+      branchId: dto.branchId,
+      timeSlots: dto.timeSlots,
+    });
 
     // Generate or validate attendance number
     let attendanceNumber = dto.attendanceNumber?.trim();
@@ -319,11 +446,6 @@ export class AttendanceService {
 
     // Generate password for User account
     const generatedPassword = this.generateRandomPassword();
-
-    // Validate branch for physical learning
-    if (dto.learningType === 'physical' && !dto.branchId) {
-      throw new BadRequestException('Branch is required for physical learning');
-    }
 
     // Create User with role Student (auth handled via User collection)
     const nameParts = dto.fullName.trim().split(' ');
@@ -370,9 +492,11 @@ export class AttendanceService {
       instrumentType: dto.instrumentType,
       programDurationMonths: dto.programDurationMonths,
       preferredLearningDays: dto.preferredLearningDays,
+      timeSlots,
       registrationStartDate: new Date(dto.registrationStartDate),
       learningDaysPerWeek,
       isActive: true,
+      completionStatus: 'active',
     });
 
     // Send credentials email
@@ -407,24 +531,14 @@ export class AttendanceService {
     userId: string,
     dto: import('./dto/convert-user-to-student.dto').ConvertUserToStudentDto,
   ) {
-    // Validate learning days count matches program duration
-    const expectedDays = this.calculateLearningDaysPerWeek(dto.programDurationMonths);
-    if (dto.preferredLearningDays.length !== expectedDays) {
-      throw new BadRequestException(
-        `Program duration of ${dto.programDurationMonths} months requires exactly ${expectedDays} learning days per week. Provided: ${dto.preferredLearningDays.length}`,
-      );
-    }
-
-    // Validate no duplicate days
-    const uniqueDays = new Set(dto.preferredLearningDays);
-    if (uniqueDays.size !== dto.preferredLearningDays.length) {
-      throw new BadRequestException('Duplicate learning days are not allowed');
-    }
-
-    // Validate branch is provided for physical learning
-    if (dto.learningType === 'physical' && !dto.branchId) {
-      throw new BadRequestException('Branch is required for physical learning');
-    }
+    // Shared schedule validation (days/duration, duplicates, branch, time slots).
+    const { timeSlots } = this.validateLearningSchedule({
+      programDurationMonths: dto.programDurationMonths,
+      preferredLearningDays: dto.preferredLearningDays,
+      learningType: dto.learningType,
+      branchId: dto.branchId,
+      timeSlots: dto.timeSlots,
+    });
 
     // Get user to migrate
     const user = await this.userService.findById(userId);
@@ -432,9 +546,10 @@ export class AttendanceService {
       throw new NotFoundException('User not found');
     }
 
-    // Check if user already has a student participant record
+    // Check if user already has an ACTIVE student participant record.
+    // (Soft-deleted/reverted participants don't block a fresh conversion.)
     const existingStudent = await this.studentParticipantModel
-      .findOne({ userId: new Types.ObjectId(userId) })
+      .findOne({ userId: new Types.ObjectId(userId), deletedAt: null })
       .lean()
       .exec();
     if (existingStudent) {
@@ -452,7 +567,9 @@ export class AttendanceService {
       role: 'Student',
     } as import('../user/dto/update-user.dto').UpdateUserDto);
 
-    // Create attendance participant with userId reference (no auth fields)
+    // Create attendance participant with userId reference (no auth fields).
+    // Capture the agreed monthly fee from the payment amount (one month's tuition)
+    // for expected-fee validation and consumption-based billing.
     const student = await this.studentParticipantModel.create({
       userId: new Types.ObjectId(userId),
       fullName: dto.fullName.trim(),
@@ -462,9 +579,13 @@ export class AttendanceService {
       instrumentType: dto.instrumentType,
       programDurationMonths: dto.programDurationMonths,
       preferredLearningDays: dto.preferredLearningDays,
+      timeSlots,
       registrationStartDate: new Date(dto.registrationStartDate),
       learningDaysPerWeek,
+      monthlyFee:
+        typeof dto.amount === 'number' && dto.amount > 0 ? dto.amount : undefined,
       isActive: true,
+      completionStatus: 'active',
     });
 
     // Sync User.studentProfile from the canonical participant record
@@ -473,6 +594,151 @@ export class AttendanceService {
     return {
       message: 'User converted to student successfully',
       student: student.toObject(),
+    };
+  }
+
+  /**
+   * Revert a student back to a regular user (admin-triggered only). The participant
+   * is SOFT-deleted — its attendance and payment history is preserved and remains
+   * browsable. The User keeps its studentProfile as a frozen historical snapshot.
+   */
+  async revertStudentToUser(
+    userId: string,
+    reason: 'completed' | 'withdrawn' | 'dropped',
+  ) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user id');
+    }
+    const participant = await this.studentParticipantModel
+      .findOne({ userId: new Types.ObjectId(userId), deletedAt: null })
+      .exec();
+    if (!participant) {
+      throw new NotFoundException('Active student record not found for this user');
+    }
+
+    const now = new Date();
+    participant.isActive = false;
+    participant.deletedAt = now;
+    participant.completionStatus = reason;
+    participant.completedAt = now;
+    await participant.save();
+
+    // Revert auth role to regular User. studentProfile is intentionally left in
+    // place as a historical snapshot of who they were as a student.
+    await this.userService.update(userId, {
+      role: 'User',
+    } as import('../user/dto/update-user.dto').UpdateUserDto);
+
+    // Withdraw any still-active enrollments so the enrollment record reflects the exit
+    // (records are preserved — status is just changed to withdrawn).
+    await this.enrollmentModel
+      .updateMany(
+        { studentId: new Types.ObjectId(userId), status: { $ne: 'withdrawn' } },
+        { status: 'withdrawn' },
+      )
+      .exec();
+
+    return {
+      message: 'Student reverted to user',
+      reason,
+      participantId: participant._id.toString(),
+    };
+  }
+
+  /** Soft-deleted (reverted) students, for the admin "past students" history view. */
+  async listPastStudents(branchFilter?: { branchId: string }) {
+    const filter: Record<string, unknown> = { deletedAt: { $ne: null } };
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      filter.branchId = new Types.ObjectId(branchFilter.branchId);
+    }
+    return this.studentParticipantModel
+      .find(filter)
+      .populate('branchId', 'name slug')
+      .sort({ completedAt: -1 })
+      .lean()
+      .exec();
+  }
+
+  /**
+   * Admin occupancy visualization. For a selected day, returns how many students
+   * are in a session during each 30-min bucket across 08:00–19:30, computed from
+   * **active student participants'** time slots (so both self-service and
+   * admin-registered students are counted), accounting for the 1.5h session window.
+   */
+  async getDayOccupancy(params: {
+    day: string;
+    branchId?: string;
+    instrumentType?: string;
+  }) {
+    const { day, branchId, instrumentType } = params;
+    if (!WEEK_DAYS.includes(day as WeekDay)) {
+      throw new BadRequestException('Invalid day');
+    }
+
+    const match: Record<string, unknown> = {
+      isActive: true,
+      deletedAt: null,
+      'timeSlots.day': day,
+    };
+    if (branchId && Types.ObjectId.isValid(branchId)) {
+      match.branchId = new Types.ObjectId(branchId);
+    }
+    if (instrumentType) {
+      match.instrumentType = instrumentType;
+    }
+
+    const participants = await this.studentParticipantModel
+      .find(match, { userId: 1, timeSlots: 1 })
+      .lean()
+      .exec();
+
+    const slots: { studentId: string; startTime: string }[] = [];
+    for (const p of participants) {
+      const ts =
+        (p as { timeSlots?: { day: string; startTime: string }[] }).timeSlots ??
+        [];
+      const sid =
+        (p as { userId?: Types.ObjectId }).userId?.toString() ??
+        (p as { _id: Types.ObjectId })._id.toString();
+      for (const s of ts) {
+        if (s.day === day && s.startTime) {
+          slots.push({ studentId: sid, startTime: s.startTime });
+        }
+      }
+    }
+
+    const buckets: { time: string; count: number }[] = [];
+    for (
+      let b = DAY_START_MIN;
+      b <= DAY_END_MIN - BUCKET_MINUTES;
+      b += BUCKET_MINUTES
+    ) {
+      let count = 0;
+      for (const s of slots) {
+        const m = toMinutes(s.startTime);
+        if (!Number.isNaN(m) && slotOverlapsBucket(m, b)) count += 1;
+      }
+      buckets.push({ time: toHHmm(b), count });
+    }
+
+    const bySlotMap = new Map<string, number>();
+    const distinct = new Set<string>();
+    for (const s of slots) {
+      bySlotMap.set(s.startTime, (bySlotMap.get(s.startTime) ?? 0) + 1);
+      distinct.add(s.studentId);
+    }
+    const bySlot = Array.from(bySlotMap.entries())
+      .map(([startTime, count]) => ({ startTime, count }))
+      .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
+
+    return {
+      day,
+      operatingHours: { start: toHHmm(DAY_START_MIN), end: toHHmm(DAY_END_MIN) },
+      sessionMinutes: SESSION_MINUTES,
+      buckets,
+      bySlot,
+      totalStudents: distinct.size,
+      totalSessions: slots.length,
     };
   }
 
@@ -548,7 +814,7 @@ export class AttendanceService {
     return students;
   }
 
-  async getStudentDetails(studentId: string) {
+  async getStudentDetails(studentId: string): Promise<unknown> {
     const student = await this.studentParticipantModel
       .findOne({ _id: studentId, deletedAt: null })
       .populate('branchId', 'name slug')
@@ -812,41 +1078,6 @@ export class AttendanceService {
     };
   }
 
-  /**
-   * Ensures that there is at least one attendance record for the given participant on the given date.
-   * If none exists with status present/late/excused/absent, an 'absent' record is inserted.
-   */
-  async ensureAbsenceRecordForParticipantOnDate(
-    participantId: string,
-    date: Date,
-  ) {
-    if (!Types.ObjectId.isValid(participantId)) {
-      throw new BadRequestException('Invalid participant id');
-    }
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
-
-    const existing = await this.studentAttendanceModel
-      .findOne({
-        participantId: new Types.ObjectId(participantId),
-        sessionDate: { $gte: startOfDay, $lt: endOfDay },
-      })
-      .lean()
-      .exec();
-
-    if (existing) {
-      return;
-    }
-
-    await this.studentAttendanceModel.create({
-      participantId: new Types.ObjectId(participantId),
-      sessionDate: startOfDay,
-      status: 'absent',
-    });
-  }
-
   async removeStudentParticipant(id: string) {
     const updated = await this.studentParticipantModel
       .findOneAndUpdate(
@@ -966,23 +1197,43 @@ export class AttendanceService {
       throw new NotFoundException('Student participant not found or inactive');
     }
 
-    // Validate lesson exists and matches instrument
-    const lesson = await this.lessonModel
-      .findOne({
-        _id: new Types.ObjectId(dto.lessonId),
-        instrumentType: participant.instrumentType,
-        isActive: true,
-      })
-      .lean()
-      .exec();
+    const status = dto.status || 'present';
 
-    if (!lesson) {
-      throw new BadRequestException(
-        'Lesson not found for the student instrument',
-      );
+    // Resolve session date (default: now). Backfill allowed; reject future days.
+    const sessionDate = dto.sessionDate ? new Date(dto.sessionDate) : new Date();
+    if (Number.isNaN(sessionDate.getTime())) {
+      throw new BadRequestException('Invalid session date');
+    }
+    const { start: dayStart } = this.dayWindow(sessionDate);
+    const { start: todayStart } = this.dayWindow(new Date());
+    if (dayStart.getTime() > todayStart.getTime()) {
+      throw new BadRequestException('Cannot record attendance for a future date');
     }
 
-    // Validate revised lesson if provided
+    // Lesson is required for present/late; optional for excused/absent.
+    let lessonId: Types.ObjectId | undefined;
+    let lessonClassId: Types.ObjectId | undefined;
+    if (status === 'present' || status === 'late') {
+      if (!dto.lessonId) {
+        throw new BadRequestException('A lesson is required when marking present or late');
+      }
+    }
+    if (dto.lessonId) {
+      const lesson = await this.lessonModel
+        .findOne({
+          _id: new Types.ObjectId(dto.lessonId),
+          instrumentType: participant.instrumentType,
+          isActive: true,
+        })
+        .lean()
+        .exec();
+      if (!lesson) {
+        throw new BadRequestException('Lesson not found for the student instrument');
+      }
+      lessonId = new Types.ObjectId(dto.lessonId);
+      lessonClassId = (lesson as { classId?: Types.ObjectId }).classId;
+    }
+
     let revisedLessonId: Types.ObjectId | undefined;
     if (dto.revisedLessonId) {
       const revisedLesson = await this.lessonModel
@@ -993,58 +1244,434 @@ export class AttendanceService {
         })
         .lean()
         .exec();
-
       if (!revisedLesson) {
-        throw new BadRequestException(
-          'Revised lesson not found for the student instrument',
-        );
+        throw new BadRequestException('Revised lesson not found for the student instrument');
       }
       revisedLessonId = new Types.ObjectId(dto.revisedLessonId);
     }
 
-    const now = new Date();
+    const classId =
+      lessonClassId ?? (await this.resolveActiveClassId(participant.userId));
 
-    // Prevent accidental duplicates: allow at most one attendance record per participant per day.
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(now);
-    endOfDay.setHours(23, 59, 59, 999);
-    const existingToday = await this.studentAttendanceModel
+    // Upsert by (participant, day): a new record, or override an existing one
+    // (e.g. a previously approved absence becomes a present).
+    const existing = await this.studentAttendanceModel
       .findOne({
         participantId: participant._id,
-        sessionDate: { $gte: startOfDay, $lte: endOfDay },
+        sessionDate: { $gte: dayStart, $lt: this.dayWindow(sessionDate).end },
       })
-      .lean()
       .exec();
-    if (existingToday) {
-      throw new BadRequestException(
-        'Attendance already recorded for this student today.',
-      );
+
+    const wasAbsent = existing?.status === 'absent';
+    const willBeAbsent = status === 'absent';
+
+    let record: StudentAttendanceDocument;
+    if (existing) {
+      existing.status = status;
+      existing.lessonId = lessonId;
+      existing.revisedLessonId = revisedLessonId;
+      existing.classId = classId;
+      existing.note = dto.note;
+      existing.recordedBy = new Types.ObjectId(adminUserId);
+      existing.userId = participant.userId;
+      existing.attendanceNumber = participant.attendanceNumber;
+      existing.studentName = participant.fullName;
+      await existing.save();
+      record = existing;
+    } else {
+      record = await this.studentAttendanceModel.create({
+        participantId: participant._id,
+        userId: participant.userId,
+        attendanceNumber: participant.attendanceNumber,
+        studentName: participant.fullName,
+        classId,
+        sessionDate,
+        lessonId,
+        revisedLessonId,
+        status,
+        note: dto.note,
+        recordedBy: new Types.ObjectId(adminUserId),
+      });
     }
 
-    const status = dto.status || 'present';
-    const created = await this.studentAttendanceModel.create({
-      participantId: participant._id,
-      userId: participant.userId,
-      attendanceNumber: participant.attendanceNumber,
-      studentName: participant.fullName,
-      sessionDate: now,
-      lessonId: new Types.ObjectId(dto.lessonId),
-      revisedLessonId,
-      status,
-      recordedBy: new Types.ObjectId(adminUserId),
-    });
-
-    if (status === 'absent') {
+    // Keep missedLessonsCount consistent across transitions.
+    if (!wasAbsent && willBeAbsent) {
+      await this.studentParticipantModel
+        .updateOne({ _id: participant._id }, { $inc: { missedLessonsCount: 1 } })
+        .exec();
+      await this.notifyStudentAbsent(participant, sessionDate, dto.note);
+    } else if (wasAbsent && !willBeAbsent) {
       await this.studentParticipantModel
         .updateOne(
-          { _id: participant._id },
-          { $inc: { missedLessonsCount: 1 } },
+          { _id: participant._id, missedLessonsCount: { $gt: 0 } },
+          { $inc: { missedLessonsCount: -1 } },
         )
         .exec();
     }
 
+    return record.toObject();
+  }
+
+  /** Edit an existing attendance record (status/lesson/note). Keeps missedLessonsCount correct. */
+  async updateAttendanceRecord(
+    recordId: string,
+    dto: { status?: AttendanceStatus; lessonId?: string; note?: string },
+  ) {
+    if (!Types.ObjectId.isValid(recordId)) {
+      throw new BadRequestException('Invalid record id');
+    }
+    const record = await this.studentAttendanceModel.findById(recordId).exec();
+    if (!record) {
+      throw new NotFoundException('Attendance record not found');
+    }
+    const wasAbsent = record.status === 'absent';
+
+    if (dto.status) {
+      if ((dto.status === 'present' || dto.status === 'late') && !dto.lessonId && !record.lessonId) {
+        throw new BadRequestException('A lesson is required when marking present or late');
+      }
+      record.status = dto.status;
+    }
+    if (dto.lessonId) {
+      const participant = await this.studentParticipantModel
+        .findById(record.participantId)
+        .lean()
+        .exec();
+      const lesson = await this.lessonModel
+        .findOne({
+          _id: new Types.ObjectId(dto.lessonId),
+          instrumentType: (participant as { instrumentType?: string } | null)?.instrumentType,
+          isActive: true,
+        })
+        .lean()
+        .exec();
+      if (!lesson) {
+        throw new BadRequestException('Lesson not found for the student instrument');
+      }
+      record.lessonId = new Types.ObjectId(dto.lessonId);
+      record.classId = (lesson as { classId?: Types.ObjectId }).classId ?? record.classId;
+    }
+    if (dto.note !== undefined) {
+      record.note = dto.note;
+    }
+    await record.save();
+
+    const isAbsent = record.status === 'absent';
+    if (!wasAbsent && isAbsent) {
+      await this.studentParticipantModel
+        .updateOne({ _id: record.participantId }, { $inc: { missedLessonsCount: 1 } })
+        .exec();
+    } else if (wasAbsent && !isAbsent) {
+      await this.studentParticipantModel
+        .updateOne(
+          { _id: record.participantId, missedLessonsCount: { $gt: 0 } },
+          { $inc: { missedLessonsCount: -1 } },
+        )
+        .exec();
+    }
+    return record.toObject();
+  }
+
+  /** Delete an attendance record (e.g. recorded by mistake). Decrements missed count if it was absent. */
+  async deleteAttendanceRecord(recordId: string) {
+    if (!Types.ObjectId.isValid(recordId)) {
+      throw new BadRequestException('Invalid record id');
+    }
+    const record = await this.studentAttendanceModel.findById(recordId).exec();
+    if (!record) {
+      throw new NotFoundException('Attendance record not found');
+    }
+    if (record.status === 'absent') {
+      await this.studentParticipantModel
+        .updateOne(
+          { _id: record.participantId, missedLessonsCount: { $gt: 0 } },
+          { $inc: { missedLessonsCount: -1 } },
+        )
+        .exec();
+    }
+    await record.deleteOne();
+    return { message: 'Attendance record deleted' };
+  }
+
+  // ---- Closed days -------------------------------------------------------
+
+  /** True if the school is closed on `date` (global closure or one for `branchId`). */
+  async isClosed(date: Date, branchId?: string): Promise<boolean> {
+    const { start, end } = this.dayWindow(date);
+    const branchClause: Record<string, unknown>[] = [{ branchId: null }];
+    if (branchId && Types.ObjectId.isValid(branchId)) {
+      branchClause.push({ branchId: new Types.ObjectId(branchId) });
+    }
+    const closed = await this.closedDayModel
+      .findOne({ date: { $gte: start, $lt: end }, $or: branchClause })
+      .lean()
+      .exec();
+    return !!closed;
+  }
+
+  async listClosedDays(branchFilter?: { branchId: string }) {
+    const filter: Record<string, unknown> = {};
+    if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
+      filter.$or = [{ branchId: null }, { branchId: new Types.ObjectId(branchFilter.branchId) }];
+    }
+    return this.closedDayModel
+      .find(filter)
+      .populate('branchId', 'name')
+      .sort({ date: -1 })
+      .lean()
+      .exec();
+  }
+
+  async createClosedDay(input: { date: string; branchId?: string; reason?: string }, adminId: string) {
+    const date = new Date(input.date);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+    const { start } = this.dayWindow(date);
+    const created = await this.closedDayModel.create({
+      date: start,
+      branchId:
+        input.branchId && Types.ObjectId.isValid(input.branchId)
+          ? new Types.ObjectId(input.branchId)
+          : undefined,
+      reason: input.reason,
+      createdBy: new Types.ObjectId(adminId),
+    });
     return created.toObject();
+  }
+
+  async deleteClosedDay(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid id');
+    }
+    const removed = await this.closedDayModel.findByIdAndDelete(id).lean().exec();
+    if (!removed) {
+      throw new NotFoundException('Closed day not found');
+    }
+    return { message: 'Closed day removed' };
+  }
+
+  // ---- No-show review ----------------------------------------------------
+
+  /** Active participants scheduled on the given date's weekday (branch-scoped). */
+  private async getExpectedParticipantsForDate(
+    date: Date,
+    branchId?: string,
+  ) {
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[new Date(date).getDay()];
+    const filter: Record<string, unknown> = {
+      isActive: true,
+      deletedAt: null,
+      preferredLearningDays: dayName,
+    };
+    if (branchId && Types.ObjectId.isValid(branchId)) {
+      filter.branchId = new Types.ObjectId(branchId);
+    }
+    return this.studentParticipantModel
+      .find(filter, {
+        _id: 1,
+        userId: 1,
+        fullName: 1,
+        attendanceNumber: 1,
+        instrumentType: 1,
+        branchId: 1,
+      })
+      .sort({ fullName: 1 })
+      .lean()
+      .exec();
+  }
+
+  /** Expected-but-unmarked students for a date — the no-show list for admin review. */
+  async getNoShowsForDate(dateStr: string, branchId?: string) {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+    if (await this.isClosed(date, branchId)) {
+      return { date: dateStr, closed: true, noShows: [] };
+    }
+
+    const expected = await this.getExpectedParticipantsForDate(date, branchId);
+    if (!expected.length) {
+      return { date: dateStr, closed: false, noShows: [] };
+    }
+
+    const { start, end } = this.dayWindow(date);
+    const recorded = await this.studentAttendanceModel
+      .find(
+        {
+          participantId: { $in: expected.map((p) => p._id) },
+          sessionDate: { $gte: start, $lt: end },
+        },
+        { participantId: 1 },
+      )
+      .lean()
+      .exec();
+    const recordedSet = new Set(recorded.map((r) => r.participantId.toString()));
+
+    const noShows = expected
+      .filter((p) => !recordedSet.has((p._id as Types.ObjectId).toString()))
+      .map((p) => ({
+        participantId: (p._id as Types.ObjectId).toString(),
+        userId: (p.userId as Types.ObjectId | undefined)?.toString() ?? null,
+        fullName: p.fullName,
+        attendanceNumber: p.attendanceNumber,
+        instrumentType: p.instrumentType,
+      }));
+
+    return { date: dateStr, closed: false, noShows };
+  }
+
+  /** Approve no-shows as absent (bulk). Skips students who already have a record that day. */
+  async markNoShowsAbsent(
+    dateStr: string,
+    participantIds: string[],
+    adminId: string,
+  ) {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+    const { start, end } = this.dayWindow(date);
+    let marked = 0;
+    for (const pid of participantIds) {
+      if (!Types.ObjectId.isValid(pid)) continue;
+      const participant = await this.studentParticipantModel.findById(pid).exec();
+      if (!participant || !participant.isActive) continue;
+      const existing = await this.studentAttendanceModel
+        .findOne({ participantId: participant._id, sessionDate: { $gte: start, $lt: end } })
+        .lean()
+        .exec();
+      if (existing) continue; // already has a record that day — don't override
+      const classId = await this.resolveActiveClassId(participant.userId);
+      await this.studentAttendanceModel.create({
+        participantId: participant._id,
+        userId: participant.userId,
+        attendanceNumber: participant.attendanceNumber,
+        studentName: participant.fullName,
+        classId,
+        sessionDate: start,
+        status: 'absent',
+        recordedBy: new Types.ObjectId(adminId),
+      });
+      await this.studentParticipantModel
+        .updateOne({ _id: participant._id }, { $inc: { missedLessonsCount: 1 } })
+        .exec();
+      await this.notifyStudentAbsent(participant, start);
+      marked += 1;
+    }
+    return { marked };
+  }
+
+  /** Revert (remove) absences for the given participants on a date (bulk). */
+  async revertNoShows(dateStr: string, participantIds: string[]) {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+    const { start, end } = this.dayWindow(date);
+    let reverted = 0;
+    for (const pid of participantIds) {
+      if (!Types.ObjectId.isValid(pid)) continue;
+      const record = await this.studentAttendanceModel
+        .findOne({
+          participantId: new Types.ObjectId(pid),
+          sessionDate: { $gte: start, $lt: end },
+          status: 'absent',
+        })
+        .exec();
+      if (!record) continue;
+      await record.deleteOne();
+      await this.studentParticipantModel
+        .updateOne(
+          { _id: new Types.ObjectId(pid), missedLessonsCount: { $gt: 0 } },
+          { $inc: { missedLessonsCount: -1 } },
+        )
+        .exec();
+      reverted += 1;
+    }
+    return { reverted };
+  }
+
+  // ---- Reporting ---------------------------------------------------------
+
+  /** Attendance summary (counts + rate %) for a student, by their user id. */
+  async getStudentAttendanceSummary(userId: string) {
+    const participant = await this.studentParticipantModel
+      .findOne({ userId: new Types.ObjectId(userId) })
+      .lean()
+      .exec();
+    if (!participant) {
+      throw new NotFoundException('Student participant not found');
+    }
+    const records = await this.studentAttendanceModel
+      .find({ participantId: participant._id }, { status: 1 })
+      .lean()
+      .exec();
+    const counts = { present: 0, late: 0, excused: 0, absent: 0 };
+    for (const r of records) {
+      const s = r.status as keyof typeof counts;
+      if (s in counts) counts[s] += 1;
+    }
+    const total = records.length;
+    const attended = counts.present + counts.late;
+    const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
+    return { total, ...counts, attendanceRate: rate };
+  }
+
+  /** CSV of attendance records for the given filters (admin records/export). */
+  async exportAttendanceCsv(filters: {
+    from?: string;
+    to?: string;
+    branchId?: string;
+    participantId?: string;
+  }): Promise<string> {
+    const query: Record<string, unknown> = {};
+    if (filters.participantId && Types.ObjectId.isValid(filters.participantId)) {
+      query.participantId = new Types.ObjectId(filters.participantId);
+    }
+    if (filters.from || filters.to) {
+      const range: Record<string, Date> = {};
+      if (filters.from) range.$gte = this.dayWindow(new Date(filters.from)).start;
+      if (filters.to) range.$lt = this.dayWindow(new Date(filters.to)).end;
+      query.sessionDate = range;
+    }
+    if (filters.branchId && Types.ObjectId.isValid(filters.branchId)) {
+      const branchParticipants = await this.studentParticipantModel
+        .find({ branchId: new Types.ObjectId(filters.branchId) }, { _id: 1 })
+        .lean()
+        .exec();
+      query.participantId = { $in: branchParticipants.map((p) => p._id) };
+    }
+
+    const records = await this.studentAttendanceModel
+      .find(query)
+      .populate('lessonId', 'title code')
+      .sort({ sessionDate: -1 })
+      .limit(10000)
+      .lean()
+      .exec();
+
+    const esc = (v: unknown) => {
+      const s = v == null ? '' : String(v);
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"`
+        : s;
+    };
+    const header = 'date,attendanceNumber,studentName,status,lesson,note';
+    const rows = records.map((r) => {
+      const lesson = r.lessonId as { title?: string } | null;
+      return [
+        (r.sessionDate as Date)?.toISOString?.().slice(0, 10) ?? '',
+        esc(r.attendanceNumber),
+        esc(r.studentName),
+        esc(r.status),
+        esc(lesson?.title ?? ''),
+        esc((r as { note?: string }).note ?? ''),
+      ].join(',');
+    });
+    return [header, ...rows].join('\n');
   }
 
   async getStudentAttendanceRecords(studentId: string) {
@@ -1065,36 +1692,60 @@ export class AttendanceService {
     return records;
   }
 
-  /** True if payment is not paid and has a due date in the past. */
-  private isPaymentOverdue(p: { status: string; dueDate?: Date; duedate?: Date[] }): boolean {
-    if (p.status === 'paid') return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (p.dueDate && new Date(p.dueDate).getTime() < today.getTime()) return true;
-    if (p.duedate?.length) {
-      const firstDue = new Date(p.duedate[0]);
-      if (firstDue.getTime() < today.getTime()) return true;
-    }
-    return false;
+  /**
+   * True if a recorded payment row is overdue: not settled (unpaid) AND its billing
+   * period has already been consumed. Advance/future periods are never overdue.
+   */
+  private isPaymentOverdue(
+    p: { status: string; period?: number },
+    periodsConsumedEff: number,
+  ): boolean {
+    if (p.status === 'paid' || p.status === 'waived') return false;
+    if (typeof p.period === 'number') return p.period <= periodsConsumedEff;
+    return true; // legacy row without a period: treat an unpaid row as overdue
   }
 
-  async getStudentPayments(studentId: string) {
+  async getStudentPayments(studentId: string): Promise<unknown> {
     // studentId is the User's _id, so lookup participant by userId field
-    const participant = await this.studentParticipantModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
+    const participant = await this.studentParticipantModel
+      .findOne({ userId: new Types.ObjectId(studentId) })
+      .lean()
+      .exec();
     if (!participant) {
       throw new NotFoundException('Student participant not found');
     }
 
+    const state = await this.computeBillingState(participant);
     const payments = await this.studentPaymentModel
       .find({ participantId: participant._id })
-      .sort({ year: -1, month: -1 })
+      .sort({ period: 1, year: -1, month: -1 })
       .lean()
       .exec();
 
     return payments.map((p) => ({
       ...p,
-      isOverdue: this.isPaymentOverdue(p),
+      isOverdue: this.isPaymentOverdue(p, state.periodsConsumedEff),
     }));
+  }
+
+  /** Map of userId → agreed monthly fee for active participants (for expected-fee surfacing). */
+  async getMonthlyFeesByUserIds(userIds: string[]): Promise<Map<string, number>> {
+    const ids = userIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    const map = new Map<string, number>();
+    if (!ids.length) return map;
+    const parts = await this.studentParticipantModel
+      .find({ userId: { $in: ids }, deletedAt: null })
+      .select('userId monthlyFee')
+      .lean()
+      .exec();
+    for (const p of parts) {
+      if (typeof p.monthlyFee === 'number') {
+        map.set(String((p as { userId?: Types.ObjectId }).userId), p.monthlyFee);
+      }
+    }
+    return map;
   }
 
   /** Resolve student participant id by user id (for payment approval etc.). Returns null if not found. */
@@ -1355,7 +2006,10 @@ export class AttendanceService {
     });
   }
 
-  // Billing / payments — 30-day rolling schedule from registration (approval) date
+  // Billing / payments — CONSUMPTION-BASED, admin-decided.
+  // A billing period is an active ~30-day window: attending at all in a window owes
+  // one full fee; windows with no attendance are skipped (the pause). Nothing here
+  // auto-charges — the computed state is advisory for the desk admin.
   private getCurrentYearMonth() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() + 1 };
@@ -1367,75 +2021,209 @@ export class AttendanceService {
     return out;
   }
 
-  /** Due dates for periods 1, 2, 3, ...: reg+30, reg+60, reg+90, ... (start of day). */
-  private getDueDatesFromRegistration(regDate: Date, maxCount: number): Date[] {
-    const dates: Date[] = [];
-    for (let n = 1; n <= maxCount; n += 1) {
-      const d = this.addDays(regDate, n * 30);
-      dates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
-    }
-    return dates;
+  private startOfDay(date: Date): Date {
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   }
 
-  private sameDay(a: Date, b: Date): boolean {
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
+  /** Length of one billing window in days (configurable; default 30). */
+  private getPeriodDays(): number {
+    const v = parseInt(process.env.PAYMENT_PERIOD_DAYS ?? '', 10);
+    return Number.isFinite(v) && v > 0 ? v : 30;
+  }
+
+  /** Weeks per month for the display-only "attended X of ~Y" hint (default 4). */
+  private getWeeksPerMonth(): number {
+    const v = parseFloat(process.env.PAYMENT_WEEKS_PER_MONTH ?? '');
+    return Number.isFinite(v) && v > 0 ? v : 4;
   }
 
   /**
-   * Returns the first unpaid due date that falls in the given month/year, for 30-day rolling schedule.
-   * Used when approving a monthly payment so we can set dueDate on the record.
+   * Core billing model. Walks the student's attended (present/late) sessions and opens
+   * a new billing period at each session that lands at/after the current window's end.
+   * Empty windows (long no-shows) create no period and are never billed. Everything is
+   * advisory; `suggestedOwed`/`overdue` are indicators the admin acts on at discretion.
+   */
+  private async computeBillingState(participant: {
+    _id: Types.ObjectId | string;
+    registrationStartDate?: Date;
+    programDurationMonths?: number;
+    learningDaysPerWeek?: number;
+    periodAdjustment?: number;
+    monthlyFee?: number;
+  }) {
+    const periodDays = this.getPeriodDays();
+    const participantId = new Types.ObjectId(String(participant._id));
+    const regDate = this.startOfDay(
+      participant.registrationStartDate
+        ? new Date(participant.registrationStartDate)
+        : new Date(),
+    );
+
+    const sessions = await this.studentAttendanceModel
+      .find({ participantId, status: { $in: ['present', 'late'] } })
+      .select('sessionDate')
+      .sort({ sessionDate: 1 })
+      .lean()
+      .exec();
+
+    // Window-start date for each consumed period (index 0 = period 1).
+    const periodStarts: Date[] = [];
+    let windowEnd = regDate;
+    let currentWindowAttended = 0;
+    for (const s of sessions) {
+      const d = this.startOfDay(new Date(s.sessionDate as Date));
+      if (d.getTime() >= windowEnd.getTime()) {
+        periodStarts.push(d);
+        windowEnd = this.addDays(d, periodDays);
+        currentWindowAttended = 1;
+      } else {
+        currentWindowAttended += 1;
+      }
+    }
+    const periodsConsumed = periodStarts.length;
+
+    const duration = participant.programDurationMonths ?? 0;
+    const maxBillable = duration > 0 ? Math.ceil(duration * 1.5) : periodsConsumed;
+    const adjustment = participant.periodAdjustment ?? 0;
+    const periodsConsumedEff = Math.max(
+      0,
+      Math.min(periodsConsumed + adjustment, maxBillable || periodsConsumed + adjustment),
+    );
+
+    const payments = await this.studentPaymentModel
+      .find({ participantId })
+      .sort({ period: 1 })
+      .lean()
+      .exec();
+    const settledPeriodSet = new Set<number>();
+    for (const p of payments) {
+      if (
+        (p.status === 'paid' || p.status === 'waived') &&
+        typeof p.period === 'number'
+      ) {
+        settledPeriodSet.add(p.period);
+      }
+    }
+    const periodsSettled = settledPeriodSet.size;
+    const suggestedOwed = Math.max(0, periodsConsumedEff - periodsSettled);
+
+    let nextDuePeriod = 1;
+    while (settledPeriodSet.has(nextDuePeriod)) nextDuePeriod += 1;
+
+    const expectedSessionsPerPeriod = Math.max(
+      1,
+      Math.round((participant.learningDaysPerWeek ?? 0) * this.getWeeksPerMonth()),
+    );
+
+    return {
+      periodDays,
+      registrationStartDate: regDate,
+      periodStarts,
+      periodsConsumed,
+      periodsConsumedEff,
+      periodsSettled,
+      settledPeriods: [...settledPeriodSet].sort((a, b) => a - b),
+      suggestedOwed,
+      overdue: suggestedOwed > 0,
+      maxBillable,
+      windowExceeded: periodsConsumed > maxBillable,
+      expectedSessionsPerPeriod,
+      currentWindowAttended: periodsConsumed > 0 ? currentWindowAttended : 0,
+      monthlyFee: participant.monthlyFee,
+      nextDuePeriod,
+      payments,
+    };
+  }
+
+  /** Window-start date for a given 1-based period (for display/metadata). */
+  private periodWindowStart(
+    state: { periodStarts: Date[]; registrationStartDate: Date; periodDays: number },
+    period: number,
+  ): Date {
+    if (period >= 1 && period <= state.periodStarts.length) {
+      return new Date(state.periodStarts[period - 1]);
+    }
+    // Period not yet consumed (e.g. an advance payment): project forward from the
+    // last known window-start (or registration) by whole period lengths.
+    const base =
+      state.periodStarts.length > 0
+        ? state.periodStarts[state.periodStarts.length - 1]
+        : state.registrationStartDate;
+    const stepsAhead = period - state.periodStarts.length;
+    return this.startOfDay(this.addDays(base, Math.max(0, stepsAhead) * state.periodDays));
+  }
+
+  /**
+   * Advisory billing state for a student (by User id) — powers the student "what you
+   * owe" card and the admin per-student billing view. Consumption-based, not a date.
+   */
+  async getStudentBillingState(userId: string): Promise<{
+    periodsConsumed: number;
+    periodsSettled: number;
+    suggestedOwed: number;
+    overdue: boolean;
+    nextDuePeriod: number;
+    monthlyFee?: number;
+    maxBillable: number;
+    windowExceeded: boolean;
+    expectedSessionsPerPeriod: number;
+    currentWindowAttended: number;
+    programDurationMonths?: number;
+  }> {
+    const participant = await this.studentParticipantModel
+      .findOne({ userId: new Types.ObjectId(userId), isActive: true, deletedAt: null })
+      .lean()
+      .exec();
+    if (!participant) {
+      throw new NotFoundException('Student participant not found');
+    }
+    const state = await this.computeBillingState(participant);
+    return {
+      periodsConsumed: state.periodsConsumed,
+      periodsSettled: state.periodsSettled,
+      suggestedOwed: state.suggestedOwed,
+      overdue: state.overdue,
+      nextDuePeriod: state.nextDuePeriod,
+      monthlyFee: state.monthlyFee,
+      maxBillable: state.maxBillable,
+      windowExceeded: state.windowExceeded,
+      expectedSessionsPerPeriod: state.expectedSessionsPerPeriod,
+      currentWindowAttended: state.currentWindowAttended,
+      programDurationMonths: participant.programDurationMonths,
+    };
+  }
+
+  /**
+   * Returns the next unsettled billing period + its window-start date. Used when
+   * approving a monthly payment to target the right period. (month/year are ignored
+   * now that billing is period-based, not calendar-based — kept for call compatibility.)
    */
   async getNextUnpaidDueDateInMonthYear(
     participantId: string,
-    month: number,
-    year: number,
+    _month?: number,
+    _year?: number,
   ): Promise<{ dueDate: Date; period: number } | null> {
     const participant = await this.studentParticipantModel
       .findById(participantId)
-      .select('registrationStartDate')
       .lean()
       .exec();
     if (!participant) return null;
-
-    const regDate = new Date(participant.registrationStartDate || new Date());
-    const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
-    const dueDates = this.getDueDatesFromRegistration(regStartOfDay, 24);
-
-    const payments = await this.studentPaymentModel
-      .find({ participantId: new Types.ObjectId(participantId) })
-      .select('duedate status period month year paidAt')
-      .lean()
-      .exec();
-
-    for (let i = 0; i < dueDates.length; i += 1) {
-      const dueDate = dueDates[i];
-      const period = i + 1;
-      if (dueDate.getMonth() + 1 !== month || dueDate.getFullYear() !== year) continue;
-
-      const paid = payments.some((p: any) => {
-        if (p.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
-          if (p.period && p.period >= 1 && p.period <= p.duedate.length) {
-            return this.sameDay(new Date(p.duedate[p.period - 1]), dueDate) && p.status === 'paid';
-          }
-          if (p.duedate.some((d: Date) => this.sameDay(new Date(d), dueDate))) {
-            return (p.status === 'paid') && ((p.paidAt && this.sameDay(new Date(p.paidAt), dueDate)) || (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()));
-          }
-        }
-        if (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()) {
-          return p.status === 'paid';
-        }
-        return false;
-      });
-
-      if (!paid) return { dueDate, period };
-    }
-    return null;
+    const state = await this.computeBillingState(participant);
+    const period = state.nextDuePeriod;
+    return { dueDate: this.periodWindowStart(state, period), period };
   }
 
+  /**
+   * Record a tuition payment against one or more billing PERIODS (consumption-based).
+   * - `status: 'paid'`   → settle the period in full (admin asserts payment received).
+   * - `status: 'unpaid'` → partial payment: accumulate `paidToDate`; auto-promotes to
+   *                         'paid' once the agreed monthly fee is covered.
+   * - `status: 'waived'` → settle the period without payment (admin discretion).
+   * - `coversPeriods > 1` → advance payment: settle that many consecutive periods.
+   * Returns the upserted ledger rows + a fee classification for the approval UI.
+   * Nothing here is automatic — the admin chooses what (and whether) to record.
+   */
   async recordStudentPayment(
     dto: import('./dto/student-payment.dto').RecordStudentPaymentDto,
     adminUserId: string,
@@ -1448,302 +2236,221 @@ export class AttendanceService {
       throw new NotFoundException('Student participant not found or inactive');
     }
 
-    let month = dto.month;
-    let year = dto.year;
+    const state = await this.computeBillingState(participant);
+    const fee =
+      typeof participant.monthlyFee === 'number' && participant.monthlyFee > 0
+        ? participant.monthlyFee
+        : dto.amount > 0
+          ? dto.amount
+          : 0;
 
-    if (month < 1 || month > 12) {
-      throw new BadRequestException('Month must be between 1 and 12');
+    const startPeriod = dto.period ?? state.nextDuePeriod;
+    if (!Number.isInteger(startPeriod) || startPeriod < 1) {
+      throw new BadRequestException('Invalid billing period');
     }
+    const coversPeriods =
+      dto.status === 'waived' ? 1 : Math.max(1, Math.floor(dto.coversPeriods ?? 1));
 
-    // Normalize input and find any existing payment for the same participant/month/year/period
-    // Note: we no longer rely on per-record `dueDate` (single date); scheduling is kept in `duedate` array
+    const records: unknown[] = [];
+    for (let i = 0; i < coversPeriods; i += 1) {
+      const period = startPeriod + i;
+      const windowStart = this.periodWindowStart(state, period);
+      const month = dto.month ?? windowStart.getMonth() + 1;
+      const year = dto.year ?? windowStart.getFullYear();
 
-    const existingQuery: any = {
-      participantId: participant._id,
-      month,
-      year,
-    };
-    if (dto.period) existingQuery.period = dto.period;
-    const existing = await this.studentPaymentModel.findOne(existingQuery).exec();
+      const existing = await this.studentPaymentModel
+        .findOne({ participantId: participant._id, period })
+        .exec();
 
-    if (existing) {
-      // When updating to paid, ensure we don't create a duplicate paid for same month (unique index allows only one)
-      if (dto.status === 'paid' && existing.status !== 'paid') {
-        const otherPaid = await this.studentPaymentModel
-          .findOne({
-            participantId: participant._id,
-            month,
-            year,
-            status: 'paid',
-            _id: { $ne: existing._id },
-          })
-          .lean()
-          .exec();
-        if (otherPaid) {
-          throw new BadRequestException(
-            'A paid record for this student and month already exists.',
-          );
-        }
+      // Resolve amount / paidToDate / status for this period.
+      let status: 'paid' | 'unpaid' | 'waived';
+      let amountField: number;
+      let paidToDate: number;
+      let paidAt: Date | undefined;
+
+      if (dto.status === 'waived') {
+        status = 'waived';
+        amountField = 0;
+        paidToDate = 0;
+        paidAt = undefined;
+      } else if (coversPeriods > 1) {
+        // Advance: each covered period is paid in full at the agreed fee.
+        status = 'paid';
+        amountField = fee;
+        paidToDate = fee;
+        paidAt = new Date();
+      } else if (dto.status === 'unpaid') {
+        // Partial: accumulate toward the fee; promote to paid once covered.
+        const prev = existing?.paidToDate ?? 0;
+        paidToDate = prev + Math.max(0, dto.amount);
+        amountField = fee || dto.amount;
+        status = paidToDate >= amountField && amountField > 0 ? 'paid' : 'unpaid';
+        paidAt = status === 'paid' ? new Date() : undefined;
+      } else {
+        // Paid in full (admin assertion). dto.amount may differ (under/overpay) but
+        // the period is settled; the difference is surfaced as classification.
+        amountField = fee || dto.amount;
+        paidToDate = Math.max(dto.amount, amountField);
+        status = 'paid';
+        paidAt = new Date();
       }
-      existing.amount = dto.amount;
-      existing.status = dto.status;
-      existing.note = dto.note;
-      existing.paidAt = dto.status === 'paid' ? new Date() : undefined;
-      // If an existing record was updated to paid and has no dueDates array, generate it
-      if (dto.status === 'paid' && (!existing.dueDates || existing.dueDates.length === 0)) {
-        let dueDatesArr: Date[] = [];
-        // If admin provided a period, generate schedule from registration so it aligns with enrollment schedule
-        if (dto.period) {
-          const regDate = new Date(participant.registrationStartDate || new Date());
-          const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
-          dueDatesArr = this.getDueDatesFromRegistration(regStartOfDay, 24);
-          existing.period = dto.period;
-        } else {
-          // fallback: generate from paidAt
-          const baseDate = existing.paidAt ?? new Date();
-          dueDatesArr = (() => {
-            const arr: Date[] = [];
-            for (let i = 1; i <= 24; i += 1) {
-              arr.push(this.addDays(baseDate, i * 30));
-            }
-            return arr;
-          })();
-          // set period if missing
-          if (!existing.period) {
-            const lastPeriod = await this.studentPaymentModel
-              .find({ participantId: participant._id })
-              .sort({ period: -1 })
-              .limit(1)
-              .select('period')
-              .lean()
-              .exec();
-            existing.period = (lastPeriod[0]?.period ?? 0) + 1 || 1;
-          }
-        }
-        existing.dueDates = dueDatesArr;
-      }
-      existing.recordedBy = new Types.ObjectId(adminUserId);
-      // attach receipt if provided
-      if (dto.receiptUrl) {
-        existing.receiptUrl = dto.receiptUrl;
-      }
-      await existing.save();
-      return existing.toObject();
-    }
 
-    // When creating a new paid record, prevent duplicate paid per participant/month/year
-    if (dto.status === 'paid') {
-      const existingPaid = await this.studentPaymentModel
-        .findOne({
+      if (existing) {
+        existing.amount = amountField;
+        existing.paidToDate = paidToDate;
+        existing.status = status;
+        existing.month = month;
+        existing.year = year;
+        existing.dueDate = windowStart;
+        existing.period = period;
+        existing.paidAt = paidAt;
+        existing.recordedBy = new Types.ObjectId(adminUserId);
+        existing.note = dto.note;
+        if (dto.receiptUrl) existing.receiptUrl = dto.receiptUrl;
+        await existing.save();
+        records.push(existing.toObject());
+      } else {
+        const created = await this.studentPaymentModel.create({
           participantId: participant._id,
+          userId: participant.userId,
+          amount: amountField,
+          paidToDate,
           month,
           year,
-          status: 'paid',
-        })
-        .lean()
-        .exec();
-      if (existingPaid) {
-        throw new BadRequestException(
-          'A paid record for this student and month already exists.',
-        );
+          status,
+          dueDate: windowStart,
+          period,
+          paidAt,
+          recordedBy: new Types.ObjectId(adminUserId),
+          note: dto.note,
+          receiptUrl: dto.receiptUrl,
+        });
+        records.push(created.toObject());
       }
     }
 
-    // Determine enrollment period automatically if not provided
-    let periodToSet: number | undefined = dto.period;
-    if (!periodToSet) {
-      const lastPeriod = await this.studentPaymentModel
-        .find({ participantId: participant._id })
-        .sort({ period: -1 })
-        .limit(1)
-        .select('period')
-        .lean()
-        .exec();
-      periodToSet = (lastPeriod[0]?.period ?? 0) + 1 || 1;
-    }
+    // Fee classification for the approval UI (total received vs expected).
+    const expected = fee * coversPeriods;
+    let classification: 'full' | 'partial' | 'overpaid' | 'waived';
+    if (dto.status === 'waived') classification = 'waived';
+    else if (expected <= 0) classification = 'full';
+    else if (dto.amount < expected) classification = 'partial';
+    else if (dto.amount > expected) classification = 'overpaid';
+    else classification = 'full';
 
-    const paidAtDate = dto.status === 'paid' ? new Date() : undefined;
-
-    // Build duedate schedule:
-    // - If a period is provided (admin-approved monthly payment), derive the 24-item schedule from registrationStartDate so entries align with enrollment schedule.
-    // - Otherwise, if paid right now, generate a schedule from paidAt as a fallback (existing behavior).
-    let duedates: Date[] | undefined = undefined;
-    if (dto.status === 'paid') {
-      if (periodToSet) {
-        const regDate = new Date(participant.registrationStartDate || new Date());
-        const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
-        duedates = this.getDueDatesFromRegistration(regStartOfDay, 24);
-      } else {
-        const baseDateForDues = paidAtDate ?? new Date();
-        duedates = (() => {
-          const arr: Date[] = [];
-          for (let i = 1; i <= 24; i += 1) {
-            arr.push(this.addDays(baseDateForDues, i * 30));
-          }
-          return arr;
-        })();
-      }
-    }
-
-    // Normalize scalar `dueDate` if provided; otherwise, prefer duedates[period-1] when available
-    let dueDateNormalized: Date | undefined = undefined;
-    if (dto.dueDate) {
-      const parsed = new Date(dto.dueDate);
-      if (!isNaN(parsed.getTime())) {
-        dueDateNormalized = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-      }
-    } else if (duedates && periodToSet && Number.isInteger(periodToSet) && periodToSet >= 1 && periodToSet <= duedates.length) {
-      dueDateNormalized = new Date(duedates[periodToSet - 1]);
-    } else if (duedates && duedates.length > 0) {
-      // fallback to first scheduled date if nothing else
-      dueDateNormalized = new Date(duedates[0]);
-    }
-
-    const created = await this.studentPaymentModel.create({
-      participantId: participant._id,
-      userId: participant.userId,
-      amount: dto.amount,
-      month,
-      year,
-      status: dto.status,
-      dueDate: dueDateNormalized,
-      duedate: duedates,
-      period: periodToSet,
-      paidAt: paidAtDate,
-      recordedBy: new Types.ObjectId(adminUserId),
-      note: dto.note,
-      receiptUrl: dto.receiptUrl,
-    });
-
-    return created.toObject();
+    const refreshed = await this.computeBillingState(participant);
+    return {
+      payment: records[0],
+      records,
+      classification,
+      expectedAmount: expected,
+      receivedAmount: dto.amount,
+      billing: {
+        periodsConsumed: refreshed.periodsConsumed,
+        periodsSettled: refreshed.periodsSettled,
+        suggestedOwed: refreshed.suggestedOwed,
+        overdue: refreshed.overdue,
+        nextDuePeriod: refreshed.nextDuePeriod,
+        windowExceeded: refreshed.windowExceeded,
+      },
+    };
   }
 
+  /**
+   * Admin billing roster — consumption-based. For each active student returns their
+   * billing state (consumed/settled/owed) and an "owing vs up-to-date" status. The
+   * year/month params are kept for signature compatibility but no longer scope the
+   * result to a single calendar month (billing is period-based).
+   */
   async getStudentBillingSummary(year?: number, month?: number) {
     const current = this.getCurrentYearMonth();
     const targetYear = year ?? current.year;
     const targetMonth = month ?? current.month;
 
-    // Load all active students
     const students = await this.studentParticipantModel
       .find({ isActive: true })
-      .select('_id fullName attendanceNumber instrumentType')
+      .select(
+        '_id fullName attendanceNumber instrumentType registrationStartDate programDurationMonths learningDaysPerWeek periodAdjustment monthlyFee userId',
+      )
       .lean()
       .exec();
 
     const totalActiveStudents = students.length;
-    if (totalActiveStudents === 0) {
-      return {
-        year: targetYear,
-        month: targetMonth,
-        totalActiveStudents: 0,
-        paidCount: 0,
-        unpaidCount: 0,
-      };
-    }
-
-    const studentIds = students.map((s) => s._id);
-
-    const payments = await this.studentPaymentModel
-      .find({
-        participantId: { $in: studentIds },
-        year: targetYear,
-        month: targetMonth,
-      })
-      .select('participantId status')
-      .lean()
-      .exec();
-
-    const paymentByParticipant = new Map<string, 'paid' | 'unpaid'>();
-    payments.forEach((p) => {
-      const key = String(p.participantId);
-      const existing = paymentByParticipant.get(key);
-      if (!existing || p.status === 'paid') {
-        paymentByParticipant.set(key, p.status);
-      }
-    });
-
     let paidCount = 0;
     let unpaidCount = 0;
 
-    const items: {
+    const items: Array<{
       participantId: string;
       fullName: string;
       attendanceNumber: string;
       instrumentType: string;
+      monthlyFee?: number;
+      periodsConsumed: number;
+      periodsSettled: number;
+      suggestedOwed: number;
+      nextDuePeriod: number;
+      windowExceeded: boolean;
       status: 'paid' | 'unpaid';
-    }[] = [];
+    }> = [];
 
-    students.forEach((student) => {
-      const id = student._id;
-      const status = paymentByParticipant.get(String(id));
-      if (!status || status === 'unpaid') {
-        unpaidCount += 1;
-        items.push({
-          participantId: String(id),
-          fullName: student.fullName,
-          attendanceNumber: student.attendanceNumber,
-          instrumentType: student.instrumentType,
-          status: 'unpaid',
-        });
-      } else {
-        paidCount += 1;
-        items.push({
-          participantId: String(id),
-          fullName: student.fullName,
-          attendanceNumber: student.attendanceNumber,
-          instrumentType: student.instrumentType,
-          status: 'paid',
-        });
-      }
-    });
+    for (const student of students) {
+      const state = await this.computeBillingState(student);
+      const owing = state.suggestedOwed > 0;
+      if (owing) unpaidCount += 1;
+      else paidCount += 1;
+      items.push({
+        participantId: String(student._id),
+        fullName: student.fullName,
+        attendanceNumber: student.attendanceNumber,
+        instrumentType: student.instrumentType,
+        monthlyFee: state.monthlyFee,
+        periodsConsumed: state.periodsConsumed,
+        periodsSettled: state.periodsSettled,
+        suggestedOwed: state.suggestedOwed,
+        nextDuePeriod: state.nextDuePeriod,
+        windowExceeded: state.windowExceeded,
+        status: owing ? 'unpaid' : 'paid',
+      });
+    }
 
     return {
       year: targetYear,
       month: targetMonth,
       totalActiveStudents,
-      paidCount,
-      unpaidCount,
+      paidCount, // up-to-date students
+      unpaidCount, // students with an outstanding (suggested) balance
       items,
     };
   }
 
   /** Phase 5.3: optional branchFilter scopes to branch (Admin with branchId). */
+  /**
+   * Students with an outstanding (suggested) balance — consumption-based. A student is
+   * "overdue" only when they have consumed billing periods they haven't settled. Optional
+   * branchFilter scopes to a branch. Result is advisory; the admin decides whether to act.
+   */
   async getOverduePayments(branchFilter?: { branchId: string }) {
-    const currentDate = new Date();
+    const now = this.startOfDay(new Date());
     const participantFilter: Record<string, unknown> = { isActive: true };
     if (branchFilter?.branchId && Types.ObjectId.isValid(branchFilter.branchId)) {
       participantFilter.branchId = new Types.ObjectId(branchFilter.branchId);
     }
     const students = await this.studentParticipantModel
       .find(participantFilter)
-      .select('_id userId fullName attendanceNumber instrumentType registrationStartDate')
+      .select(
+        '_id userId fullName attendanceNumber instrumentType registrationStartDate programDurationMonths learningDaysPerWeek periodAdjustment monthlyFee autoReminders',
+      )
       .lean()
       .exec();
 
-    const studentIds = students.map((s) => s._id);
-    const userIds = [...new Set(students.map((s) => String((s as { userId?: Types.ObjectId }).userId)).filter(Boolean))];
+    const userIds = [
+      ...new Set(
+        students
+          .map((s) => String((s as { userId?: Types.ObjectId }).userId))
+          .filter(Boolean),
+      ),
+    ];
     const emailByUserId = await this.userService.getEmailsByIds(userIds);
-    // include dueDates array and other metadata in the payments map so overdue logic can match by period/index
-    const paymentsByParticipant = new Map<string, Array<{ dueDate?: Date; dueDates?: Date[]; period?: number; month?: number; year?: number; paidAt?: Date; status: string; amount?: number }>>();
-    const allPayments = await this.studentPaymentModel
-      .find({ participantId: { $in: studentIds } })
-      .select('participantId dueDate status amount dueDates period month year paidAt')
-      .lean()
-      .exec();
-    allPayments.forEach((p) => {
-      const key = String(p.participantId);
-      if (!paymentsByParticipant.has(key)) paymentsByParticipant.set(key, []);
-      paymentsByParticipant.get(key)!.push({
-        dueDate: p.dueDate,
-        dueDates: p.dueDates,
-        period: p.period,
-        month: p.month,
-        year: p.year,
-        paidAt: p.paidAt,
-        status: p.status,
-        amount: p.amount,
-      });
-    });
 
     const overduePayments: Array<{
       participantId: string;
@@ -1756,161 +2463,110 @@ export class AttendanceService {
       dueDate: Date;
       daysOverdue: number;
       amount?: number;
-      status?: 'paid' | 'unpaid';
+      periodsOwed: number;
+      nextDuePeriod: number;
+      windowExceeded: boolean;
+      autoReminders: boolean;
+      status: 'unpaid';
     }> = [];
 
     for (const student of students) {
-      const regDate = new Date(student.registrationStartDate || new Date());
-      const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
-      const dueDates = this.getDueDatesFromRegistration(regStartOfDay, 24);
-      const payments = paymentsByParticipant.get(String(student._id)) ?? [];
-
-      for (const dueDate of dueDates) {
-        if (dueDate >= currentDate) break;
-
-        // Find a payment that maps to this dueDate (prefer period-indexed matches)
-        let matchedPayment: any = null;
-        let matchedIndex: number | null = null;
-        for (const p of payments) {
-          if (p.dueDates && Array.isArray(p.dueDates) && p.dueDates.length > 0) {
-            const idx = p.dueDates.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
-            if (idx >= 0) {
-              matchedPayment = p;
-              matchedIndex = idx;
-              break;
-            }
-          }
-          if (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()) {
-            matchedPayment = p;
-            matchedIndex = null;
-            break;
-          }
-        }
-
-        const paidForThisDue = matchedPayment ? (
-          matchedPayment.period && matchedIndex !== null
-            ? (matchedPayment.period - 1 === matchedIndex && matchedPayment.status === 'paid')
-            : (matchedPayment.status === 'paid' && ((matchedPayment.paidAt && this.sameDay(new Date(matchedPayment.paidAt), dueDate)) || (matchedPayment.month === dueDate.getMonth() + 1 && matchedPayment.year === dueDate.getFullYear())))
-        ) : false;
-
-        const unpaidPayment = matchedPayment && matchedPayment.status === 'unpaid' ? matchedPayment : undefined;
-
-        if (!paidForThisDue) {
-          const daysOverdue = Math.floor(
-            (currentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
-          );
-          overduePayments.push({
-            participantId: String(student._id),
-            fullName: student.fullName,
-            attendanceNumber: student.attendanceNumber,
-            instrumentType: student.instrumentType,
-            email: emailByUserId.get(String((student as { userId?: Types.ObjectId }).userId)),
-            year: dueDate.getFullYear(),
-            month: dueDate.getMonth() + 1,
-            dueDate,
-            daysOverdue,
-            amount: unpaidPayment?.amount,
-            status: unpaidPayment?.status ?? 'unpaid',
-          });
-        }
-      }
+      const state = await this.computeBillingState(student);
+      if (state.suggestedOwed <= 0) continue;
+      const windowStart = this.startOfDay(
+        this.periodWindowStart(state, state.nextDuePeriod),
+      );
+      const daysOverdue = Math.max(
+        0,
+        Math.floor((now.getTime() - windowStart.getTime()) / 86_400_000),
+      );
+      overduePayments.push({
+        participantId: String(student._id),
+        fullName: student.fullName,
+        attendanceNumber: student.attendanceNumber,
+        instrumentType: student.instrumentType,
+        email: emailByUserId.get(
+          String((student as { userId?: Types.ObjectId }).userId),
+        ),
+        year: windowStart.getFullYear(),
+        month: windowStart.getMonth() + 1,
+        dueDate: windowStart,
+        daysOverdue,
+        amount: state.monthlyFee,
+        periodsOwed: state.suggestedOwed,
+        nextDuePeriod: state.nextDuePeriod,
+        windowExceeded: state.windowExceeded,
+        autoReminders: !!(student as { autoReminders?: boolean }).autoReminders,
+        status: 'unpaid',
+      });
     }
 
-    overduePayments.sort((a, b) => b.daysOverdue - a.daysOverdue);
+    overduePayments.sort((a, b) => b.periodsOwed - a.periodsOwed);
     return overduePayments;
   }
 
-  async getUpcomingPayments(studentId: string, daysAhead: number = 14) {
-    // studentId is the User's _id, so lookup participant by userId field
-    const participant = await this.studentParticipantModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
+  /**
+   * The periods a student currently owes (consumption-based). There are no future-dated
+   * dues; "upcoming" = the consumed-but-unsettled periods. `studentId` may be a User id
+   * (student self-view) or a participant id (admin). `daysAhead` is accepted for API
+   * compatibility but does not gate results (billing isn't date-driven).
+   */
+  async getUpcomingPayments(studentId: string, _daysAhead: number = 14) {
+    let participant = await this.studentParticipantModel
+      .findOne({ userId: new Types.ObjectId(studentId), deletedAt: null })
+      .lean()
+      .exec();
+    if (!participant && Types.ObjectId.isValid(studentId)) {
+      participant = await this.studentParticipantModel
+        .findById(studentId)
+        .lean()
+        .exec();
+    }
     if (!participant) {
       throw new NotFoundException('Student participant not found');
     }
+    return this.owedPeriodItems(participant);
+  }
 
-    const currentDate = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(currentDate.getDate() + daysAhead);
-
-    const regDate = new Date(participant.registrationStartDate || new Date());
-    const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
-    const dueDates = this.getDueDatesFromRegistration(regStartOfDay, 24);
-
-    const payments = await this.studentPaymentModel
-      .find({ participantId: participant._id })
-      .select('duedate status amount period month year paidAt')
-      .lean()
-      .exec();
-
-    const upcomingPayments: Array<{
+  /** Build the list of owed-period items for a participant (shared by student + admin views). */
+  private async owedPeriodItems(participant: {
+    _id: Types.ObjectId | string;
+    registrationStartDate?: Date;
+    programDurationMonths?: number;
+    learningDaysPerWeek?: number;
+    periodAdjustment?: number;
+    monthlyFee?: number;
+  }) {
+    const state = await this.computeBillingState(participant);
+    const now = this.startOfDay(new Date()).getTime();
+    const items: Array<{
       year: number;
       month: number;
       dueDate: Date;
-      duedate?: Date[];
-      period?: number;
-      dueDateInferred?: boolean;
+      period: number;
       daysUntilDue: number;
       amount?: number;
-      status?: 'paid' | 'unpaid';
+      status: 'unpaid';
     }> = [];
-
-    for (const dueDate of dueDates) {
-      if (dueDate < currentDate) continue;
-      if (dueDate > futureDate) break;
-
-      // Try to find a payment that specifically maps this dueDate (prefer period-indexed match)
-      let matchedPayment: any = null;
-      let matchedIndex: number | null = null;
-
-      for (const p of payments) {
-        if (p.dueDates && Array.isArray(p.dueDates) && p.dueDates.length > 0) {
-          const idx = p.dueDates.findIndex((d: Date) => this.sameDay(new Date(d), dueDate));
-          if (idx >= 0) {
-            matchedPayment = p;
-            matchedIndex = idx;
-            break;
-          }
-        }
-        // fallback: month/year match
-        if (p.month === dueDate.getMonth() + 1 && p.year === dueDate.getFullYear()) {
-          matchedPayment = p;
-          matchedIndex = null;
-          break;
-        }
-      }
-
-      const paidForThisDue = matchedPayment ? (
-        (matchedPayment.period && matchedIndex !== null)
-          ? (matchedPayment.period - 1 === matchedIndex && matchedPayment.status === 'paid')
-          : (matchedPayment.status === 'paid' && ((matchedPayment.paidAt && this.sameDay(new Date(matchedPayment.paidAt), dueDate)) || (matchedPayment.month === dueDate.getMonth() + 1 && matchedPayment.year === dueDate.getFullYear())))
-      ) : false;
-
-      const unpaidPayment = matchedPayment && matchedPayment.status === 'unpaid' ? matchedPayment : undefined;
-
-      if (!paidForThisDue) {
-        const daysUntilDue = Math.floor(
-          (dueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        upcomingPayments.push({
-          year: dueDate.getFullYear(),
-          month: dueDate.getMonth() + 1,
-          dueDate,
-          duedate: matchedPayment?.duedate ?? undefined,
-          period: matchedPayment?.period ?? undefined,
-          dueDateInferred: !matchedPayment,
-          daysUntilDue,
-          amount: unpaidPayment?.amount,
-          status: unpaidPayment?.status ?? 'unpaid',
-        });
-      }
+    for (let period = state.nextDuePeriod; period <= state.periodsConsumedEff; period += 1) {
+      if (state.settledPeriods.includes(period)) continue;
+      const windowStart = this.startOfDay(this.periodWindowStart(state, period));
+      items.push({
+        year: windowStart.getFullYear(),
+        month: windowStart.getMonth() + 1,
+        dueDate: windowStart,
+        period,
+        daysUntilDue: Math.floor((windowStart.getTime() - now) / 86_400_000),
+        amount: state.monthlyFee,
+        status: 'unpaid',
+      });
     }
-
-    upcomingPayments.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
-    return upcomingPayments;
+    return items;
   }
 
-  /** For payment reminders and admin dashboards: upcoming payments for all students (optionally branch-scoped). */
+  /** For admin dashboards / reminders: owed periods for all students (optionally branch-scoped). */
   async getUpcomingPaymentsForAllStudents(
-    daysAhead: number = 7,
+    _daysAhead: number = 7,
     branchFilter?: { branchId: string },
   ) {
     const participantFilter: Record<string, unknown> = { isActive: true };
@@ -1919,10 +2575,18 @@ export class AttendanceService {
     }
     const students = await this.studentParticipantModel
       .find(participantFilter)
-      .select('_id userId fullName')
+      .select(
+        '_id userId fullName registrationStartDate programDurationMonths learningDaysPerWeek periodAdjustment monthlyFee',
+      )
       .lean()
       .exec();
-    const userIds = [...new Set(students.map((s) => String((s as { userId?: Types.ObjectId }).userId)).filter(Boolean))];
+    const userIds = [
+      ...new Set(
+        students
+          .map((s) => String((s as { userId?: Types.ObjectId }).userId))
+          .filter(Boolean),
+      ),
+    ];
     const emailByUserId = await this.userService.getEmailsByIds(userIds);
     const result: Array<{
       participantId: string;
@@ -1935,24 +2599,22 @@ export class AttendanceService {
       month: number;
     }> = [];
     for (const student of students) {
-      const email = emailByUserId.get(String((student as { userId?: Types.ObjectId }).userId));
+      const email = emailByUserId.get(
+        String((student as { userId?: Types.ObjectId }).userId),
+      );
       if (!email) continue;
-      try {
-        const upcoming = await this.getUpcomingPayments(String(student._id), daysAhead);
-        for (const u of upcoming) {
-          result.push({
-            participantId: String(student._id),
-            fullName: student.fullName,
-            email,
-            dueDate: u.dueDate,
-            daysUntilDue: u.daysUntilDue,
-            amount: u.amount,
-            year: u.year,
-            month: u.month,
-          });
-        }
-      } catch {
-        // skip if student lookup fails
+      const items = await this.owedPeriodItems(student);
+      for (const u of items) {
+        result.push({
+          participantId: String(student._id),
+          fullName: student.fullName,
+          email,
+          dueDate: u.dueDate,
+          daysUntilDue: u.daysUntilDue,
+          amount: u.amount,
+          year: u.year,
+          month: u.month,
+        });
       }
     }
     return result;
@@ -2033,114 +2695,26 @@ export class AttendanceService {
 
     const totalPaid = payments
       .filter((p) => p.status === 'paid')
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => sum + (p.paidToDate ?? p.amount ?? 0), 0);
 
-    // If some payments do not have dueDate, attempt to infer from registrationStartDate + 30-day schedule
-    const regDate = student.registrationStartDate ? new Date(student.registrationStartDate) : new Date();
-    const regStartOfDay = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
-    const candidateDueDates = this.getDueDatesFromRegistration(regStartOfDay, 36); // look ahead up to 36 months
-
-    // Prepare paid-at ordered list for paidAt-based inference
-    const paidPaymentsSorted = payments
-      .filter((p) => p.paidAt)
-      .sort((a, b) => {
-        const at = a.paidAt ? new Date(a.paidAt as Date).getTime() : 0;
-        const bt = b.paidAt ? new Date(b.paidAt as Date).getTime() : 0;
-        return at - bt;
-      });
-
-    const paymentsWithDue = payments.map((payment) => {
-      let inferredDue: Date | null = null;
-      let dueDateInferred = false;
-
-      // 0) If a dueDates array is present on the record, prefer the entry for its period (or fallback to first)
-      if (payment.dueDates && Array.isArray(payment.dueDates) && payment.dueDates.length > 0) {
-        if (payment.period && payment.period >= 1 && payment.period <= payment.dueDates.length) {
-          inferredDue = payment.dueDates[payment.period - 1];
-        } else {
-          inferredDue = payment.dueDates[0];
-        }
-        // persisted `dueDates` array is canonical — not an inferred value
-        dueDateInferred = false;
-      }
-
-      // 1) If dueDate is already recorded on the payment, prefer that — except when it equals paidAt (likely set to approval date)
-      if (!inferredDue && payment.dueDate) {
-        if (payment.paidAt && this.sameDay(payment.dueDate, new Date(payment.paidAt))) {
-          // treat as missing and fall through to inference logic below
-          // (this helps when dueDate was set to approval/paidAt and we want the scheduled due)
-        } else {
-          inferredDue = payment.dueDate;
-          dueDateInferred = false;
-        }
-      }
-
-      // 2) If we still don't have a due date, try month/year -> registration-derived schedule
-      if (!inferredDue && payment.month && payment.year) {
-        const match = candidateDueDates.find((d) => d.getFullYear() === payment.year && d.getMonth() + 1 === payment.month);
-        if (match) {
-          inferredDue = match;
-          dueDateInferred = true;
-
-          // 3) If still missing, but we have paidAt timestamps, infer from the earliest paidAt + 30-day multiples
-        } else if (payment.paidAt) {
-          const idx = paidPaymentsSorted.findIndex((pp) => String(pp._id) === String(payment._id));
-          if (idx >= 0 && paidPaymentsSorted.length > 0) {
-            if (paidPaymentsSorted.length > 0 && paidPaymentsSorted[0].paidAt) {
-              const basePaidAt = new Date(paidPaymentsSorted[0].paidAt as Date);
-              const inferred = new Date(basePaidAt);
-              // Add 30 days per payment index (first paid = index 0 => base date, second = +30 days, etc.)
-              inferred.setDate(inferred.getDate() + idx * 30);
-              inferredDue = inferred;
-              dueDateInferred = true;
-            } else {
-              inferredDue = null;
-              dueDateInferred = false;
-            }
-          } else {
-            inferredDue = null;
-            dueDateInferred = false;
-          }
-        } else {
-          inferredDue = null;
-          dueDateInferred = false;
-        }
-      }
-
-      // 4) No month/year and no match above - try paidAt series directly
-      if (!inferredDue && payment.paidAt) {
-        const idx = paidPaymentsSorted.findIndex((pp) => String(pp._id) === String(payment._id));
-        if (idx >= 0 && paidPaymentsSorted.length > 0 && paidPaymentsSorted[0].paidAt) {
-          const basePaidAt = new Date(paidPaymentsSorted[0].paidAt as Date);
-          const inferred = new Date(basePaidAt);
-          inferred.setDate(inferred.getDate() + idx * 30);
-          inferredDue = inferred;
-          dueDateInferred = true;
-        } else {
-          inferredDue = null;
-          dueDateInferred = false;
-        }
-      }
-
-      // 5) Nothing matched
-      if (!inferredDue) {
-        inferredDue = null;
-        dueDateInferred = false;
-      }
-      return {
+    // Each row already carries its period + window-start dueDate (consumption-based);
+    // no inference needed. Include the live billing summary for context.
+    const state = await this.computeBillingState(student);
+    const paymentsWithDue = payments
+      .slice()
+      .sort((a, b) => (a.period ?? 0) - (b.period ?? 0))
+      .map((payment) => ({
+        period: payment.period ?? undefined,
         month: payment.month,
         year: payment.year,
         amount: payment.amount,
+        paidToDate: payment.paidToDate ?? undefined,
         status: payment.status,
-        dueDate: inferredDue ?? null,
-        dueDateInferred,
-        dueDates: payment.dueDates ?? undefined,
-        period: payment.period ?? undefined,
+        dueDate: payment.dueDate ?? null,
         paidAt: payment.paidAt,
         note: payment.note,
         recordedBy: payment.recordedBy,
-      };
-    });
+      }));
 
     return {
       student: {
@@ -2149,12 +2723,24 @@ export class AttendanceService {
         instrumentType: student.instrumentType,
         registrationStartDate: student.registrationStartDate,
         branch: student.branchId,
+        monthlyFee: student.monthlyFee,
       },
       payments: paymentsWithDue,
       totalPaid,
       totalPayments: payments.length,
       paidCount: payments.filter((p) => p.status === 'paid').length,
       unpaidCount: payments.filter((p) => p.status === 'unpaid').length,
+      waivedCount: payments.filter((p) => p.status === 'waived').length,
+      billing: {
+        periodsConsumed: state.periodsConsumed,
+        periodsSettled: state.periodsSettled,
+        suggestedOwed: state.suggestedOwed,
+        overdue: state.overdue,
+        nextDuePeriod: state.nextDuePeriod,
+        maxBillable: state.maxBillable,
+        windowExceeded: state.windowExceeded,
+        monthlyFee: state.monthlyFee,
+      },
       generatedAt: new Date(),
     };
   }

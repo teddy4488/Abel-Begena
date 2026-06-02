@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsEmail,
   IsIn,
@@ -13,7 +14,7 @@ export class CreateUserDto {
   email: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password: string;
 
   @IsOptional()
@@ -48,10 +49,16 @@ export class CreateUserDto {
   @IsIn(['pending', 'approved', 'suspended'])
   teacherStatus?: 'pending' | 'approved' | 'suspended';
 
-  /** Branch for Admin (Phase 5.3). SuperAdmin only. */
+  /** Branch for Admin. SuperAdmin only. */
   @IsOptional()
   @IsString()
   branchId?: string;
+
+  /** Branches for Teacher. SuperAdmin only. At least one required when creating a teacher. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  branchIds?: string[];
 
   @IsOptional()
   @IsBoolean()

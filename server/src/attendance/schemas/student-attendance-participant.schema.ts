@@ -81,6 +81,14 @@ export class StudentAttendanceParticipant {
   })
   preferredLearningDays: DayOfWeek[];
 
+  // Preferred session start time per chosen day ("HH:mm", 90-min sessions).
+  // Authoritative weekly schedule for the canonical student record.
+  @Prop({
+    type: [{ day: String, startTime: String }],
+    default: [],
+  })
+  timeSlots?: { day: string; startTime: string }[];
+
   // Registration start date
   @Prop({ type: Date, required: true })
   registrationStartDate: Date;
@@ -89,8 +97,44 @@ export class StudentAttendanceParticipant {
   @Prop({ type: Number, required: true })
   learningDaysPerWeek: number;
 
+  /**
+   * Agreed monthly tuition fee (ETB), captured at conversion/registration from the
+   * payment amount. Used as the expected fee for receipt validation and billing.
+   */
+  @Prop({ type: Number, min: 0 })
+  monthlyFee?: number;
+
+  /**
+   * Admin override (signed) applied to the attendance-derived consumed-period count.
+   * Lets the desk correct billing when attendance records are imperfect. Default 0.
+   */
+  @Prop({ type: Number, default: 0 })
+  periodAdjustment?: number;
+
+  /**
+   * When true, this student is included in automated payment reminder emails.
+   * Default false — billing is admin-decided; dunning is opt-in per student.
+   */
+  @Prop({ type: Boolean, default: false })
+  autoReminders?: boolean;
+
   @Prop({ default: true })
   isActive: boolean;
+
+  /**
+   * Lifecycle status. `active` while studying; set when an admin reverts the
+   * student to a regular user (the participant is then soft-deleted, preserving history).
+   */
+  @Prop({
+    type: String,
+    enum: ['active', 'completed', 'withdrawn', 'dropped'],
+    default: 'active',
+  })
+  completionStatus?: 'active' | 'completed' | 'withdrawn' | 'dropped';
+
+  /** When the student was reverted to a user (package completed / withdrew / dropped). */
+  @Prop({ type: Date })
+  completedAt?: Date;
 
   /** Accumulated count of lessons marked absent (for reporting). */
   @Prop({ type: Number, min: 0, default: 0 })

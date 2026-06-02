@@ -8,7 +8,7 @@ import {
 } from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
 
@@ -22,22 +22,46 @@ const instrumentFilters = [
   "Other",
 ];
 
+const PAGE_SIZE = 9;
+
 export default function StorePage() {
   const router = useRouter();
-  const { data, isLoading, error } = useGetProductsQuery();
   const { isLoggedIn } = useAppSelector((state) => state.auth);
   const [addToCart] = useAddToCartMutation();
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "priceAsc" | "priceDesc">(
     "newest",
   );
+  const [page, setPage] = useState(1);
   const [pendingProductId, setPendingProductId] = useState<string | null>(null);
   const { scrollYProgress } = useScroll();
   const heroTranslate = useTransform(scrollYProgress, [0, 0.2], [0, -60]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0.4]);
+
+  // Debounce the search box so we don't fire a request per keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
+
+  // Reset to first page whenever the filters change.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, category]);
+
+  const { data, isLoading, isFetching, error } = useGetProductsQuery({
+    search: debouncedSearch || undefined,
+    type: category === "All" ? undefined : category,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const resolvePrice = (product: {
     promoActive?: boolean;
@@ -48,35 +72,22 @@ export default function StorePage() {
       ? product.discountPrice
       : product.price;
 
+  // Sort is applied to the current page of server-filtered results.
   const filteredProducts = useMemo(() => {
-    if (!data) {
-      return [];
-    }
-    return data
-      .filter((product) => {
-        const matchesSearch =
-          !searchTerm ||
-          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.instrumentType
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
-        const matchesCategory =
-          category === "All" || product.instrumentType === category;
-        return matchesSearch && matchesCategory;
-      })
-      .sort((a, b) => {
-        if (sortOrder === "priceAsc") {
-          return resolvePrice(a) - resolvePrice(b);
-        }
-        if (sortOrder === "priceDesc") {
-          return resolvePrice(b) - resolvePrice(a);
-        }
-        return (
-          new Date(b.createdAt ?? "").getTime() -
-          new Date(a.createdAt ?? "").getTime()
-        );
-      });
-  }, [category, data, searchTerm, sortOrder]);
+    const items = data?.items ?? [];
+    return [...items].sort((a, b) => {
+      if (sortOrder === "priceAsc") {
+        return resolvePrice(a) - resolvePrice(b);
+      }
+      if (sortOrder === "priceDesc") {
+        return resolvePrice(b) - resolvePrice(a);
+      }
+      return (
+        new Date(b.createdAt ?? "").getTime() -
+        new Date(a.createdAt ?? "").getTime()
+      );
+    });
+  }, [data, sortOrder]);
 
   const handleAddToCart = async (productId: string) => {
     if (!isLoggedIn) {
@@ -230,14 +241,14 @@ export default function StorePage() {
                     <span className="mr-2 text-sm text-foreground/50 line-through">
                       {product.price.toLocaleString("en-US", {
                         style: "currency",
-                        currency: "USD",
+                        currency: "ETB",
                       })}
                     </span>
                   )}
                   <span className="text-secondary">
                     {displayPrice.toLocaleString("en-US", {
                       style: "currency",
-                      currency: "USD",
+                      currency: "ETB",
                     })}
                   </span>
                 </div>
@@ -259,6 +270,30 @@ export default function StorePage() {
           <p className="text-center text-sm text-foreground/70">
             {t("store.page.empty")}
           </p>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 pt-4">
+            <button
+              type="button"
+              disabled={page <= 1 || isFetching}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-full surface-elevated px-5 py-2 text-xs font-semibold uppercase tracking-wide shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40 hover:shadow-md"
+            >
+              {t("store.page.prev", "Previous")}
+            </button>
+            <span className="text-xs text-foreground/60">
+              {t("store.page.pageOf", "Page")} {page} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={page >= totalPages || isFetching}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-full surface-elevated px-5 py-2 text-xs font-semibold uppercase tracking-wide shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40 hover:shadow-md"
+            >
+              {t("store.page.next", "Next")}
+            </button>
+          </div>
         )}
       </div>
     </section>

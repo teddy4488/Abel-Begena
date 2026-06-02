@@ -3,6 +3,8 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { AttendanceService } from './attendance.service';
 import { MailService } from '../mail/mail.service';
+import { UserService } from '../user/user.service';
+import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
 export class PaymentReminderService {
@@ -12,98 +14,92 @@ export class PaymentReminderService {
     private readonly attendanceService: AttendanceService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
+    private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
   ) {}
 
-  /** Runs daily at 09:00; override with PAYMENT_REMINDER_CRON (e.g. "0 9 * * *"). */
+  /** Runs daily at 09:00. Billing is consumption-based and admin-decided, so we do NOT
+   * auto-dun every student: students are emailed only if they have opted in
+   * (`autoReminders`), and admins always receive a digest of who currently owes. */
   @Cron('0 9 * * *')
   async handleDailyReminders() {
-    await this.sendOverdueReminders();
-    const daysAhead = this.configService.get<number>('PAYMENT_DUE_SOON_DAYS') ?? 3;
-    await this.sendDueSoonReminders(daysAhead);
+    await this.runDailyBilling();
   }
 
-  /**
-   * Runs daily in the evening to auto-mark students as absent when they were
-   * expected to attend but have no attendance record for the day.
-   * The cron expression can be overridden via AUTO_ABSENCE_CRON if needed.
-   */
-  @Cron(process.env.AUTO_ABSENCE_CRON || '0 19 * * *')
-  async handleDailyAutoAbsences() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const expected = await this.attendanceService.getExpectedStudentsForDate(today);
-    if (!expected.length) {
+  async runDailyBilling() {
+    let overdue: Awaited<
+      ReturnType<AttendanceService['getOverduePayments']>
+    > = [];
+    try {
+      overdue = await this.attendanceService.getOverduePayments();
+    } catch (err) {
+      this.logger.error(`Failed to compute owed students: ${err}`);
       return;
     }
 
-    const participantIds = expected.map((e) => e.participantId);
-    // For each expected participant/class pair, ensure we have at least one attendance record today.
-    for (const session of expected) {
+    // 1) Student reminders — ONLY for students who have opted in (admin-decided).
+    let sent = 0;
+    for (const item of overdue) {
+      if (!item.autoReminders) continue;
+      const email = item.email?.trim();
+      if (!email) continue;
       try {
-        await this.attendanceService.ensureAbsenceRecordForParticipantOnDate(
-          session.participantId,
-          today,
+        await this.mailService.sendPaymentOverdueEmail(
+          email,
+          item.fullName,
+          item.attendanceNumber,
+          item.dueDate,
+          item.daysOverdue,
+          item.amount,
         );
+        sent += 1;
       } catch (err) {
-        this.logger.warn(
-          `Failed to auto-mark absence for participant ${session.participantId}: ${err}`,
-        );
+        this.logger.warn(`Failed to send overdue reminder to ${email}: ${err}`);
       }
+    }
+    if (sent > 0) {
+      this.logger.log(`Sent ${sent} opted-in payment reminder(s).`);
+    }
+
+    // 2) Admin digest — always notify admins of the current outstanding balances so
+    //    the desk can decide whom to bill (no automatic dunning).
+    if (overdue.length > 0) {
+      await this.sendAdminDigest(overdue);
     }
   }
 
-  async sendOverdueReminders() {
+  private async sendAdminDigest(
+    overdue: Awaited<ReturnType<AttendanceService['getOverduePayments']>>,
+  ) {
     try {
-      const overdue = await this.attendanceService.getOverduePayments();
-      let sent = 0;
-      for (const item of overdue) {
-        const email = item.email?.trim();
-        if (!email) continue;
-        try {
-          await this.mailService.sendPaymentOverdueEmail(
-            email,
-            item.fullName,
-            item.attendanceNumber,
-            item.dueDate,
-            item.daysOverdue,
-            item.amount,
-          );
-          sent += 1;
-        } catch (err) {
-          this.logger.warn(`Failed to send overdue reminder to ${email}: ${err}`);
-        }
-      }
-      if (sent > 0) {
-        this.logger.log(`Sent ${sent} overdue payment reminder(s).`);
-      }
+      const admins = await this.userService.findAdmins();
+      const totalPeriods = overdue.reduce((s, o) => s + (o.periodsOwed ?? 0), 0);
+      const exceeded = overdue.filter((o) => o.windowExceeded).length;
+      const message =
+        `${overdue.length} student(s) have an outstanding balance ` +
+        `(${totalPeriods} unpaid month(s)${exceeded ? `, ${exceeded} past the program window` : ''}).`;
+      await Promise.all(
+        admins.map((admin) => {
+          const adminId = (
+            admin as { _id?: { toString: () => string } }
+          )._id?.toString();
+          if (!adminId) return Promise.resolve();
+          return this.notificationService
+            .createForUser(adminId, {
+              type: 'billing_digest',
+              title: 'Daily billing summary',
+              message,
+              data: {
+                studentsOwing: overdue.length,
+                periodsOwed: totalPeriods,
+                windowExceeded: exceeded,
+              },
+            })
+            .catch(() => undefined);
+        }),
+      );
     } catch (err) {
-      this.logger.error(`Overdue reminders failed: ${err}`);
-    }
-  }
-
-  async sendDueSoonReminders(daysAhead: number = 3) {
-    try {
-      const upcoming = await this.attendanceService.getUpcomingPaymentsForAllStudents(daysAhead);
-      let sent = 0;
-      for (const item of upcoming) {
-        try {
-          await this.mailService.sendPaymentDueSoonEmail(
-            item.email,
-            item.fullName,
-            item.dueDate,
-            item.daysUntilDue,
-            item.amount,
-          );
-          sent += 1;
-        } catch (err) {
-          this.logger.warn(`Failed to send due-soon reminder to ${item.email}: ${err}`);
-        }
-      }
-      if (sent > 0) {
-        this.logger.log(`Sent ${sent} due-soon payment reminder(s).`);
-      }
-    } catch (err) {
-      this.logger.error(`Due-soon reminders failed: ${err}`);
+      this.logger.warn(`Failed to send admin billing digest: ${err}`);
     }
   }
 }

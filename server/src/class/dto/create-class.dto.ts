@@ -1,6 +1,7 @@
 import {
   IsDateString,
   IsEnum,
+  IsIn,
   IsMongoId,
   IsNotEmpty,
   IsNumber,
@@ -28,6 +29,11 @@ export class CreateClassDto {
   @IsOptional()
   @IsEnum(['beginner', 'advanced'])
   level?: 'beginner' | 'advanced';
+
+  /** Package duration in months (3/6/9). Drives sessions/week. */
+  @IsOptional()
+  @IsIn([3, 6, 9])
+  durationMonths?: 3 | 6 | 9;
 
   @IsOptional()
   @IsMongoId()
