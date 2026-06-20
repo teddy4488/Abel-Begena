@@ -260,10 +260,10 @@ export default function AdminFaqPage() {
                   </div>
                 </div>
                 ))}
-              {sortedFaqs.length > 0 &&
-                Math.ceil(sortedFaqs.length / itemsPerPage) > 1 && (
-                  <div className="pt-4 mt-4 border-t border-border/60">
-                    <div className="mb-3 flex items-center justify-end gap-2">
+              {sortedFaqs.length > 0 && (
+                <div className="border-t border-border/70 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
                       <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
                         {t("pagination.itemsPerPage", "Items per page")}:
                       </label>
@@ -275,6 +275,7 @@ export default function AdminFaqPage() {
                         }}
                         className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                       >
+                        <option value={5}>5</option>
                         <option value={10}>10</option>
                         <option value={25}>25</option>
                         <option value={50}>50</option>
@@ -289,7 +290,8 @@ export default function AdminFaqPage() {
                       onPageChange={setCurrentPage}
                     />
                   </div>
-                )}
+                </div>
+              )}
             </div>
           )}
         </motion.div>

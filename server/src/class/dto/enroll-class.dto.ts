@@ -14,7 +14,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { plainToInstance, Transform, Type } from 'class-transformer';
 
 export enum ClassPaymentMethod {
   CHAPA = 'Chapa',
@@ -162,13 +162,23 @@ export class EnrollClassDto {
   @Transform(({ value }) => {
     // Normalize multipart/form-data and JSON payloads:
     // - If value is already an array, keep it
+    // - If value is a JSON-encoded array string (sent via FormData), parse it
     // - If value is a comma-separated string, split into an array
     // - Otherwise, wrap single value in an array
     if (Array.isArray(value)) {
       return value;
     }
     if (typeof value === 'string') {
-      return value
+      const trimmed = value.trim();
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          /* fall through to comma-split */
+        }
+      }
+      return trimmed
         .split(',')
         .map((item) => item.trim())
         .filter((item) => item.length > 0);
@@ -194,15 +204,23 @@ export class EnrollClassDto {
   @IsOptional()
   @IsArray()
   @Transform(({ value }) => {
+    // Parse JSON-encoded array from multipart/form-data, then class-transform each
+    // element into a TimeSlotDto so ValidationPipe's `whitelist` recognizes day/startTime.
+    // (Plain @Type after @Transform does NOT get applied, hence the explicit plainToInstance.)
+    let arr: unknown[] = [];
     if (typeof value === 'string') {
       try {
         const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
+        arr = Array.isArray(parsed) ? parsed : [];
       } catch {
-        return [];
+        arr = [];
       }
+    } else if (Array.isArray(value)) {
+      arr = value;
+    } else if (value != null) {
+      arr = [value];
     }
-    return Array.isArray(value) ? value : value == null ? [] : [value];
+    return arr.map((item) => plainToInstance(TimeSlotDto, item));
   })
   @ValidateNested({ each: true })
   @Type(() => TimeSlotDto)

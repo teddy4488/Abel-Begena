@@ -38,6 +38,7 @@ const navConfig: Record<
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.classes", href: "#classes" },
+      { labelKey: "nav.branches", href: "/branches" },
       { labelKey: "nav.about", href: "#about" },
       { labelKey: "nav.contact", href: "#contact" },
     ],
@@ -50,17 +51,20 @@ const navConfig: Record<
       { labelKey: "nav.posts", href: "/heritage" },
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
+      { labelKey: "nav.branches", href: "/branches" },
       { labelKey: "nav.orders", href: "/account/orders" },
     ],
   },
   Teacher: {
     links: [
       { labelKey: "nav.teacherStudio", href: "/teacher" },
+      { labelKey: "nav.attendance", href: "/teacher/attendance" },
       { labelKey: "nav.posts", href: "/heritage" },
       { labelKey: "nav.classes", href: "/teacher" },
       { labelKey: "nav.dashboard", href: "/dashboard" },
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
+      { labelKey: "nav.branches", href: "/branches" },
     ],
   },
   Admin: {
@@ -89,9 +93,11 @@ const navConfig: Record<
   Student: {
     links: [
       { labelKey: "nav.studentDashboard", href: "/student" },
+      { labelKey: "nav.lessons", href: "/student/lessons" },
       { labelKey: "nav.attendance", href: "/student/attendance" },
       { labelKey: "nav.payments", href: "/student/payments" },
       { labelKey: "nav.classes", href: "/classes" },
+      { labelKey: "nav.branches", href: "/branches" },
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.orders", href: "/student/orders" },
     ],
@@ -116,6 +122,7 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
   Student: [
     { labelKey: "nav.profile", href: "/profile" },
     { labelKey: "nav.studentDashboard", href: "/student" },
+    { labelKey: "nav.lessons", href: "/student/lessons" },
     { labelKey: "nav.attendance", href: "/student/attendance" },
     { labelKey: "nav.payments", href: "/student/payments" },
     { labelKey: "nav.orders", href: "/student/orders" },
@@ -124,6 +131,7 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
   Teacher: [
     { labelKey: "nav.profile", href: "/profile" },
     { labelKey: "nav.teacherStudio", href: "/teacher" },
+    { labelKey: "nav.attendance", href: "/teacher/attendance" },
     { labelKey: "nav.classes", href: "/teacher" },
     { labelKey: "nav.store", href: "/store" },
   ],
@@ -182,9 +190,11 @@ export default function Navbar() {
     isEnglishLocale ? "tracking-[0.3em]" : "tracking-[0.2em]",
   );
 
+  // navButtonClass — base pill for nav action buttons. NO border line —
+  // depth comes from filled bg / shadow / inset (provided by btn-*-strong utilities).
   const navButtonClass = clsx(
     inkUnderlineBase,
-    "inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition hover:-translate-y-0.5",
+    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm",
   );
 
   const dropdownLinkClass = clsx(
@@ -416,7 +426,7 @@ export default function Navbar() {
                 href="/login"
                 className={clsx(
                   navButtonClass,
-                  "bg-(--color-secondary-soft) text-secondary hover:opacity-80 dark:bg-(--color-secondary-soft) dark:hover:opacity-80",
+                  "btn-ghost-strong",
                 )}
                 data-active={isActiveLink("/login") ? "true" : undefined}
               >
@@ -426,7 +436,7 @@ export default function Navbar() {
                 href="/register"
                 className={clsx(
                   navButtonClass,
-                  "bg-primary text-primary-foreground shadow-sm hover:brightness-95",
+                  "btn-primary-strong",
                 )}
                 data-active={isActiveLink("/register") ? "true" : undefined}
               >
@@ -443,7 +453,7 @@ export default function Navbar() {
                 type="button"
                 className={clsx(
                   navButtonClass,
-                  "gap-3 bg-(--color-secondary-soft) text-secondary hover:opacity-80 dark:bg-(--color-secondary-soft) dark:hover:opacity-80",
+                  "btn-ghost-strong gap-3",
                 )}
                 onClick={() => setUserMenuOpen((prev) => !prev)}
               >

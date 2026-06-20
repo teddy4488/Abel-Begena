@@ -7,6 +7,7 @@ import {
   useRecordStudentPaymentMutation,
   useGetOverduePaymentsQuery,
   useGetStudentUpcomingPaymentsQuery,
+  useGetUpcomingPaymentsSummaryQuery,
   attendanceApi,
   type OverduePaymentAdmin,
 } from "@/store/api/attendanceApi";
@@ -403,30 +404,42 @@ export default function AdminMonthlyPaymentsPage() {
           </div>
         </motion.div>
 
-        {/* Overdue Payments Alert - Prominent Display */}
+        {/* Overdue Payments Alert — compact summary at the top.
+            Detail view (with filters/search/pagination) is the "All Overdue Payments"
+            section below; this top alert stays scannable even with many overdue students. */}
         {overduePayments.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl bg-red-500/10 border-2 border-red-500/30 p-6 shadow-lg"
+            className="rounded-2xl bg-red-500/10 border-2 border-red-500/30 p-4 shadow-lg sm:p-5"
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
+                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
                 <div>
-                  <h2 className="text-xl font-serif text-red-600">
-                    {t("monthlyPayments.overdueTitle", "Overdue Payments Alert")}
+                  <h2 className="text-base font-serif text-red-600 sm:text-lg">
+                    {t("monthlyPayments.overdueTitle", "Overdue Payments")}
                   </h2>
-                  <p className="mt-1 text-sm text-foreground/80">
-                    {`${overduePayments.length} ${t("monthlyPayments.overdueUrgent", "payment(s) are overdue and require immediate attention")}`}
+                  <p className="text-xs text-foreground/70">
+                    {`${overduePayments.length} ${t("monthlyPayments.overdueShort", "student(s) with outstanding balance")}`}
+                    {overduePayments.length > 5 && (
+                      <>
+                        {" — "}
+                        <a href="#all-overdue" className="text-red-600 underline hover:text-red-700">
+                          {t("monthlyPayments.viewFullList", "view full list below")}
+                        </a>
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white">
+              <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
                 {overduePayments.length}
               </span>
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            {/* Compact list — single line per student with the amount-due and Record action.
+                Capped at 5 here; the full list with filters/search lives below. */}
+            <ul className="divide-y divide-red-500/15 rounded-xl border border-red-500/15 bg-background/40">
               {overduePayments.slice(0, 5).map((payment) => {
                 const daysColor =
                   payment.daysOverdue > 30
@@ -434,53 +447,110 @@ export default function AdminMonthlyPaymentsPage() {
                     : payment.daysOverdue > 14
                       ? "bg-orange-600 text-white"
                       : "bg-yellow-600 text-white";
+                const monthly = payment.amount ?? 0;
+                const paidToDate = payment.paidToDate ?? 0;
+                const remaining = payment.remainingAmount ?? Math.max(0, monthly - paidToDate);
+                const hasPartial = paidToDate > 0 && monthly > 0;
                 return (
-                  <div
+                  <li
                     key={`${payment.participantId}-${payment.year}-${payment.month}`}
-                    className="flex items-center justify-between rounded-xl bg-background/60 p-3 border border-red-500/20"
+                    className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
                   >
-                    <div className="flex-1">
-                      <p className="font-semibold text-primary">{payment.fullName}</p>
-                      <p className="text-xs text-foreground/60">
-                        {payment.attendanceNumber} • {payment.instrumentType} •{" "}
-                        {(() => { const d = getEffectiveDueDate(payment); return d ? d.toLocaleDateString() : "-" })() } •{" "}
-                        {payment.year}-{String(payment.month).padStart(2, "0")}
-                      </p>
-                      {payment.amount && (
-                        <p className="mt-1 text-sm font-semibold text-primary">
-                          {formatAmount(payment.amount)}
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${daysColor}`}>
+                        {payment.daysOverdue}d
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-primary">
+                          {payment.fullName}{" "}
+                          <span className="text-xs font-normal text-foreground/50">
+                            · {payment.attendanceNumber}
+                          </span>
                         </p>
-                      )}
+                        {hasPartial && (
+                          <p className="text-[11px] text-amber-700">
+                            {t("monthlyPayments.partialPaid", "Partial received")}: {formatAmount(paidToDate)} / {formatAmount(monthly)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${daysColor}`}>
-                        {payment.daysOverdue} {t("monthlyPayments.daysOverdue", "days")}
-                      </span>
+                      {monthly > 0 && (
+                        <p className="text-sm font-semibold text-primary tabular-nums">
+                          {hasPartial && remaining !== monthly ? (
+                            <>
+                              <span className="text-foreground/50 text-xs line-through mr-1">{formatAmount(monthly)}</span>
+                              {formatAmount(remaining)}
+                            </>
+                          ) : (
+                            formatAmount(monthly)
+                          )}
+                        </p>
+                      )}
                       <button
                         type="button"
                         onClick={() => {
                           setPaymentStudentId(payment.participantId);
                           setPaymentStatus(payment.status || "unpaid");
-                          setPaymentAmount(payment.amount?.toString() || "0");
+                          // Pre-fill the modal with the REMAINING balance for the next
+                          // due period (not the full monthly fee), so a follow-up payment
+                          // after a partial defaults to the correct number.
+                          const prefill = remaining > 0 ? remaining : monthly;
+                          setPaymentAmount(prefill ? String(prefill) : "0");
                           setPaymentNote("");
                           setShowPaymentModal(true);
                         }}
-                        className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90"
+                        className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-md hover:opacity-90"
                       >
                         {t("monthlyPayments.record", "Record Payment")}
                       </button>
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
             {overduePayments.length > 5 && (
-              <p className="mt-3 text-xs text-foreground/60 text-center">
-                {`+ ${overduePayments.length - 5} ${t("monthlyPayments.moreOverdue", "more overdue payments")}`}
+              <p className="mt-2 text-center text-[11px] text-foreground/60">
+                {`+ ${overduePayments.length - 5} ${t("monthlyPayments.moreOverdue", "more — filterable below")}`}
               </p>
             )}
           </motion.div>
         )}
+
+        {/* Upcoming payments digest — students whose next period is due within 14 days */}
+        {(() => {
+          const { data: upcoming = [] } = useGetUpcomingPaymentsSummaryQuery({ daysAhead: 14 });
+          if (upcoming.length === 0) return null;
+          return (
+            <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-sky-600" />
+                  <h3 className="text-base font-serif text-sky-700">
+                    {t("monthlyPayments.upcomingDigest.title", "Due within 14 days")}
+                  </h3>
+                </div>
+                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-600">{upcoming.length}</span>
+              </div>
+              <div className="space-y-1.5">
+                {upcoming.slice(0, 5).map((u, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-xl bg-background/40 px-3 py-2 text-xs">
+                    <span className="font-medium text-foreground/90">{u.fullName}</span>
+                    <span className="text-foreground/60">
+                      {u.daysUntilDue <= 0 ? t("monthlyPayments.upcomingDigest.dueToday", "Due today") : `${u.daysUntilDue}d`}
+                      {u.amount ? ` · ${new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", minimumFractionDigits: 0 }).format(u.amount)}` : ""}
+                    </span>
+                  </div>
+                ))}
+                {upcoming.length > 5 && (
+                  <p className="pt-1 text-center text-[11px] text-foreground/50">
+                    +{upcoming.length - 5} {t("monthlyPayments.upcomingDigest.more", "more")}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Billing Overview */}
         <motion.div
@@ -506,26 +576,15 @@ export default function AdminMonthlyPaymentsPage() {
           </div>
 
           <div className="space-y-2">
-            {billingItems.length > 0 ? (
+            {!billingSummary ? (
+              /* Loading skeleton while billing data fetches */
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-16 rounded-xl surface-elevated animate-pulse" />
+                ))}
+              </div>
+            ) : billingItems.length > 0 ? (
               <>
-                <div className="mb-4 flex items-center justify-end gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
-                    {t("pagination.itemsPerPage", "Items per page")}:
-                  </label>
-                  <select
-                    value={billingItemsPerPage}
-                    onChange={(e) => {
-                      setBillingItemsPerPage(Number(e.target.value));
-                      setBillingPage(1);
-                    }}
-                    className="rounded-2xl surface-elevated px-4 py-2 text-sm outline-none transition focus:ring-2 focus:ring-secondary/30 shadow-sm"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
                 {billingItems
                   .slice(
                     (billingPage - 1) * billingItemsPerPage,
@@ -598,9 +657,28 @@ export default function AdminMonthlyPaymentsPage() {
                   </div>
                 );
                 })}
-                {billingItems.length > 0 &&
-                  Math.ceil(billingItems.length / billingItemsPerPage) > 1 && (
-                    <div className="mt-6">
+                {billingItems.length > 0 && (
+                  <div className="border-t border-border/70 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                          {t("pagination.itemsPerPage", "Items per page")}:
+                        </label>
+                        <select
+                          value={billingItemsPerPage}
+                          onChange={(e) => {
+                            setBillingItemsPerPage(Number(e.target.value));
+                            setBillingPage(1);
+                          }}
+                          className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                        >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                      </div>
                       <Pagination
                         currentPage={billingPage}
                         totalPages={Math.ceil(billingItems.length / billingItemsPerPage)}
@@ -609,7 +687,8 @@ export default function AdminMonthlyPaymentsPage() {
                         onPageChange={setBillingPage}
                       />
                     </div>
-                  )}
+                  </div>
+                )}
               </>
             ) : (
               <p className="py-8 text-center text-sm text-foreground/60">
@@ -621,6 +700,7 @@ export default function AdminMonthlyPaymentsPage() {
 
         {/* Enhanced Overdue Payments Section */}
         <motion.div
+          id="all-overdue"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -753,24 +833,6 @@ export default function AdminMonthlyPaymentsPage() {
               <div className="space-y-3">
                 {filteredOverdue.length > 0 ? (
                   <>
-                    <div className="mb-4 flex items-center justify-end gap-2">
-                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
-                        {t("pagination.itemsPerPage", "Items per page")}:
-                      </label>
-                      <select
-                        value={overdueItemsPerPage}
-                        onChange={(e) => {
-                          setOverdueItemsPerPage(Number(e.target.value));
-                          setOverduePage(1);
-                        }}
-                        className="rounded-2xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                      >
-                        <option value={10}>10</option>
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                      </select>
-                    </div>
                     {paginatedOverdue.map((payment) => {
                     const daysColor =
                       payment.daysOverdue > 30
@@ -796,6 +858,11 @@ export default function AdminMonthlyPaymentsPage() {
                                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-600">
                                   <Clock className="h-3 w-3" />
                                   {t("monthlyPayments.receiptPending", "Receipt Pending")}
+                                </span>
+                              )}
+                              {payment.autoReminders && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-1 text-[10px] font-semibold text-sky-600" title={t("monthlyPayments.autoRemindersOn", "Auto-reminders enabled")}>
+                                  {t("monthlyPayments.autoReminders", "Auto")}
                                 </span>
                               )}
                             </div>
@@ -895,15 +962,36 @@ export default function AdminMonthlyPaymentsPage() {
                       </div>
                     );
                     })}
-                    {filteredOverdue.length > 0 && overdueTotalPages > 1 && (
-                      <div className="mt-6">
-                        <Pagination
-                          currentPage={overduePage}
-                          totalPages={overdueTotalPages}
-                          totalItems={filteredOverdue.length}
-                          itemsPerPage={overdueItemsPerPage}
-                          onPageChange={setOverduePage}
-                        />
+                    {filteredOverdue.length > 0 && (
+                      <div className="border-t border-border/70 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                              {t("pagination.itemsPerPage", "Items per page")}:
+                            </label>
+                            <select
+                              value={overdueItemsPerPage}
+                              onChange={(e) => {
+                                setOverdueItemsPerPage(Number(e.target.value));
+                                setOverduePage(1);
+                              }}
+                              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                            >
+                              <option value={5}>5</option>
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                          </div>
+                          <Pagination
+                            currentPage={overduePage}
+                            totalPages={overdueTotalPages}
+                            totalItems={filteredOverdue.length}
+                            itemsPerPage={overdueItemsPerPage}
+                            onPageChange={setOverduePage}
+                          />
+                        </div>
                       </div>
                     )}
                   </>

@@ -28,9 +28,8 @@ export const NOTE_TO_SEMITONE: Record<string, number> = {
 export interface SoundSettings {
   volume: number;
   qinit: QinitMode;
-  octave: number; // 0-8 (C0 to C8)
-  // Custom tuning: note selection for each playable string (strings 1, 4, 6, 8, 10)
-  stringNotes: Record<number, NoteName>; // e.g., {1: "C", 4: "E", 6: "G", 8: "A", 10: "C"}
+  root: RootNote; // Tonic/key — one of 8 supported roots (A1 through E2)
+  stringNotes: Record<number, NoteName>; // per-string note name (custom mode only)
   muted: boolean;
   buzzEnabled: boolean;
   buzzLevel: number; // 0-1
@@ -67,6 +66,12 @@ export const KEY_TO_STRING: Record<string, number> = {
 // Order: 2-3-1-5-4 (increasing pitch)
 export const SOUND_ORDER: number[] = [4, 6, 1, 10, 8]; // Physical strings in pitch order
 
+// 8 supported root notes — each gives a different transposition of any qiñit mode.
+// Every required note across all 4 modes × 8 roots falls within our 17 real samples
+// (30/32 combinations are 100% authentic; Bati@D#2 and Bati@E2 each need 1 pitch-shifted note).
+export const ROOT_NOTES = ["A1", "A#1", "B1", "C2", "C#2", "D2", "D#2", "E2"] as const;
+export type RootNote = (typeof ROOT_NOTES)[number];
+
 // Default note assignments matching Tizita scale
 // Note: The sound order is 2-3-1-5-4, so we assign notes accordingly
 // String 2 (physical 4) = lowest = C
@@ -85,13 +90,13 @@ const DEFAULT_STRING_NOTES: Record<number, NoteName> = {
 const DEFAULT_SETTINGS: SoundSettings = {
   volume: 0.8,
   qinit: "tizita",
-  octave: 2, // Default to C2 for deep, majestic sound
+  root: "C2",
   stringNotes: { ...DEFAULT_STRING_NOTES },
   muted: false,
-  buzzEnabled: true,
+  buzzEnabled: false, // Real samples already have authentic begena buzz
   buzzLevel: 0.3,
-  reverbMix: 0.4,
-  warmth: 0.6,
+  reverbMix: 0.35,
+  warmth: 0.5,
   ambienceEnabled: false,
   ambienceVolume: 0.3,
 };
@@ -157,10 +162,32 @@ function getOctaveRootFreq(octave: number): number {
 }
 
 function semitonesToFrequency(semitones: number, rootOctave: number): number {
-  // Get the root frequency for the selected octave
   const rootFreq = getOctaveRootFreq(rootOctave);
-  // Calculate frequency using equal temperament: f = root * 2^(semitones/12)
   return rootFreq * Math.pow(2, semitones / 12);
+}
+
+// Parse "C#2" → { noteName: "C#", octave: 2 }
+function parseRoot(root: RootNote): { noteName: NoteName; octave: number } {
+  const octave = parseInt(root.at(-1)!);
+  const noteName = root.slice(0, -1) as NoteName;
+  return { noteName, octave };
+}
+
+function getRootFrequency(root: RootNote): number {
+  const { noteName, octave } = parseRoot(root);
+  return getNoteFrequency(noteName, octave);
+}
+
+// Root expressed as total semitones above C0
+function rootSemitoneOffset(root: RootNote): number {
+  const { noteName, octave } = parseRoot(root);
+  return octave * 12 + (NOTE_TO_SEMITONE[noteName] ?? 0);
+}
+
+// Convert absolute semitone count to display string e.g. 25 → "C#2"
+function noteNameFromSemitone(total: number): string {
+  const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  return `${SHARP_NAMES[total % 12]}${Math.floor(total / 12)}`;
 }
 
 /**
@@ -195,14 +222,10 @@ const QINIT_INTERVALS: Record<QinitMode, number[]> = {
   custom: [], // Custom uses stringNotes, not fixed intervals
 };
 
-/**
- * Calculate frequencies for each qiñit mode based on selected octave
- * Returns frequencies in sound order: 2-3-1-5-4 (increasing pitch)
- */
-function getQinitFrequencies(qinit: QinitMode, octave: number): number[] {
-  const intervals = QINIT_INTERVALS[qinit];
-  // Intervals are already in sound order: 2-3-1-5-4
-  return intervals.map(semitones => semitonesToFrequency(semitones, octave));
+// Frequencies in sound order (2-3-1-5-4) for a qiñit mode at a given root
+function getQinitFrequencies(qinit: QinitMode, root: RootNote): number[] {
+  const rootFreq = getRootFrequency(root);
+  return QINIT_INTERVALS[qinit].map(s => rootFreq * Math.pow(2, s / 12));
 }
 
 /**
@@ -213,86 +236,61 @@ function getNoteFrequency(noteName: NoteName, octave: number): number {
   return semitonesToFrequency(semitones, octave);
 }
 
-/**
- * Calculate frequencies based on custom string note assignments
- * Returns frequencies in sound order: 2-3-1-5-4 (increasing pitch)
- */
-function getCustomFrequencies(stringNotes: Record<number, NoteName>, octave: number): number[] {
-  // Map in sound order: 2-3-1-5-4 (physical strings: 4, 6, 1, 10, 8)
-  const soundOrderStrings = [4, 6, 1, 10, 8];
-  return soundOrderStrings.map(stringNum => {
-    const noteName = stringNotes[stringNum] || "C";
-    return getNoteFrequency(noteName, octave);
-  });
+// Custom mode: derive frequencies using root's octave for all string note names
+function getCustomFrequencies(stringNotes: Record<number, NoteName>, root: RootNote): number[] {
+  const { octave } = parseRoot(root);
+  return [4, 6, 1, 10, 8].map(n => getNoteFrequency(stringNotes[n] || "C", octave));
 }
 
-/**
- * Get note names for display based on authentic Ethiopian scale examples
- * Returns note names with the selected octave, in sound order: 2-3-1-5-4
- */
-function getNoteNames(qinit: QinitMode, octave: number): string[] {
-  // Base note names without octave, in sound order: 2-3-1-5-4
-  // Sound order mapping: String 2 (lowest) -> String 3 -> String 1 -> String 5 -> String 4 (highest)
-  const baseNoteNames: Record<QinitMode, string[]> = {
-    // Tizita: C-D-E-G-A in sound order (2-3-1-5-4)
-    tizita: ["C", "D", "E", "G", "A"], // String 2, 3, 1, 5, 4
-    // Bati: C-E-F-G-B in sound order
-    bati: ["C", "E", "F", "G", "B"],
-    // Ambassel: C-Db-F-G-Ab in sound order
-    ambassel: ["C", "Db", "F", "G", "Ab"],
-    // Anchihoye: C-Db-F-Gb-A in sound order
-    anchihoye: ["C", "Db", "F", "Gb", "A"],
-    custom: [], // Custom will be built from stringNotes
-  };
-  
-  // Add octave number to each note
-  return baseNoteNames[qinit].map(note => `${note}${octave}`);
+// Note names in sound order (2-3-1-5-4) for display
+function getNoteNames(qinit: QinitMode, root: RootNote): string[] {
+  const rs = rootSemitoneOffset(root);
+  return QINIT_INTERVALS[qinit].map(s => noteNameFromSemitone(rs + s));
 }
 
-/**
- * Apply a qinit preset to string notes
- * Maps notes to physical strings in sound order: 2-3-1-5-4 (physical: 4, 6, 1, 10, 8)
- */
-function applyQinitPreset(qinit: QinitMode): Record<number, NoteName> {
-  // Notes in sound order: 2-3-1-5-4 (increasing pitch)
-  const presetNotes: Record<QinitMode, NoteName[]> = {
-    tizita: ["C", "D", "E", "G", "A"], // String 2, 3, 1, 5, 4
-    bati: ["C", "E", "F", "G", "B"],
-    ambassel: ["C", "Db", "F", "G", "Ab"],
-    anchihoye: ["C", "Db", "F", "Gb", "A"],
-    custom: ["C", "C", "C", "C", "C"], // Default
-  };
-  
-  // Physical strings in sound order: 4, 6, 1, 10, 8
+// Derive per-string note names from a qiñit preset at the given root (used in custom mode display)
+function applyQinitPreset(qinit: QinitMode, root: RootNote): Record<number, NoteName> {
+  const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const rs = rootSemitoneOffset(root);
   const soundOrderStrings = [4, 6, 1, 10, 8];
-  const notes = presetNotes[qinit] || presetNotes.tizita;
-  
   const result: Record<number, NoteName> = {};
-  soundOrderStrings.forEach((stringNum, index) => {
-    result[stringNum] = notes[index] as NoteName;
+  QINIT_INTERVALS[qinit].forEach((s, i) => {
+    result[soundOrderStrings[i]] = SHARP_NAMES[(rs + s) % 12] as NoteName;
   });
-  
   return result;
 }
 
-// Voice pool for polyphony (support up to 6 simultaneous voices)
-interface Voice {
-  pluckSynth: Tone.PluckSynth;
-  buzzOsc: Tone.Oscillator | null;
-  buzzGain: Tone.Gain | null;
-  isActive: boolean;
-  stringIndex: number;
-}
+// Sample URLs mapping Tone.js note names to the extracted MP3 files
+const BEGENA_SAMPLES: Record<string, string> = {
+  "A1":  "A1.mp3",
+  "A#1": "Asharp1.mp3",
+  "B1":  "B1.mp3",
+  "C2":  "C2.mp3",
+  "C#2": "Csharp2.mp3",
+  "D2":  "D2.mp3",
+  "D#2": "Dsharp2.mp3",
+  "E2":  "E2.mp3",
+  "F2":  "F2.mp3",
+  "F#2": "Fsharp2.mp3",
+  "G2":  "G2.mp3",
+  "G#2": "Gsharp2.mp3",
+  "A2":  "A2.mp3",
+  "A#2": "Asharp2.mp3",
+  "B2":  "B2.mp3",
+  "C3":  "C3.mp3",
+  "C#3": "Csharp3.mp3",
+};
 
 class SoundManager {
-  private voices: Voice[] = [];
+  private sampler: Tone.Sampler | null = null;
+  private samplerLoaded: boolean = false;
   private settings: SoundSettings = DEFAULT_SETTINGS;
-  private reverb: Tone.Reverb | Tone.Convolver | null = null;
+  private reverb: Tone.Reverb | null = null;
   private lowPassFilter: Tone.Filter | null = null;
   private masterChain: Tone.Channel | null = null;
   private ambienceSynth: Tone.Synth | null = null;
   private initialized: boolean = false;
-  private frequencies: number[] = getQinitFrequencies("tizita", 2);
+  private frequencies: number[] = getQinitFrequencies("tizita", "C2");
 
   constructor() {
     this.initialize();
@@ -300,54 +298,47 @@ class SoundManager {
 
   async initialize() {
     if (this.initialized) return;
-    
+
     try {
-      // Start Tone.js context
       if (Tone.context.state !== "running") {
         await Tone.start();
       }
 
-      // Create master processing chain
+      // Signal chain: sampler → lowPassFilter → reverb → masterChain → destination
       this.lowPassFilter = new Tone.Filter({
-        frequency: 800,
+        frequency: 900,
         type: "lowpass",
-        Q: 1,
+        Q: 0.8,
       });
 
-      // TODO: Load real wooden room impulse response when available
-      // For now, use a synthetic reverb with short decay
-      // Once IR is available, replace with:
-      // this.reverb = new Tone.Convolver("/samples/ir/wood_room_small.wav");
-      this.reverb = new Tone.Reverb(2.0); // 2 second decay for small wooden room
-      // Generate synthetic IR (async)
+      this.reverb = new Tone.Reverb({ decay: 2.5, wet: DEFAULT_SETTINGS.reverbMix });
       await this.reverb.generate();
 
       this.masterChain = new Tone.Channel({
         volume: Tone.gainToDb(DEFAULT_SETTINGS.volume),
       });
 
-      // Connect processing chain: voices → lowpass → reverb (parallel) → master → destination
-      this.lowPassFilter.connect(this.masterChain);
+      this.lowPassFilter.connect(this.reverb);
       this.reverb.connect(this.masterChain);
       this.masterChain.toDestination();
 
-      // Create voice pool (6 voices for polyphony)
-      for (let i = 0; i < 6; i++) {
-        const voice = this.createVoice();
-        this.voices.push(voice);
-      }
+      // Real begena samples — Tone.Sampler pitch-shifts the nearest sample
+      // to cover any note requested outside the recorded set
+      this.sampler = new Tone.Sampler({
+        urls: BEGENA_SAMPLES,
+        baseUrl: "/samples/begena/",
+        release: 1.5,
+        onload: () => {
+          this.samplerLoaded = true;
+        },
+        onerror: (err) => {
+          console.error("Begena sample load error:", err);
+        },
+      }).connect(this.lowPassFilter);
 
-      // Create ambience synth
       this.ambienceSynth = new Tone.Synth({
-        oscillator: {
-          type: "sine",
-        },
-        envelope: {
-          attack: 3,
-          decay: 0.5,
-          sustain: 1,
-          release: 3,
-        },
+        oscillator: { type: "sine" },
+        envelope: { attack: 3, decay: 0.5, sustain: 1, release: 3 },
       }).connect(this.masterChain);
 
       this.initialized = true;
@@ -357,37 +348,7 @@ class SoundManager {
     }
   }
 
-  private createVoice(): Voice {
-    // Karplus-Strong synthesis using PluckSynth for realistic string sound
-    // Long sustain (2-5+ seconds) with resonance for majestic feel
-    const pluckSynth = new Tone.PluckSynth({
-      attackNoise: 1,
-      resonance: 0.98, // Very long sustain (majestic, slow decay)
-      dampening: 3000, // Lower dampening = longer sustain
-      release: 4, // 4 second release for long sustain
-    });
-
-    // Connect pluck to processing chain (lowpass filter for warmth)
-    pluckSynth.connect(this.lowPassFilter!);
-
-    // Buzz layer will be created per-note (in createBuzzLayer)
-    return {
-      pluckSynth,
-      buzzOsc: null, // Not used in current implementation
-      buzzGain: null, // Created per-note
-      isActive: false,
-      stringIndex: -1,
-    };
-  }
-
-  /**
-   * Create buzz layer for a specific string
-   * Implements the characteristic buzzing timbre from leather U-shaped thongs
-   * 
-   * TODO: Replace with recorded buzz samples when available:
-   * - Use Tone.Player with `/samples/buzz/string${stringNumber}_buzz.wav`
-   * - Or use generalized buzz loop with pitch matching
-   */
+  // Buzz layer kept as an optional additive effect on top of real samples
   private createBuzzLayer(frequency: number): Tone.ToneAudioNode {
     const noise = new Tone.Noise("pink");
     
@@ -441,29 +402,27 @@ class SoundManager {
 
   private loadSettings() {
     if (typeof window === "undefined") return;
-    
+
     try {
       const saved = localStorage.getItem("begena-sound-settings");
       if (saved) {
         const parsed = JSON.parse(saved);
-        this.settings = { 
-          ...DEFAULT_SETTINGS, 
+        this.settings = {
+          ...DEFAULT_SETTINGS,
           ...parsed,
-          // Ensure stringNotes exists and has all required strings
+          // Ensure saved root is valid; fall back to default if not
+          root: ROOT_NOTES.includes(parsed.root) ? parsed.root : DEFAULT_SETTINGS.root,
           stringNotes: {
             ...DEFAULT_STRING_NOTES,
             ...(parsed.stringNotes || {}),
           },
         };
       } else {
-        // Initialize with defaults if no saved settings
         this.settings.stringNotes = { ...DEFAULT_STRING_NOTES };
       }
-      // Recalculate frequencies after loading
       this.applySettings();
     } catch (error) {
       console.error("Failed to load settings:", error);
-      // Fallback to defaults on error
       this.settings.stringNotes = { ...DEFAULT_STRING_NOTES };
       this.applySettings();
     }
@@ -489,12 +448,7 @@ class SoundManager {
 
     // Update reverb mix
     if (this.reverb) {
-      if (this.reverb instanceof Tone.Reverb) {
-        this.reverb.wet.value = this.settings.reverbMix;
-      } else if (this.reverb instanceof Tone.Convolver) {
-        // Convolver doesn't have wet parameter, use send/return pattern if needed
-        // For now, we'll skip this if using Convolver
-      }
+      this.reverb.wet.value = this.settings.reverbMix;
     }
 
     // Update low-pass filter (warmth)
@@ -503,18 +457,15 @@ class SoundManager {
       this.lowPassFilter.frequency.value = warmthFreq;
     }
 
-    // Update frequencies based on tuning mode - ALWAYS recalculate
+    // Recalculate frequencies for current mode + root
     if (this.settings.qinit === "custom") {
-      // Use custom note assignments
-      this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.octave);
+      this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.root);
     } else {
-      // Use qinit preset intervals
-      this.frequencies = getQinitFrequencies(this.settings.qinit, this.settings.octave);
+      this.frequencies = getQinitFrequencies(this.settings.qinit, this.settings.root);
     }
-    
-    // Ensure frequencies array is always valid
+
     if (!this.frequencies || this.frequencies.length !== 5) {
-      this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.octave);
+      this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.root);
     }
 
     // Update ambience
@@ -536,95 +487,69 @@ class SoundManager {
       await this.initialize();
     }
 
-    // Map physical string to playable index
+    if (!this.sampler || !this.samplerLoaded) return;
+
     const playableIndex = STRING_TO_INDEX[physicalStringNumber];
-    if (playableIndex === undefined || playableIndex < 0 || playableIndex >= 5) {
-      return;
-    }
+    if (playableIndex === undefined || playableIndex < 0 || playableIndex >= 5) return;
 
-    if (this.settings.muted) {
-      return;
-    }
+    if (this.settings.muted) return;
 
-    // Find available voice
-    let voice = this.voices.find(v => !v.isActive);
-    if (!voice) {
-      // Use oldest active voice (voice stealing)
-      voice = this.voices[0];
-    }
-
-    // Get frequency based on current tuning mode
-    // Always get fresh frequency in case settings changed
+    // Resolve frequency for current tuning mode
     let frequency: number;
     if (this.settings.qinit === "custom") {
-      // Use custom note assignment for this string
       const noteName = this.settings.stringNotes[physicalStringNumber] || "C";
-      frequency = getNoteFrequency(noteName, this.settings.octave);
+      const { octave } = parseRoot(this.settings.root);
+      frequency = getNoteFrequency(noteName, octave);
     } else {
-      // Use preset frequencies (recalculate if needed)
-      // Frequencies are stored in sound order: 2-3-1-5-4 (physical: 4, 6, 1, 10, 8)
       if (!this.frequencies || this.frequencies.length !== 5) {
-        this.frequencies = getQinitFrequencies(this.settings.qinit, this.settings.octave);
+        this.frequencies = getQinitFrequencies(this.settings.qinit, this.settings.root);
       }
-      // Map physical string to sound order index
       const soundOrderIndex = SOUND_ORDER.indexOf(physicalStringNumber);
       frequency = soundOrderIndex >= 0 ? this.frequencies[soundOrderIndex] : this.frequencies[0];
     }
-    
-    // Safety check - ensure frequency is valid
+
     if (!frequency || isNaN(frequency) || frequency <= 0) {
-      console.warn(`Invalid frequency for string ${physicalStringNumber}, using default C${this.settings.octave}`);
-      frequency = getNoteFrequency("C", this.settings.octave);
+      frequency = getRootFrequency(this.settings.root);
     }
-    
-    // Add slight pitch variation for realism
-    const variation = 0.995 + Math.random() * 0.01; // ±0.5%
-    const finalFreq = frequency * variation;
+
+    const finalFreq = frequency * (0.995 + Math.random() * 0.01);
 
     try {
-      voice.isActive = true;
-      voice.stringIndex = physicalStringNumber;
+      // Roots in octave 1 (A1/A#1/B1) use some pitch-shifted samples — cap at 1 s
+      // so the artificial decay doesn't linger when comparing against real voices.
+      const { octave } = parseRoot(this.settings.root);
+      const duration = octave === 1 ? 1 : 4;
+      this.sampler.triggerAttackRelease(finalFreq, duration);
 
-      // Play pluck using Karplus-Strong synthesis (majestic, slow, spiritual)
-      // Long sustain (4-5 seconds) with natural decay
-      const sustainDuration = 4.5; // Seconds
-      voice.pluckSynth.triggerAttackRelease(finalFreq, sustainDuration);
-
-      // Add buzz layer if enabled (characteristic leather thong buzzing)
       if (this.settings.buzzEnabled) {
         this.createBuzzLayer(finalFreq);
       }
-
-      // Reset voice after release (slightly longer than note duration)
-      setTimeout(() => {
-        voice.isActive = false;
-        voice.stringIndex = -1;
-      }, sustainDuration * 1000 + 500); // Duration in ms + buffer
     } catch (error) {
       console.error("Failed to play string:", error);
-      voice.isActive = false;
     }
   }
 
   updateSettings(newSettings: Partial<SoundSettings>) {
-    this.settings = { ...this.settings, ...newSettings };
-    
-    // If qinit preset is selected (not custom), apply preset notes
-    if (newSettings.qinit && newSettings.qinit !== "custom") {
-      this.settings.stringNotes = applyQinitPreset(newSettings.qinit);
+    // Validate root if being changed
+    if (newSettings.root !== undefined && !ROOT_NOTES.includes(newSettings.root)) {
+      newSettings.root = DEFAULT_SETTINGS.root;
     }
-    
-    // If octave changed, recalculate frequencies immediately
-    if (newSettings.octave !== undefined) {
+    this.settings = { ...this.settings, ...newSettings };
+
+    // When switching to a preset qiñit, derive string notes from current root
+    if (newSettings.qinit && newSettings.qinit !== "custom") {
+      this.settings.stringNotes = applyQinitPreset(newSettings.qinit, this.settings.root);
+    }
+
+    // When root changes, recalculate frequencies immediately
+    if (newSettings.root !== undefined) {
       if (this.settings.qinit === "custom") {
-        // Recalculate custom frequencies for new octave
-        this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.octave);
+        this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.root);
       } else {
-        // Recalculate preset frequencies for new octave
-        this.frequencies = getQinitFrequencies(this.settings.qinit, this.settings.octave);
+        this.frequencies = getQinitFrequencies(this.settings.qinit, this.settings.root);
       }
     }
-    
+
     this.applySettings();
     this.saveSettings();
   }
@@ -643,16 +568,13 @@ class SoundManager {
     this.settings.qinit = "custom"; // Switch to custom mode
     
     // Immediately recalculate frequencies for custom mode
-    this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.octave);
-    
-    // Apply all settings (volume, reverb, etc.)
+    this.frequencies = getCustomFrequencies(this.settings.stringNotes, this.settings.root);
+
     this.applySettings();
-    
-    // Save to localStorage
     this.saveSettings();
-    
-    // Debug log for verification
-    console.log(`String ${stringNumber} tuned to ${noteName}${this.settings.octave} (${getNoteFrequency(noteName, this.settings.octave).toFixed(2)} Hz)`);
+
+    const { octave } = parseRoot(this.settings.root);
+    console.log(`String ${stringNumber} tuned to ${noteName}${octave} (${getNoteFrequency(noteName, octave).toFixed(2)} Hz)`);
   }
 
   getSettings(): SoundSettings {
@@ -664,29 +586,24 @@ class SoundManager {
   }
 
   getNoteNames(): string[] {
-    return getNoteNames(this.settings.qinit, this.settings.octave);
+    return getNoteNames(this.settings.qinit, this.settings.root);
   }
 
-  getQinitInfo(): { mode: QinitMode; octave: number; frequencies: number[]; noteNames: string[]; rootFreq: number; stringNotes: Record<number, NoteName> } {
-    // Build note names from custom tuning or qinit preset
-    // Note names are in sound order: 2-3-1-5-4 (physical: 4, 6, 1, 10, 8)
+  getQinitInfo(): { mode: QinitMode; root: RootNote; frequencies: number[]; noteNames: string[]; rootFreq: number; stringNotes: Record<number, NoteName> } {
     let noteNames: string[];
     if (this.settings.qinit === "custom") {
-      const soundOrderStrings = [4, 6, 1, 10, 8]; // Physical strings in sound order
-      noteNames = soundOrderStrings.map(stringNum => {
-        const noteName = this.settings.stringNotes[stringNum] || "C";
-        return `${noteName}${this.settings.octave}`;
-      });
+      const { octave } = parseRoot(this.settings.root);
+      noteNames = [4, 6, 1, 10, 8].map(n => `${this.settings.stringNotes[n] || "C"}${octave}`);
     } else {
-      noteNames = getNoteNames(this.settings.qinit, this.settings.octave);
+      noteNames = getNoteNames(this.settings.qinit, this.settings.root);
     }
-    
+
     return {
       mode: this.settings.qinit,
-      octave: this.settings.octave,
+      root: this.settings.root,
       frequencies: this.frequencies,
       noteNames,
-      rootFreq: getOctaveRootFreq(this.settings.octave),
+      rootFreq: getRootFrequency(this.settings.root),
       stringNotes: this.settings.stringNotes,
     };
   }
@@ -707,6 +624,10 @@ class SoundManager {
     this.updateSettings({
       buzzEnabled: !this.settings.buzzEnabled,
     });
+  }
+
+  isReady(): boolean {
+    return this.initialized && this.samplerLoaded;
   }
 }
 

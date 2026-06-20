@@ -8,14 +8,14 @@ import { useI18n } from "@/components/providers/I18nProvider";
 type StudentPaymentRow = {
   month: number;
   year: number;
-  amount?: number;
-  status: "paid" | "unpaid";
+  amount: number;
+  paidToDate?: number;
+  status: "paid" | "unpaid" | "waived";
   dueDate?: string | null;
-  dueDateInferred?: boolean;
-  duedate?: string[];
   period?: number;
   paidAt?: string;
-  receiptUrl?: string;
+  note?: string;
+  recordedBy?: unknown;
 };
 
 export default function StudentPaymentsModal({ studentId, onClose }: { studentId: string; onClose: () => void }) {
@@ -71,47 +71,16 @@ export default function StudentPaymentsModal({ studentId, onClose }: { studentId
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {(report.payments || []).map((p: StudentPaymentRow, idx: number) => (
-                    <tr key={`${p.year}-${p.month}-${idx}`}>
+                    <tr key={`${p.year}-${p.month}-${idx}`} className="interactive-row">
                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{idx + 1}</td>
                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{p.year}-{String(p.month).padStart(2, "0")}</td>
                       <td className="px-3 py-3 align-top">{new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", minimumFractionDigits: 2 }).format(p.amount ?? 0)}</td>
                       <td className="px-3 py-3 align-top"><span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-foreground/5 text-foreground/80">{p.status}</span></td>
                       <td className="px-3 py-3 align-top">
-                        {(() => {
-                          let displayDate: Date | null = null;
-                          if (p.duedate && Array.isArray(p.duedate) && p.duedate.length > 0) {
-                            if (p.period && p.period >= 1 && p.period <= p.duedate.length) {
-                              displayDate = new Date(p.duedate[p.period - 1]);
-                            } else {
-                              displayDate = new Date(p.duedate[0]);
-                            }
-                          } else if (p.dueDate) {
-                            displayDate = new Date(p.dueDate);
-                          }
-
-                          return displayDate ? (
-                            <div className="flex items-center gap-2">
-                              <span>{displayDate.toLocaleDateString()}</span>
-                              {p.dueDateInferred && (
-                                <span title={t("monthlyPayments.payments.inferredTooltip", "Due date inferred from registration date")} className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{t("monthlyPayments.payments.inferredBadge", "Inferred")}</span>
-                              )}
-                            </div>
-                          ) : (
-                            "—"
-                          );
-                        })()}
+                        {p.dueDate ? new Date(p.dueDate).toLocaleDateString() : "—"}
                       </td>
                       <td className="px-3 py-3 align-top">{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}</td>
-                      <td className="px-3 py-3 align-top">
-                        {p.receiptUrl ? (
-                          <a href={p.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold transition hover:border-secondary">
-                            <FileText className="h-4 w-4" />
-                            {t("monthlyPayments.viewReceipt", "View Receipt")}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
+                      <td className="px-3 py-3 align-top">—</td>
                     </tr>
                   ))}
                 </tbody>

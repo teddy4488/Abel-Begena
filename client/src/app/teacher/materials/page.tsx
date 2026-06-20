@@ -648,7 +648,7 @@ export default function TeacherMaterialsPage() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ delay: idx * 0.05 }}
-                        className="rounded-xl  card-elevated50 p-4 hover:card-elevated80 transition-all hover:shadow-md"
+                        className="interactive-row rounded-xl card-elevated p-4"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -707,7 +707,7 @@ export default function TeacherMaterialsPage() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ delay: idx * 0.05 }}
-                        className="rounded-xl  card-elevated50 p-4 hover:card-elevated80 transition-all hover:shadow-md"
+                        className="interactive-row rounded-xl card-elevated p-4"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">

@@ -190,6 +190,12 @@ export type StudentBillingState = {
   windowExceeded: boolean;
   expectedSessionsPerPeriod: number;
   currentWindowAttended: number;
+  /** ISO date — when the current ~30-day billing window opened. */
+  currentWindowStart: string;
+  /** ISO date — when the current window closes (next attended session after this opens a new period). */
+  currentWindowEnd: string;
+  /** Days until currentWindowEnd (may be negative if the window already passed). */
+  daysUntilWindowEnd: number;
   programDurationMonths?: number;
 };
 
@@ -250,6 +256,10 @@ export type OverduePaymentAdmin = {
   autoReminders?: boolean;
   daysOverdue: number;
   amount?: number;
+  /** Amount already received toward the next due period from a partial payment. */
+  paidToDate?: number;
+  /** Remaining balance for the next due period = amount - paidToDate. */
+  remainingAmount?: number;
   status?: "paid" | "unpaid";
 };
 
@@ -274,6 +284,11 @@ export const attendanceApi = createApi({
     }),
     getStudentParticipants: builder.query<StudentParticipant[], void>({
       query: () => "/attendance/students/participants",
+      providesTags: ["StudentParticipants"],
+    }),
+    /** Teacher-only: the students enrolled in classes this teacher teaches. */
+    getMyTeachingStudents: builder.query<(StudentParticipant & { classTitle?: string })[], void>({
+      query: () => "/attendance/teachers/my-students",
       providesTags: ["StudentParticipants"],
     }),
     getStudentByAttendanceNumber: builder.query<StudentParticipant, string>({
@@ -587,14 +602,20 @@ export const attendanceApi = createApi({
           programDurationMonths: 3 | 6 | 9;
         };
         attendanceRecords: Array<{
-          _id?: string;
+          _id: string;
           date: string;
           lesson?: { _id?: string; title?: string; code?: string } | null;
           revisedLesson?: { _id?: string; title?: string; code?: string } | null;
           status: AttendanceStatus;
+          note?: string | null;
           recordedBy?: { _id?: string; firstName?: string; lastName?: string; email?: string } | null;
         }>;
         totalSessions: number;
+        presentCount: number;
+        lateCount: number;
+        absentCount: number;
+        excusedCount: number;
+        attendanceRate: number;
         generatedAt: string;
       },
       string
@@ -611,15 +632,15 @@ export const attendanceApi = createApi({
           instrumentType?: string;
           registrationStartDate?: string;
           branch?: unknown;
+          monthlyFee?: number;
         };
         payments: Array<{
           month: number;
           year: number;
-          amount?: number;
-          status: "paid" | "unpaid";
+          amount: number;
+          paidToDate?: number;
+          status: "paid" | "unpaid" | "waived";
           dueDate?: string | null;
-          dueDateInferred?: boolean;
-          duedate?: string[];
           period?: number;
           paidAt?: string;
           note?: string;
@@ -627,6 +648,19 @@ export const attendanceApi = createApi({
         }>;
         totalPaid: number;
         totalPayments: number;
+        paidCount: number;
+        unpaidCount: number;
+        waivedCount: number;
+        billing?: {
+          periodsConsumed: number;
+          periodsSettled: number;
+          suggestedOwed: number;
+          overdue: boolean;
+          nextDuePeriod: number;
+          maxBillable: number;
+          windowExceeded: boolean;
+          monthlyFee?: number;
+        };
       },
       string
     >({
@@ -718,6 +752,25 @@ export const attendanceApi = createApi({
       }),
       providesTags: ["StudentPayments"],
     }),
+    getUpcomingPaymentsSummary: builder.query<
+      Array<{
+        participantId: string;
+        fullName: string;
+        email: string;
+        dueDate: string;
+        daysUntilDue: number;
+        amount?: number;
+        year: number;
+        month: number;
+      }>,
+      { daysAhead?: number } | void
+    >({
+      query: (params) => ({
+        url: "/attendance/payments/upcoming-summary",
+        params: params ? { daysAhead: params.daysAhead ?? 14 } : { daysAhead: 14 },
+      }),
+      providesTags: ["StudentPayments"],
+    }),
     getLessonProgress: builder.query<
       {
         totalLessons: number;
@@ -746,6 +799,7 @@ export const attendanceApi = createApi({
 export const {
   useGetTeacherParticipantsQuery,
   useGetStudentParticipantsQuery,
+  useGetMyTeachingStudentsQuery,
   useGetStudentByAttendanceNumberQuery,
   useSearchStudentsQuery,
   useGetStudentDetailsQuery,
@@ -785,5 +839,6 @@ export const {
   useGetTeacherAttendanceReportByUserIdQuery,
   useGetStudentUpcomingPaymentsQuery,
   useGetMyUpcomingPaymentsQuery,
+  useGetUpcomingPaymentsSummaryQuery,
   useGetLessonProgressQuery,
 } = attendanceApi;

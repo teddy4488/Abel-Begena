@@ -39,7 +39,7 @@ export default function BranchesPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative h-[280px] overflow-hidden rounded-2xl border border-border bg-surface shadow-lg sm:h-[320px] sm:rounded-3xl md:h-[360px] md:rounded-4xl md:shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="tonal-lift relative h-[280px] overflow-hidden sm:h-[320px] sm:rounded-3xl md:h-[360px] md:rounded-4xl"
         >
           <div className="absolute inset-0 bg-linear-to-br from-background via-surface to-(--color-secondary-soft) opacity-70" />
           <div className="relative h-full">
@@ -58,7 +58,7 @@ export default function BranchesPage() {
                 <button
                   type="button"
                   onClick={() => refetch()}
-                  className="rounded-full border border-border px-4 py-2 text-xs font-semibold text-secondary hover:border-secondary"
+                  className="btn-ghost-strong rounded-full px-4 py-2 text-xs"
                 >
                   {t("button.retry", "Retry")}
                 </button>
@@ -69,7 +69,7 @@ export default function BranchesPage() {
           </div>
         </motion.div>
 
-        <FadeIn className="space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-6 md:rounded-4xl md:shadow-[0_40px_80px_var(--color-primary-glow)]">
+        <FadeIn className="tonal-lift space-y-4 p-4 sm:rounded-3xl sm:p-6 md:rounded-4xl">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary">
             {t("branches.public.listTitle", "Studios & heritage branches")}
           </p>
@@ -89,7 +89,7 @@ export default function BranchesPage() {
               {branches.map((branch) => (
                 <li
                   key={branch._id}
-                  className="flex items-start gap-3 rounded-2xl border border-border bg-background/80 p-3"
+                  className="tonal-lift interactive-row flex items-start gap-3 p-3"
                 >
                   <span className="mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                     <MapPin className="h-4 w-4" />

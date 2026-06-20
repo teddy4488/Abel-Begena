@@ -33,6 +33,7 @@ type LiveRoomProps = {
   role: "Teacher" | "Student" | "Admin";
   externalLink?: string | null;
   onLeave?: () => void;
+  onEndForAll?: () => void;
   isTeacherSession?: boolean;
   cameraId?: string;
   micId?: string;
@@ -45,6 +46,7 @@ export function LiveRoom({
   role,
   externalLink,
   onLeave,
+  onEndForAll,
   isTeacherSession,
   cameraId,
   micId,
@@ -121,7 +123,8 @@ export function LiveRoom({
 
   const handleEndForAll = () => {
     notifySessionEnd();
-    handleLeave();
+    leaveSession();
+    onEndForAll?.();
   };
 
   const handleDownloadRecording = () => {

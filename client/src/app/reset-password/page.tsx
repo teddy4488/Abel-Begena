@@ -113,7 +113,7 @@ export default function ResetPasswordPage() {
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-lg rounded-[32px] border border-border bg-surface/90 p-8 shadow-[0_40px_80px_var(--color-primary-glow)] backdrop-blur"
+        className="ornate-frame w-full max-w-lg p-8 backdrop-blur"
       >
         <div className="mb-8 text-center">
           <motion.div
@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="recessed mt-2 w-full px-4 py-3 text-sm text-foreground outline-none transition"
               placeholder="you@example.com"
             />
           </div>
@@ -166,7 +166,7 @@ export default function ResetPasswordPage() {
               onChange={(e) =>
                 setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
               }
-              className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              className="recessed mt-2 w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-foreground outline-none transition"
               placeholder="••••••"
             />
             <p className="mt-2 text-xs text-foreground/60">
@@ -188,7 +188,7 @@ export default function ResetPasswordPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-border bg-background/80 py-3 pl-12 pr-4 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="recessed w-full py-3 pl-12 pr-4 text-sm text-foreground outline-none transition"
                 placeholder={t(
                   "resetPassword.passwordPlaceholder",
                   "Enter a new password",
@@ -220,7 +220,7 @@ export default function ResetPasswordPage() {
             type="button"
             onClick={handleResend}
             disabled={!canResend || !email}
-            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 font-semibold text-foreground transition hover:-translate-y-0.5 hover:border-secondary disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-ghost-strong inline-flex items-center gap-2 rounded-full px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RotateCw className="h-4 w-4" />
             {cooldownLabel}

@@ -17,6 +17,8 @@ import {
   soundManager,
   SoundSettings,
   QinitMode,
+  RootNote,
+  ROOT_NOTES,
 } from "@/features/virtual-begena/lib/sound";
 
 interface SettingsPanelProps {
@@ -113,10 +115,10 @@ export default function SettingsPanel({
     setQinitInfo(soundManager.getQinitInfo());
   };
 
-  const handleOctaveChange = (octave: number) => {
-    const newSettings = { ...settings, octave };
+  const handleRootChange = (root: RootNote) => {
+    const newSettings = { ...settings, root };
     setSettings(newSettings);
-    soundManager.updateSettings({ octave });
+    soundManager.updateSettings({ root });
     setQinitInfo(soundManager.getQinitInfo());
   };
 
@@ -205,41 +207,31 @@ export default function SettingsPanel({
                 </button>
               </div>
 
-              {/* Octave Selector */}
+              {/* Root / Major Selector */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-begena-brown dark:text-begena-cream">
-                  {translate(
-                    "virtualExperience.settingsPanel.octave.title",
-                    "Octave Selection",
-                  )}
+                  {translate("virtualExperience.settingsPanel.root.title", "Key (Major)")}
                 </h3>
-                <div className="space-y-2">
-                  <label className="text-sm text-begena-brown dark:text-begena-cream">
-                    {translate(
-                      "virtualExperience.settingsPanel.octave.label",
-                      "Octave: C{{octave}} ({{frequency}} Hz)",
-                      {
-                        octave: settings.octave,
-                        frequency: soundManager.getQinitInfo().rootFreq.toFixed(2),
-                      },
-                    )}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="8"
-                    step="1"
-                    value={settings.octave}
-                    onChange={(e) =>
-                      handleOctaveChange(parseInt(e.target.value))
-                    }
-                    className="w-full h-2 bg-begena-brown/20 rounded-lg appearance-none cursor-pointer accent-begena-gold"
-                  />
-                  <div className="flex justify-between text-xs text-begena-brown/60 dark:text-begena-cream/60">
-                    <span>C0 (16.35 Hz)</span>
-                    <span>C4 (261.63 Hz)</span>
-                    <span>C8 (4186 Hz)</span>
-                  </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {ROOT_NOTES.map((root) => {
+                    const isSelected = settings.root === root;
+                    return (
+                      <motion.button
+                        key={root}
+                        onClick={() => handleRootChange(root)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`py-2 rounded-lg text-center text-sm font-semibold transition-all border-2 ${
+                          isSelected
+                            ? "bg-begena-gold text-begena-darkBrown border-begena-gold shadow-md"
+                            : "bg-begena-brown/10 dark:bg-begena-cream/10 text-begena-brown dark:text-begena-cream border-transparent hover:border-begena-gold/40"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        {root}
+                      </motion.button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -300,10 +292,10 @@ export default function SettingsPanel({
                     <div className="text-xs font-semibold text-begena-brown dark:text-begena-cream mb-2">
                       {translate(
                         "virtualExperience.settingsPanel.visual.currentTuning",
-                        "Current Tuning ({{mode}}, Octave {{octave}}):",
+                        "Current Tuning ({{mode}}, {{root}} Major):",
                         {
                           mode: qinitInfo.mode.toUpperCase(),
-                          octave: qinitInfo.octave,
+                          root: qinitInfo.root,
                         },
                       )}
                     </div>

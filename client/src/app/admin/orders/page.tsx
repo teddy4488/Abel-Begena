@@ -31,7 +31,33 @@ import {
   Check,
   User,
   MapPin,
+  ArrowRight,
+  Ban,
 } from "lucide-react";
+
+/** Allowed forward-only transitions for orders. Mirrors the backend guard in
+ *  `order.service.ts` so the UI never offers a transition the server will reject. */
+const NEXT_STATUS: Record<string, string | null> = {
+  Pending: "Processing",
+  PaymentPending: "Processing",
+  PaymentRejected: "Processing", // admin override after re-review
+  Processing: "Shipped",
+  Shipped: "Delivered",
+  Delivered: null, // terminal
+  Cancelled: null, // terminal
+};
+/** Whether this status can still be cancelled by an admin. Once an order is
+ *  shipped or delivered, cancellation is no longer offered — the items have
+ *  left inventory. (Backend enforces the same rule.) */
+const CAN_CANCEL: Record<string, boolean> = {
+  Pending: true,
+  PaymentPending: true,
+  PaymentRejected: true,
+  Processing: true,
+  Shipped: false,
+  Delivered: false,
+  Cancelled: false,
+};
 
 const statusConfig: Record<
   string,
@@ -505,7 +531,7 @@ export default function AdminOrdersPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
                       transition={{ delay: index * 0.05 }}
-                      className="hover:card-elevated30 transition-colors"
+                      className="interactive-row"
                     >
                       <td className="px-6 py-4">
                         <p className="font-semibold text-primary">
@@ -541,20 +567,39 @@ export default function AdminOrdersPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={order.status}
-                          onChange={(e) =>
-                            handleStatusChange(order._id, e.target.value, order.isPaid)
-                          }
-                          disabled={isUpdating}
-                          className="rounded-xl  card-elevated60 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer disabled:opacity-50"
-                        >
-                          {Object.keys(statusConfig).map((status) => (
-                            <option key={status} value={status}>
-                              {t(statusConfig[status].label, status)}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex flex-col items-start gap-2">
+                          {/* Current status — display only, never editable */}
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusConfig[order.status]?.bg ?? "bg-foreground/5"} ${statusConfig[order.status]?.color ?? "text-foreground/70"}`}>
+                            {t(statusConfig[order.status]?.label, order.status)}
+                          </span>
+                          {/* Forward-only advance + cancel actions */}
+                          <div className="flex items-center gap-1">
+                            {NEXT_STATUS[order.status] && (
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(order._id, NEXT_STATUS[order.status]!, order.isPaid)}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary shadow-sm hover:brightness-95 disabled:opacity-50"
+                                title={t("admin.orders.advanceTo", "Advance to {{status}}").replace("{{status}}", t(statusConfig[NEXT_STATUS[order.status]!]?.label, NEXT_STATUS[order.status]!))}
+                              >
+                                <ArrowRight className="h-3 w-3" />
+                                {t(statusConfig[NEXT_STATUS[order.status]!]?.label, NEXT_STATUS[order.status]!)}
+                              </button>
+                            )}
+                            {CAN_CANCEL[order.status] && (
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(order._id, "Cancelled", order.isPaid)}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
+                                title={t("admin.orders.cancel", "Cancel order")}
+                              >
+                                <Ban className="h-3 w-3" />
+                                {t("admin.orders.cancel", "Cancel")}
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-2">
@@ -631,20 +676,18 @@ export default function AdminOrdersPage() {
               </AnimatePresence>
             </tbody>
           </table>
-          {totalPages > 1 && (
-            <div className="border-t border-border/70 p-4">
-              <div className="mb-4 flex items-center justify-end gap-2">
+          <div className="border-t border-border/70 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
                   {t("pagination.itemsPerPage", "Items per page")}:
                 </label>
                 <select
                   value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
                   className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 >
+                  <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={25}>25</option>
                   <option value={50}>50</option>
@@ -659,7 +702,7 @@ export default function AdminOrdersPage() {
                 onPageChange={setCurrentPage}
               />
             </div>
-          )}
+          </div>
         </motion.div>
       )}
 
@@ -733,20 +776,35 @@ export default function AdminOrdersPage() {
                         <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
                           {t("admin.orders.table.status", "Status")}
                         </p>
-                        <select
-                          value={order.status}
-                          onChange={(e) =>
-                            handleStatusChange(order._id, e.target.value, order.isPaid)
-                          }
-                          disabled={isUpdating}
-                          className="w-full rounded-xl  card-elevated60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] hover:bg-background transition cursor-pointer disabled:opacity-50"
-                        >
-                          {Object.keys(statusConfig).map((status) => (
-                            <option key={status} value={status}>
-                              {t(statusConfig[status].label, status)}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex flex-col gap-2">
+                          <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusConfig[order.status]?.bg ?? "bg-foreground/5"} ${statusConfig[order.status]?.color ?? "text-foreground/70"}`}>
+                            {t(statusConfig[order.status]?.label, order.status)}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {NEXT_STATUS[order.status] && (
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(order._id, NEXT_STATUS[order.status]!, order.isPaid)}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary shadow-sm hover:brightness-95 disabled:opacity-50"
+                              >
+                                <ArrowRight className="h-3 w-3" />
+                                {t(statusConfig[NEXT_STATUS[order.status]!]?.label, NEXT_STATUS[order.status]!)}
+                              </button>
+                            )}
+                            {CAN_CANCEL[order.status] && (
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(order._id, "Cancelled", order.isPaid)}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
+                              >
+                                <Ban className="h-3 w-3" />
+                                {t("admin.orders.cancel", "Cancel")}
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       <div>
                         <p className="text-xs uppercase tracking-wide text-secondary/70 mb-1">
@@ -821,20 +879,18 @@ export default function AdminOrdersPage() {
               );
             })}
           </AnimatePresence>
-          {totalPages > 1 && (
-            <div className="border-t border-border/70 p-4 mt-4">
-              <div className="mb-4 flex items-center justify-end gap-2">
+          <div className="border-t border-border/70 p-4 mt-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
                   {t("pagination.itemsPerPage", "Items per page")}:
                 </label>
                 <select
                   value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
                   className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                 >
+                  <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={25}>25</option>
                   <option value={50}>50</option>
@@ -849,7 +905,7 @@ export default function AdminOrdersPage() {
                 onPageChange={setCurrentPage}
               />
             </div>
-          )}
+          </div>
         </motion.div>
       )}
 

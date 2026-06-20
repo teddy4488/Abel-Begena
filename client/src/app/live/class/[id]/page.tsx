@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAppSelector } from "@/store/hooks";
-import { useGetClassAccessQuery } from "@/store/api/classApi";
+import { useGetClassAccessQuery, useUpdateLiveStateMutation } from "@/store/api/classApi";
 import { X, Share2 } from "lucide-react";
 import { LiveRoom } from "@/components/live/LiveRoom";
 import { PreJoinLobby, type DeviceSelection } from "@/components/live/PreJoinLobby";
@@ -19,6 +19,7 @@ export default function LiveClassPage() {
   const { data, isLoading, error } = useGetClassAccessQuery(classId, {
     skip: !isLoggedIn || !classId,
   });
+  const [updateLiveState] = useUpdateLiveStateMutation();
   const { t } = useI18n();
   const { pushToast } = useToast();
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
@@ -114,6 +115,15 @@ export default function LiveClassPage() {
     );
   }
 
+  const endLiveSession = async () => {
+    try {
+      await updateLiveState({ classId, isLive: false });
+    } catch {
+      // best-effort — navigate away regardless
+    }
+    router.push("/teacher/live");
+  };
+
   const handleEndSession = () => {
     setConfirmEndOpen(true);
   };
@@ -203,7 +213,7 @@ export default function LiveClassPage() {
         )}
         confirmLabel={t("live.confirm.endSessionAction", "End session")}
         cancelLabel={t("button.cancel", "Cancel")}
-        onConfirm={() => router.push("/dashboard")}
+        onConfirm={endLiveSession}
         onCancel={() => setConfirmEndOpen(false)}
       />
 
@@ -238,6 +248,7 @@ export default function LiveClassPage() {
             role={resolvedRole}
             externalLink={data.liveLink}
             onLeave={() => router.push("/dashboard")}
+            onEndForAll={endLiveSession}
             isTeacherSession={isTeacher}
             cameraId={devices.cameraId}
             micId={devices.micId}

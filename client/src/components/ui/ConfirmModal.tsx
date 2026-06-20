@@ -10,6 +10,8 @@ type Props = {
   confirmLabel?: string;
   cancelLabel?: string;
   isLoading?: boolean;
+  /** Tone of the confirm action. "danger" = red (destructive), "primary" = brand. */
+  variant?: "danger" | "primary";
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -21,6 +23,7 @@ export default function ConfirmModal({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   isLoading = false,
+  variant = "danger",
   onConfirm,
   onCancel,
 }: Props) {
@@ -75,7 +78,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary/5 disabled:opacity-60"
+            className="btn-ghost-strong rounded-full px-5 py-2 text-sm"
           >
             {cancelLabel}
           </button>
@@ -83,7 +86,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-full bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground shadow-sm disabled:opacity-60"
+            className={`${variant === "primary" ? "btn-primary-strong" : "btn-danger-strong"} inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm`}
           >
             {isLoading ? (
               <svg

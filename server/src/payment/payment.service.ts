@@ -566,7 +566,11 @@ export class PaymentService {
       const u = p.userId as { _id?: unknown } | string | undefined;
       const uid =
         u && typeof u === 'object' && '_id' in u ? String(u._id) : String(u ?? '');
-      const expectedFee = feeMap.get(uid);
+      // expectedFee is the student's agreed monthly fee — only meaningful for
+      // student_monthly_fee payments. Showing it on order/enrollment payments
+      // mislabels the order total as a fee mismatch.
+      const expectedFee =
+        p.type === 'student_monthly_fee' ? feeMap.get(uid) : undefined;
       return { ...p, expectedFee };
     });
 

@@ -28,7 +28,7 @@ import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useAppSelector } from "@/store/hooks";
-import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap, Plus, FileText } from "lucide-react";
+import { Search, UserX, Shield, User, Trash2, CheckCircle2, XCircle, Loader2, GraduationCap, Plus, FileText, X } from "lucide-react";
 import Link from "next/link";
 
 type UserTab = "website" | "teachers" | "admins" | "students";
@@ -58,6 +58,8 @@ export default function AdminUsersPage() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [studentEditForm, setStudentEditForm] = useState({ monthlyFee: "", periodAdjustment: "0", autoReminders: false });
   const { pushToast } = useToast();
   const { t } = useI18n();
   const { data: branches = [] } = useGetBranchesAdminQuery(undefined, { skip: !createAdminOpen });
@@ -244,6 +246,24 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleSaveStudentBilling = async () => {
+    if (!editingStudent) return;
+    try {
+      await updateStudent({
+        id: editingStudent._id ?? editingStudent.id ?? "",
+        data: {
+          monthlyFee: studentEditForm.monthlyFee ? Number(studentEditForm.monthlyFee) : undefined,
+          periodAdjustment: Number(studentEditForm.periodAdjustment),
+          autoReminders: studentEditForm.autoReminders,
+        },
+      }).unwrap();
+      pushToast({ title: t("admin.users.studentUpdated", "Student billing updated"), variant: "success" });
+      setEditingStudent(null);
+    } catch {
+      pushToast({ title: t("admin.users.updateError", "Update failed"), variant: "error" });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px] rounded-3xl surface-elevated p-6">
@@ -349,60 +369,31 @@ export default function AdminUsersPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="flex gap-2 rounded-2xl surface-elevated p-2"
+        className="flex gap-1 rounded-2xl surface-elevated p-1.5"
       >
-        <button
-          onClick={() => setActiveTab("website")}
-          className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "website"
-              ? "bg-secondary text-white"
-              : "text-foreground/70 hover:text-foreground"
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <User className="w-4 h-4" />
-            {t("admin.users.tabs.website", "Website Users")}
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab("teachers")}
-          className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "teachers"
-              ? "bg-secondary text-white"
-              : "text-foreground/70 hover:text-foreground"
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <Shield className="w-4 h-4" />
-            {t("admin.users.tabs.teachers", "Teachers")}
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab("admins")}
-          className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "admins"
-              ? "bg-secondary text-white"
-              : "text-foreground/70 hover:text-foreground"
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <Shield className="w-4 h-4" />
-            {t("admin.users.tabs.admins", "Admins")}
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab("students")}
-          className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "students"
-              ? "bg-secondary text-white"
-              : "text-foreground/70 hover:text-foreground"
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <GraduationCap className="w-4 h-4" />
-            {t("admin.users.tabs.students", "Students")}
-          </div>
-        </button>
+        {([
+          { key: "website" as const, icon: User, label: t("admin.users.tabs.website", "Website Users"), count: stats.website },
+          { key: "teachers" as const, icon: Shield, label: t("admin.users.tabs.teachers", "Teachers"), count: stats.teachers },
+          { key: "admins" as const, icon: Shield, label: t("admin.users.tabs.admins", "Admins"), count: stats.admins },
+          { key: "students" as const, icon: GraduationCap, label: t("admin.users.tabs.students", "Students"), count: stats.students },
+        ]).map(({ key, icon: Icon, label, count }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={`tab-pill flex-1 rounded-xl px-4 py-2.5 text-sm ${activeTab === key ? "tab-pill--active" : ""}`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Icon className="w-4 h-4" />
+              <span>{label}</span>
+              <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                activeTab === key ? "bg-secondary text-primary" : "bg-foreground/10 text-foreground/60"
+              }`}>
+                {count}
+              </span>
+            </div>
+          </button>
+        ))}
       </motion.div>
 
       {/* Filters */}
@@ -488,7 +479,7 @@ export default function AdminUsersPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ delay: index * 0.05 }}
-                    className="hover:card-elevated30 transition-colors"
+                    className="interactive-row"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -567,6 +558,33 @@ export default function AdminUsersPage() {
                           {t("admin.users.attendanceReport", "Attendance report")}
                         </Link>
                       )}
+                      {activeTab === "students" && (
+                        <Link
+                          href={`/admin/reports/student/${item._id ?? item.id ?? ""}`}
+                          className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/10 transition mr-2"
+                        >
+                          <FileText className="w-3 h-3" />
+                          {t("admin.users.studentReport", "Report")}
+                        </Link>
+                      )}
+                      {activeTab === "students" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const s = item as Student;
+                            setEditingStudent(s);
+                            setStudentEditForm({
+                              monthlyFee: s.monthlyFee ? String(s.monthlyFee) : "",
+                              periodAdjustment: String(s.periodAdjustment ?? 0),
+                              autoReminders: s.autoReminders ?? false,
+                            });
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/10 transition mr-2"
+                        >
+                          <FileText className="w-3 h-3" />
+                          {t("admin.users.editBilling", "Billing")}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() =>
@@ -615,33 +633,36 @@ export default function AdminUsersPage() {
             )}
           </tbody>
         </table>
-        {totalPages > 1 && filtered.length > 0 && (
+        {filtered.length > 0 && (
           <div className="border-t border-border/70 p-4">
-            <div className="mb-4 flex items-center justify-end gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
-                {t("pagination.itemsPerPage", "Items per page")}:
-              </label>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                  {t("pagination.itemsPerPage", "Items per page")}:
+                </label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-            />
           </div>
         )}
       </motion.div>
@@ -817,6 +838,65 @@ export default function AdminUsersPage() {
           }
         }}
       />
+
+      {/* Student billing edit modal */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl surface-elevated p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-serif text-primary">{t("admin.users.editStudentBilling", "Edit Student Billing")}</h3>
+              <button type="button" onClick={() => setEditingStudent(null)} className="rounded-full p-2 hover:bg-background/60">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mb-4 text-sm text-foreground/70">{editingStudent.fullName} — {editingStudent.attendanceNumber}</p>
+            <div className="space-y-4">
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">{t("admin.users.monthlyFee", "Monthly fee (ETB)")}</span>
+                <input
+                  type="number" min={0}
+                  value={studentEditForm.monthlyFee}
+                  onChange={(e) => setStudentEditForm((f) => ({ ...f, monthlyFee: e.target.value }))}
+                  placeholder={t("admin.users.monthlyFeePlaceholder", "e.g. 3000")}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">{t("admin.users.periodAdjustment", "Period adjustment (admin override)")}</span>
+                <input
+                  type="number"
+                  value={studentEditForm.periodAdjustment}
+                  onChange={(e) => setStudentEditForm((f) => ({ ...f, periodAdjustment: e.target.value }))}
+                  placeholder="0"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                />
+                <p className="mt-1 text-xs text-foreground/50">{t("admin.users.periodAdjustmentHint", "Positive = consumed more periods, negative = consumed fewer. Used when attendance records are imperfect.")}</p>
+              </label>
+              <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background px-4 py-3">
+                <div>
+                  <span className="text-sm font-medium text-foreground">{t("admin.users.autoReminders", "Auto payment reminders")}</span>
+                  <p className="text-xs text-foreground/50">{t("admin.users.autoRemindersHint", "Email this student when they have an overdue balance.")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStudentEditForm((f) => ({ ...f, autoReminders: !f.autoReminders }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${studentEditForm.autoReminders ? "bg-secondary" : "bg-border"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition ${studentEditForm.autoReminders ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </label>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setEditingStudent(null)} className="rounded-full px-4 py-2 text-sm font-medium text-foreground/70 hover:bg-background/60">
+                {t("button.cancel", "Cancel")}
+              </button>
+              <button type="button" onClick={handleSaveStudentBilling} className="btn-primary-strong rounded-full px-5 py-2 text-sm">
+                {t("button.save", "Save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

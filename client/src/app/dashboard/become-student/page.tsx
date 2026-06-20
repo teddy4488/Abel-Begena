@@ -50,7 +50,7 @@ export default function BecomeStudentPage() {
     // Student info
     fullName: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : "",
     instrumentType: "" as InstrumentType | "",
-    learningType: "online" as "online" | "physical",
+    learningType: "physical" as "online" | "physical",
     branchId: "",
     programDurationMonths: 6 as 3 | 6 | 9,
     preferredLearningDays: [] as DayOfWeek[],
@@ -505,7 +505,7 @@ export default function BecomeStudentPage() {
                 ).map((d) => (
                   <div
                     key={d.value}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2"
+                    className="tonal-lift flex items-center justify-between gap-3 px-3 py-2"
                   >
                     <span className="text-sm font-medium text-foreground">{d.label}</span>
                     <input
@@ -762,7 +762,7 @@ disabled={isCreatingPayment}
             <button
               type="button"
               onClick={() => router.back()}
-              className="rounded-full border border-border bg-background/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-background"
+              className="btn-ghost-strong rounded-full px-6 py-3 text-sm"
             >
               {t("button.cancel", "Cancel")}
             </button>

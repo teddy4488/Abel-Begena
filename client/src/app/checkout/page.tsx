@@ -155,7 +155,7 @@ export default function CheckoutPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:p-6 md:p-8"
+            className="tonal-lift p-4 sm:rounded-3xl sm:p-6 md:p-8"
           >
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10">
@@ -188,13 +188,10 @@ export default function CheckoutPage() {
                   <Package className="h-4 w-4" />
                   {t("checkout.page.deliveryOption", "Delivery Option")}
                 </p>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <label
-                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
-                      form.deliveryOption === "Delivery"
-                        ? "border-secondary bg-secondary/10 text-secondary"
-                        : "border-border bg-background/60 hover:border-secondary/50"
-                    }`}
+                    className="selectable flex items-center gap-3 rounded-2xl px-4 py-3 text-sm bg-background/60"
+                    data-selected={form.deliveryOption === "Delivery" ? "true" : undefined}
                   >
                     <input
                       type="radio"
@@ -206,18 +203,15 @@ export default function CheckoutPage() {
                       }
                       className="sr-only"
                     />
-                    <Truck className="h-5 w-5" />
-                    <span>{t("checkout.page.delivery", "Delivery")}</span>
+                    <Truck className={`h-5 w-5 ${form.deliveryOption === "Delivery" ? "text-secondary" : "text-foreground/60"}`} />
+                    <span className={form.deliveryOption === "Delivery" ? "text-secondary font-semibold" : ""}>{t("checkout.page.delivery", "Delivery")}</span>
                     {form.deliveryOption === "Delivery" && (
-                      <CheckCircle className="ml-auto h-4 w-4" />
+                      <CheckCircle className="ml-auto h-4 w-4 text-secondary" />
                     )}
                   </label>
                   <label
-                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
-                      form.deliveryOption === "Pickup"
-                        ? "border-secondary bg-secondary/10 text-secondary"
-                        : "border-border bg-background/60 hover:border-secondary/50"
-                    }`}
+                    className="selectable flex items-center gap-3 rounded-2xl px-4 py-3 text-sm bg-background/60"
+                    data-selected={form.deliveryOption === "Pickup" ? "true" : undefined}
                   >
                     <input
                       type="radio"
@@ -229,10 +223,10 @@ export default function CheckoutPage() {
                       }
                       className="sr-only"
                     />
-                    <Building2 className="h-5 w-5" />
-                    <span>{t("checkout.page.pickup", "Pickup")}</span>
+                    <Building2 className={`h-5 w-5 ${form.deliveryOption === "Pickup" ? "text-secondary" : "text-foreground/60"}`} />
+                    <span className={form.deliveryOption === "Pickup" ? "text-secondary font-semibold" : ""}>{t("checkout.page.pickup", "Pickup")}</span>
                     {form.deliveryOption === "Pickup" && (
-                      <CheckCircle className="ml-auto h-4 w-4" />
+                      <CheckCircle className="ml-auto h-4 w-4 text-secondary" />
                     )}
                   </label>
                 </div>
@@ -390,7 +384,7 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 {["BankTransfer", "Telebirr", "CBEBirr"].includes(form.paymentMethod) && (
-                  <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background/60 p-4">
+                  <div className="tonal-lift mt-4 space-y-3 p-4">
                     <p className="text-xs text-foreground/70">
                       {form.paymentMethod === "BankTransfer"
                         ? t(
@@ -494,7 +488,7 @@ export default function CheckoutPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="rounded-3xl border border-border bg-surface p-8 shadow-[0_25px_60px_var(--color-primary-glow)]"
+            className="tonal-lift p-8"
           >
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10">
@@ -508,7 +502,7 @@ export default function CheckoutPage() {
             {isLoading && (
               <div className="space-y-4">
                 {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center gap-4 rounded-2xl border border-border bg-background/80 p-4">
+                  <div key={i} className="tonal-lift flex items-center gap-4 p-4">
                     <Skeleton className="h-16 w-16 rounded-xl" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-4 w-32" />
@@ -531,7 +525,7 @@ export default function CheckoutPage() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="flex items-center justify-between rounded-2xl border border-border bg-background/80 px-4 py-3"
+                    className="tonal-lift flex items-center justify-between px-4 py-3"
                   >
                     <div className="flex-1">
                       <p className="font-semibold text-primary">

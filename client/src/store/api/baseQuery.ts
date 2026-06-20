@@ -23,6 +23,12 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
+// Shared promise so concurrent 401s share a single refresh attempt instead of
+// each firing their own. Without this, pages that fire multiple requests on
+// mount all get 401 (no persisted token), all independently call /auth/refresh,
+// and the 2nd+ attempts fail (or race) — causing a visible logout/login flash.
+let pendingRefresh: Promise<Awaited<ReturnType<typeof rawBaseQuery>>> | null = null;
+
 export const authorizedBaseQuery: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -43,14 +49,21 @@ export const authorizedBaseQuery: BaseQueryFn<
     const isAuthLogin = path.startsWith("/auth/login");
 
     if (!isAuthRefresh && !isAuthLogin) {
-      // Attempt silent refresh once (uses httpOnly refresh cookie)
-      const refreshResult = await rawBaseQuery(
-        { url: "/auth/refresh", method: "POST" },
-        api,
-        extraOptions,
-      );
+      // Only one refresh fires at a time; concurrent 401s await the same promise.
+      if (!pendingRefresh) {
+        pendingRefresh = rawBaseQuery(
+          { url: "/auth/refresh", method: "POST" },
+          api,
+          extraOptions,
+        ).then((r) => {
+          pendingRefresh = null;
+          return r;
+        });
+      }
 
-        if (!refreshResult.error) {
+      const refreshResult = await pendingRefresh;
+
+      if (!refreshResult.error) {
         const data = refreshResult.data as
           | {
               accessToken?: string | null;

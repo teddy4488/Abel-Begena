@@ -88,7 +88,7 @@ export default function CartPage() {
         {isLoading && (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-3xl border border-border bg-surface p-6">
+              <div key={i} className="tonal-lift p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <Skeleton className="h-24 w-24 rounded-2xl" />
                   <div className="flex-1 space-y-2">

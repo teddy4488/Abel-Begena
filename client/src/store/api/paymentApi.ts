@@ -99,6 +99,9 @@ export const paymentApi = createApi({
         body,
       }),
       invalidatesTags: ["PaymentRequests"],
+      // NOTE: Cross-API tag invalidation (Orders/Billing/Students/etc.) must be
+      // dispatched from the calling component because RTK Query scopes tag types
+      // to a single createApi instance. See admin/payments page handlers.
     }),
     // Admin repair: re-run the side effects of an already-approved payment.
     retryPaymentSideEffects: builder.mutation<PaymentRequest, { id: string }>({

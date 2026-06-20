@@ -523,7 +523,7 @@ export default function TeacherSchedulePage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ delay: index * 0.05 }}
-                        className={`flex flex-col gap-3 rounded-xl border p-4 transition-all hover:shadow-md ${
+                        className={`interactive-row flex flex-col gap-3 rounded-xl border p-4 ${
                           hasConflict
                             ? "border-yellow-500/60 bg-yellow-500/5"
                             : "border-border bg-background/50"

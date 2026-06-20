@@ -11,7 +11,17 @@ import { useGetPublicClassesQuery } from "@/store/api/classApi";
 import { useGetBranchesQuery } from "@/store/api/branchApi";
 import { useGetFaqQuery } from "@/store/api/faqApi";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { useToast } from "@/components/providers/ToastProvider";
+import { extractErrorMessage } from "@/lib/errors";
+import { ChevronLeft, ChevronRight, ChevronDown, Loader2 } from "lucide-react";
+import {
+  LalibelaCross,
+  BegenaGlyph,
+  HabeshaThread,
+  HabeshaWideStrip,
+  OfferingsBand,
+  VerticalTextileColumn,
+} from "@/components/icons/ethiopian";
 import VirtualBegenaPreview from "@/components/home/VirtualBegenaPreview";
 // import { BranchesMapModal } from "@/components/branches/BranchesMapModal";
 import dynamic from "next/dynamic";
@@ -103,6 +113,70 @@ export default function Home() {
   const featuredProducts = (products?.items ?? []).slice(0, 3);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
+  // Contact form — submits to POST /contact which emails the school inbox.
+  const { pushToast } = useToast();
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [isSendingContact, setIsSendingContact] = useState(false);
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSendingContact) return;
+    const name = contactName.trim();
+    const email = contactEmail.trim();
+    const message = contactMessage.trim();
+    if (name.length < 2 || !email || message.length < 10) {
+      pushToast({
+        title: t("contact.form.invalid", "Please fill in all fields"),
+        description: t(
+          "contact.form.invalidDesc",
+          "Name, valid email, and a message of at least 10 characters are required.",
+        ),
+        variant: "error",
+      });
+      return;
+    }
+    setIsSendingContact(true);
+    try {
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
+      const res = await fetch(`${apiBase}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw errBody ?? new Error(`HTTP ${res.status}`);
+      }
+      pushToast({
+        title: t("contact.form.success", "Message sent"),
+        description: t(
+          "contact.form.successDesc",
+          "We'll get back to you as soon as we can. Thank you for reaching out.",
+        ),
+        variant: "success",
+      });
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+    } catch (err) {
+      pushToast({
+        title: t("contact.form.error", "Could not send message"),
+        description: extractErrorMessage(
+          err,
+          t(
+            "contact.form.errorDesc",
+            "Please try again in a moment, or email us directly.",
+          ),
+        ),
+        variant: "error",
+      });
+    } finally {
+      setIsSendingContact(false);
+    }
+  };
 
   const nextVideo = useCallback(() => {
     setCurrentVideoIndex((prev) => (prev + 1) % sacredVideos.length);
@@ -196,14 +270,49 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors">
       <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
-        <section className="relative overflow-hidden rounded-2xl bg-[var(--color-surface-elevated)] px-4 py-8 shadow-[0_8px_32px_var(--color-primary-glow)] transition-colors sm:rounded-[32px] sm:px-6 sm:py-12 md:px-12 md:py-14 lg:px-16 dark:bg-[var(--color-surface-elevated)]">
-          <div className="absolute inset-0 bg-gradient-to-tr from-[var(--color-background)] via-[var(--color-surface)] to-[var(--color-secondary-soft)] opacity-60 dark:opacity-40" />
-          {/* Subtle Orthodox cross lines in the hero background */}
-          <div className="pointer-events-none absolute inset-0">
-            <span className="absolute left-6 top-10 text-5xl text-secondary opacity-25">✝</span>
-            <span className="absolute right-10 bottom-8 text-6xl text-secondary opacity-25">✝</span>
-          </div>
-          <div className="relative grid gap-12 lg:grid-cols-2">
+        {/* ═══════════════════════════════════════════════════════════
+            MANUSCRIPT FRAME HERO
+            Ge'ez band top → awdema wash content → habesha wide bottom.
+            Vertical textile columns on outer edges. Lalibela watermark
+            behind text.
+            ═══════════════════════════════════════════════════════════ */}
+        <section className="ornate-frame overflow-hidden">
+          {/* Top edge: Offerings band — dark gilded header with Lalibela cross */}
+          <OfferingsBand style={{ borderRadius: 0 }} />
+
+          {/* Main hero content area — awdema-bg adds the subtle pattern wash */}
+          <div className="awdema-bg relative px-4 py-10 sm:px-6 sm:py-12 md:px-12 md:py-14 lg:px-16">
+            {/* Vertical textile columns on outer edges (decorative side rules) */}
+            <VerticalTextileColumn
+              width={36}
+              opacity={0.35}
+              className="pointer-events-none absolute left-2 top-10 bottom-10 hidden md:block"
+              style={{ height: "auto" }}
+            />
+            <VerticalTextileColumn
+              width={36}
+              opacity={0.35}
+              className="pointer-events-none absolute right-2 top-10 bottom-10 hidden md:block"
+              style={{ height: "auto" }}
+            />
+
+            {/* Lalibela cross watermark behind the right column */}
+            <div
+              className="pointer-events-none absolute right-12 top-4 z-0 hidden opacity-[0.06] md:block dark:opacity-[0.1]"
+              aria-hidden="true"
+            >
+              <LalibelaCross size={260} strokeWidth={3} color="var(--color-wood)" />
+            </div>
+
+            {/* Small Begena glyph as a corner accent (top-left) */}
+            <div
+              className="pointer-events-none absolute left-4 top-4 z-0 hidden opacity-30 lg:block dark:opacity-40"
+              aria-hidden="true"
+            >
+              <BegenaGlyph size={48} color="var(--color-secondary)" />
+            </div>
+
+            <div className="relative z-10 grid gap-12 lg:grid-cols-2">
             <FadeIn className="space-y-8">
               <p className="text-xs uppercase tracking-[0.35em] text-secondary">
                 {t("hero.kicker")}
@@ -229,13 +338,13 @@ export default function Home() {
               <div className="flex flex-col gap-4 sm:flex-row">
                 <Link
                   href={primaryCta.href}
-                  className="rounded-full bg-primary px-8 py-3 text-center text-primary-foreground shadow-[0_25px_40px_var(--color-primary-glow)] transition hover:-translate-y-0.5 hover:brightness-95"
+                  className="btn-primary-strong inline-flex items-center justify-center rounded-full px-8 py-3 text-center"
                 >
                   {primaryCta.label}
                 </Link>
                 <Link
                   href={secondaryCta.href}
-                  className="rounded-full border border-secondary px-8 py-3 text-center text-secondary transition hover:-translate-y-0.5 hover:bg-(--color-secondary-soft)"
+                  className="btn-ghost-strong inline-flex items-center justify-center rounded-full px-8 py-3 text-center"
                 >
                   {secondaryCta.label}
                 </Link>
@@ -260,15 +369,23 @@ export default function Home() {
               >
                 <Image
                   src={heroImage}
-                  alt="Begena artisan instrument"
+                  alt={t("hero.imageCaption", "Liqe-mezemran Deacon Abel Tesfaye")}
                   width={540}
                   height={720}
                   className="rounded-[22px] object-cover"
                   priority
                 />
+                {/* Caption — name of the person in the hero photograph */}
+                <p className="mt-3 text-center text-sm font-serif tracking-wide text-primary">
+                  {t("hero.imageCaption", "Liqe-mezemran Deacon Abel Tesfaye")}
+                </p>
               </motion.div>
             </div>
+            </div>
           </div>
+
+          {/* Bottom edge: vivid Habesha strip — visual punctuation for the hero */}
+          <HabeshaWideStrip style={{ borderRadius: 0 }} />
         </section>
 
         {/* Sacred Videos Carousel Section */}
@@ -377,23 +494,44 @@ export default function Home() {
 
         <VirtualBegenaPreview />
 
+        {/* ═══════════════════════════════════════════════════════════
+            TRINITY CARDS · services
+            Centered gilded Lalibela cross + Habesha-flanked kicker.
+            ═══════════════════════════════════════════════════════════ */}
         <section id="services" className="space-y-6">
           <FadeIn>
-            <p className="text-xs uppercase tracking-[0.35em] text-secondary">
-              {t("services.kicker")}
-            </p>
-            <h2 className="text-3xl font-serif text-primary">
+            {/* Gilded Lalibela centerpiece */}
+            <div className="flex justify-center">
+              <LalibelaCross
+                size={36}
+                strokeWidth={6}
+                color="var(--color-gilt)"
+                style={{ filter: "drop-shadow(0 2px 8px rgba(212,164,55,0.5))" }}
+              />
+            </div>
+
+            {/* Tri-band header: thread / kicker / thread */}
+            <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+              <HabeshaThread my={0} />
+              <p className="whitespace-nowrap text-xs uppercase tracking-[0.35em] text-secondary">
+                {t("services.kicker")}
+              </p>
+              <HabeshaThread my={0} />
+            </div>
+
+            <h2 className="mt-3 text-center text-3xl font-serif text-primary">
               {t("services.title")}
             </h2>
           </FadeIn>
+
           <div className="grid gap-6 md:grid-cols-3">
             {serviceCards.map((card, index) => (
               <FadeIn
                 key={card.id}
                 delay={0.1 * index}
-                className="group flex flex-col overflow-hidden rounded-3xl bg-[var(--color-surface-elevated)] shadow-[0_25px_60px_var(--color-primary-glow)] transition-all hover:bg-[var(--color-card-hover)] dark:bg-[var(--color-surface-elevated)] dark:hover:bg-[var(--color-card-hover)]"
+                className="selectable tonal-lift group flex flex-col overflow-hidden"
               >
-                <div id={card.id} className="relative h-52 w-full overflow-hidden bg-[var(--color-background-subtle)] dark:bg-[var(--color-background-subtle)]">
+                <div id={card.id} className="relative h-52 w-full overflow-hidden bg-[var(--color-background-subtle)]">
                   <Image
                     src={card.image}
                     alt={card.title}
@@ -413,7 +551,7 @@ export default function Home() {
                   <p className="text-sm text-foreground/80">{card.copy}</p>
                   <Link
                     href={card.ctaHref}
-                    className="mt-auto inline-flex items-center justify-center rounded-full bg-[var(--color-secondary-soft)] px-5 py-2 text-sm font-semibold text-secondary transition hover:-translate-y-0.5 hover:bg-[var(--color-secondary-soft)] hover:opacity-80 dark:bg-[var(--color-secondary-soft)] dark:hover:opacity-80"
+                    className="btn-primary-strong mt-auto inline-flex items-center justify-center rounded-full px-5 py-2 text-sm"
                   >
                     {card.ctaLabel}
                   </Link>
@@ -733,29 +871,54 @@ export default function Home() {
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("contact.form.kicker")}
             </p>
-            <div className="space-y-3">
+            <form onSubmit={handleContactSubmit} className="space-y-3">
               <input
                 type="text"
+                required
+                minLength={2}
+                maxLength={120}
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
                 placeholder={t("contact.form.name")}
-                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
+                disabled={isSendingContact}
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 disabled:opacity-60 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
               />
               <input
                 type="email"
+                required
+                maxLength={160}
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
                 placeholder={t("contact.form.email")}
-                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
+                disabled={isSendingContact}
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 disabled:opacity-60 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
               />
               <textarea
+                required
+                minLength={10}
+                maxLength={4000}
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
                 placeholder={t("contact.form.message")}
+                disabled={isSendingContact}
                 rows={5}
-                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
+                className="w-full rounded-2xl bg-[var(--color-card-bg)] px-4 py-3 text-sm outline-none transition focus:bg-[var(--color-card-hover)] focus:ring-2 focus:ring-secondary/30 disabled:opacity-60 dark:bg-[var(--color-card-bg)] dark:focus:bg-[var(--color-card-hover)]"
               />
-            </div>
-            <Link
-              href="mailto:hello@abelbegena.com"
-              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_20px_30px_var(--color-primary-glow)] transition hover:-translate-y-0.5"
-            >
-              {t("contact.form.submit")}
-            </Link>
+              <button
+                type="submit"
+                disabled={isSendingContact}
+                className="btn-primary-strong inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm shadow-[0_20px_30px_var(--color-primary-glow)]"
+              >
+                {isSendingContact ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("contact.form.submitting", "Sending…")}
+                  </>
+                ) : (
+                  t("contact.form.submit")
+                )}
+              </button>
+            </form>
           </FadeIn>
         </section>
       </main>

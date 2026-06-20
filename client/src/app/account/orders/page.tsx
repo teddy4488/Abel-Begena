@@ -238,7 +238,7 @@ export default function OrdersPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="group rounded-3xl surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] transition hover:shadow-[0_30px_70px_rgba(18,6,6,0.15)]"
+                className="interactive-row group rounded-3xl surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)]"
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -273,7 +273,7 @@ export default function OrdersPage() {
                     <StatusIcon className="h-4 w-4" />
                     {getStatusTranslation(order.status)}
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-4 py-2 text-sm text-foreground/70">
+                  <span className="tonal-lift inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-foreground/70">
                     <CreditCard className="h-4 w-4" />
                     {order.paymentMethod}
                   </span>
@@ -298,7 +298,7 @@ export default function OrdersPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedOrderId(order._id)}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-2 text-xs font-semibold text-secondary transition hover:border-secondary"
+                  className="btn-ghost-strong inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs"
                 >
                   <FileText className="h-3 w-3" />
                   {t("orders.resubmit.button", "Resubmit receipt")}
@@ -382,7 +382,7 @@ export default function OrdersPage() {
 
       {selectedOrderId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-surface-elevated p-6 shadow-2xl">
+          <div className="ornate-frame w-full max-w-md p-6">
             <div className="mb-4">
               <h2 className="text-xl font-serif text-primary">
                 {t("orders.resubmit.title", "Resubmit payment receipt")}
@@ -420,7 +420,7 @@ export default function OrdersPage() {
                   value={receiptNote}
                   onChange={(e) => setReceiptNote(e.target.value)}
                   rows={3}
-                  className="mt-1 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="recessed mt-1 w-full px-3 py-2 text-sm outline-none transition"
                   placeholder={t(
                     "orders.resubmit.notePlaceholder",
                     "Paste a shared link or add a short description of your payment.",
@@ -437,7 +437,7 @@ export default function OrdersPage() {
               <button
                 type="button"
                 onClick={resetModalState}
-                className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground/80 transition hover:bg-surface"
+                className="btn-ghost-strong flex-1 rounded-full px-4 py-2 text-sm"
               >
                 {t("button.cancel", "Cancel")}
               </button>

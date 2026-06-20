@@ -22,7 +22,7 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-3xl border border-border bg-surface p-5">
+    <div className="tonal-lift p-5">
       <Skeleton className="mb-4 h-48 w-full rounded-2xl" />
       <Skeleton className="mb-2 h-3 w-20" />
       <Skeleton className="mb-2 h-6 w-3/4" />
@@ -44,7 +44,7 @@ export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
 
 export function ClassCardSkeleton() {
   return (
-    <div className="rounded-3xl border border-border bg-background/70 p-5">
+    <div className="tonal-lift p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex-1 space-y-3">
           <Skeleton className="h-6 w-24 rounded-full" />

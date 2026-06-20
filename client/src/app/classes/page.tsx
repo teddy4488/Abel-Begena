@@ -15,6 +15,7 @@ import type { InstrumentType } from "@/store/api/storeApi";
 import { useAppSelector } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { extractErrorMessage } from "@/lib/errors";
 import Link from "next/link";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -125,7 +126,7 @@ export default function ClassesPage() {
       learningGoals: "",
       notesForTeacher: "",
       preferredTime: "",
-      learningType: "online",
+      learningType: "physical",
     branchId: "",
     instrumentType: "Begena",
     programDurationMonths: "6",
@@ -173,7 +174,7 @@ export default function ClassesPage() {
       learningGoals: "",
       notesForTeacher: "",
       preferredTime: "",
-      learningType: "online",
+      learningType: "physical",
       branchId: "",
       instrumentType: (klass.instrumentType ?? "Begena") as InstrumentType,
       programDurationMonths: (klass.durationMonths
@@ -205,7 +206,7 @@ export default function ClassesPage() {
       learningGoals: "",
       notesForTeacher: "",
       preferredTime: "",
-      learningType: "online",
+      learningType: "physical",
       branchId: "",
       instrumentType: "Begena",
       programDurationMonths: "6",
@@ -319,7 +320,7 @@ export default function ClassesPage() {
       amount: Number(form.amount) || 0,
       currency: form.currency,
       paymentMethod: "BankTransfer" as PaymentMethod,
-      // Reference is optional and can hold CHAPA / Telebirr / bank reference text.
+      // Reference is optional — bank transfer / Telebirr reference number, etc.
       paymentReference: form.paymentReference.trim() || undefined,
       note: form.note?.trim() || undefined,
       fullName: form.fullName.trim(),
@@ -380,12 +381,16 @@ export default function ClassesPage() {
       handleClose();
     } catch (error) {
       console.error(error);
-      pushToast({
-        title: t("classes.modal.errorTitle", "Unable to enroll"),
-        description: t(
+      const message = extractErrorMessage(
+        error,
+        t(
           "classes.modal.errorDescription",
           "Please verify your payment details and try again.",
         ),
+      );
+      pushToast({
+        title: t("classes.modal.errorTitle", "Unable to enroll"),
+        description: message,
         variant: "error",
       });
     }
@@ -463,7 +468,7 @@ export default function ClassesPage() {
               <select
                 value={instrumentFilter}
                 onChange={(e) => setInstrumentFilter(e.target.value)}
-                className="rounded-2xl border border-border bg-surface-elevated px-4 py-2 text-sm text-foreground outline-none transition focus:border-secondary"
+                className="recessed px-4 py-2 text-sm text-foreground outline-none transition"
               >
                 <option value="">{t("classes.filters.allInstruments", "All instruments")}</option>
                 {INSTRUMENTS.map((inst) => (
@@ -473,7 +478,7 @@ export default function ClassesPage() {
               <select
                 value={levelFilter}
                 onChange={(e) => setLevelFilter((e.target.value || "") as "beginner" | "advanced" | "")}
-                className="rounded-2xl border border-border bg-surface-elevated px-4 py-2 text-sm text-foreground outline-none transition focus:border-secondary"
+                className="recessed px-4 py-2 text-sm text-foreground outline-none transition"
               >
                 <option value="">{t("classes.filters.allLevels", "All levels")}</option>
                 <option value="beginner">{t("classes.filters.beginner", "Beginner")}</option>
@@ -496,8 +501,7 @@ export default function ClassesPage() {
               return (
                 <motion.article
                   key={klass._id}
-                  whileHover={{ y: -4 }}
-                  className="flex flex-col rounded-[28px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] backdrop-blur-sm"
+                  className="selectable flex flex-col rounded-[28px] surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] backdrop-blur-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-2xl font-serif text-primary">
@@ -647,7 +651,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, amount: e.target.value }))
                     }
-                    className="mt-2 w-full cursor-text rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full cursor-text recessed px-4 py-3 text-sm text-foreground outline-none transition shadow-sm"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -658,7 +662,7 @@ export default function ClassesPage() {
                       const nextCurrency = resolveCurrency(e.target.value);
                       setForm((prev) => ({ ...prev, currency: nextCurrency }));
                     }}
-                    className="mt-2 w-full cursor-pointer rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full cursor-pointer recessed px-4 py-3 text-sm text-foreground outline-none transition shadow-sm"
                   >
                     {currencyOptions.map((option) => (
                       <option key={option} value={option}>
@@ -669,10 +673,23 @@ export default function ClassesPage() {
                 </label>
               </div>
 
-              {/* Upload receipt (required for paid cohorts) */}
+              {/* Upload receipt (required) — visually emphasized so users don't miss it. */}
               {form.paymentOption === "BankWithReceipt" && (
-                <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                  {t("classes.modal.receipt", "Upload payment receipt")}
+                <div className="rounded-2xl border-2 border-dashed border-secondary/60 bg-secondary/5 p-4">
+                  <div className="mb-2 flex items-start gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-secondary">
+                      {t("classes.modal.receipt", "Upload payment receipt")}
+                    </span>
+                    <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-600">
+                      {t("classes.modal.required", "Required")}
+                    </span>
+                  </div>
+                  <p className="mb-3 text-xs text-foreground/70">
+                    {t(
+                      "classes.modal.receiptHint",
+                      "Image or PDF of your bank transfer / Telebirr screenshot. An admin will review this before activating your enrollment.",
+                    )}
+                  </p>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -680,12 +697,17 @@ export default function ClassesPage() {
                       const file = e.target.files?.[0] ?? null;
                       setReceiptFile(file);
                     }}
-                    className="mt-2 w-full cursor-pointer text-xs text-foreground/80"
+                    className={`block w-full cursor-pointer text-xs file:mr-3 file:rounded-full file:border-0 file:bg-secondary file:px-4 file:py-2 file:text-xs file:font-semibold file:text-primary hover:file:bg-secondary/90 ${receiptFile ? "text-foreground" : "text-foreground/60"}`}
                   />
-                </label>
+                  {receiptFile && (
+                    <p className="mt-2 text-xs font-medium text-emerald-600">
+                      ✓ {receiptFile.name}
+                    </p>
+                  )}
+                </div>
               )}
 
-              {/* Optional reference for CHAPA / Telebirr / bank transfer number */}
+              {/* Optional bank reference number */}
               <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
                 {t("classes.modal.paymentReference", "Transaction reference (optional)")}
                 <input
@@ -697,8 +719,8 @@ export default function ClassesPage() {
                       paymentReference: e.target.value,
                     }))
                   }
-                  className="mt-2 w-full cursor-text rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                  placeholder={t("classes.modal.referencePlaceholder", "e.g. CHAPA-XXXX / Telebirr / bank ref")}
+                  className="mt-2 w-full cursor-text recessed px-4 py-3 text-sm text-foreground outline-none transition"
+                  placeholder={t("classes.modal.referencePlaceholder", "Bank reference / transaction number")}
                 />
               </label>
 
@@ -776,7 +798,7 @@ export default function ClassesPage() {
                       required
                       value={form.branchId}
                       onChange={(e) => setForm({ ...form, branchId: e.target.value })}
-                      className="mt-2 w-full cursor-pointer rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                      className="mt-2 w-full cursor-pointer recessed px-4 py-3 text-sm text-foreground outline-none transition"
                     >
                       <option value="">{t("classes.modal.selectBranch", "Select a branch")}</option>
                       {branches.map((branch) => (
@@ -800,7 +822,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm({ ...form, instrumentType: e.target.value as InstrumentType })
                     }
-                    className="mt-2 w-full cursor-pointer rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="mt-2 w-full cursor-pointer recessed px-4 py-3 text-sm text-foreground outline-none transition"
                   >
                     {INSTRUMENTS.map((instrument) => (
                       <option key={instrument} value={instrument}>
@@ -955,7 +977,7 @@ export default function ClassesPage() {
                       ).map((d) => (
                         <div
                           key={d.value}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3 py-2"
+                          className="tonal-lift flex items-center justify-between gap-3 px-3 py-2"
                         >
                           <span className="text-sm font-medium text-foreground">{d.label}</span>
                           <input
@@ -970,7 +992,7 @@ export default function ClassesPage() {
                                 slotTimes: { ...form.slotTimes, [d.value]: e.target.value },
                               })
                             }
-                            className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                            className="recessed px-3 py-1.5 text-sm outline-none"
                           />
                         </div>
                       ))}
@@ -990,7 +1012,7 @@ export default function ClassesPage() {
                       setForm({ ...form, preferredTime: e.target.value })
                     }
                     placeholder={t("classes.modal.preferredTimePlaceholder", "e.g. 12:00 PM LT")}
-                    className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="w-full recessed px-4 py-3 text-sm outline-none transition"
                   />
                 </div>
 
@@ -1006,7 +1028,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm({ ...form, registrationStartDate: e.target.value })
                     }
-                    className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    className="w-full recessed px-4 py-3 text-sm outline-none transition"
                   />
                 </div>
               </div>
@@ -1022,7 +1044,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, fullName: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full recessed px-4 py-3 text-sm outline-none transition"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -1069,7 +1091,7 @@ export default function ClassesPage() {
                         emergencyContactName: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full recessed px-4 py-3 text-sm outline-none transition"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -1118,7 +1140,7 @@ export default function ClassesPage() {
                         occupation: e.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full recessed px-4 py-3 text-sm outline-none transition"
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary">
@@ -1129,7 +1151,7 @@ export default function ClassesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, city: e.target.value }))
                     }
-                    className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30 shadow-sm"
+                    className="mt-2 w-full recessed px-4 py-3 text-sm outline-none transition"
                   />
                 </label>
               </div>
@@ -1142,7 +1164,7 @@ export default function ClassesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, address: e.target.value }))
                   }
-                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-2 w-full recessed px-4 py-3 text-sm outline-none transition"
                 />
               </label>
 
@@ -1160,7 +1182,7 @@ export default function ClassesPage() {
                       learningGoals: e.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-2 w-full recessed px-4 py-3 text-sm outline-none transition"
                 />
               </label>
 
@@ -1172,7 +1194,7 @@ export default function ClassesPage() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, note: e.target.value }))
                   }
-                  className="mt-2 w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  className="mt-2 w-full recessed px-4 py-3 text-sm outline-none transition"
                   placeholder={t(
                     "classes.modal.notePlaceholder",
                     "Additional context for the admin/teacher.",

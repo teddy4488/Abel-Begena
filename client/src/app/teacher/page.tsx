@@ -238,7 +238,7 @@ export default function TeacherDashboardPage() {
               >
                 <Link
                   href={action.href}
-                  className="group flex flex-col rounded-xl card-elevated p-5 transition-all hover:shadow-md"
+                  className="selectable group flex flex-col rounded-xl card-elevated p-5"
                 >
                   <div className={`mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl ${action.bgColor} ${action.color} transition-transform group-hover:scale-110`}>
                     <Icon className="h-6 w-6" />
@@ -300,7 +300,8 @@ export default function TeacherDashboardPage() {
                   >
                     <Link
                       href="/teacher/live"
-                      className="flex items-center justify-between rounded-xl card-elevated p-4 transition-all hover:shadow-md group"
+                      className="interactive-row group flex items-center justify-between rounded-xl card-elevated p-4"
+                      data-clickable="true"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -407,7 +408,7 @@ export default function TeacherDashboardPage() {
             {recentPosts.map((post) => (
               <div
                 key={post._id}
-                className="rounded-xl card-elevated p-4 transition-all hover:shadow-md"
+                className="interactive-row rounded-xl card-elevated p-4"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-primary truncate">

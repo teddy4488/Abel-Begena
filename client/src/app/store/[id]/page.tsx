@@ -110,7 +110,7 @@ export default function ProductDetailPage() {
     <section className="min-h-screen bg-background px-4 py-8 text-foreground transition-colors sm:px-6 md:px-10 md:py-16 lg:px-16">
       <div className="mx-auto flex max-w-5xl flex-col gap-6 sm:gap-8 lg:flex-row lg:gap-10">
         <div className="flex-1 space-y-3 sm:space-y-4">
-          <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-background/80 sm:rounded-3xl">
+          <div className="tonal-lift aspect-square overflow-hidden sm:rounded-3xl">
             {data.images?.length ? (
               <Image
                 src={activeImage ?? data.images[0]}
@@ -151,7 +151,7 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        <div className="flex-1 space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-lg sm:rounded-3xl sm:space-y-6 sm:p-6 md:p-8">
+        <div className="tonal-lift flex-1 space-y-4 p-4 sm:rounded-3xl sm:space-y-6 sm:p-6 md:p-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">
@@ -192,7 +192,7 @@ export default function ProductDetailPage() {
             <span className="text-xs font-semibold uppercase tracking-wide text-secondary sm:text-sm">
               {t("store.quantity", "Quantity")}
             </span>
-            <div className="flex items-center rounded-full border border-border">
+            <div className="recessed flex items-center rounded-full">
               <button
                 onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                 className="px-3 py-2 text-base transition hover:bg-secondary/10 sm:px-4 sm:text-lg"
@@ -249,7 +249,7 @@ export default function ProductDetailPage() {
                 {attributes.map(([key, value]) => (
                   <div
                     key={key}
-                    className="flex justify-between gap-4 rounded-2xl border border-border px-4 py-3"
+                    className="tonal-lift flex justify-between gap-4 px-4 py-3"
                   >
                     <dt className="font-medium capitalize">
                       {key.replace(/([A-Z])/g, " $1")}
@@ -292,7 +292,7 @@ export default function ProductDetailPage() {
                 <Link
                   key={p._id}
                   href={`/store/${p._id}`}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition hover:shadow-md"
+                  className="tonal-lift selectable group flex flex-col overflow-hidden"
                 >
                   <div className="aspect-square overflow-hidden bg-background/80">
                     {p.images?.length ? (

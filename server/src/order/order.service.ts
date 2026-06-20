@@ -517,6 +517,29 @@ export class OrderService {
       throw new BadRequestException('Paid orders cannot be marked as unpaid');
     }
 
+    // Strict forward-only fulfillment progression. Once an order is delivered it's
+    // final; once shipped it can only go to delivered or cancelled; etc. Cancellation
+    // is always allowed (from any non-terminal state) — that's a separate workflow.
+    if (status && status !== existing.status) {
+      const allowedNext: Record<OrderStatus, OrderStatus[]> = {
+        [OrderStatus.PAYMENT_PENDING]: [OrderStatus.PAYMENT_REJECTED, OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+        [OrderStatus.PAYMENT_REJECTED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+        [OrderStatus.PENDING]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+        [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+        // Shipped → only Delivered. Once it's with the carrier the items are no
+        // longer in our inventory; "cancelling" wouldn't be honest about state.
+        [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED],
+        [OrderStatus.DELIVERED]: [], // terminal
+        [OrderStatus.CANCELLED]: [], // terminal
+      };
+      const allowed = allowedNext[existing.status as OrderStatus] ?? [];
+      if (!allowed.includes(status)) {
+        throw new BadRequestException(
+          `Cannot move order from "${existing.status}" to "${status}". Allowed next states: ${allowed.join(', ') || '(none — order is in a terminal state)'}.`,
+        );
+      }
+    }
+
     // Restore stock when cancelling an order that currently holds reserved stock.
     if (
       nextStatus === OrderStatus.CANCELLED &&

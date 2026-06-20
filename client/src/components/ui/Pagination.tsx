@@ -22,8 +22,6 @@ export default function Pagination({
 }: PaginationProps) {
   const { t } = useI18n();
 
-  if (totalPages <= 1) return null;
-
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -86,62 +84,64 @@ export default function Pagination({
           {t("pagination.showing", "Showing")} {startItem} - {endItem} {t("pagination.of", "of")} {totalItems}
         </div>
       )}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="inline-flex items-center justify-center rounded-full border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label={t("pagination.previous", "Previous page")}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="btn-ghost-strong inline-flex items-center justify-center rounded-full px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t("pagination.previous", "Previous page")}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
 
-        <div className="flex items-center gap-1">
-          {pageNumbers.map((page, index) => {
-            if (page === "ellipsis-start" || page === "ellipsis-end") {
+          <div className="flex items-center gap-1">
+            {pageNumbers.map((page, index) => {
+              if (page === "ellipsis-start" || page === "ellipsis-end") {
+                return (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="px-2 py-1 text-sm text-foreground/50"
+                  >
+                    ...
+                  </span>
+                );
+              }
+
+              const pageNum = page as number;
+              const isActive = pageNum === currentPage;
+
               return (
-                <span
-                  key={`ellipsis-${index}`}
-                  className="px-2 py-1 text-sm text-foreground/50"
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => onPageChange(pageNum)}
+                  className={`inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold transition ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "btn-ghost-strong"
+                  }`}
+                  aria-label={`${t("pagination.page", "Page")} ${pageNum}`}
+                  aria-current={isActive ? "page" : undefined}
                 >
-                  ...
-                </span>
+                  {pageNum}
+                </button>
               );
-            }
+            })}
+          </div>
 
-            const pageNum = page as number;
-            const isActive = pageNum === currentPage;
-
-            return (
-              <button
-                key={pageNum}
-                type="button"
-                onClick={() => onPageChange(pageNum)}
-                className={`inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold transition ${
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "border border-border bg-background text-foreground hover:bg-secondary/10"
-                }`}
-                aria-label={`${t("pagination.page", "Page")} ${pageNum}`}
-                aria-current={isActive ? "page" : undefined}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="btn-ghost-strong inline-flex items-center justify-center rounded-full px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t("pagination.next", "Next page")}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="inline-flex items-center justify-center rounded-full border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label={t("pagination.next", "Next page")}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
+      )}
     </div>
   );
 }

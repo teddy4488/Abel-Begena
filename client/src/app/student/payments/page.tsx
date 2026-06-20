@@ -240,17 +240,14 @@ export default function StudentPaymentsPage() {
                       ? t("student.payments.amountDue", "Payment due")
                       : t("student.payments.allPaid", "You're all paid up")}
                   </h3>
-                  <p className="mt-1 text-sm text-foreground/80">
-                    {suggestedOwed > 0
-                      ? t(
-                          "student.payments.owedDescription",
-                          "You owe for months of instruction you've already attended.",
-                        )
-                      : t(
-                          "student.payments.paidDescription",
-                          "You're only billed for months you actually attend — gaps are free.",
-                        )}
-                  </p>
+                  {suggestedOwed > 0 && (
+                    <p className="mt-1 text-sm text-foreground/80">
+                      {t(
+                        "student.payments.owedDescription",
+                        "You owe for months of instruction you've already attended.",
+                      )}
+                    </p>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-4 text-xs text-foreground/70">
                     <span>
                       {t("student.payments.monthsAttended", "Months attended")}:{" "}
@@ -274,6 +271,39 @@ export default function StudentPaymentsPage() {
                       {t("student.payments.sessions", "sessions")}
                     </span>
                   </div>
+                  {/* Next-payment indicator. Shows for any student who has paid for at
+                      least one month (initial enrollment counts) and is within the program cap. */}
+                  {(billing.periodsConsumed > 0 || billing.periodsSettled > 0) && !billing.windowExceeded && (
+                    <p className="mt-2 text-xs text-foreground/70">
+                      {billing.periodsConsumed === 0 ? (
+                        <>
+                          {t(
+                            "student.payments.firstMonthOpens",
+                            "Your first billing month opens on your first attended session.",
+                          )}
+                        </>
+                      ) : billing.daysUntilWindowEnd > 0 ? (
+                        <>
+                          {t("student.payments.nextDueIn", "Next month's payment becomes due in")}{" "}
+                          <b className="text-foreground">
+                            {billing.daysUntilWindowEnd}{" "}
+                            {billing.daysUntilWindowEnd === 1
+                              ? t("student.payments.day", "day")
+                              : t("student.payments.days", "days")}
+                          </b>
+                          {" "}
+                          {t("student.payments.nextDueIfAttend", "if you continue attending")}.
+                        </>
+                      ) : (
+                        <>
+                          {t(
+                            "student.payments.nextDueNow",
+                            "Your next billing month opens on your next session.",
+                          )}
+                        </>
+                      )}
+                    </p>
+                  )}
                   {billing.windowExceeded && (
                     <p className="mt-2 text-xs font-semibold text-red-600">
                       {t(
@@ -447,7 +477,7 @@ export default function StudentPaymentsPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="flex items-center justify-between rounded-xl surface-elevated p-4 hover:shadow-lg transition-all"
+                  className="interactive-row flex items-center justify-between rounded-xl surface-elevated p-4"
                 >
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="flex-shrink-0">
@@ -533,6 +563,26 @@ export default function StudentPaymentsPage() {
                     )}
                   </p>
                 </div>
+
+                {/* One-receipt-at-a-time disclaimer — shown when student owes for
+                    more than one month, so they don't try to bulk-submit a single
+                    receipt covering multiple months. */}
+                {suggestedOwed > 1 && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800">
+                    <p className="font-semibold mb-1">
+                      {t(
+                        "student.payments.multiMonthOwedTitle",
+                        "You owe {{count}} months",
+                      ).replace("{{count}}", String(suggestedOwed))}
+                    </p>
+                    <p>
+                      {t(
+                        "student.payments.oneAtATime",
+                        "Submit one receipt per month. After this receipt is approved, you can submit the next one to cover the following month.",
+                      )}
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-secondary">

@@ -466,7 +466,7 @@ export default function DashboardPage() {
             </p>
             <Link
               href="/dashboard/payments"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-secondary transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              className="btn-ghost-strong inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm"
             >
               <Receipt className="h-4 w-4" />
               {t("dashboard.payments.cta", "Payment history")}
@@ -567,7 +567,7 @@ export default function DashboardPage() {
               {staticHighlights.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-2xl border border-border bg-background/70 p-4"
+                  className="tonal-lift p-4"
                 >
                   <p className="font-semibold text-primary">{item.title}</p>
                   <p className="mt-1 text-sm text-foreground/70">{item.description}</p>

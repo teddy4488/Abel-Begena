@@ -15,6 +15,7 @@ import {
   CalendarDays,
   HelpCircle,
   MessageSquare,
+  Megaphone,
   LogOut,
   Menu,
   X,
@@ -41,6 +42,7 @@ const allLinks = [
   { href: "/admin/monthly-payments", labelKey: "admin.sidebar.monthlyPayments", icon: Receipt },
   { href: "/admin/faq", labelKey: "admin.sidebar.faq", icon: HelpCircle },
   { href: "/admin/comments", labelKey: "admin.sidebar.comments", icon: MessageSquare },
+  { href: "/admin/advertisements", labelKey: "admin.sidebar.advertisements", icon: Megaphone },
 ];
 
 export function AdminSidebar() {

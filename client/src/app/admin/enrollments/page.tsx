@@ -230,7 +230,7 @@ export default function AdminEnrollmentsPage() {
                     );
                     const status = enrollment.status ?? "pending";
                     return (
-                      <tr key={`${enrollment.classId}-${enrollment.student.id}-${enrollment.paymentReference ?? ""}`}>
+                      <tr key={`${enrollment.classId}-${enrollment.student.id}-${enrollment.paymentReference ?? ""}`} className="interactive-row">
                         <td className="px-4 py-4">
                           <button
                             type="button"
@@ -477,33 +477,36 @@ export default function AdminEnrollmentsPage() {
               )}
             </div>
 
-            {filtered.length > 0 && totalPages > 1 && (
-              <div className="mt-6 flex flex-col gap-3">
-                <div className="flex items-center justify-end gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
-                    {t("pagination.itemsPerPage", "Items per page")}:
-                  </label>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
+            {filtered.length > 0 && (
+              <div className="mt-6 border-t border-border/70 pt-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                      {t("pagination.itemsPerPage", "Items per page")}:
+                    </label>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filtered.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
                 </div>
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={filtered.length}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={setCurrentPage}
-                />
               </div>
             )}
             </>

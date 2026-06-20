@@ -18,7 +18,20 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserType } from './auth.service';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import * as dotenv from 'dotenv';
+
+// Decorator metadata is captured at module-load time, which on Nest runs BEFORE
+// main.ts's dotenv.config() finishes. Load env here so the throttle reads .env
+// values rather than only what was in the shell at startup.
+dotenv.config();
+
+// Env-configurable login throttle. Defaults to the hardened 5/5min from Module 2.
+// Set AUTH_LOGIN_THROTTLE_LIMIT / AUTH_LOGIN_THROTTLE_TTL_MS to override, or
+// DISABLE_AUTH_THROTTLE=true to disable entirely (test environments only).
+const LOGIN_LIMIT = Number(process.env.AUTH_LOGIN_THROTTLE_LIMIT ?? 5);
+const LOGIN_TTL = Number(process.env.AUTH_LOGIN_THROTTLE_TTL_MS ?? 300_000);
+const THROTTLE_DISABLED = process.env.DISABLE_AUTH_THROTTLE === 'true';
 
 @Controller('auth')
 export class AuthController {
@@ -39,12 +52,17 @@ export class AuthController {
     return this.authService.resendVerification(dto.email);
   }
 
+  // Throttled to prevent abuse — public endpoint that sends real email + writes
+  // a reset code to a real user. Per-IP cap; the service also enforces a
+  // per-email cooldown.
   @Post('forgot-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
   }
 
   @Post('reset-password')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
@@ -60,8 +78,8 @@ export class AuthController {
 
   @Post('login')
   @UseGuards(LocalAuthGuard)
-  @Throttle({ default: { limit: 5, ttl: 300_000 } })  // 5 attempts per 5 minutes
-  login(
+  @(THROTTLE_DISABLED ? SkipThrottle() : Throttle({ default: { limit: LOGIN_LIMIT, ttl: LOGIN_TTL } }))
+  async login(
     @Request() req: { user: Record<string, unknown> },
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -73,8 +91,9 @@ export class AuthController {
     // payload so that mobile browsers (especially Safari) that block
     // third-party cookies can authenticate using an Authorization header.
     this.setSessionCookie(res, accessToken);
-    // Persist and set refresh token cookie for silent re-auth / rotation.
-    void this.authService.persistRefreshToken(
+    // Await refresh-token persistence BEFORE responding — otherwise an
+    // immediate /auth/refresh races the write and fails with "Invalid refresh token".
+    await this.authService.persistRefreshToken(
       userId,
       (user as { userType?: UserType })?.userType ?? 'website_user',
       refreshToken,

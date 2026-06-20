@@ -250,6 +250,56 @@ export class MailService {
     });
   }
 
+  /**
+   * Sends a contact-form inquiry from the public site to the school inbox.
+   * `to` defaults to CONTACT_EMAIL or EMAIL_USER from env. The visitor's email
+   * is set as Reply-To so admin can hit reply and respond directly.
+   */
+  async sendContactInquiryEmail(payload: {
+    name: string;
+    fromEmail: string;
+    message: string;
+  }) {
+    const to =
+      this.configService.get<string>('CONTACT_EMAIL') ??
+      this.configService.get<string>('EMAIL_USER') ??
+      '';
+    if (!to) {
+      this.logger.error(
+        'Cannot send contact inquiry: neither CONTACT_EMAIL nor EMAIL_USER is set.',
+      );
+      throw new Error('Contact inbox is not configured');
+    }
+    const safeMsg = payload.message
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br/>');
+    const safeName = payload.name
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const safeFrom = payload.fromEmail
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    await this.sendMail({
+      to,
+      replyTo: payload.fromEmail,
+      subject: `New contact inquiry from ${payload.name}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+          <p style="margin: 0 0 8px;"><strong>From:</strong> ${safeName} &lt;${safeFrom}&gt;</p>
+          <p style="margin: 0 0 16px;"><em>Hit Reply to respond directly.</em></p>
+          <div style="margin: 16px 0; padding: 16px; background: #f8f6f0; border-left: 4px solid #eab308; border-radius: 8px;">
+            ${safeMsg}
+          </div>
+          <p style="margin-top: 24px; color: #6b6358; font-size: 12px;">Sent from the Abel Begena Conservatory contact form.</p>
+        </div>
+      `,
+    });
+  }
+
   async sendOrderStatusUpdatedEmail(
     to: string,
     fullName: string,
@@ -318,6 +368,7 @@ export class MailService {
     to: string;
     subject: string;
     html: string;
+    replyTo?: string;
   }) {
     try {
       if (this.mailerService) {
@@ -326,6 +377,7 @@ export class MailService {
           to: options.to,
           subject: options.subject,
           html: options.html,
+          ...(options.replyTo ? { replyTo: options.replyTo } : {}),
         });
         return;
       }
@@ -337,6 +389,7 @@ export class MailService {
       this.logger.error(
         `Failed to send email to ${options.to}: ${this.describeError(error)}`,
       );
+      throw error;
     }
   }
 

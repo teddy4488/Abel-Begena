@@ -5,6 +5,7 @@ import {
   IsString,
   IsUrl,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateBlogPostDto {
@@ -22,7 +23,7 @@ export class CreateBlogPostDto {
   @IsNotEmpty()
   content: string;
 
-  @IsOptional()
+  @ValidateIf((o: { coverImage?: string }) => o.coverImage !== undefined && o.coverImage !== null && o.coverImage !== '')
   @IsString()
   @IsUrl()
   coverImage?: string;

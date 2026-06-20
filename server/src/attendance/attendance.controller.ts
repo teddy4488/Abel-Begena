@@ -176,35 +176,57 @@ export class AttendanceController {
     return this.attendanceService.getTodayTeacherAttendance();
   }
 
-  // Student attendance
+  // Student attendance — Admin can touch any student; Teacher can only touch
+  // students enrolled in classes they teach (enforced by assertTeacherOwns*).
   @Post('students/record')
-  @Roles('Admin')
+  @Roles('Admin', 'Teacher')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'student_attendance_record', resource: 'student_attendance', resourceIdBody: 'participantId' })
-  recordStudentAttendance(
+  async recordStudentAttendance(
     @Body() dto: RecordStudentAttendanceDto,
-    @Request() req: { user: { sub: string } },
+    @Request() req: { user: { sub: string; role: string } },
   ) {
+    if (req.user.role === 'Teacher') {
+      await this.attendanceService.assertTeacherOwnsParticipant(req.user.sub, dto.participantId);
+    }
     return this.attendanceService.recordStudentAttendance(dto, req.user.sub);
   }
 
   @Patch('students/record/:id')
-  @Roles('Admin')
+  @Roles('Admin', 'Teacher')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'student_attendance_update', resource: 'student_attendance', resourceIdParam: 'id' })
-  updateAttendanceRecord(
+  async updateAttendanceRecord(
     @Param('id') id: string,
     @Body() dto: UpdateAttendanceDto,
+    @Request() req: { user: { sub: string; role: string } },
   ) {
+    if (req.user.role === 'Teacher') {
+      await this.attendanceService.assertTeacherOwnsRecord(req.user.sub, id);
+    }
     return this.attendanceService.updateAttendanceRecord(id, dto);
   }
 
   @Delete('students/record/:id')
-  @Roles('Admin')
+  @Roles('Admin', 'Teacher')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @AuditLog({ action: 'student_attendance_delete', resource: 'student_attendance', resourceIdParam: 'id' })
-  deleteAttendanceRecord(@Param('id') id: string) {
+  async deleteAttendanceRecord(
+    @Param('id') id: string,
+    @Request() req: { user: { sub: string; role: string } },
+  ) {
+    if (req.user.role === 'Teacher') {
+      await this.attendanceService.assertTeacherOwnsRecord(req.user.sub, id);
+    }
     return this.attendanceService.deleteAttendanceRecord(id);
+  }
+
+  /** Teacher-only roster — students in the classes this teacher teaches. */
+  @Get('teachers/my-students')
+  @Roles('Teacher', 'Admin')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  async getMyStudents(@Request() req: { user: { sub: string } }): Promise<unknown[]> {
+    return this.attendanceService.getStudentsForTeacher(req.user.sub);
   }
 
   // No-show review

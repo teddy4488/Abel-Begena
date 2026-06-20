@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -105,6 +106,118 @@ export class AttendanceService {
     return (enr as { classId?: Types.ObjectId } | null)?.classId;
   }
 
+  /** Class IDs taught by a given teacher (used to scope teacher-side attendance views). */
+  private async resolveTeacherClassIds(teacherId: string): Promise<Types.ObjectId[]> {
+    if (!Types.ObjectId.isValid(teacherId)) return [];
+    const tObj = new Types.ObjectId(teacherId);
+    const classes = await this.classModel
+      .find({
+        isActive: true,
+        $or: [
+          { instructorId: tObj },
+          { primaryInstructorId: tObj },
+          { teacherIds: tObj },
+        ],
+      })
+      .select('_id')
+      .lean()
+      .exec();
+    return classes.map((c) => (c as { _id: Types.ObjectId })._id);
+  }
+
+  /** Throws if the participant is NOT enrolled in any class taught by this teacher. */
+  async assertTeacherOwnsParticipant(teacherId: string, participantId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(participantId)) {
+      throw new BadRequestException('Invalid participant id');
+    }
+    const classIds = await this.resolveTeacherClassIds(teacherId);
+    if (classIds.length === 0) {
+      throw new ForbiddenException('You do not teach any active classes');
+    }
+    const participant = await this.studentParticipantModel
+      .findById(participantId)
+      .select('userId classId')
+      .lean()
+      .exec();
+    if (!participant) {
+      throw new NotFoundException('Student participant not found');
+    }
+    // Resolve participant's active class either from the participant.classId field
+    // (if denormalized) or from their active enrollment.
+    let activeClassId: Types.ObjectId | undefined =
+      (participant as { classId?: Types.ObjectId }).classId;
+    if (!activeClassId) {
+      activeClassId = await this.resolveActiveClassId(
+        (participant as { userId?: Types.ObjectId }).userId,
+      );
+    }
+    if (!activeClassId) {
+      throw new ForbiddenException('Student is not in any class you teach');
+    }
+    const classIdStr = String(activeClassId);
+    if (!classIds.some((id) => String(id) === classIdStr)) {
+      throw new ForbiddenException('Student is not in any class you teach');
+    }
+  }
+
+  /** Throws if the attendance record does NOT belong to a student in one of this teacher's classes. */
+  async assertTeacherOwnsRecord(teacherId: string, recordId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(recordId)) {
+      throw new BadRequestException('Invalid record id');
+    }
+    const record = await this.studentAttendanceModel
+      .findById(recordId)
+      .select('participantId')
+      .lean()
+      .exec();
+    if (!record) {
+      throw new NotFoundException('Attendance record not found');
+    }
+    const participantId = String((record as { participantId: Types.ObjectId }).participantId);
+    await this.assertTeacherOwnsParticipant(teacherId, participantId);
+  }
+
+  /** Roster of students enrolled in classes this teacher teaches, with stats for the UI. */
+  async getStudentsForTeacher(teacherId: string): Promise<unknown[]> {
+    const classIds = await this.resolveTeacherClassIds(teacherId);
+    if (classIds.length === 0) return [];
+    // Find participants whose active enrollment is in one of those classes.
+    const activeEnrollments = await this.enrollmentModel
+      .find({ classId: { $in: classIds }, status: 'active' })
+      .select('studentId classId')
+      .lean()
+      .exec();
+    const userIds = activeEnrollments
+      .map((e) => (e as { studentId?: Types.ObjectId }).studentId)
+      .filter(Boolean);
+    if (userIds.length === 0) return [];
+    const participants = await this.studentParticipantModel
+      .find({ userId: { $in: userIds }, isActive: true, deletedAt: null })
+      .lean()
+      .exec();
+    // Build a lookup of class title per enrollment so each row shows which class.
+    const classes = await this.classModel
+      .find({ _id: { $in: classIds } })
+      .select('_id title instrumentType')
+      .lean()
+      .exec();
+    const classById = new Map(classes.map((c) => [String((c as { _id: Types.ObjectId })._id), c]));
+    const classByUserId = new Map(
+      activeEnrollments.map((e) => [
+        String((e as { studentId: Types.ObjectId }).studentId),
+        String((e as { classId: Types.ObjectId }).classId),
+      ]),
+    );
+    return participants.map((p) => {
+      const cid = classByUserId.get(String((p as { userId: Types.ObjectId }).userId));
+      const klass = cid ? classById.get(cid) : null;
+      return {
+        ...p,
+        classTitle: (klass as { title?: string } | null)?.title ?? '',
+      };
+    });
+  }
+
   /** Best-effort in-app notification to a student that they were marked absent. */
   private async notifyStudentAbsent(
     participant: { userId?: Types.ObjectId; fullName?: string; missedLessonsCount?: number },
@@ -127,26 +240,38 @@ export class AttendanceService {
 
   // Helpers
   private async generateAttendanceNumber(): Promise<string> {
-    // Generate sequential number starting from 1
-    // Find the highest existing attendance number
-    const lastStudent = await this.studentParticipantModel
-      .findOne()
-      .sort({ attendanceNumber: -1 })
+    // Find the highest numeric suffix across all participants (handles plain "12",
+    // "STD-1001", prefixed forms — extracts the trailing digits). On collision (rare
+    // race), keep incrementing until an unused number is found.
+    const all = await this.studentParticipantModel
+      .find()
       .select('attendanceNumber')
       .lean()
       .exec();
 
-    if (!lastStudent || !lastStudent.attendanceNumber) {
-      return '1';
+    let max = 0;
+    for (const s of all) {
+      const m = String(s.attendanceNumber || '').match(/(\d+)\s*$/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (!isNaN(n) && n > max) max = n;
+      }
     }
 
-    // Extract numeric part and increment
-    const lastNumber = parseInt(lastStudent.attendanceNumber, 10);
-    if (isNaN(lastNumber)) {
-      return '1';
+    // Use a small retry loop to skip any number that already exists (e.g. legacy
+    // single-digit "1" alongside "STD-1001").
+    let candidate = max + 1;
+    for (let i = 0; i < 50; i += 1) {
+      const exists = await this.studentParticipantModel
+        .findOne({ attendanceNumber: String(candidate) })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!exists) return String(candidate);
+      candidate += 1;
     }
-
-    return (lastNumber + 1).toString();
+    // Fallback: timestamp-based to avoid infinite loop in pathological cases.
+    return `STD-${Date.now()}`;
   }
 
   /**
@@ -1253,8 +1378,12 @@ export class AttendanceService {
     const classId =
       lessonClassId ?? (await this.resolveActiveClassId(participant.userId));
 
-    // Upsert by (participant, day): a new record, or override an existing one
-    // (e.g. a previously approved absence becomes a present).
+    // Reject duplicate same-day records. Previously we silently upserted, which
+    // hid the fact that a record already existed and could overwrite intentional
+    // earlier edits. The admin must use the Edit / Delete actions instead.
+    // The only EXCEPTION is overriding a system-created `absent` (from no-show
+    // review) with an actual session record — that's the intended "mark present"
+    // flow and is still allowed.
     const existing = await this.studentAttendanceModel
       .findOne({
         participantId: participant._id,
@@ -1262,11 +1391,18 @@ export class AttendanceService {
       })
       .exec();
 
+    if (existing && existing.status !== 'absent') {
+      throw new BadRequestException(
+        `Attendance for ${sessionDate.toLocaleDateString()} is already recorded. Use Edit to change it, or delete the existing record first.`,
+      );
+    }
+
     const wasAbsent = existing?.status === 'absent';
     const willBeAbsent = status === 'absent';
 
     let record: StudentAttendanceDocument;
     if (existing) {
+      // Override the absent record (no-show being marked present, etc.)
       existing.status = status;
       existing.lessonId = lessonId;
       existing.revisedLessonId = revisedLessonId;
@@ -2116,6 +2252,14 @@ export class AttendanceService {
       Math.round((participant.learningDaysPerWeek ?? 0) * this.getWeeksPerMonth()),
     );
 
+    // The "current window" is the billing month a session would land in next.
+    // If at least one period has been consumed, it's the last opened period; otherwise
+    // it's the initial window starting at registrationStartDate.
+    const currentWindowStart = periodsConsumed > 0
+      ? periodStarts[periodsConsumed - 1]
+      : regDate;
+    const currentWindowEnd = windowEnd; // already advanced by the walk above
+
     return {
       periodDays,
       registrationStartDate: regDate,
@@ -2130,6 +2274,8 @@ export class AttendanceService {
       windowExceeded: periodsConsumed > maxBillable,
       expectedSessionsPerPeriod,
       currentWindowAttended: periodsConsumed > 0 ? currentWindowAttended : 0,
+      currentWindowStart,
+      currentWindowEnd,
       monthlyFee: participant.monthlyFee,
       nextDuePeriod,
       payments,
@@ -2169,6 +2315,9 @@ export class AttendanceService {
     windowExceeded: boolean;
     expectedSessionsPerPeriod: number;
     currentWindowAttended: number;
+    currentWindowStart: Date;
+    currentWindowEnd: Date;
+    daysUntilWindowEnd: number;
     programDurationMonths?: number;
   }> {
     const participant = await this.studentParticipantModel
@@ -2179,6 +2328,10 @@ export class AttendanceService {
       throw new NotFoundException('Student participant not found');
     }
     const state = await this.computeBillingState(participant);
+    const today = this.startOfDay(new Date()).getTime();
+    const daysUntilWindowEnd = Math.ceil(
+      (state.currentWindowEnd.getTime() - today) / 86_400_000,
+    );
     return {
       periodsConsumed: state.periodsConsumed,
       periodsSettled: state.periodsSettled,
@@ -2190,6 +2343,9 @@ export class AttendanceService {
       windowExceeded: state.windowExceeded,
       expectedSessionsPerPeriod: state.expectedSessionsPerPeriod,
       currentWindowAttended: state.currentWindowAttended,
+      currentWindowStart: state.currentWindowStart,
+      currentWindowEnd: state.currentWindowEnd,
+      daysUntilWindowEnd,
       programDurationMonths: participant.programDurationMonths,
     };
   }
@@ -2463,6 +2619,10 @@ export class AttendanceService {
       dueDate: Date;
       daysOverdue: number;
       amount?: number;
+      /** Amount already received toward the NEXT due period (from a partial payment). */
+      paidToDate?: number;
+      /** Remaining balance for the next due period = amount - paidToDate. */
+      remainingAmount?: number;
       periodsOwed: number;
       nextDuePeriod: number;
       windowExceeded: boolean;
@@ -2480,6 +2640,15 @@ export class AttendanceService {
         0,
         Math.floor((now.getTime() - windowStart.getTime()) / 86_400_000),
       );
+      // Find any partial payment already received for the next due period so the UI
+      // can show the actual remaining balance (e.g. 1500 left of a 2500 month after
+      // a 1000 partial was recorded).
+      const partialForNext = state.payments.find(
+        (p) => p.period === state.nextDuePeriod && p.status === 'unpaid',
+      );
+      const paidToDate = partialForNext?.paidToDate ?? 0;
+      const monthly = state.monthlyFee ?? 0;
+      const remaining = Math.max(0, monthly - paidToDate);
       overduePayments.push({
         participantId: String(student._id),
         fullName: student.fullName,
@@ -2492,7 +2661,9 @@ export class AttendanceService {
         month: windowStart.getMonth() + 1,
         dueDate: windowStart,
         daysOverdue,
-        amount: state.monthlyFee,
+        amount: monthly || undefined,
+        paidToDate: paidToDate > 0 ? paidToDate : undefined,
+        remainingAmount: remaining,
         periodsOwed: state.suggestedOwed,
         nextDuePeriod: state.nextDuePeriod,
         windowExceeded: state.windowExceeded,
@@ -2659,10 +2830,12 @@ export class AttendanceService {
         missedLessonsCount: (student as { missedLessonsCount?: number }).missedLessonsCount ?? 0,
       },
       attendanceRecords: attendanceRecords.map((record) => ({
+        _id: (record as { _id: { toString(): string } })._id.toString(),
         date: record.sessionDate,
         lesson: record.lessonId,
         revisedLesson: record.revisedLessonId,
         status: record.status,
+        note: (record as { note?: string }).note ?? null,
         recordedBy: record.recordedBy,
       })),
       totalSessions: total,

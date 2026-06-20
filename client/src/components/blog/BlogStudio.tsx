@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Pagination from "@/components/ui/Pagination";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -48,6 +49,8 @@ export function BlogStudio({
   });
   const [search, setSearch] = useState("");
   const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [, setCoverImageFile] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string>("");
   const [form, setForm] = useState({
@@ -66,6 +69,12 @@ export function BlogStudio({
       return matchesAuthor && matchesSearch;
     });
   }, [filterByAuthorId, posts, search]);
+
+  const totalPages = filteredPosts.length > 0 ? Math.ceil(filteredPosts.length / itemsPerPage) : 1;
+  const paginatedPosts = filteredPosts.slice(
+    (currentPage - 1) * itemsPerPage,
+    (currentPage - 1) * itemsPerPage + itemsPerPage,
+  );
 
   const commentCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -154,9 +163,13 @@ export function BlogStudio({
 
   const handleSubmit = async () => {
     try {
+      const base = {
+        ...form,
+        coverImage: form.coverImage || undefined,
+      };
       const payload = isAdmin
-        ? form
-        : { ...form, isPublished: false, status: "pending" as const };
+        ? base
+        : { ...base, isPublished: false, status: "pending" as const };
 
       if (activePostId) {
         await updatePost({
@@ -250,12 +263,12 @@ export function BlogStudio({
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
             placeholder="Search drafts"
             className="w-full rounded-2xl  card-elevated80 px-3 py-2 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
           />
           <div className="space-y-2">
-            {filteredPosts.map((post) => (
+            {paginatedPosts.map((post) => (
               <button
                 key={post._id}
                 type="button"
@@ -293,6 +306,27 @@ export function BlogStudio({
               </p>
             )}
           </div>
+          {filteredPosts.length > 0 && (
+            <div className="border-t border-border/70 pt-3 space-y-2">
+              <select
+                value={itemsPerPage}
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                className="w-full rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+              >
+                <option value={5}>5 per page</option>
+                <option value={10}>10 per page</option>
+                <option value={25}>25 per page</option>
+                <option value={50}>50 per page</option>
+              </select>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredPosts.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </div>
         <div className="space-y-4">
           <input

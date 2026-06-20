@@ -48,6 +48,14 @@ export class UserController {
     return this.userService.findById(req.user.sub);
   }
 
+  // Alias for /users/profile. Without this, GET /users/me would be captured by
+  // the /:id route below and crash on "me" as an invalid ObjectId.
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  me(@Request() req: { user: { sub: string; role: string } }) {
+    return this.userService.findById(req.user.sub);
+  }
+
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
   updateProfile(

@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, BookOpen, Clock, Calendar, Download, FileText, Video, Image as ImageIcon, File, ExternalLink, Bell } from "lucide-react";
 import { useGetPublicMaterialsQuery } from "@/store/api/materialsApi";
 import { useGetClassesQuery } from "@/store/api/classApi";
-import { useGetMyUpcomingPaymentsQuery } from "@/store/api/attendanceApi";
+import { useGetMyUpcomingPaymentsQuery, useGetLessonProgressQuery } from "@/store/api/attendanceApi";
 
 export default function StudentDashboardPage() {
   const router = useRouter();
@@ -53,6 +53,18 @@ export default function StudentDashboardPage() {
     if (!isOnlineLearner) return [];
     return classes.filter((klass) => klass.isLive);
   }, [classes, isOnlineLearner]);
+
+  // First enrolled class — used to drive the lesson-progress card on this dashboard.
+  // If a student enrolls in multiple classes later, we can expand this to a multi-card view.
+  const primaryClassId = useMemo(() => {
+    const enrolled = classes.find((c) => c.myEnrollment);
+    return enrolled?._id ?? null;
+  }, [classes]);
+
+  const { data: lessonProgress } = useGetLessonProgressQuery(
+    { classId: primaryClassId || "" },
+    { skip: !primaryClassId },
+  );
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -320,6 +332,61 @@ export default function StudentDashboardPage() {
         )}
 
         {/* Instrument Materials Section */}
+        {/* Lesson progress card — shows the student how far through the program they are */}
+        {lessonProgress && lessonProgress.totalLessons > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="rounded-3xl surface-elevated p-6 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:p-8"
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-secondary">
+                  {t("student.dashboard.progress.kicker", "Learning Progress")}
+                </p>
+                <h2 className="text-xl font-serif text-primary">
+                  {t("student.dashboard.progress.title", "Your lesson progress")}
+                </h2>
+              </div>
+              <Link
+                href="/student/lessons"
+                className="rounded-full border border-secondary px-4 py-2 text-xs font-semibold text-secondary shadow-sm hover:bg-(--color-secondary-soft)"
+              >
+                {t("student.dashboard.progress.viewAll", "View all lessons")}
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm text-foreground/70">
+                <b className="text-foreground">{lessonProgress.completedLessons}</b> {t("student.dashboard.progress.of", "of")} <b className="text-foreground">{lessonProgress.totalLessons}</b> {t("student.dashboard.progress.lessons", "lessons completed")}
+              </p>
+              <p className="text-2xl font-bold text-secondary">{Math.round(lessonProgress.percentage)}%</p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-foreground/10">
+              <div
+                className="h-full rounded-full bg-linear-to-r from-secondary to-secondary/70 transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.max(0, lessonProgress.percentage))}%` }}
+                aria-label={`${Math.round(lessonProgress.percentage)} percent complete`}
+              />
+            </div>
+
+            {/* Most recent lesson glimpse */}
+            {lessonProgress.lessons.some((l) => l.isCompleted) && (
+              <p className="mt-3 text-xs text-foreground/60">
+                {t("student.dashboard.progress.lastCompleted", "Last completed")}:{" "}
+                <b className="text-foreground/80">
+                  {[...lessonProgress.lessons]
+                    .filter((l) => l.isCompleted && l.lastAttendedAt)
+                    .sort((a, b) => new Date(b.lastAttendedAt!).getTime() - new Date(a.lastAttendedAt!).getTime())[0]?.title ?? "—"}
+                </b>
+              </p>
+            )}
+          </motion.div>
+        )}
+
         {studentInstrumentType && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -416,7 +483,7 @@ export default function StudentDashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="rounded-3xl border border-border bg-surface p-6 shadow-lg sm:p-8"
+            className="tonal-lift p-6 sm:p-8"
           >
             <div className="mb-4">
               <p className="text-xs uppercase tracking-[0.3em] text-secondary">

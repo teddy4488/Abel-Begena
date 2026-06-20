@@ -1,9 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useDispatch } from "react-redux";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { useGetAllEnrollmentsQuery } from "@/store/api/adminApi";
-import { useGetAllOrdersQuery } from "@/store/api/storeApi";
+import { useGetAllEnrollmentsQuery, adminApi } from "@/store/api/adminApi";
+import { useGetAllOrdersQuery, storeApi } from "@/store/api/storeApi";
+import { attendanceApi } from "@/store/api/attendanceApi";
+import { classApi } from "@/store/api/classApi";
+import { notificationApi } from "@/store/api/notificationApi";
 import {
   useGetPendingPaymentRequestsQuery,
   useGetPaymentHistoryQuery,
@@ -20,6 +24,8 @@ import {
   Clock,
   Download,
   Filter,
+  History,
+  Search,
   ShoppingBag,
   X,
   Check,
@@ -46,6 +52,30 @@ type AdminPaymentRecord = {
 export default function AdminPaymentsPage() {
   const { t } = useI18n();
   const { pushToast } = useToast();
+  const dispatch = useDispatch();
+
+  // Cross-API cache invalidation after a payment approval/rejection/retry. The
+  // payment mutation itself can only invalidate its own "PaymentRequests" tag,
+  // but a payment cascades into orders, billing, students, classes, and the
+  // notification feed (when side-effect failures alert admins). Bumping these
+  // here keeps /admin/orders, /admin/monthly-payments, /admin/users etc. fresh.
+  const invalidateAfterPaymentChange = () => {
+    dispatch(storeApi.util.invalidateTags(["Orders", "Cart", "Products"]));
+    dispatch(
+      attendanceApi.util.invalidateTags([
+        "Billing",
+        "StudentPayments",
+        "StudentParticipants",
+        "StudentAttendance",
+      ]),
+    );
+    dispatch(classApi.util.invalidateTags(["Classes", "ClassEnrollment"]));
+    dispatch(
+      adminApi.util.invalidateTags(["Students", "AdminEnrollments", "AdminAnalytics"]),
+    );
+    dispatch(notificationApi.util.invalidateTags(["Notification"]));
+  };
+
   const { data: enrollments = [], isLoading: enrollmentsLoading } =
     useGetAllEnrollmentsQuery();
   const { data: orders = [], isLoading: ordersLoading } = useGetAllOrdersQuery();
@@ -61,6 +91,9 @@ export default function AdminPaymentsPage() {
     useRetryPaymentSideEffectsMutation();
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
   const [reviewNote, setReviewNote] = useState("");
+  // Pending inbox is split by payment type so admin reviews tuition, enrollment,
+  // and order receipts as separate streams. "all" is the global view.
+  const [pendingTab, setPendingTab] = useState<"all" | "student_monthly_fee" | "enrollment" | "order">("all");
 
   const needsAttention = useMemo(
     () => approvedRequests.filter((r) => r.sideEffectsApplied === false),
@@ -70,6 +103,7 @@ export default function AdminPaymentsPage() {
   const handleRetry = async (id: string) => {
     try {
       await retrySideEffects({ id }).unwrap();
+      invalidateAfterPaymentChange();
       pushToast({
         title: t("admin.payments.retry.done", "Side effects re-applied"),
         variant: "success",
@@ -83,6 +117,17 @@ export default function AdminPaymentsPage() {
     }
   };
 
+  const [historyStatus, setHistoryStatus] = useState<"all" | "approved" | "rejected">("all");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
+  const [historyQ, setHistoryQ] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPerPage, setHistoryPerPage] = useState(15);
+
+  const { data: historyRaw = [], isFetching: historyFetching } = useGetPaymentHistoryQuery(
+    { status: historyStatus, from: historyFrom || undefined, to: historyTo || undefined, q: historyQ || undefined },
+  );
+
   const [filterType, setFilterType] = useState<AdminPaymentType | "all">("all");
   const [filterStatus, setFilterStatus] = useState<AdminPaymentStatus | "all">(
     "all",
@@ -90,6 +135,9 @@ export default function AdminPaymentsPage() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const historyPages = Math.ceil(historyRaw.length / historyPerPage);
+  const historyRows = historyRaw.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage);
 
   const isLoading = enrollmentsLoading || ordersLoading || pendingRequestsLoading;
 
@@ -99,6 +147,7 @@ export default function AdminPaymentsPage() {
         id: request._id,
         body: { status: "approved", reason: reviewNote || undefined },
       }).unwrap();
+      invalidateAfterPaymentChange();
       pushToast({
         title: t("admin.payments.review.approved", "Payment approved"),
         description: t(
@@ -168,6 +217,7 @@ export default function AdminPaymentsPage() {
         id: request._id,
         body: { status: "rejected", reason: reviewNote },
       }).unwrap();
+      invalidateAfterPaymentChange();
       pushToast({
         title: t("admin.payments.review.rejected", "Payment rejected"),
         description: t(
@@ -531,7 +581,7 @@ export default function AdminPaymentsPage() {
                     type="button"
                     disabled={isRetrying}
                     onClick={() => handleRetry(request._id)}
-                    className="shrink-0 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                    className="btn-danger-strong shrink-0 rounded-full px-3 py-1.5 text-xs"
                   >
                     {t("admin.payments.retry", "Retry")}
                   </button>
@@ -542,9 +592,25 @@ export default function AdminPaymentsPage() {
         )}
 
         {/* Pending Payment Requests Section */}
-        {pendingRequests.length > 0 && (
+        {pendingRequests.length > 0 && (() => {
+          const counts = {
+            student_monthly_fee: pendingRequests.filter((r) => r.type === "student_monthly_fee").length,
+            enrollment: pendingRequests.filter((r) => r.type === "enrollment").length,
+            order: pendingRequests.filter((r) => r.type === "order").length,
+          };
+          const visibleRequests =
+            pendingTab === "all"
+              ? pendingRequests
+              : pendingRequests.filter((r) => r.type === pendingTab);
+          const tabs: Array<{ key: typeof pendingTab; label: string; count: number }> = [
+            { key: "all", label: t("admin.payments.tabs.all", "All"), count: pendingRequests.length },
+            { key: "student_monthly_fee", label: t("admin.payments.tabs.tuition", "Tuition"), count: counts.student_monthly_fee },
+            { key: "enrollment", label: t("admin.payments.tabs.enrollment", "Enrollment"), count: counts.enrollment },
+            { key: "order", label: t("admin.payments.tabs.orders", "Orders"), count: counts.order },
+          ];
+          return (
           <div className="rounded-2xl surface-elevated/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-serif text-primary">
                   {t("admin.payments.pendingRequests.title", "Pending Payment Reviews")}
@@ -561,8 +627,37 @@ export default function AdminPaymentsPage() {
                 {pendingRequests.length}
               </span>
             </div>
+            {/* Type tabs — keep tuition/enrollment/order review streams separate */}
+            <div className="mb-4 flex flex-wrap gap-1 rounded-full border border-border bg-background/60 p-1">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setPendingTab(tab.key)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    pendingTab === tab.key
+                      ? "bg-secondary text-primary shadow-sm"
+                      : "text-foreground/60 hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                  <span
+                    className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                      pendingTab === tab.key ? "bg-primary/15 text-primary" : "bg-foreground/10 text-foreground/60"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {visibleRequests.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-border/70 p-6 text-center text-sm text-foreground/60">
+                {t("admin.payments.tabs.empty", "No pending requests in this category.")}
+              </p>
+            ) : (
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {pendingRequests.map((request) => (
+              {visibleRequests.map((request) => (
                 <div
                   key={request._id}
                   className="rounded-2xl border border-border bg-surface/50 p-4 transition hover:border-secondary/50"
@@ -697,8 +792,159 @@ export default function AdminPaymentsPage() {
                 </div>
               ))}
             </div>
+            )}
           </div>
-        )}
+          );
+        })()}
+
+        {/* PaymentRequest History — approved / rejected / all */}
+        <div className="rounded-2xl surface-elevated/90 p-4 shadow-lg sm:rounded-[32px] sm:p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-secondary" />
+              <h2 className="text-lg font-serif text-primary">
+                {t("admin.payments.history.title", "Tuition receipt history")}
+              </h2>
+            </div>
+            {/* Status tabs */}
+            <div className="flex gap-1 rounded-full border border-border bg-background p-1">
+              {(["all", "approved", "rejected"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setHistoryStatus(s); setHistoryPage(1); }}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${historyStatus === s ? "bg-secondary text-primary shadow-sm" : "text-foreground/60 hover:text-foreground"}`}
+                >
+                  {s === "all" ? t("payments.filters.all", "All") : s === "approved" ? t("payments.status.approved", "Approved") : t("payments.status.rejected", "Rejected")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filters row */}
+          <div className="mb-4 flex flex-wrap gap-3">
+            <div className="flex flex-1 min-w-[180px] items-center gap-2 rounded-full bg-background border border-border px-3 py-2 text-xs">
+              <Search className="h-3.5 w-3.5 text-secondary/70 shrink-0" />
+              <input
+                value={historyQ}
+                onChange={(e) => { setHistoryQ(e.target.value); setHistoryPage(1); }}
+                placeholder={t("admin.payments.history.search", "Search by name or reference…")}
+                className="flex-1 bg-transparent outline-none"
+              />
+            </div>
+            <input
+              type="date"
+              value={historyFrom}
+              onChange={(e) => { setHistoryFrom(e.target.value); setHistoryPage(1); }}
+              className="rounded-full border border-border bg-background px-3 py-2 text-xs outline-none"
+              title={t("admin.payments.history.from", "From")}
+            />
+            <input
+              type="date"
+              value={historyTo}
+              onChange={(e) => { setHistoryTo(e.target.value); setHistoryPage(1); }}
+              className="rounded-full border border-border bg-background px-3 py-2 text-xs outline-none"
+              title={t("admin.payments.history.to", "To")}
+            />
+          </div>
+
+          {historyFetching ? (
+            <div className="space-y-2">
+              {[1,2,3].map(i => <div key={i} className="h-12 rounded-xl surface-elevated animate-pulse" />)}
+            </div>
+          ) : historyRows.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-border/70 p-6 text-center text-sm text-foreground/60">
+              {t("admin.payments.history.empty", "No payment requests match these filters.")}
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-[0.25em] text-secondary/70">
+                      <th className="px-3 py-2">{t("admin.payments.table.person", "Student")}</th>
+                      <th className="px-3 py-2">{t("admin.payments.table.type", "Type")}</th>
+                      <th className="px-3 py-2">{t("admin.payments.table.amount", "Amount")}</th>
+                      <th className="px-3 py-2">{t("admin.payments.expected", "Expected")}</th>
+                      <th className="px-3 py-2">{t("admin.payments.table.reference", "Reference")}</th>
+                      <th className="px-3 py-2">{t("admin.payments.table.status", "Status")}</th>
+                      <th className="px-3 py-2">{t("admin.payments.table.date", "Date")}</th>
+                      <th className="px-3 py-2">{t("admin.payments.review.receipt", "Receipt")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {historyRows.map((r) => {
+                      const isApproved = r.status === "approved";
+                      const isRejected = r.status === "rejected";
+                      const mismatch = typeof r.expectedFee === "number" && r.expectedFee > 0 && r.amount !== r.expectedFee;
+                      return (
+                        <tr key={r._id} className="interactive-row">
+                          <td className="px-3 py-2.5 font-medium text-primary">{getUserDisplayName(r.userId)}</td>
+                          <td className="px-3 py-2.5 text-xs text-foreground/70">{r.type}</td>
+                          <td className="px-3 py-2.5 font-semibold">
+                            {formatAmount(r.amount, r.currency)}
+                            {mismatch && (
+                              <span className={`ml-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${r.amount < (r.expectedFee ?? 0) ? "bg-amber-500/10 text-amber-600" : "bg-blue-500/10 text-blue-600"}`}>
+                                {r.amount < (r.expectedFee ?? 0) ? t("admin.payments.partial", "Partial") : t("admin.payments.overpaid", "Over")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-foreground/60">
+                            {typeof r.expectedFee === "number" && r.expectedFee > 0 ? formatAmount(r.expectedFee, r.currency) : "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-foreground/60">{r.reference || "—"}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isApproved ? "bg-emerald-500/10 text-emerald-600" : isRejected ? "bg-rose-500/10 text-rose-600" : "bg-amber-500/10 text-amber-600"}`}>
+                              {isApproved ? <Check className="h-2.5 w-2.5" /> : <AlertCircle className="h-2.5 w-2.5" />}
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-foreground/60">{r.reviewedAt ? formatDate(r.reviewedAt) : formatDate(r.createdAt)}</td>
+                          <td className="px-3 py-2.5">
+                            {r.receiptUrl ? (
+                              <a href={r.receiptUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-secondary hover:text-primary">
+                                <FileText className="h-3 w-3" />
+                                {t("admin.payments.viewReceipt", "View")}
+                              </a>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 border-t border-border/70 pt-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                      {t("pagination.itemsPerPage", "Items per page")}:
+                    </label>
+                    <select
+                      value={historyPerPage}
+                      onChange={(e) => { setHistoryPerPage(Number(e.target.value)); setHistoryPage(1); }}
+                      className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                  <Pagination
+                    currentPage={historyPage}
+                    totalPages={historyPages}
+                    totalItems={historyRaw.length}
+                    itemsPerPage={historyPerPage}
+                    onPageChange={setHistoryPage}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
           <div className="rounded-3xl  surface-elevated p-4">
@@ -821,26 +1067,6 @@ export default function AdminPaymentsPage() {
               </div>
             ) : (
               <>
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
-                      {t("pagination.itemsPerPage", "Items per page")}:
-                    </label>
-                    <select
-                      value={itemsPerPage}
-                      onChange={(e) => {
-                        setItemsPerPage(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-                    >
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                  </div>
-                </div>
                 <table className="min-w-full text-left text-sm">
                   <thead>
                     <tr className="text-xs uppercase tracking-[0.3em] text-secondary/70">
@@ -872,7 +1098,7 @@ export default function AdminPaymentsPage() {
                   </thead>
                   <tbody className="divide-y divide-border/70">
                     {paginatedRecords.map((record) => (
-                      <tr key={record.id}>
+                      <tr key={record.id} className="interactive-row">
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1 rounded-full /70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70">
                             {record.type === "enrollment" ? (
@@ -919,8 +1145,24 @@ export default function AdminPaymentsPage() {
                     ))}
                   </tbody>
                 </table>
-                {totalPages > 1 && (
-                  <div className="mt-6">
+                <div className="mt-4 border-t border-border/70 pt-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                        {t("pagination.itemsPerPage", "Items per page")}:
+                      </label>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                        className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
                     <Pagination
                       currentPage={currentPage}
                       totalPages={totalPages}
@@ -929,7 +1171,7 @@ export default function AdminPaymentsPage() {
                       onPageChange={setCurrentPage}
                     />
                   </div>
-                )}
+                </div>
               </>
             )}
           </div>
@@ -1075,6 +1317,69 @@ export default function AdminPaymentsPage() {
                   </div>
                 )}
               </div>
+
+            {/* Order details — show the actual items, quantities, and prices for order payments */}
+            {selectedRequest.type === "order" && (() => {
+              const targetIdStr =
+                typeof selectedRequest.targetId === "string"
+                  ? selectedRequest.targetId
+                  : String(selectedRequest.targetId ?? "");
+              const order = orders.find((o) => o._id === targetIdStr);
+              if (!order) {
+                return (
+                  <div className="mb-4 rounded-2xl border border-dashed border-border bg-background/40 p-4 text-sm text-foreground/60">
+                    {t(
+                      "admin.payments.review.orderMissing",
+                      "Order details could not be loaded (the order may have been deleted).",
+                    )}
+                  </div>
+                );
+              }
+              const orderTotal = order.totalAmount ?? order.items.reduce(
+                (sum, it) => sum + (it.subtotal ?? (it.priceAtCheckout ?? 0) * (it.quantity ?? 0)),
+                0,
+              );
+              return (
+                <div className="mb-4 space-y-3 rounded-2xl border border-border bg-background/40 p-4">
+                  <p className="text-xs uppercase tracking-wide text-secondary/70">
+                    {t("admin.payments.review.orderItems", "Order items")}
+                  </p>
+                  <ul className="divide-y divide-border/60">
+                    {order.items.map((item, idx) => (
+                      <li key={idx} className="flex items-center justify-between gap-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-primary">
+                            {item.productName || item.product?.name || `Item ${idx + 1}`}
+                          </p>
+                          <p className="text-xs text-foreground/60">
+                            {item.quantity}{" × "}{formatAmount(item.priceAtCheckout ?? 0, "ETB")}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold text-foreground/90 tabular-nums">
+                          {formatAmount(item.subtotal ?? (item.priceAtCheckout ?? 0) * (item.quantity ?? 0), "ETB")}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex items-center justify-between border-t border-border/60 pt-2">
+                    <p className="text-xs uppercase tracking-wide text-secondary/70">
+                      {t("admin.payments.review.orderTotal", "Order total")}
+                    </p>
+                    <p className="text-base font-bold text-primary tabular-nums">
+                      {formatAmount(orderTotal, "ETB")}
+                    </p>
+                  </div>
+                  {orderTotal !== selectedRequest.amount && (
+                    <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                      {t(
+                        "admin.payments.review.orderAmountMismatch",
+                        "Note: submitted amount differs from order total. Verify the receipt before approving.",
+                      )}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Enrollment / payment form details from conversionData */}
             {(() => {
@@ -1250,20 +1555,20 @@ export default function AdminPaymentsPage() {
             </div>
             </div>
 
-            {/* Footer actions (fixed) */}
+            {/* Footer actions (fixed) — strong, accessible primary/danger styling */}
             <div className="border-t border-border bg-surface/80 p-6">
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => handleRejectPayment(selectedRequest)}
                   disabled={isUpdating}
-                  className="flex-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-500/20 disabled:opacity-50"
+                  className="btn-danger-strong flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm"
                 >
                   {isUpdating ? (
-                    <Clock className="mx-auto h-4 w-4 animate-spin" />
+                    <Clock className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      <X className="mr-2 inline h-4 w-4" />
+                      <X className="h-4 w-4" />
                       {t("admin.payments.reject", "Reject")}
                     </>
                   )}
@@ -1272,13 +1577,13 @@ export default function AdminPaymentsPage() {
                   type="button"
                   onClick={() => handleApprovePayment(selectedRequest)}
                   disabled={isUpdating}
-                  className="flex-1 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:opacity-50"
+                  className="btn-success-strong flex-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm"
                 >
                   {isUpdating ? (
-                    <Clock className="mx-auto h-4 w-4 animate-spin" />
+                    <Clock className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      <Check className="mr-2 inline h-4 w-4" />
+                      <Check className="h-4 w-4" />
                       {t("admin.payments.approve", "Approve")}
                     </>
                   )}

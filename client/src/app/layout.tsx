@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/providers/ToastProvider";
 import { AuthHydrator } from "@/components/providers/AuthHydrator";
 import { I18nProvider } from "@/components/providers/I18nProvider";
 import { NavbarGate } from "@/components/layout/NavbarGate";
+import { AdPlayer } from "@/components/ads/AdPlayer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default function RootLayout({
             <ToastProvider>
               <I18nProvider>
               <AuthHydrator />
+              <AdPlayer />
               <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors">
                   <NavbarGate />
                 <main className="flex-1">{children}</main>

@@ -22,6 +22,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { UploadModule } from './upload/upload.module';
 import { EnrollmentModule } from './enrollment/enrollment.module';
 import { NotificationModule } from './notifications/notification.module';
+import { ContactModule } from './contact/contact.module';
+import { AdvertisementModule } from './advertisement/advertisement.module';
 
 @Module({
   imports: [
@@ -67,6 +69,8 @@ import { NotificationModule } from './notifications/notification.module';
     UploadModule,
     EnrollmentModule,
     NotificationModule,
+    ContactModule,
+    AdvertisementModule,
   ],
   controllers: [AppController],
   providers: [

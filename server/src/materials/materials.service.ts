@@ -116,6 +116,24 @@ export class MaterialsService {
     return materials;
   }
 
+  /** List materials across a set of class IDs (used for the no-classId case
+   * where the caller already resolved which classes the user can see). */
+  async getMaterialsByClassIds(classIds: string[]) {
+    const validIds = classIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    if (validIds.length === 0) {
+      return [];
+    }
+    const materials = await this.materialModel
+      .find({ isActive: true, classId: { $in: validIds } })
+      .populate('uploadedBy', 'firstName lastName email')
+      .sort({ uploadedAt: -1 })
+      .lean()
+      .exec();
+    return materials;
+  }
+
   async getMaterialsForTeacher(teacherId: string) {
     const materials = await this.materialModel
       .find({ uploadedBy: new Types.ObjectId(teacherId) })

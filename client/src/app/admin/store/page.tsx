@@ -81,7 +81,7 @@ export default function AdminStorePage() {
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const sortedProducts = useMemo(
     () => [...(products ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -870,24 +870,6 @@ export default function AdminStorePage() {
           <p className="text-sm text-foreground/60">Loading products...</p>
         ) : sortedProducts.length ? (
           <>
-            <div className="mt-4 mb-4 flex items-center justify-end gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
-                {t("pagination.itemsPerPage", "Items per page")}:
-              </label>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
-              >
-                <option value={8}>8</option>
-                <option value={16}>16</option>
-                <option value={32}>32</option>
-                <option value={64}>64</option>
-              </select>
-            </div>
             <div className="mt-2 grid gap-4 md:grid-cols-2">
               {sortedProducts
                 .slice(
@@ -1121,8 +1103,24 @@ export default function AdminStorePage() {
               </div>
               ))}
             </div>
-            {sortedProducts.length > 0 && Math.ceil(sortedProducts.length / itemsPerPage) > 1 && (
-              <div className="mt-6">
+            <div className="mt-6 border-t border-border/70 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                    {t("pagination.itemsPerPage", "Items per page")}:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                    className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
                 <Pagination
                   currentPage={currentPage}
                   totalPages={Math.ceil(sortedProducts.length / itemsPerPage)}
@@ -1131,7 +1129,7 @@ export default function AdminStorePage() {
                   onPageChange={setCurrentPage}
                 />
               </div>
-            )}
+            </div>
           </>
         ) : (
           <div className="mt-6 rounded-3xl  card-elevated70 p-6 text-center text-sm text-foreground/70">

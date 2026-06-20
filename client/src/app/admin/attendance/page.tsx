@@ -12,6 +12,8 @@ import {
   useGetTodayTeacherAttendanceQuery,
   useGetInstrumentLessonsQuery,
   useRecordStudentAttendanceMutation,
+  useUpdateAttendanceRecordMutation,
+  useDeleteAttendanceRecordMutation,
   useRegisterTeacherParticipantMutation,
   useRegisterStudentParticipantMutation,
   useRevertStudentToUserMutation,
@@ -28,11 +30,13 @@ import {
 import { useGetBranchesAdminQuery } from "@/store/api/branchApi";
 import { useAppDispatch } from "@/store/hooks";
 import { useToast } from "@/components/providers/ToastProvider";
+import { extractErrorMessage } from "@/lib/errors";
 import { useI18n } from "@/components/providers/I18nProvider";
 import Pagination from "@/components/ui/Pagination";
 import {
   Users,
   Clock,
+  ClipboardCheck,
   UserPlus,
   CheckCircle2,
   X,
@@ -47,11 +51,12 @@ import NoShowReview from "@/components/admin/NoShowReview";
 type AttendanceMode = "student" | "teacher" | "eligibility";
 
 type AttendanceHistoryRecord = {
-  _id?: string;
+  _id: string;
   date: string;
   lesson?: { _id?: string; title?: string; code?: string } | null;
   revisedLesson?: { _id?: string; title?: string; code?: string } | null;
   status: AttendanceStatus;
+  note?: string | null;
 };
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
@@ -163,6 +168,51 @@ export default function AdminAttendancePage() {
     skip: !attendanceHistoryStudentId,
   });
   const attendanceHistory = attendanceHistoryRes?.attendanceRecords ?? [];
+
+  // Edit / Delete attendance state
+  const [updateAttendance, { isLoading: isUpdatingAttendance }] = useUpdateAttendanceRecordMutation();
+  const [deleteAttendance, { isLoading: isDeletingAttendance }] = useDeleteAttendanceRecordMutation();
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editStatus, setEditStatus] = useState<AttendanceStatus>("present");
+  const [editNote, setEditNote] = useState<string>("");
+  const [confirmDeleteRecordId, setConfirmDeleteRecordId] = useState<string | null>(null);
+
+  const handleStartEditRecord = (rec: AttendanceHistoryRecord) => {
+    setEditingRecordId(rec._id);
+    setEditStatus(rec.status);
+    setEditNote(rec.note ?? "");
+  };
+  const handleCancelEditRecord = () => {
+    setEditingRecordId(null);
+    setEditNote("");
+  };
+  const handleSaveEditRecord = async (recordId: string) => {
+    try {
+      await updateAttendance({ id: recordId, status: editStatus, note: editNote || undefined }).unwrap();
+      pushToast({ title: t("attendance.history.updated", "Attendance updated"), variant: "success" });
+      setEditingRecordId(null);
+    } catch (err) {
+      pushToast({
+        title: t("attendance.history.updateError", "Could not update attendance"),
+        description: extractErrorMessage(err, ""),
+        variant: "error",
+      });
+    }
+  };
+  const handleConfirmDeleteRecord = async () => {
+    if (!confirmDeleteRecordId) return;
+    try {
+      await deleteAttendance(confirmDeleteRecordId).unwrap();
+      pushToast({ title: t("attendance.history.deleted", "Attendance deleted"), variant: "success" });
+      setConfirmDeleteRecordId(null);
+    } catch (err) {
+      pushToast({
+        title: t("attendance.history.deleteError", "Could not delete attendance"),
+        description: extractErrorMessage(err, ""),
+        variant: "error",
+      });
+    }
+  };
   const attendanceHistoryStudent = attendanceHistoryRes?.student ?? null;
 
 
@@ -817,24 +867,6 @@ export default function AdminAttendancePage() {
               <div className="space-y-3">
                 {studentParticipants.length > 0 ? (
                   <>
-                    <div className="mb-3 flex items-center justify-end gap-2">
-                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
-                        {t("pagination.itemsPerPage", "Items per page")}:
-                      </label>
-                      <select
-                        value={studentsItemsPerPage}
-                        onChange={(e) => {
-                          setStudentsItemsPerPage(Number(e.target.value));
-                          setStudentsPage(1);
-                        }}
-                        className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                      >
-                        <option value={10}>10</option>
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                      </select>
-                    </div>
                     {studentParticipants
                       .slice(
                         (studentsPage - 1) * studentsItemsPerPage,
@@ -860,9 +892,22 @@ export default function AdminAttendancePage() {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
+                              onClick={() => handleSelectStudent(p._id)}
+                              className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold bg-secondary/15 text-secondary hover:bg-secondary/25"
+                              aria-label={t("attendance.students.record", "Record attendance")}
+                              title={t("attendance.students.record", "Record attendance")}
+                            >
+                              <ClipboardCheck className="h-4 w-4" />
+                              <span className="hidden sm:inline">
+                                {t("attendance.students.recordShort", "Record")}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleShowAttendanceHistory(p._id)}
                               className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold bg-background/60 hover:bg-background/80"
                               aria-label={t("attendance.history.view", "View history")}
+                              title={t("attendance.history.view", "View history")}
                             >
                               <Clock className="h-4 w-4" />
                             </button>
@@ -882,9 +927,28 @@ export default function AdminAttendancePage() {
                       </div>
                     );
                       })}
-                    {studentParticipants.length > 0 &&
-                      Math.ceil(studentParticipants.length / studentsItemsPerPage) > 1 && (
-                        <div className="mt-6">
+                    {studentParticipants.length > 0 && (
+                      <div className="border-t border-border/70 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                              {t("pagination.itemsPerPage", "Items per page")}:
+                            </label>
+                            <select
+                              value={studentsItemsPerPage}
+                              onChange={(e) => {
+                                setStudentsItemsPerPage(Number(e.target.value));
+                                setStudentsPage(1);
+                              }}
+                              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                            >
+                              <option value={5}>5</option>
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                          </div>
                           <Pagination
                             currentPage={studentsPage}
                             totalPages={Math.ceil(
@@ -895,7 +959,8 @@ export default function AdminAttendancePage() {
                             onPageChange={setStudentsPage}
                           />
                         </div>
-                      )}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="py-8 text-center text-sm text-foreground/60">
@@ -1227,21 +1292,85 @@ export default function AdminAttendancePage() {
                                   <th className="px-3 py-2">{t("attendance.history.table.lesson", "Lesson")}</th>
                                   <th className="px-3 py-2">{t("attendance.history.table.revised", "Revised")}</th>
                                   <th className="px-3 py-2">{t("attendance.history.table.status", "Status")}</th>
+                                  <th className="px-3 py-2">{t("attendance.history.table.actions", "Actions")}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border/60">
                                 {attendanceHistory.map(
                                   (rec: AttendanceHistoryRecord, idx: number) => {
                                   const dt = new Date(rec.date);
+                                  const isEditing = editingRecordId === rec._id;
                                   return (
-                                    <tr key={rec._id ?? `${rec.date}-${rec.status}`}>
+                                    <tr key={rec._id || `${rec.date}-${rec.status}`} className="interactive-row">
                                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{idx + 1}</td>
                                       <td className="px-3 py-3 align-top">{dt.toLocaleDateString()}</td>
                                       <td className="px-3 py-3 align-top">{dt.toLocaleTimeString()}</td>
                                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{dt.toLocaleDateString(undefined, { weekday: 'long' })}</td>
                                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{rec.lesson?.title ?? '—'}</td>
                                       <td className="px-3 py-3 align-top text-xs text-foreground/70">{rec.revisedLesson?.title ?? '—'}</td>
-                                      <td className="px-3 py-3 align-top"><span className="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold bg-foreground/5 text-foreground/80">{rec.status}</span></td>
+                                      <td className="px-3 py-3 align-top">
+                                        {isEditing ? (
+                                          <select
+                                            value={editStatus}
+                                            onChange={(e) => setEditStatus(e.target.value as AttendanceStatus)}
+                                            className="rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-secondary/30"
+                                          >
+                                            <option value="present">{t("attendance.status.present", "Present")}</option>
+                                            <option value="late">{t("attendance.status.late", "Late")}</option>
+                                            <option value="excused">{t("attendance.status.excused", "Excused")}</option>
+                                            <option value="absent">{t("attendance.status.absent", "Absent")}</option>
+                                          </select>
+                                        ) : (
+                                          <span className="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold bg-foreground/5 text-foreground/80">{rec.status}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-3 py-3 align-top">
+                                        {isEditing ? (
+                                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
+                                            <input
+                                              type="text"
+                                              value={editNote}
+                                              onChange={(e) => setEditNote(e.target.value)}
+                                              placeholder={t("attendance.history.notePlaceholder", "Note (optional)")}
+                                              className="rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-secondary/30 sm:max-w-[140px]"
+                                            />
+                                            <div className="flex items-center gap-1">
+                                              <button
+                                                type="button"
+                                                disabled={isUpdatingAttendance}
+                                                onClick={() => handleSaveEditRecord(rec._id)}
+                                                className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-primary disabled:opacity-60"
+                                              >
+                                                {t("common.save", "Save")}
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={handleCancelEditRecord}
+                                                className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground/70 hover:bg-background/60"
+                                              >
+                                                {t("common.cancel", "Cancel")}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleStartEditRecord(rec)}
+                                              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground/70 hover:bg-secondary/10"
+                                            >
+                                              {t("common.edit", "Edit")}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setConfirmDeleteRecordId(rec._id)}
+                                              className="rounded-full border border-rose-500/30 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-500/10"
+                                            >
+                                              {t("common.delete", "Delete")}
+                                            </button>
+                                          </div>
+                                        )}
+                                      </td>
                                     </tr>
                                   );
                                 })}
@@ -1294,24 +1423,6 @@ export default function AdminAttendancePage() {
               <div className="space-y-3">
                 {teacherParticipants.length > 0 ? (
                   <>
-                    <div className="mb-3 flex items-center justify-end gap-2">
-                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
-                        {t("pagination.itemsPerPage", "Items per page")}:
-                      </label>
-                      <select
-                        value={teachersItemsPerPage}
-                        onChange={(e) => {
-                          setTeachersItemsPerPage(Number(e.target.value));
-                          setTeachersPage(1);
-                        }}
-                        className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                      >
-                        <option value={10}>10</option>
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                      </select>
-                    </div>
                     {teacherParticipants
                       .slice(
                         (teachersPage - 1) * teachersItemsPerPage,
@@ -1355,10 +1466,28 @@ export default function AdminAttendancePage() {
                       </div>
                     );
                       })}
-                    {teacherParticipants.length > 0 &&
-                      Math.ceil(teacherParticipants.length / teachersItemsPerPage) >
-                        1 && (
-                        <div className="mt-6">
+                    {teacherParticipants.length > 0 && (
+                      <div className="border-t border-border/70 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                              {t("pagination.itemsPerPage", "Items per page")}:
+                            </label>
+                            <select
+                              value={teachersItemsPerPage}
+                              onChange={(e) => {
+                                setTeachersItemsPerPage(Number(e.target.value));
+                                setTeachersPage(1);
+                              }}
+                              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                            >
+                              <option value={5}>5</option>
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                          </div>
                           <Pagination
                             currentPage={teachersPage}
                             totalPages={Math.ceil(
@@ -1369,7 +1498,8 @@ export default function AdminAttendancePage() {
                             onPageChange={setTeachersPage}
                           />
                         </div>
-                      )}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="py-8 text-center text-sm text-foreground/60">
@@ -1389,24 +1519,6 @@ export default function AdminAttendancePage() {
                   {t("attendance.teachers.today", "Today's Attendance")}
                 </h3>
                 <div className="space-y-3">
-                  <div className="mb-3 flex items-center justify-end gap-2">
-                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
-                      {t("pagination.itemsPerPage", "Items per page")}:
-                    </label>
-                    <select
-                      value={todayItemsPerPage}
-                      onChange={(e) => {
-                        setTodayItemsPerPage(Number(e.target.value));
-                        setTodayPage(1);
-                      }}
-                      className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
-                    >
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                  </div>
                   {todayAttendance
                     .slice(
                       (todayPage - 1) * todayItemsPerPage,
@@ -1444,9 +1556,28 @@ export default function AdminAttendancePage() {
                       </div>
                     );
                   })}
-                  {todayAttendance.length > 0 &&
-                    Math.ceil(todayAttendance.length / todayItemsPerPage) > 1 && (
-                      <div className="mt-6">
+                  {todayAttendance.length > 0 && (
+                    <div className="border-t border-border/70 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
+                            {t("pagination.itemsPerPage", "Items per page")}:
+                          </label>
+                          <select
+                            value={todayItemsPerPage}
+                            onChange={(e) => {
+                              setTodayItemsPerPage(Number(e.target.value));
+                              setTodayPage(1);
+                            }}
+                            className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                          >
+                            <option value={5}>5</option>
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
                         <Pagination
                           currentPage={todayPage}
                           totalPages={Math.ceil(
@@ -1457,7 +1588,8 @@ export default function AdminAttendancePage() {
                           onPageChange={setTodayPage}
                         />
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1588,7 +1720,7 @@ export default function AdminAttendancePage() {
                               : "bg-foreground/10 text-foreground/70";
 
                         return (
-                          <tr key={item.participantId}>
+                          <tr key={item.participantId} className="interactive-row">
                             <td className="px-3 py-3 align-top">
                               <div className="flex flex-col">
                                 <span className="font-semibold text-primary">
@@ -1661,11 +1793,11 @@ export default function AdminAttendancePage() {
                       })}
                     </tbody>
                   </table>
-                  {eligibility.length > 0 &&
-                    Math.ceil(eligibility.length / eligibilityItemsPerPage) > 1 && (
-                      <div className="pt-4 mt-4 border-t border-border/60">
-                        <div className="mb-3 flex items-center justify-end gap-2">
-                          <label className="text-xs font-semibold uppercase tracking-[0.3em] text-secondary/70">
+                  {eligibility.length > 0 && (
+                    <div className="border-t border-border/70 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-secondary/70">
                             {t("pagination.itemsPerPage", "Items per page")}:
                           </label>
                           <select
@@ -1674,8 +1806,9 @@ export default function AdminAttendancePage() {
                               setEligibilityItemsPerPage(Number(e.target.value));
                               setEligibilityPage(1);
                             }}
-                            className="rounded-xl card-elevated px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+                            className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
                           >
+                            <option value={5}>5</option>
                             <option value={10}>10</option>
                             <option value={25}>25</option>
                             <option value={50}>50</option>
@@ -1692,13 +1825,54 @@ export default function AdminAttendancePage() {
                           onPageChange={setEligibilityPage}
                         />
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Confirm Delete Attendance Record */}
+      {confirmDeleteRecordId && (
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setConfirmDeleteRecordId(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl surface-elevated p-6 shadow-[0_20px_60px_var(--color-primary-glow)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-serif text-primary">
+              {t("attendance.history.deleteTitle", "Delete attendance record?")}
+            </h3>
+            <p className="mt-2 text-sm text-foreground/70">
+              {t(
+                "attendance.history.deleteConfirm",
+                "This permanently removes the attendance record. Lesson progress and billing for this student will recalculate.",
+              )}
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteRecordId(null)}
+                className="rounded-full px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-background/60"
+              >
+                {t("common.cancel", "Cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAttendance}
+                onClick={handleConfirmDeleteRecord}
+                className="btn-danger-strong rounded-full px-5 py-2 text-sm"
+              >
+                {t("common.delete", "Delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Student Modal */}
       {revertTarget && (

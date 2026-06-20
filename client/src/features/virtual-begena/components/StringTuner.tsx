@@ -9,6 +9,7 @@ import {
   NOTE_NAMES,
   NoteName,
   PLAYABLE_STRINGS,
+  RootNote,
 } from "@/features/virtual-begena/lib/sound";
 
 interface StringTunerProps {
@@ -22,8 +23,8 @@ interface StringTunerProps {
  */
 export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
   const { t } = useI18n();
-  const [selectedOctave, setSelectedOctave] = useState(
-    soundManager.getSettings().octave
+  const [currentRoot, setCurrentRoot] = useState<RootNote>(
+    soundManager.getSettings().root
   );
   const [stringNotes, setStringNotes] = useState(
     soundManager.getSettings().stringNotes
@@ -37,7 +38,7 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
     }
     const frame = requestAnimationFrame(() => {
       const settings = soundManager.getSettings();
-      setSelectedOctave(settings.octave);
+      setCurrentRoot(settings.root);
       setStringNotes(settings.stringNotes);
       setQinitInfo(soundManager.getQinitInfo());
     });
@@ -53,18 +54,6 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
     10: "A",
   };
 
-  const handleOctaveChange = (octave: number) => {
-    setSelectedOctave(octave);
-    soundManager.updateSettings({ octave });
-    // Refresh to show updated frequencies after octave change
-    setTimeout(() => {
-      const settings = soundManager.getSettings();
-      const qinitInfo = soundManager.getQinitInfo();
-      setStringNotes(settings.stringNotes);
-      setQinitInfo(qinitInfo);
-    }, 100);
-  };
-
   const handleNoteChange = (stringNumber: number, noteName: NoteName) => {
     // Update in sound manager FIRST (this switches to custom mode and saves)
     soundManager.updateStringNote(stringNumber, noteName);
@@ -75,8 +64,7 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
       const qinitInfo = soundManager.getQinitInfo();
       setStringNotes(settings.stringNotes);
       setQinitInfo(qinitInfo);
-      // Also refresh selectedOctave in case it changed
-      setSelectedOctave(settings.octave);
+      setCurrentRoot(settings.root);
     }, 100);
   };
 
@@ -136,37 +124,17 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
             </button>
           </div>
 
-          {/* Octave Selector */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-begena-brown dark:text-begena-cream">
-              {translate("virtualExperience.tuner.octave", "Select Octave")}
-            </h3>
-            <div className="space-y-2">
-              <label className="text-sm text-begena-brown dark:text-begena-cream">
-                {translate(
-                  "virtualExperience.tuner.octaveLabel",
-                  "Octave: C{{octave}} ({{frequency}} Hz)",
-                  {
-                    octave: selectedOctave,
-                    frequency: soundManager.getQinitInfo().rootFreq.toFixed(2),
-                  },
-                )}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="8"
-                step="1"
-                value={selectedOctave}
-                onChange={(e) => handleOctaveChange(parseInt(e.target.value))}
-                className="w-full h-2 bg-begena-brown/20 rounded-lg appearance-none cursor-pointer accent-begena-gold"
-              />
-              <div className="flex justify-between text-xs text-begena-brown/60 dark:text-begena-cream/60">
-                <span>C0 (16.35 Hz)</span>
-                <span>C4 (261.63 Hz)</span>
-                <span>C8 (4186 Hz)</span>
-              </div>
-            </div>
+          {/* Current key info */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-begena-brown/10 dark:bg-begena-cream/10">
+            <span className="text-sm text-begena-brown dark:text-begena-cream">
+              {translate("virtualExperience.tuner.currentKey", "Current key:")}
+            </span>
+            <span className="font-mono font-bold text-begena-gold text-base">
+              {currentRoot} Major
+            </span>
+            <span className="text-xs text-begena-brown/60 dark:text-begena-cream/60">
+              ({soundManager.getQinitInfo().rootFreq.toFixed(2)} Hz)
+            </span>
           </div>
 
           {/* String Note Selectors */}
@@ -180,8 +148,8 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
             <p className="text-sm text-begena-brown/70 dark:text-begena-cream/70">
               {translate(
                 "virtualExperience.tuner.instructions",
-                "Select the note for each playable string in octave {{octave}}",
-                { octave: selectedOctave },
+                "Select the note for each string (key: {{root}} Major)",
+                { root: currentRoot },
               )}
             </p>
 
@@ -229,9 +197,9 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
                     {/* Frequency Display */}
                     <div className="flex-shrink-0 w-24 md:w-32 text-right">
                       <div className="font-semibold text-begena-brown dark:text-begena-cream text-sm md:text-base">
-                        {translate("virtualExperience.tuner.frequencyLabel", "{{note}}{{octave}}", {
+                        {translate("virtualExperience.tuner.frequencyLabel", "{{note}}{{root}}", {
                           note: currentNote,
-                          octave: selectedOctave,
+                          root: currentRoot.slice(-1), // octave digit from root
                         })}
                       </div>
                       <div className="text-xs text-begena-brown/70 dark:text-begena-cream/70">
@@ -264,11 +232,10 @@ export default function StringTuner({ isOpen, onClose }: StringTunerProps) {
                     key={preset}
                     onClick={() => {
                       soundManager.updateSettings({ qinit: preset });
-                      // Refresh state after preset is applied
                       setTimeout(() => {
                         const settings = soundManager.getSettings();
                         setStringNotes(settings.stringNotes);
-                        setSelectedOctave(settings.octave);
+                        setCurrentRoot(settings.root);
                         setQinitInfo(soundManager.getQinitInfo());
                       }, 50);
                     }}

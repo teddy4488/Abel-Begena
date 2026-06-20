@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useGetMyOrdersQuery } from "@/store/api/storeApi";
 import { useGetClassesQuery } from "@/store/api/classApi";
+import { useGetMyBillingQuery } from "@/store/api/attendanceApi";
+import { useAppSelector } from "@/store/hooks";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   Receipt,
@@ -17,6 +19,8 @@ import {
   ShoppingBag,
   Filter,
   Calendar,
+  AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
 
 type PaymentStatus = "completed" | "pending" | "processing" | "failed";
@@ -42,6 +46,10 @@ export default function PaymentHistoryPage() {
   const [filterType, setFilterType] = useState<PaymentType>("all");
   const [filterStatus, setFilterStatus] = useState<PaymentStatus | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
+
+  const { user } = useAppSelector((state) => state.auth);
+  const isStudent = user?.userType === "student" || user?.role === "Student";
+  const { data: billing } = useGetMyBillingQuery(undefined, { skip: !isStudent });
 
   const { data: orders = [], isLoading: ordersLoading } = useGetMyOrdersQuery();
   const { data: classes = [], isLoading: classesLoading } =
@@ -263,6 +271,44 @@ export default function PaymentHistoryPage() {
           </div>
         </motion.div>
 
+        {/* Consumption-based tuition card — only for students */}
+        {isStudent && billing && (billing.suggestedOwed > 0 || billing.periodsConsumed > 0) && (
+          <div className={`rounded-3xl border p-6 shadow-lg ${billing.suggestedOwed > 0 ? "bg-amber-500/10 border-amber-500/30" : "bg-green-500/10 border-green-500/30"}`}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                {billing.suggestedOwed > 0 ? (
+                  <AlertTriangle className="h-6 w-6 shrink-0 text-amber-600 mt-0.5" />
+                ) : (
+                  <TrendingUp className="h-6 w-6 shrink-0 text-green-600 mt-0.5" />
+                )}
+                <div>
+                  <h3 className={`text-lg font-semibold ${billing.suggestedOwed > 0 ? "text-amber-700" : "text-green-700"}`}>
+                    {billing.suggestedOwed > 0
+                      ? t("student.payments.amountDue", "Tuition balance due")
+                      : t("student.payments.allPaid", "Tuition up to date")}
+                  </h3>
+                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-foreground/70">
+                    <span>{t("student.payments.monthsAttended", "Months attended")}: <b className="text-foreground">{billing.periodsConsumed}</b></span>
+                    <span>{t("student.payments.monthsPaid", "Months paid")}: <b className="text-foreground">{billing.periodsSettled}</b></span>
+                    {billing.monthlyFee ? <span>{t("student.payments.monthlyFee", "Monthly fee")}: <b className="text-foreground">{new Intl.NumberFormat("en-US",{style:"currency",currency:"ETB",minimumFractionDigits:0}).format(billing.monthlyFee)}</b></span> : null}
+                  </div>
+                  {billing.windowExceeded && (
+                    <p className="mt-2 text-xs font-semibold text-red-600">
+                      {t("student.payments.windowExceeded", "You've reached the maximum duration. Please contact the school about re-enrollment.")}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {billing.suggestedOwed > 0 && billing.monthlyFee && (
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-amber-700">{new Intl.NumberFormat("en-US",{style:"currency",currency:"ETB",minimumFractionDigits:0}).format(billing.suggestedOwed * billing.monthlyFee)}</p>
+                  <p className="text-xs text-foreground/60">{billing.suggestedOwed} {t("student.payments.monthsOwed","month(s)")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <motion.div
@@ -367,7 +413,7 @@ export default function PaymentHistoryPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-surface backdrop-blur-sm border border-border"
+          className="tonal-lift flex flex-wrap items-center gap-3 p-4 backdrop-blur-sm"
         >
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-begena-gold" />
@@ -404,7 +450,7 @@ export default function PaymentHistoryPage() {
               onChange={(e) =>
                 setFilterStatus(e.target.value as PaymentStatus | "all")
               }
-              className="px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30"
+              className="recessed px-3 py-2 text-foreground text-sm focus:outline-none"
             >
               <option value="all">{t("payments.filters.allStatuses", "All Statuses")}</option>
               <option value="completed">{t("payments.status.completed", "Completed")}</option>
@@ -423,7 +469,7 @@ export default function PaymentHistoryPage() {
               )}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/30"
+              className="recessed flex-1 px-3 py-2 text-sm text-foreground focus:outline-none"
             />
             <button
               type="button"
@@ -443,7 +489,7 @@ export default function PaymentHistoryPage() {
           transition={{ delay: 0.5 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="tonal-lift p-4">
             <p className="text-sm font-semibold text-begena-brown dark:text-begena-cream mb-2">
               {t("payments.insights.breakdownTitle", "Breakdown by Type")}
             </p>
@@ -475,7 +521,7 @@ export default function PaymentHistoryPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="tonal-lift p-4">
             <p className="text-sm font-semibold text-begena-brown dark:text-begena-cream mb-2">
               {t("payments.insights.pendingTitle", "Pending follow-ups")}
             </p>
@@ -512,7 +558,7 @@ export default function PaymentHistoryPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-12 rounded-xl bg-surface border border-border"
+            className="tonal-lift text-center py-12"
           >
             <Receipt className="w-12 h-12 mx-auto text-begena-brown/40 dark:text-begena-cream/40 mb-4" />
             <p className="text-begena-brown/70 dark:text-begena-cream/70">
@@ -527,7 +573,7 @@ export default function PaymentHistoryPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="p-4 md:p-6 rounded-xl bg-surface backdrop-blur-sm border border-border transition-all"
+                className="tonal-lift p-4 md:p-6 backdrop-blur-sm"
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex-1">

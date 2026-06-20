@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
@@ -52,8 +52,19 @@ export class UserService {
         .filter((id) => Types.ObjectId.isValid(id))
         .map((id) => new Types.ObjectId(id));
     }
-    const user = await this.userModel.create(payload);
-    return this.toSafeUser(user.toObject());
+    try {
+      const user = await this.userModel.create(payload);
+      return this.toSafeUser(user.toObject());
+    } catch (err: unknown) {
+      // Translate Mongo duplicate-key (E11000) into a clean 409 so /auth/register
+      // doesn't leak a 500 when a user tries to register an existing email.
+      const e = err as { code?: number; keyPattern?: Record<string, unknown> };
+      if (e?.code === 11000) {
+        const field = e.keyPattern ? Object.keys(e.keyPattern)[0] : 'value';
+        throw new ConflictException(`A user with that ${field} already exists.`);
+      }
+      throw err;
+    }
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {

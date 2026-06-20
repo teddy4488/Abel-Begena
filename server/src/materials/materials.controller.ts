@@ -85,15 +85,39 @@ export class MaterialsController {
   @Get()
   @UseGuards(JwtAuthGuard)
   async getMaterials(
-    @Query('classId') classId: string,
+    @Query('classId') classId: string | undefined,
     @Request() req: { user: { sub: string; role: string } },
   ) {
-    // Reuse class access logic (throws if user is neither admin, instructor, nor active enrollee)
-    await this.classService.getAccessPayload(classId, {
-      sub: req.user.sub,
-      role: req.user.role,
-    });
-    return this.materialsService.getMaterialsByClass(classId);
+    // Per-class request: reuse class access logic
+    // (throws if user is neither admin, instructor, nor active enrollee)
+    if (classId) {
+      await this.classService.getAccessPayload(classId, {
+        sub: req.user.sub,
+        role: req.user.role,
+      });
+      return this.materialsService.getMaterialsByClass(classId);
+    }
+
+    // No classId: scope by role so the caller (e.g. student dashboard) can list
+    // all materials it has access to without iterating per-class.
+    const role = req.user.role;
+    if (role === 'Admin' || role === 'SuperAdmin') {
+      return this.materialsService.getMaterialsByClass(); // no filter = all
+    }
+    if (role === 'Student') {
+      const enrollments = await this.classService.getStudentEnrollments(
+        req.user.sub,
+      );
+      const classIds = enrollments
+        .filter((e) => e.status !== 'withdrawn')
+        .map((e) => String(e.classId))
+        .filter(Boolean);
+      return this.materialsService.getMaterialsByClassIds(classIds);
+    }
+    if (role === 'Teacher') {
+      return this.materialsService.getMaterialsForTeacher(req.user.sub);
+    }
+    return [];
   }
 
   @Get('teacher')

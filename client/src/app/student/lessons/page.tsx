@@ -177,7 +177,7 @@ function ClassLessonsCard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="mt-4 border-t border-border/60 pt-4 space-y-5"
+            className="mt-4 space-y-5"
           >
             {progress && progress.totalLessons > 0 && (
               <div className="flex flex-col gap-1 rounded-2xl bg-background/60 p-3 text-xs text-foreground/80 sm:flex-row sm:items-center sm:justify-between">
@@ -229,11 +229,12 @@ function ClassLessonsCard({
                     return (
                       <li
                         key={lesson._id}
-                        className={`rounded-2xl surface-elevated px-4 py-3 text-sm space-y-2 border ${
+                        className={`interactive-row rounded-2xl surface-elevated px-4 py-3 text-sm space-y-2 border ${
                           isNext
                             ? "border-secondary/70 shadow-[0_0_0_1px_rgba(180,134,75,0.35)]"
                             : "border-transparent"
                         }`}
+                        data-active={isNext ? "true" : undefined}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div>
@@ -301,7 +302,8 @@ function ClassLessonsCard({
                                 href={material.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center justify-between rounded-xl surface-elevated px-3 py-2 text-xs hover:shadow-md transition"
+                                className="interactive-row flex items-center justify-between rounded-xl surface-elevated px-3 py-2 text-xs"
+                                data-clickable="true"
                               >
                                 <span className="truncate">{material.title}</span>
                                 <span className="ml-3 text-secondary text-[10px] uppercase tracking-[0.2em]">
@@ -318,7 +320,8 @@ function ClassLessonsCard({
             )}
 
             {/* Class-wide materials (not tied to a specific lesson) */}
-            <div className="pt-2 border-t border-border/40 space-y-2">
+            <hr className="divider-gradient mt-3" />
+            <div className="pt-2 space-y-2">
               <p className="text-xs uppercase tracking-[0.3em] text-secondary/70">
                 {t("student.lessons.classMaterials", "Class materials")}
               </p>

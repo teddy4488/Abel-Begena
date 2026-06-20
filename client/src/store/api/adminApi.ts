@@ -169,6 +169,9 @@ export type Student = {
   learningDaysPerWeek?: number;
   isActive: boolean;
   isVerified: boolean;
+  monthlyFee?: number;
+  periodAdjustment?: number;
+  autoReminders?: boolean;
 };
 
 export const adminApi = createApi({

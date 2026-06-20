@@ -65,7 +65,7 @@ export default function StudentError({
           </button>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-semibold text-foreground transition hover:-translate-y-0.5 hover:border-secondary"
+            className="btn-ghost-strong inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm"
           >
             <Home className="h-4 w-4" />
             Go Home

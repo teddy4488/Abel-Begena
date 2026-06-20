@@ -2,73 +2,116 @@
 
 :root {
   color-scheme: light;
-  --color-background: #ffffff;
-  --color-background-soft: rgba(255, 255, 255, 0.9);
-  --color-background-elevated: #ffffff;
-  --color-background-subtle: rgba(255, 255, 255, 0.6);
-  --color-foreground: #2d0a12;
-  --color-foreground-muted: rgba(45, 10, 18, 0.7);
-  /* Golden / sunflower accents (readable on pure white) */
-  --color-primary: #a16207; /* golden-700 */
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #eab308; /* sunflower */
+  /* === Ethiopian-authentic palette: parchment + wood + saffron === */
+  --color-background: #fbf5e6;                /* parchment cream */
+  --color-background-soft: rgba(251, 245, 230, 0.92);
+  --color-background-elevated: #fefaee;        /* lifted parchment */
+  --color-background-subtle: rgba(251, 245, 230, 0.65);
+  --color-background-deep: #f4ead0;            /* sunk parchment (inputs) */
+  --color-foreground: #2a1810;                 /* ink walnut */
+  --color-foreground-muted: rgba(42, 24, 16, 0.65);
+
+  /* Brand golds — saffron stays, wood-gold remains primary */
+  --color-primary: #a16207;                    /* wood-aged gold */
+  --color-primary-foreground: #fbf5e6;
+  --color-secondary: #eab308;                  /* saffron — the brand anchor */
   --color-secondary-soft: rgba(234, 179, 8, 0.16);
   --color-secondary-glow: rgba(234, 179, 8, 0.4);
-  --color-surface: rgba(255, 255, 255, 0.95);
-  --color-surface-elevated: rgba(255, 255, 255, 0.98);
-  --color-surface-subtle: rgba(255, 255, 255, 0.85);
-  --color-border: rgba(234, 179, 8, 0.18);
+
+  /* New Ethiopian accents — use sparingly */
+  --color-gilt: #d4a437;                       /* polished gold highlight */
+  --color-gilt-soft: rgba(212, 164, 55, 0.18);
+  --color-wood: #6b3f1b;                       /* begena body brown */
+  --color-wood-soft: rgba(107, 63, 27, 0.08);
+  --color-accent-red: #9b2c2c;                 /* manuscript thread red */
+  --color-accent-green: #2d6043;               /* habesha textile green */
+
+  /* Surfaces — warm parchment instead of cold white */
+  --color-surface: rgba(254, 250, 238, 0.97);
+  --color-surface-elevated: rgba(254, 250, 238, 1);
+  --color-surface-subtle: rgba(251, 245, 230, 0.85);
+
+  /* === Border philosophy: intensity, not lines ===
+     --color-border is kept very faint so legacy `border border-border` usages
+     degrade gracefully rather than disappear violently. New code uses the
+     tonal-lift / recessed / ornate-frame utilities below. */
+  --color-border: rgba(212, 164, 55, 0.12);
   --color-primary-glow: rgba(234, 179, 8, 0.35);
-  --color-divider: rgba(234, 179, 8, 0.08);
-  --color-card-bg: rgba(255, 255, 255, 0.9);
-  --color-card-hover: rgba(255, 255, 255, 0.98);
-  /* Keep elevated surfaces pure white (no warm tint/gradient) */
-  --color-card-gradient: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
-  --color-surface-gradient: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
-  --color-shadow-sm: 0 2px 8px rgba(234, 179, 8, 0.1);
-  --color-shadow-md: 0 4px 16px rgba(234, 179, 8, 0.14);
-  --color-shadow-lg: 0 8px 32px rgba(234, 179, 8, 0.18);
-  --color-shadow-xl: 0 16px 48px rgba(234, 179, 8, 0.2);
-  --color-glow: 0 0 20px rgba(234, 179, 8, 0.28);
-  /* Keep light theme visually pure-white (minimal grain) */
-  --grain-color-1: rgba(0, 0, 0, 0.02);
-  --grain-color-2: rgba(0, 0, 0, 0.015);
-  --grain-opacity: 0.08;
-  --grain-blend-mode: normal;
+  --color-divider: rgba(212, 164, 55, 0.06);
+  --color-card-bg: rgba(254, 250, 238, 0.96);
+  --color-card-hover: rgba(254, 250, 238, 1);
+  --color-card-gradient: linear-gradient(135deg, #fefaee 0%, #f9efd5 100%);
+  --color-surface-gradient: linear-gradient(135deg, #fefaee 0%, #f9efd5 100%);
+
+  /* Inset highlights / shadows — the "intensity, not lines" toolkit */
+  --color-inset-top: rgba(255, 240, 195, 0.6);
+  --color-inset-bot: rgba(58, 30, 10, 0.08);
+
+  /* Drop shadows — warm wood tone instead of cool blue */
+  --color-shadow-sm: 0 1px 2px rgba(107, 63, 27, 0.08);
+  --color-shadow-md: 0 4px 14px rgba(107, 63, 27, 0.1);
+  --color-shadow-lg: 0 8px 32px rgba(107, 63, 27, 0.14);
+  --color-shadow-xl: 0 16px 48px rgba(107, 63, 27, 0.18);
+  --color-glow: 0 0 0 4px rgba(234, 179, 8, 0.2);
+
+  /* Background grain — warm specks like aged paper */
+  --grain-color-1: rgba(107, 63, 27, 0.04);
+  --grain-color-2: rgba(212, 164, 55, 0.03);
+  --grain-opacity: 0.18;
+  --grain-blend-mode: multiply;
 }
 
 .dark {
   color-scheme: dark;
-  --color-background: #1f2937;
-  --color-background-soft: rgba(31, 41, 55, 0.9);
-  --color-background-elevated: #374151;
-  --color-background-subtle: rgba(31, 41, 55, 0.6);
-  --color-foreground: #f3f4f6;
-  --color-foreground-muted: rgba(243, 244, 246, 0.7);
-  --color-primary: #c5a059;
-  --color-primary-foreground: #1d0b11;
-  --color-secondary: #f7d9a1;
-  --color-secondary-soft: rgba(247, 217, 161, 0.25);
-  --color-secondary-glow: rgba(247, 217, 161, 0.45);
-  --color-surface: rgba(17, 24, 39, 0.92);
-  --color-surface-elevated: rgba(31, 41, 55, 0.98);
-  --color-surface-subtle: rgba(17, 24, 39, 0.85);
-  --color-border: rgba(247, 217, 161, 0.25);
-  --color-primary-glow: rgba(197, 160, 89, 0.45);
-  --color-divider: rgba(247, 217, 161, 0.08);
-  --color-card-bg: rgba(31, 41, 55, 0.9);
-  --color-card-hover: rgba(55, 65, 81, 0.98);
-  --color-card-gradient: linear-gradient(135deg, rgba(31, 41, 55, 0.95) 0%, rgba(37, 47, 61, 0.9) 100%);
-  --color-surface-gradient: linear-gradient(135deg, rgba(31, 41, 55, 0.98) 0%, rgba(31, 41, 55, 0.95) 100%);
-  --color-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --color-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-  --color-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --color-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.35);
-  --color-glow: 0 0 20px rgba(197, 160, 89, 0.4);
-  --grain-color-1: rgba(255, 255, 255, 0.04);
-  --grain-color-2: rgba(197, 160, 89, 0.05);
-  --grain-opacity: 0.28;
-  --grain-blend-mode: multiply;
+  /* === Warm-ink palette: looks like manuscript at night === */
+  --color-background: #15100a;                 /* warm near-black */
+  --color-background-soft: rgba(21, 16, 10, 0.92);
+  --color-background-elevated: #23180e;        /* lifted warm dark */
+  --color-background-subtle: rgba(21, 16, 10, 0.65);
+  --color-background-deep: #0d0905;            /* sunk dark (inputs) */
+  --color-foreground: #fbeed1;                 /* warm cream */
+  --color-foreground-muted: rgba(251, 238, 209, 0.6);
+
+  /* Brand golds — slightly brighter on the dark warm bg */
+  --color-primary: #c98417;
+  --color-primary-foreground: #15100a;
+  --color-secondary: #eab308;
+  --color-secondary-soft: rgba(234, 179, 8, 0.18);
+  --color-secondary-glow: rgba(234, 179, 8, 0.45);
+
+  /* Ethiopian accents — lit versions for dark */
+  --color-gilt: #f0c75c;
+  --color-gilt-soft: rgba(212, 164, 55, 0.15);
+  --color-wood: #a06d3c;
+  --color-wood-soft: rgba(212, 164, 55, 0.06);
+  --color-accent-red: #c55050;
+  --color-accent-green: #4a9173;
+
+  --color-surface: rgba(35, 24, 14, 0.97);
+  --color-surface-elevated: rgba(35, 24, 14, 1);
+  --color-surface-subtle: rgba(21, 16, 10, 0.85);
+
+  --color-border: rgba(212, 164, 55, 0.1);
+  --color-primary-glow: rgba(212, 164, 55, 0.4);
+  --color-divider: rgba(212, 164, 55, 0.05);
+  --color-card-bg: rgba(35, 24, 14, 0.96);
+  --color-card-hover: rgba(40, 28, 16, 1);
+  --color-card-gradient: linear-gradient(135deg, rgba(35, 24, 14, 0.96) 0%, rgba(28, 18, 8, 0.96) 100%);
+  --color-surface-gradient: linear-gradient(135deg, rgba(35, 24, 14, 1) 0%, rgba(28, 18, 8, 1) 100%);
+
+  --color-inset-top: rgba(212, 164, 55, 0.15);
+  --color-inset-bot: rgba(0, 0, 0, 0.4);
+
+  --color-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --color-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --color-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --color-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.65);
+  --color-glow: 0 0 0 4px rgba(234, 179, 8, 0.25);
+
+  --grain-color-1: rgba(212, 164, 55, 0.06);
+  --grain-color-2: rgba(212, 164, 55, 0.04);
+  --grain-opacity: 0.32;
+  --grain-blend-mode: screen;
 }
 
 * {
@@ -332,4 +375,304 @@ select:focus {
 
 .surface-elevated:hover {
   box-shadow: var(--color-shadow-md);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Interaction utilities — used across admin/student/teacher pages.
+   These give every list, table, tab, and selectable card a consistent
+   hover and active treatment without the per-page Tailwind soup.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* A table or list row that responds to hover (use on <tr>, <li>, <div>). */
+.interactive-row {
+  transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+.interactive-row:hover {
+  background: var(--color-secondary-soft);
+  box-shadow: inset 3px 0 0 0 var(--color-secondary);
+}
+.interactive-row[data-clickable="true"] {
+  cursor: pointer;
+}
+.interactive-row[data-active="true"] {
+  background: var(--color-secondary-soft);
+  box-shadow: inset 3px 0 0 0 var(--color-secondary);
+}
+
+/* Tab in a pill-style tab bar. Pair with .tab-pill--active for the selected one. */
+.tab-pill {
+  position: relative;
+  transition: color 200ms ease, background-color 200ms ease;
+  color: var(--color-foreground-muted);
+}
+.tab-pill:hover {
+  color: var(--color-foreground);
+  background: var(--color-secondary-soft);
+}
+.tab-pill--active {
+  color: var(--color-primary);
+  background: var(--color-secondary-soft);
+  font-weight: 600;
+}
+.tab-pill--active::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -4px;
+  height: 2px;
+  background: var(--color-secondary);
+  border-radius: 2px;
+}
+
+/* Card that can be selected (e.g. address card, plan tile). */
+.selectable {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.selectable:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--color-shadow-md);
+  border-color: var(--color-border);
+}
+.selectable[data-selected="true"] {
+  border-color: var(--color-secondary);
+  box-shadow: var(--color-shadow-md), 0 0 0 3px var(--color-secondary-soft);
+}
+
+/* Strong, accessible primary/danger/secondary actions for modals & toolbars. */
+.btn-primary-strong {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-weight: 600;
+  box-shadow: var(--color-shadow-sm);
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.btn-primary-strong:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--color-shadow-md);
+  transform: translateY(-1px);
+}
+.btn-primary-strong:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+.btn-primary-strong:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-success-strong {
+  background: #16a34a; /* green-600 */
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.btn-success-strong:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+  transform: translateY(-1px);
+}
+.btn-success-strong:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn-success-strong:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger-strong {
+  background: #dc2626; /* red-600 */
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.btn-danger-strong:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+  transform: translateY(-1px);
+}
+.btn-danger-strong:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn-danger-strong:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ghost-strong {
+  background: transparent;
+  color: var(--color-foreground);
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.btn-ghost-strong:hover:not(:disabled) {
+  background: var(--color-secondary-soft);
+  border-color: var(--color-secondary);
+}
+
+/* Tables — apply via wrapper className. Smooths default <table> visuals. */
+.styled-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.styled-table thead th {
+  background: var(--color-secondary-soft);
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.styled-table tbody tr {
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+.styled-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--color-divider);
+}
+.styled-table tbody tr:hover {
+  background: var(--color-secondary-soft);
+  box-shadow: inset 3px 0 0 0 var(--color-secondary);
+}
+.styled-table td {
+  padding: 14px 16px;
+}
+
+/* Focus rings — applied broadly to interactive elements that don't already have one. */
+:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus-visible,
+a:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ETHIOPIAN THEME — "INTENSITY, NOT LINES" UTILITIES (Phase 1)
+   The new toolkit. Differentiate elements via inset highlights, tonal
+   lift, and soft shadows — never via 1-px stroke lines.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* tonal-lift — for cards, panels, and any container that needs to
+ * appear "lifted" from its parent without drawing a line around it. */
+.tonal-lift {
+  background: var(--color-background-elevated);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 var(--color-inset-top),
+    inset 0 -1px 0 var(--color-inset-bot),
+    var(--color-shadow-sm),
+    var(--color-shadow-md);
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tonal-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 var(--color-inset-top),
+    inset 0 -1px 0 var(--color-inset-bot),
+    var(--color-shadow-md),
+    var(--color-shadow-lg);
+}
+
+/* recessed — for inputs, textareas, and sunken surfaces.
+ * Reads as a groove pressed into parchment. */
+.recessed {
+  background: var(--color-background-deep);
+  border: none !important;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 4px var(--color-wood-soft);
+  transition: box-shadow 150ms ease;
+}
+.recessed:focus,
+.recessed:focus-within {
+  outline: none;
+  box-shadow:
+    inset 0 2px 4px var(--color-wood-soft),
+    var(--color-glow);
+}
+
+/* ornate-frame — for hero blocks and major section containers.
+ * The "manuscript page" feel: soft inner highlight + warm drop shadow. */
+.ornate-frame {
+  background: var(--color-background-elevated);
+  border-radius: 28px;
+  box-shadow:
+    inset 0 1px 0 var(--color-inset-top),
+    inset 0 -1px 0 var(--color-inset-bot),
+    var(--color-shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* divider-gradient — soft fading line, used ONLY when a true rule is
+ * needed and a Habesha thread is too decorative. */
+.divider-gradient {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-wood-soft) 20%,
+    var(--color-secondary-soft) 50%,
+    var(--color-wood-soft) 80%,
+    transparent 100%
+  );
+  border: none;
+}
+
+/* habesha-thread — Pattern 1: thin gold/wood diamond strip (CSS-only). */
+.habesha-thread {
+  height: 14px;
+  background-image:
+    linear-gradient(45deg, var(--color-wood) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-wood) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-secondary) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-secondary) 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+  opacity: 0.5;
+}
+
+/* awdema-bg — Pattern 3: low-opacity background wash (CSS-only).
+ * Apply to any container; it overlays a faint Ethiopian motif. */
+.awdema-bg {
+  position: relative;
+  /* Own stacking context so ::before stays behind children without leaking
+     to the parent. (Previous `awdema-bg > *` rule overrode `position: absolute`
+     on the hero's decorative SVGs, pushing them into normal flow — visible
+     as the empty gap above the hero copy.) */
+  isolation: isolate;
+}
+.awdema-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%236b3f1b' stroke-width='1.2'><circle cx='15' cy='15' r='9'/><circle cx='45' cy='15' r='9'/><circle cx='15' cy='45' r='9'/><circle cx='45' cy='45' r='9'/><circle cx='15' cy='15' r='2' fill='%236b3f1b'/><circle cx='45' cy='15' r='2' fill='%236b3f1b'/><circle cx='15' cy='45' r='2' fill='%236b3f1b'/><circle cx='45' cy='45' r='2' fill='%236b3f1b'/></svg>");
+  background-size: 60px 60px;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .awdema-bg::before { opacity: 0.08; }
+
+/* habesha-wide-strip — Pattern 2: vivid red/yellow/green strip for major
+ * section transitions. Apply as a fixed-height element. */
+.habesha-wide-strip {
+  height: 38px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 38'><rect width='80' height='38' fill='%239b2c2c'/><polygon points='10,4 18,19 10,34 2,19' fill='%23eab308' stroke='%23000' stroke-width='1.5'/><polygon points='30,4 38,19 30,34 22,19' fill='%232d6043' stroke='%23000' stroke-width='1.5'/><polygon points='50,4 58,19 50,34 42,19' fill='%23eab308' stroke='%23000' stroke-width='1.5'/><polygon points='70,4 78,19 70,34 62,19' fill='%232d6043' stroke='%23000' stroke-width='1.5'/><rect y='1' width='80' height='2' fill='%23000'/><rect y='35' width='80' height='2' fill='%23000'/></svg>");
+  background-repeat: repeat-x;
+  background-size: 80px 38px;
 }

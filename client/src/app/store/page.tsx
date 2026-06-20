@@ -198,7 +198,7 @@ export default function StorePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="group flex flex-col rounded-2xl surface-elevated p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] hover:shadow-[0_30px_70px_rgba(18,6,6,0.15)] transition-all sm:rounded-3xl sm:p-5"
+                className="selectable group flex flex-col rounded-2xl surface-elevated p-4 shadow-[0_25px_60px_rgba(18,6,6,0.12)] sm:rounded-3xl sm:p-5"
               >
                 <Link
                   href={`/store/${product._id}`}

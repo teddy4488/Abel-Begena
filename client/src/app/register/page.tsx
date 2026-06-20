@@ -82,7 +82,7 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="w-full max-w-2xl rounded-3xl bg-surface-elevated p-10 shadow-[0_40px_80px_var(--color-primary-glow)] backdrop-blur"
+        className="ornate-frame w-full max-w-2xl p-10 backdrop-blur"
       >
         <div className="mb-8 text-center">
           <motion.div
@@ -120,9 +120,9 @@ export default function RegisterPage() {
               required
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 shadow-sm ${
-                fieldErrors.firstName ? "border-red-400" : "border-border focus:border-secondary"
-              } bg-background/80`}
+              className={`recessed mt-2 w-full px-4 py-3 text-foreground outline-none transition ${
+                fieldErrors.firstName ? "ring-2 ring-red-400" : ""
+              }`}
               placeholder="Kidus"
             />
             {fieldErrors.firstName && (
@@ -145,9 +145,9 @@ export default function RegisterPage() {
               required
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 shadow-sm ${
-                fieldErrors.lastName ? "border-red-400" : "border-border focus:border-secondary"
-              } bg-background/80`}
+              className={`recessed mt-2 w-full px-4 py-3 text-foreground outline-none transition ${
+                fieldErrors.lastName ? "ring-2 ring-red-400" : ""
+              }`}
               placeholder="Haile"
             />
             {fieldErrors.lastName && (
@@ -170,9 +170,9 @@ export default function RegisterPage() {
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className={`mt-2 w-full rounded-2xl border px-4 py-3 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 shadow-sm ${
-                fieldErrors.email ? "border-red-400" : "border-border focus:border-secondary"
-              } bg-background/80`}
+              className={`recessed mt-2 w-full px-4 py-3 text-foreground outline-none transition ${
+                fieldErrors.email ? "ring-2 ring-red-400" : ""
+              }`}
               placeholder="you@example.com"
             />
             {fieldErrors.email && (
@@ -196,9 +196,9 @@ export default function RegisterPage() {
                 required
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className={`w-full rounded-2xl border px-4 py-3 pr-10 text-foreground outline-none transition focus:ring-2 focus:ring-secondary/40 ${
-                  fieldErrors.password ? "border-red-400" : "border-border focus:border-secondary"
-                } bg-background/80`}
+                className={`recessed w-full px-4 py-3 pr-10 text-foreground outline-none transition ${
+                  fieldErrors.password ? "ring-2 ring-red-400" : ""
+                }`}
                 placeholder={t("register.page.passwordPlaceholder")}
               />
               <button

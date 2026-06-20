@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[32px] border border-border bg-surface p-8 shadow-[0_40px_80px_var(--color-primary-glow)]"
+          className="ornate-frame p-8"
         >
           {!isSuccess ? (
             <>
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full rounded-2xl border border-border bg-background/80 py-3 pl-12 pr-4 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                      className="recessed w-full py-3 pl-12 pr-4 text-sm outline-none transition"
                       placeholder="you@example.com"
                     />
                   </div>
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
                   href={`/reset-password?email=${encodeURIComponent(
                     intendedEmail,
                   )}`}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-semibold text-foreground transition hover:-translate-y-0.5 hover:border-secondary"
+                  className="btn-ghost-strong inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm"
                 >
                   <RotateCw className="h-4 w-4" />
                   {t("forgotPassword.goToReset", "Enter reset code")}

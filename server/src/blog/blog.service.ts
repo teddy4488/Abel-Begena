@@ -181,8 +181,8 @@ export class BlogService {
       post.slug = await this.generateUniqueSlug(dto.slug, post._id);
     }
 
-    // Only admins can publish/approve
-    if (actor.role === 'Admin') {
+    // Only Admin / SuperAdmin can publish/approve
+    if (actor.role === 'Admin' || actor.role === 'SuperAdmin') {
       if (typeof dto.isPublished === 'boolean') {
         post.isPublished = dto.isPublished;
       }
@@ -230,7 +230,8 @@ export class BlogService {
     actor: Actor,
     deleting = false,
   ) {
-    if (actor.role === 'Admin') {
+    // SuperAdmin and Admin can edit/delete any post (e.g. to approve/publish a teacher's).
+    if (actor.role === 'Admin' || actor.role === 'SuperAdmin') {
       return;
     }
 

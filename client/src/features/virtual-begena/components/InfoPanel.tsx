@@ -116,10 +116,10 @@ export default function InfoPanel() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-begena-brown/70 dark:text-begena-cream/70 mb-1 uppercase tracking-wide">
-                      {t("virtualExperience.info.octaveLabel", "Octave")}
+                      {t("virtualExperience.info.octaveLabel", "Key")}
                     </div>
                     <div className="font-semibold text-begena-brown dark:text-begena-cream">
-                      C{qinitInfo.octave} ({qinitInfo.rootFreq.toFixed(2)} Hz)
+                      {qinitInfo.root} ({qinitInfo.rootFreq.toFixed(2)} Hz)
                     </div>
                   </div>
                 </div>

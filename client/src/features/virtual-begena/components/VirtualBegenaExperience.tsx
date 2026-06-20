@@ -14,6 +14,7 @@ import {
   Trash2,
   Download,
   Music,
+  Loader2,
 } from "lucide-react";
 import BegenaVisual from "@/features/virtual-begena/components/BegenaVisual";
 import HandAnimation from "@/features/virtual-begena/components/HandAnimation";
@@ -53,6 +54,7 @@ export default function VirtualBegenaExperience() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasRecording, setHasRecording] = useState(false);
   const [isTunerOpen, setIsTunerOpen] = useState(false);
+  const [samplerReady, setSamplerReady] = useState(false);
 
   // Map physical string number to finger index for hand animation
   // Updated mapping: Space (1) = thumb, F (4) = index, D (6) = middle, S (8) = ring, A (10) = little
@@ -67,9 +69,16 @@ export default function VirtualBegenaExperience() {
     [],
   );
 
-  // Initialize audio context on first user interaction
+  // Initialize audio and poll until real samples are loaded
   useEffect(() => {
     soundManager.initialize().catch(console.error);
+    const interval = setInterval(() => {
+      if (soundManager.isReady()) {
+        setSamplerReady(true);
+        clearInterval(interval);
+      }
+    }, 200);
+    return () => clearInterval(interval);
   }, []);
 
   const isDark = resolvedTheme === "dark";
@@ -194,9 +203,7 @@ export default function VirtualBegenaExperience() {
       const blob = await exportToWAV(notes);
       if (blob) {
         const qinitInfo = soundManager.getQinitInfo();
-        const filename = `begena_${qinitInfo.mode}_octave${
-          qinitInfo.octave
-        }_${Date.now()}.wav`;
+        const filename = `begena_${qinitInfo.mode}_${qinitInfo.root}_${Date.now()}.wav`;
         downloadAudio(blob, filename);
       }
     } catch (error) {
@@ -272,6 +279,16 @@ export default function VirtualBegenaExperience() {
           </div>
         </div>
       </div>
+
+      {/* Sample loading indicator */}
+      {!samplerReady && (
+        <div className="flex justify-center mb-4 relative z-10">
+          <div className="flex items-center gap-2 px-5 py-2 rounded-full bg-begena-gold/10 border border-begena-gold/30 text-begena-gold text-sm font-semibold">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading begena samples…
+          </div>
+        </div>
+      )}
 
       {/* Quote with Orthodox styling */}
       <motion.div

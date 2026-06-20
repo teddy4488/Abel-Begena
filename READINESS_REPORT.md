@@ -23,7 +23,7 @@
 | 7 | Attendance & Materials | 🟢 Done (+features) | 0 |
 | 8 | Live Classes / Realtime | 🟢 Done (+features) | 0 |
 | 9 | Payments & Due-Dates (manual v1) | 🟢 Done (consumption-based) | 0 |
-| 10 | UI / Theme | — (user-driven) | 0 |
+| 10 | UI / Theme | 🟢 Done (audit + surface pass) | 0 |
 | 11 | Deploy & Release Readiness | 🔴 Major work | 0 |
 
 **Total blockers: 11.** Most are small (S) fixes.
@@ -187,10 +187,53 @@ Receipt-upload + admin-approval; **billing reframed to consumption-based** (pay 
 **Verified:** server `tsc` + `nest build` clean; client `tsc` + `next build` clean.
 
 ### Module 10 — UI / Theme  *(after functionality stable; user-driven)*
-- [ ] Global theme/visual pass (brand colors, typography, parchment theme).
-- [ ] Currency display consistency (ties to M4).
-- [ ] Out-of-stock / loading / empty states polish.
-- [ ] Responsive + accessibility sweep.
+
+**Approach:** full codebase audit across four categories — mock values, backend-without-frontend, frontend-without-backend, and theme/table issues. Rule: if a backend feature does something meaningful, surface it. Admin sees everything; students see what's relevant to them.
+
+**Audit findings addressed:**
+- [x] **Admin payments** — added full `PaymentRequest` history tab (approved/rejected/all, date range search, paginated table with expected-vs-submitted, receipt link). Previously only the pending inbox was visible. ✅
+- [x] **Admin monthly-payments** — wired `GET /attendance/payments/upcoming-summary` (was backend-only) to a "Due within 14 days" digest card; added loading skeletons for the billing table; added `autoReminders` badge on overdue rows. ✅
+- [x] **Dashboard payments** — added consumption-based tuition card (`useGetMyBillingQuery`) for student users. Previously this page only showed enrollment + order receipts. ✅
+- [x] **Admin reports — student** — created `admin/reports/student/[id]/page.tsx` with side-by-side attendance + payment report, CSV export, billing summary, and link from the admin users page student tab. ✅
+- [x] **Admin users/students** — added `monthlyFee`, `periodAdjustment`, `autoReminders` edit form in a per-student billing modal; link to full student report. ✅
+- [x] **API types** — updated `getStudentAttendanceReport` and `getStudentPaymentReport` return types to include all backend-returned fields (`presentCount`, `absentCount`, `lateCount`, `attendanceRate`, `billing`, `waivedCount`, `monthlyFee`); updated `Student` type with billing fields; added `getUpcomingPaymentsSummary` endpoint. ✅
+- [x] **StudentPaymentsModal** — removed stale `duedate`/`dueDateInferred`/`receiptUrl` fields (dead code from the pre-M9 calendar model). ✅
+
+**Confirmed fine, no action needed:**
+- Analytics page: fully real-data-backed, no hardcoded values.
+- Occupancy visualizer: tabbed into the classes admin page.
+- Audit logs: full admin page exists.
+- Currency formatting: consistent ETB via `Intl.NumberFormat` across all pages.
+
+**Verified:** client `tsc` + `next build` clean.
+
+---
+
+## API Integration Test Pass (2026-06-04)
+
+Before opening up the UI for manual testing, a 10-phase integration test suite was run against every major endpoint in the order a real user/admin would hit them. **85/85 tests passed.** Several real backend bugs surfaced during the test development and were fixed:
+
+| Bug | Fix |
+|---|---|
+| `POST /auth/register` returned 500 on duplicate email (Mongo E11000 not translated) | Catch E11000 in `UserService.create` → `ConflictException` |
+| `GET /users/me` returned 500 (no `/me` route; `/:id` caught "me" and ObjectId-cast it) | Added `/users/me` alias route before `/:id` |
+| `POST /auth/refresh` immediately after login raced the refresh-token DB write (fire-and-forget `void` persist) | `await persistRefreshToken` in the login handler |
+| `BlogService.assertCanModify` only allowed role `'Admin'`, not `'SuperAdmin'` — SuperAdmin couldn't publish teacher posts | Added `SuperAdmin` to the allow check (in two places) |
+| `generateAttendanceNumber` returned `'1'` when last number was non-numeric (e.g. `'STD-1001'`) causing E11000 on duplicate `'1'` already in DB | Rewrote to extract trailing digits from all participants + collision-retry loop |
+| Stale Mongo unique index `participantId_1_month_1_year_1` on `studentpayments` (relic from pre-Module-9 calendar model) blocked monthly fee approvals with `paid` status | Dropped the stale index — Module 9 already uses `participantId_1_period_1` |
+| Login throttle (`@Throttle({limit:5, ttl:300_000})`) hardcoded with no env override | Added `AUTH_LOGIN_THROTTLE_LIMIT`/`AUTH_LOGIN_THROTTLE_TTL_MS` env knobs + `DISABLE_AUTH_THROTTLE` for tests; dotenv loaded at module level so values apply at decorator-evaluation time |
+
+**Test coverage by phase:**
+1. Public endpoints (5/5) — `/faq`, `/branches`, `/classes/public`, `/blog`, unauthenticated 401
+2. Auth flows (12/12) — register, duplicate check, weak password, login (3 roles), session, profile, `/me` alias, refresh, auto-verify
+3. Admin data setup (17/17) — branches, teachers, classes, lessons (CRUD), products (CRUD), FAQ (CRUD), blog (teacher draft → admin publish → public read)
+4. Enrollment flow (8/8) — student enroll → payment request → admin approve → user-to-student conversion → billing state initialized
+5. Attendance & billing (10/10) — record attendance, lesson progress, overdue list, billing summary, upcoming, student reports, graduation eligibility
+6. Monthly payment flow (7/7) — submit receipt, duplicate rejection, admin approve, billing settles, waive period, history filters
+7. Store flow (9/9) — cart add, checkout, admin sees order, mark paid → shipped → delivered, customer sees delivered
+8. Live class flow (4/4) — toggle live, student access, notifications, toggle off
+9. Permission boundaries (6/6) — admin-only blocks student/teacher, unauthenticated rejection, role checks
+10. Cleanup (7/7) — delete test entities, logout, session invalidation
 
 ### Module 11 — Deploy & Release Readiness  *(last; gates production cutover)*
 - [ ] Reconcile deploy model (README: Vercel+Render vs PROJECT_IDEA: Docker+VPS). Pick one.

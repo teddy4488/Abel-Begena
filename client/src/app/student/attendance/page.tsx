@@ -255,7 +255,7 @@ export default function StudentAttendancePage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="flex items-center justify-between rounded-xl surface-elevated p-4 hover:shadow-lg transition-all"
+                    className="interactive-row flex items-center justify-between rounded-xl surface-elevated p-4"
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className="flex-shrink-0">

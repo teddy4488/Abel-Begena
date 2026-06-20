@@ -221,7 +221,7 @@ export default function HeritageArticlePage() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              className="btn-ghost-strong flex h-10 w-10 items-center justify-center rounded-full"
               aria-label="Share"
             >
               <Share2 className="h-4 w-4" />
@@ -234,7 +234,7 @@ export default function HeritageArticlePage() {
               }&text=${encodeURIComponent(post.title)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              className="btn-ghost-strong flex h-10 w-10 items-center justify-center rounded-full"
               aria-label="Share on Twitter"
             >
               <Twitter className="h-4 w-4" />
@@ -247,7 +247,7 @@ export default function HeritageArticlePage() {
               }`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              className="btn-ghost-strong flex h-10 w-10 items-center justify-center rounded-full"
               aria-label="Share on Facebook"
             >
               <Facebook className="h-4 w-4" />
@@ -267,7 +267,7 @@ export default function HeritageArticlePage() {
                   // ignore
                 }
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border transition hover:border-secondary hover:bg-(--color-secondary-soft)"
+              className="btn-ghost-strong flex h-10 w-10 items-center justify-center rounded-full"
               aria-label="Copy link"
             >
               <LinkIcon className="h-4 w-4" />
@@ -339,7 +339,7 @@ export default function HeritageArticlePage() {
                   <img
                     src={src}
                     alt={alt || ""}
-                    className="w-full rounded-2xl border border-border"
+                    className="tonal-lift w-full"
                   />
                   {alt && (
                     <figcaption className="mt-2 text-center text-sm text-foreground/60">
@@ -357,7 +357,7 @@ export default function HeritageArticlePage() {
                 </code>
               ),
               pre: ({ children }) => (
-                <pre className="my-6 overflow-x-auto rounded-2xl border border-border bg-background/80 p-4">
+                <pre className="recessed my-6 overflow-x-auto p-4">
                   {children}
                 </pre>
               ),
@@ -368,7 +368,7 @@ export default function HeritageArticlePage() {
         </div>
 
         {/* Comments */}
-        <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4">
+        <div className="tonal-lift space-y-4 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-primary">
               {t("heritage.comments.title", "Comments")}
@@ -404,7 +404,7 @@ export default function HeritageArticlePage() {
                 onChange={(e) => setCommentText(e.target.value)}
                 rows={3}
                 placeholder={t("heritage.comments.placeholder", "Share your thoughts...")}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                className="recessed w-full px-4 py-3 text-sm outline-none transition"
               />
               <div className="flex justify-end">
                 <button
@@ -451,7 +451,7 @@ export default function HeritageArticlePage() {
                           <textarea
                             value={editingText}
                             onChange={(e) => setEditingText(e.target.value)}
-                            className="w-full rounded-2xl bg-background/80 border border-border px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30"
+                            className="recessed w-full px-3 py-2 text-sm outline-none"
                             rows={3}
                           />
                           <div className="flex items-center gap-2">
@@ -484,7 +484,7 @@ export default function HeritageArticlePage() {
                                 setEditingCommentId(null);
                                 setEditingText("");
                               }}
-                              className="inline-flex items-center gap-1 rounded-full border border-border bg-background/50 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-background"
+                              className="btn-ghost-strong inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs"
                             >
                               <X className="h-3 w-3" />
                               {t("button.cancel", "Cancel")}
