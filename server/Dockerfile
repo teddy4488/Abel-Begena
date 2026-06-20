@@ -13,4 +13,4 @@ RUN node --max-old-space-size=1024 node_modules/.bin/nest build
 
 EXPOSE 4001
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
