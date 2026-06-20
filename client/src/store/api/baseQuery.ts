@@ -51,10 +51,12 @@ export const authorizedBaseQuery: BaseQueryFn<
     if (!isAuthRefresh && !isAuthLogin) {
       // Only one refresh fires at a time; concurrent 401s await the same promise.
       if (!pendingRefresh) {
-        pendingRefresh = rawBaseQuery(
-          { url: "/auth/refresh", method: "POST" },
-          api,
-          extraOptions,
+        pendingRefresh = Promise.resolve(
+          rawBaseQuery(
+            { url: "/auth/refresh", method: "POST" },
+            api,
+            extraOptions,
+          ),
         ).then((r) => {
           pendingRefresh = null;
           return r;

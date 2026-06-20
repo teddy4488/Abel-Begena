@@ -165,7 +165,7 @@ export function BlogStudio({
     try {
       const base = {
         ...form,
-        coverImage: form.coverImage || undefined,
+        coverImage: form.coverImage || '',
       };
       const payload = isAdmin
         ? base
