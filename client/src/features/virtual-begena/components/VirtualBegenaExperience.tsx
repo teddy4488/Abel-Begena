@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -17,7 +17,6 @@ import {
   Loader2,
 } from "lucide-react";
 import BegenaVisual from "@/features/virtual-begena/components/BegenaVisual";
-import HandAnimation from "@/features/virtual-begena/components/HandAnimation";
 import SettingsPanel from "@/features/virtual-begena/components/SettingsPanel";
 import InfoPanel from "@/features/virtual-begena/components/InfoPanel";
 import StringTuner from "@/features/virtual-begena/components/StringTuner";
@@ -47,27 +46,12 @@ export default function VirtualBegenaExperience() {
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useI18n();
   const [pressedStrings, setPressedStrings] = useState<Set<number>>(new Set());
-  const [pressedFinger, setPressedFinger] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showHands, setShowHands] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasRecording, setHasRecording] = useState(false);
   const [isTunerOpen, setIsTunerOpen] = useState(false);
   const [samplerReady, setSamplerReady] = useState(false);
-
-  // Map physical string number to finger index for hand animation
-  // Updated mapping: Space (1) = thumb, F (4) = index, D (6) = middle, S (8) = ring, A (10) = little
-  const stringToFingerIndex = useMemo<Record<number, number>>(
-    () => ({
-      1: 4, // Thumb (Space)
-      4: 3, // Index finger (F - String 2)
-      6: 2, // Middle finger (D - String 3)
-      8: 1, // Ring finger (S - String 4)
-      10: 0, // Little finger (A - String 5)
-    }),
-    [],
-  );
 
   // Initialize audio and poll until real samples are loaded
   useEffect(() => {
@@ -99,22 +83,15 @@ export default function VirtualBegenaExperience() {
       // Visual feedback
       setPressedStrings((prev) => new Set([...prev, physicalStringNumber]));
 
-      // Update hand animation (map string to finger index)
-      const fingerIndex = stringToFingerIndex[physicalStringNumber];
-      if (fingerIndex !== undefined) {
-        setPressedFinger(fingerIndex);
-      }
-
       setTimeout(() => {
         setPressedStrings((prev) => {
           const next = new Set(prev);
           next.delete(physicalStringNumber);
           return next;
         });
-        setPressedFinger(null);
       }, 300);
     },
-    [isRecording, stringToFingerIndex]
+    [isRecording]
   );
 
   // Keyboard event handling using event.code
@@ -143,7 +120,6 @@ export default function VirtualBegenaExperience() {
           next.delete(physicalStringNumber);
           return next;
         });
-        setPressedFinger(null);
       }
     };
 
@@ -326,17 +302,6 @@ export default function VirtualBegenaExperience() {
             onStringPress={(stringNum) => playString(stringNum)}
           />
         </div>
-
-        {/* Hand Animation */}
-        {showHands && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="lg:ml-8 hidden lg:block"
-          >
-            <HandAnimation pressedFinger={pressedFinger} />
-          </motion.div>
-        )}
       </div>
 
       {/* Recording Controls */}
@@ -436,8 +401,6 @@ export default function VirtualBegenaExperience() {
       <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        showHands={showHands}
-        onToggleHands={() => setShowHands(!showHands)}
         darkMode={isDark}
         onToggleDarkMode={toggleDarkMode}
       />

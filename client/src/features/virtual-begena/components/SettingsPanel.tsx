@@ -24,8 +24,6 @@ import {
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  showHands: boolean;
-  onToggleHands: () => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
 }
@@ -33,8 +31,6 @@ interface SettingsPanelProps {
 export default function SettingsPanel({
   isOpen,
   onClose,
-  showHands,
-  onToggleHands,
   darkMode,
   onToggleDarkMode,
 }: SettingsPanelProps) {
@@ -558,37 +554,6 @@ export default function SettingsPanel({
                     "Visual",
                   )}
                 </h3>
-
-                {/* Show Hands Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-begena-brown/10 dark:bg-begena-cream/10 hover:bg-begena-brown/15 dark:hover:bg-begena-cream/15 transition-colors">
-                  <span className="text-begena-brown dark:text-begena-cream font-medium">
-                    {translate(
-                      "virtualExperience.settingsPanel.visual.hands",
-                      "Show Hand Animation",
-                    )}
-                  </span>
-                  <button
-                    onClick={onToggleHands}
-                    className={`relative w-14 h-7 rounded-full transition-all duration-300 shadow-inner ${
-                      showHands 
-                        ? "bg-gradient-to-r from-begena-gold via-yellow-500 to-begena-gold" 
-                        : "bg-gradient-to-r from-begena-brown/60 via-begena-brown/40 to-begena-brown/60"
-                    } hover:scale-105 focus:outline-none focus:ring-2 focus:ring-begena-gold/50`}
-                    aria-label={showHands ? "Hide hand animation" : "Show hand animation"}
-                  >
-                    <motion.div
-                      className="w-6 h-6 bg-white rounded-full shadow-lg absolute top-0.5"
-                      animate={{
-                        x: showHands ? 28 : 2,
-                      }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 500,
-                        damping: 30,
-                      }}
-                    />
-                  </button>
-                </div>
 
                 {/* Dark Mode Toggle */}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-begena-brown/10 dark:bg-begena-cream/10 hover:bg-begena-brown/15 dark:hover:bg-begena-cream/15 transition-colors">
