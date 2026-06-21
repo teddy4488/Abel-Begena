@@ -42,7 +42,7 @@ export function LanguageToggle() {
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="group relative inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 font-semibold uppercase tracking-wide text-foreground/80 transition hover:-translate-y-0.5 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary after:absolute after:-bottom-1 after:left-1/2 after:h-[2px] after:w-0 after:rounded-full after:bg-secondary after:opacity-0 after:transition-all after:duration-300 group-hover:after:left-0 group-hover:after:w-full group-hover:after:opacity-100 focus-visible:after:left-0 focus-visible:after:w-full focus-visible:after:opacity-100"
+        className="group relative inline-flex items-center gap-1 rounded-full bg-(--color-secondary-soft) px-3 py-1 font-semibold uppercase tracking-wide text-foreground/80 transition hover:-translate-y-0.5 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary after:absolute after:-bottom-1 after:left-1/2 after:h-[2px] after:w-0 after:rounded-full after:bg-secondary after:opacity-0 after:transition-all after:duration-300 group-hover:after:left-0 group-hover:after:w-full group-hover:after:opacity-100 focus-visible:after:left-0 focus-visible:after:w-full focus-visible:after:opacity-100"
         onClick={() => setOpen((prev) => !prev)}
         disabled={isPending}
       >
@@ -50,7 +50,7 @@ export function LanguageToggle() {
         <ChevronDown className="h-3 w-3" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-24 rounded-xl border border-border bg-surface py-1 shadow-xl">
+        <div className="absolute right-0 top-full mt-2 w-24 rounded-xl bg-(--color-surface-elevated) py-1 shadow-xl">
           {languages.map((lang) => (
             <button
               key={lang.code}

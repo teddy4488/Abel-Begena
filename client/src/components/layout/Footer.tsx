@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { LalibelaCross } from "@/components/icons/ethiopian";
+import HabeshaThread from "@/components/icons/ethiopian/HabeshaThread";
 
 const footerLinks = [
   {
@@ -21,11 +23,6 @@ export default function Footer() {
   if (isConsoleRoute) {
     return (
       <footer className="relative bg-background text-foreground dark:bg-[#05030a] dark:text-foreground overflow-hidden">
-        <div className="pointer-events-none absolute inset-0">
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl text-secondary opacity-25">
-            ✝
-          </span>
-        </div>
         <div className="relative mx-auto flex max-w-6xl flex-col items-center justify-center gap-1 px-4 py-3 text-center">
           <p className="text-[10px] uppercase tracking-[0.4em] text-secondary/80">
             {t("footer.console.reference", "Psalm 33:3")}
@@ -43,17 +40,38 @@ export default function Footer() {
 
   return (
     <footer className="relative bg-background text-foreground dark:bg-[#05030a] dark:text-foreground overflow-hidden">
-      {/* Subtle cross line decorations */}
-      <div className="pointer-events-none absolute inset-0">
-        <span className="absolute left-8 top-8 text-3xl text-secondary opacity-15">✝</span>
-        <span className="absolute right-8 top-8 text-3xl text-secondary opacity-15">✝</span>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl text-secondary opacity-10">
-          ✝
-        </span>
-        <span className="absolute right-12 bottom-12 text-2xl text-secondary opacity-15">✝</span>
-        <span className="absolute left-12 bottom-12 text-2xl text-secondary opacity-15">✝</span>
-      </div>
-      <div className="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-12 text-center md:px-10">
+      {/* 4-sided HabeshaThread inset border */}
+      <div
+        className="habesha-thread pointer-events-none absolute left-0 right-0 top-0"
+        style={{ opacity: 0.55, height: 14, margin: 0 }}
+        aria-hidden="true"
+      />
+      <div
+        className="habesha-thread pointer-events-none absolute bottom-0 left-0 right-0"
+        style={{ opacity: 0.55, height: 14, margin: 0 }}
+        aria-hidden="true"
+      />
+      <div
+        className="habesha-thread pointer-events-none absolute bottom-0 left-0 top-0"
+        style={{ opacity: 0.55, width: 14, height: "auto", margin: 0 }}
+        aria-hidden="true"
+      />
+      <div
+        className="habesha-thread pointer-events-none absolute bottom-0 right-0 top-0"
+        style={{ opacity: 0.55, width: 14, height: "auto", margin: 0 }}
+        aria-hidden="true"
+      />
+
+      <div className="relative mx-auto flex max-w-6xl flex-col gap-8 px-10 py-12 text-center md:px-14">
+        {/* Lalibela Cross at top */}
+        <div className="flex justify-center" aria-hidden="true">
+          <LalibelaCross
+            size={52}
+            color="var(--color-secondary)"
+            strokeWidth={1.5}
+          />
+        </div>
+
         <p className="text-sm uppercase tracking-[0.3em] text-secondary">
           {t("footer.verse.reference", "Psalm 150:4")}
         </p>
@@ -84,4 +102,3 @@ export default function Footer() {
     </footer>
   );
 }
-

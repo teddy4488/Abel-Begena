@@ -662,11 +662,11 @@ a:focus-visible {
   inset: 0;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%236b3f1b' stroke-width='1.2'><circle cx='15' cy='15' r='9'/><circle cx='45' cy='15' r='9'/><circle cx='15' cy='45' r='9'/><circle cx='45' cy='45' r='9'/><circle cx='15' cy='15' r='2' fill='%236b3f1b'/><circle cx='45' cy='15' r='2' fill='%236b3f1b'/><circle cx='15' cy='45' r='2' fill='%236b3f1b'/><circle cx='45' cy='45' r='2' fill='%236b3f1b'/></svg>");
   background-size: 60px 60px;
-  opacity: 0.06;
+  opacity: 0.18;
   pointer-events: none;
   z-index: 0;
 }
-.dark .awdema-bg::before { opacity: 0.08; }
+.dark .awdema-bg::before { opacity: 0.22; }
 
 /* habesha-wide-strip — Pattern 2: vivid red/yellow/green strip for major
  * section transitions. Apply as a fixed-height element. */

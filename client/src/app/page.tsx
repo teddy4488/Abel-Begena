@@ -16,7 +16,8 @@ import { extractErrorMessage } from "@/lib/errors";
 import { ChevronLeft, ChevronRight, ChevronDown, Loader2 } from "lucide-react";
 import {
   LalibelaCross,
-  BegenaGlyph,
+  BegenaIcon,
+  EOTCOrnament,
   HabeshaThread,
   HabeshaWideStrip,
   OfferingsBand,
@@ -268,8 +269,25 @@ export default function Home() {
         : { href: "/store", label: t("hero.secondary.default") };
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors">
-      <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
+    <div className="relative min-h-screen bg-background text-foreground transition-colors">
+      {/* ── Page-spanning vertical textile pillars ── */}
+      <VerticalTextileColumn
+        width={32}
+        opacity={0.45}
+        className="pointer-events-none absolute inset-y-0 left-0 z-0 hidden xl:block"
+        style={{
+          backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 80' fill='none'><polygon points='20,8 30,24 20,40 10,24' stroke='%23eab308' stroke-width='1.5'/><polygon points='20,40 30,56 20,72 10,56' stroke='%23eab308' stroke-width='1.5'/><circle cx='20' cy='24' r='2' fill='%23eab308'/><circle cx='20' cy='56' r='2' fill='%23eab308'/></svg>")`,
+        }}
+      />
+      <VerticalTextileColumn
+        width={32}
+        opacity={0.45}
+        className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden xl:block"
+        style={{
+          backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 80' fill='none'><polygon points='20,8 30,24 20,40 10,24' stroke='%23eab308' stroke-width='1.5'/><polygon points='20,40 30,56 20,72 10,56' stroke='%23eab308' stroke-width='1.5'/><circle cx='20' cy='24' r='2' fill='%23eab308'/><circle cx='20' cy='56' r='2' fill='%23eab308'/></svg>")`,
+        }}
+      />
+      <main className="awdema-bg mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
         {/* ═══════════════════════════════════════════════════════════
             MANUSCRIPT FRAME HERO
             Ge'ez band top → awdema wash content → habesha wide bottom.
@@ -296,20 +314,12 @@ export default function Home() {
               style={{ height: "auto" }}
             />
 
-            {/* Lalibela cross watermark behind the right column */}
-            <div
-              className="pointer-events-none absolute right-12 top-4 z-0 hidden opacity-[0.06] md:block dark:opacity-[0.1]"
-              aria-hidden="true"
-            >
-              <LalibelaCross size={260} strokeWidth={3} color="var(--color-wood)" />
-            </div>
-
-            {/* Small Begena glyph as a corner accent (top-left) */}
+            {/* Begena icon corner accent (top-left) */}
             <div
               className="pointer-events-none absolute left-4 top-4 z-0 hidden opacity-30 lg:block dark:opacity-40"
               aria-hidden="true"
             >
-              <BegenaGlyph size={48} color="var(--color-secondary)" />
+              <BegenaIcon size={48} color="var(--color-secondary)" />
             </div>
 
             <div className="relative z-10 grid gap-12 lg:grid-cols-2">
@@ -408,6 +418,9 @@ export default function Home() {
 
           <div className="relative px-6 py-14 md:px-12 lg:px-16">
             <FadeIn className="mb-8 text-center">
+              <div className="flex justify-center mb-3" aria-hidden="true">
+                <EOTCOrnament size={80} color="var(--color-secondary)" />
+              </div>
               <p className="text-xs uppercase tracking-[0.35em] text-secondary">
                 {t("video.section.kicker")}
               </p>
@@ -494,6 +507,8 @@ export default function Home() {
 
         <VirtualBegenaPreview />
 
+        <HabeshaThread opacity={0.55} />
+
         {/* ═══════════════════════════════════════════════════════════
             TRINITY CARDS · services
             Centered gilded Lalibela cross + Habesha-flanked kicker.
@@ -522,6 +537,9 @@ export default function Home() {
             <h2 className="mt-3 text-center text-3xl font-serif text-primary">
               {t("services.title")}
             </h2>
+            <div className="flex justify-center mt-2" aria-hidden="true">
+              <EOTCOrnament size={64} color="var(--color-secondary)" />
+            </div>
           </FadeIn>
 
           <div className="grid gap-6 md:grid-cols-3">
@@ -566,6 +584,9 @@ export default function Home() {
           className="space-y-6 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 mb-1" aria-hidden="true">
+              <EOTCOrnament size={60} color="var(--color-secondary)" />
+            </div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("classHighlights.kicker")}
             </p>
@@ -699,6 +720,9 @@ export default function Home() {
           className="grid gap-10 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_60px_120px_var(--color-primary-glow)] lg:grid-cols-2 dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="space-y-5">
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <EOTCOrnament size={60} color="var(--color-secondary)" />
+            </div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("sacred.kicker")}
             </p>
@@ -746,11 +770,16 @@ export default function Home() {
           </div>
         </section>
 
+        <HabeshaThread opacity={0.55} />
+
         <section
           id="about"
           className="grid gap-10 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] lg:grid-cols-2 dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="space-y-5">
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <EOTCOrnament size={60} color="var(--color-secondary)" />
+            </div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("about.kicker")}
             </p>
@@ -787,12 +816,17 @@ export default function Home() {
           </FadeIn>
         </section>
 
+        <HabeshaThread opacity={0.55} />
+
         {/* FAQ Section */}
         <section
           id="faq"
           className="space-y-6 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="text-center">
+            <div className="flex justify-center mb-3" aria-hidden="true">
+              <EOTCOrnament size={80} color="var(--color-secondary)" />
+            </div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("faq.kicker")}
             </p>
@@ -832,6 +866,9 @@ export default function Home() {
           className="grid gap-10 rounded-[32px] bg-[var(--color-surface-elevated)] p-6 sm:p-8 shadow-[0_40px_80px_var(--color-primary-glow)] lg:grid-cols-2 dark:bg-[var(--color-surface-elevated)]"
         >
           <FadeIn className="space-y-4">
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <EOTCOrnament size={60} color="var(--color-secondary)" />
+            </div>
             <p className="text-xs uppercase tracking-[0.35em] text-secondary">
               {t("contact.kicker")}
             </p>

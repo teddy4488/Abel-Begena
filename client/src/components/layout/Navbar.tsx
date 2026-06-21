@@ -24,6 +24,12 @@ const guestServices: NavLink[] = [
   { labelKey: "services.atelier", href: "#sacred-market" },
 ];
 
+const guestMoreLinks: NavLink[] = [
+  { labelKey: "nav.about", href: "#about" },
+  { labelKey: "nav.contact", href: "#contact" },
+  { labelKey: "nav.branches", href: "/branches" },
+];
+
 const navConfig: Record<
   RoleKey,
   {
@@ -38,9 +44,6 @@ const navConfig: Record<
       { labelKey: "nav.store", href: "/store" },
       { labelKey: "nav.virtualBegena", href: "/virtual-begena" },
       { labelKey: "nav.classes", href: "#classes" },
-      { labelKey: "nav.branches", href: "/branches" },
-      { labelKey: "nav.about", href: "#about" },
-      { labelKey: "nav.contact", href: "#contact" },
     ],
     services: guestServices,
   },
@@ -147,8 +150,10 @@ const userMenuMap: Record<Exclude<RoleKey, "guest">, NavLink[]> = {
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const servicesTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moreTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userMenuTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { isLoggedIn, user } = useAppSelector((state) => state.auth);
@@ -172,6 +177,7 @@ export default function Navbar() {
 
   const navSettings = useMemo(() => navConfig[roleKey], [roleKey]);
   const servicesLinks = navSettings?.services ?? [];
+  const moreLinks = roleKey === "guest" ? guestMoreLinks : [];
 
   const isEnglishLocale = locale === "en";
   const inkUnderlineBase =
@@ -246,6 +252,15 @@ export default function Navbar() {
     servicesTimeout.current = setTimeout(() => setServicesOpen(false), 120);
   };
 
+  const openMore = () => {
+    if (moreTimeout.current) clearTimeout(moreTimeout.current);
+    setMoreOpen(true);
+  };
+
+  const closeMore = () => {
+    moreTimeout.current = setTimeout(() => setMoreOpen(false), 120);
+  };
+
   const openUserMenu = () => {
     if (userMenuTimeout.current) {
       clearTimeout(userMenuTimeout.current);
@@ -285,6 +300,53 @@ export default function Navbar() {
             {t(link.labelKey)}
           </Link>
         ))}
+      </div>
+    );
+  };
+
+  const renderMoreDropdown = (isMobile = false) => {
+    if (!moreLinks.length) return null;
+    return (
+      <div
+        className={
+          isMobile
+            ? "pl-4 text-sm font-normal"
+            : "absolute left-0 mt-3 min-w-[200px] rounded-xl bg-(--color-surface-elevated) text-foreground text-xs shadow-xl dark:bg-(--color-surface-elevated)"
+        }
+        onMouseEnter={!isMobile ? openMore : undefined}
+        onMouseLeave={!isMobile ? closeMore : undefined}
+      >
+        {moreLinks.map((link) => {
+          const isAnchor = link.href.startsWith("#");
+          const handleClick = isAnchor
+            ? (e: React.MouseEvent<HTMLAnchorElement>) => {
+                e.preventDefault();
+                setMobileOpen(false);
+                setMoreOpen(false);
+                if (pathname !== "/") {
+                  router.push("/");
+                  setTimeout(() => {
+                    document.querySelector(link.href)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                } else {
+                  document.querySelector(link.href)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }
+            : () => { setMobileOpen(false); setMoreOpen(false); };
+          return (
+            <Link
+              key={link.labelKey}
+              href={link.href}
+              onClick={handleClick}
+              className={clsx(
+                "block text-base font-normal transition hover:bg-(--color-secondary-soft)",
+                isMobile ? navLinkMobileClass : dropdownLinkClass,
+              )}
+            >
+              {t(link.labelKey)}
+            </Link>
+          );
+        })}
       </div>
     );
   };
@@ -396,6 +458,23 @@ export default function Navbar() {
                 <ChevronDown className="h-4 w-4" />
               </button>
               {servicesOpen && renderServicesDropdown()}
+            </div>
+          )}
+          {moreLinks.length > 0 && (
+            <div
+              className="relative"
+              onMouseEnter={openMore}
+              onMouseLeave={closeMore}
+            >
+              <button
+                type="button"
+                className={clsx(navLinkBaseClass, "gap-2 pl-2 pr-1")}
+                onClick={() => setMoreOpen((prev) => !prev)}
+              >
+                {t("nav.explore")}
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              {moreOpen && renderMoreDropdown()}
             </div>
           )}
         </nav>
@@ -537,6 +616,17 @@ export default function Navbar() {
               <ChevronDown className="ml-2 h-4 w-4 transition group-open:rotate-180" />
               </summary>
               {renderServicesDropdown(true)}
+            </details>
+          )}
+          {moreLinks.length > 0 && (
+            <details className="group">
+              <summary className="flex cursor-pointer items-center justify-between py-2">
+                <span className={clsx(navLinkMobileClass, "w-full py-0 text-left")}>
+                  {t("nav.explore")}
+                </span>
+                <ChevronDown className="ml-2 h-4 w-4 transition group-open:rotate-180" />
+              </summary>
+              {renderMoreDropdown(true)}
             </details>
           )}
           <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
