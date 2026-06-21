@@ -28,7 +28,7 @@ export default function HandAnimation({ pressedFinger }: HandAnimationProps) {
       <div className="relative">
         {/* Palm */}
         <motion.div
-          className="w-32 h-20 bg-begena-brown/30 dark:bg-begena-cream/20 rounded-lg"
+          className="w-32 h-20 bg-begena-brown/60 dark:bg-begena-cream/30 rounded-lg border border-begena-brown/40 dark:border-begena-cream/30"
           animate={
             pressedFinger !== null
               ? { scale: [1, 1.02, 1] }
@@ -61,7 +61,7 @@ export default function HandAnimation({ pressedFinger }: HandAnimationProps) {
                   className={`w-3 h-16 rounded-full ${
                     isPressed
                       ? "bg-begena-gold"
-                      : "bg-begena-brown/40 dark:bg-begena-cream/40"
+                      : "bg-begena-brown/70 dark:bg-begena-cream/60"
                   } transition-colors duration-200`}
                   style={
                     isPressed
@@ -91,10 +91,10 @@ export default function HandAnimation({ pressedFinger }: HandAnimationProps) {
           {fingers.map((finger, index) => (
             <div
               key={index}
-              className={`px-1.5 py-0.5 rounded ${
+              className={`px-1.5 py-0.5 rounded font-mono font-semibold ${
                 pressedFinger === index
                   ? "bg-begena-gold text-begena-darkBrown font-bold"
-                  : "text-begena-brown/60 dark:text-begena-cream/60"
+                  : "text-begena-brown dark:text-begena-cream bg-begena-brown/10 dark:bg-begena-cream/10"
               } transition-all duration-200`}
             >
               {finger.key === "Space" ? "⌨" : finger.key}

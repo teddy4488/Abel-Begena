@@ -54,7 +54,7 @@ export default function BegenaVisual({
     <div className="relative w-full max-w-5xl mx-auto px-2 md:px-4">
       <svg
         viewBox="0 0 800 1000"
-        className="w-full h-auto"
+        className="w-full h-auto max-h-[58vh] md:max-h-[65vh]"
         xmlns="http://www.w3.org/2000/svg"
         style={{ filter: "drop-shadow(0 30px 60px rgba(0, 0, 0, 0.55))" }}
       >
