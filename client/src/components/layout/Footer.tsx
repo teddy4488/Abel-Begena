@@ -63,12 +63,20 @@ export default function Footer() {
       />
 
       <div className="relative mx-auto flex max-w-6xl flex-col gap-8 px-10 py-12 text-center md:px-14">
-        {/* Lalibela Cross at top */}
-        <div className="flex justify-center" aria-hidden="true">
+        {/* Lalibela Cross at top with radial glow */}
+        <div className="relative flex justify-center py-2" aria-hidden="true">
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 50%, rgba(212,164,55,0.45) 0%, rgba(212,164,55,0.12) 50%, transparent 75%)",
+            }}
+          />
           <LalibelaCross
             size={52}
-            color="var(--color-secondary)"
-            strokeWidth={1.5}
+            color="#ffd84d"
+            strokeWidth={2}
+            style={{ filter: "drop-shadow(0 0 14px rgba(247,201,72,0.85))", position: "relative" }}
           />
         </div>
 
