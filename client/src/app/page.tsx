@@ -269,7 +269,7 @@ export default function Home() {
         : { href: "/store", label: t("hero.secondary.default") };
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground transition-colors">
+    <div className="awdema-bg relative min-h-screen bg-background text-foreground transition-colors">
       {/* ── Page-spanning vertical textile pillars ── */}
       <VerticalTextileColumn
         width={32}
@@ -287,7 +287,7 @@ export default function Home() {
           backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 80' fill='none'><polygon points='20,8 30,24 20,40 10,24' stroke='%23eab308' stroke-width='1.5'/><polygon points='20,40 30,56 20,72 10,56' stroke='%23eab308' stroke-width='1.5'/><circle cx='20' cy='24' r='2' fill='%23eab308'/><circle cx='20' cy='56' r='2' fill='%23eab308'/></svg>")`,
         }}
       />
-      <main className="awdema-bg mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
+      <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 sm:gap-16 md:px-10 md:py-12 md:gap-20 lg:px-16 lg:py-16">
         {/* ═══════════════════════════════════════════════════════════
             MANUSCRIPT FRAME HERO
             Ge'ez band top → awdema wash content → habesha wide bottom.
